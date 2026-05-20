@@ -7,6 +7,20 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import { useUser, Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 
+let globalAudioCtx = null;
+const getAudioCtx = () => {
+  if (typeof window === 'undefined') return null;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+  if (!globalAudioCtx) {
+    globalAudioCtx = new AudioContextClass();
+  }
+  if (globalAudioCtx.state === 'suspended') {
+    globalAudioCtx.resume();
+  }
+  return globalAudioCtx;
+};
+
 // --- Custom Hook for Premium Animated Score ---
 function useAnimatedScore(targetValue) {
   const [currentValue, setCurrentValue] = useState(0);
@@ -299,9 +313,8 @@ export default function App() {
       if (navigator.vibrate) {
         navigator.vibrate(style === 'heavy' ? [30, 20, 50] : style === 'medium' ? [15, 10, 15] : [8]);
       }
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (AudioContext) {
-        const ctx = new AudioContext();
+      const ctx = getAudioCtx();
+      if (ctx) {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
@@ -333,23 +346,25 @@ export default function App() {
       haptic('heavy');
       // Play a pleasant chime melody
       try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const playNote = (freq, start, dur, vol = 0.15) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
-          gain.gain.setValueAtTime(vol, ctx.currentTime + start);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(ctx.currentTime + start);
-          osc.stop(ctx.currentTime + start + dur);
-        };
-        playNote(523, 0, 0.25);     // C5
-        playNote(659, 0.15, 0.25);  // E5
-        playNote(784, 0.30, 0.25);  // G5
-        playNote(1047, 0.45, 0.5);  // C6 (longer)
+        const ctx = getAudioCtx();
+        if (ctx) {
+          const playNote = (freq, start, dur, vol = 0.15) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+            gain.gain.setValueAtTime(vol, ctx.currentTime + start);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(ctx.currentTime + start);
+            osc.stop(ctx.currentTime + start + dur);
+          };
+          playNote(523, 0, 0.25);     // C5
+          playNote(659, 0.15, 0.25);  // E5
+          playNote(784, 0.30, 0.25);  // G5
+          playNote(1047, 0.45, 0.5);  // C6 (longer)
+        }
       } catch(e) {}
       alert("Focus Session Completed! 🔥 Time for a break.");
       return; 

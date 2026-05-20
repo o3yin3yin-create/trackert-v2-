@@ -2,21 +2,16 @@
   "name": "tracker-v2",
   "version": "0.1.0",
   "private": true,
- "scripts": {
-  "dev": "next dev",
-  "build": "prisma generate && next build",
-  "start": "next start",
-  "lint": "next lint"
-},
-"scripts": {
-  "dev": "next dev",
-  "build": "prisma generate && next build",
-  "start": "next start",
-  "lint": "next lint",
-  "postinstall": "prisma generate"
-},
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "lint": "next lint",
+    "postinstall": "prisma generate"
+  },
   "dependencies": {
     "@clerk/nextjs": "^7.3.7",
+    "@ducanh2912/next-pwa": "^10.2.9",
     "@prisma/client": "^5.22.0",
     "@prisma/config": "^7.8.0",
     "dotenv": "^17.4.2",
