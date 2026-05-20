@@ -14,7 +14,7 @@ export default function RootLayout({ children }) {
           
           {/* Header for Clerk Auth (Styled for 6afra Theme) */}
           <header className="flex justify-between items-center p-5 max-w-[428px] mx-auto w-full border-b border-white/5">
-            <div className="font-bold tracking-widest uppercase text-xs opacity-50">
+            <div className="font-bold tracking-widest uppercase text-xs opacity-50 hidden">
               6afra Studio
             </div>
             

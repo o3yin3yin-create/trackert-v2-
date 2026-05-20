@@ -1016,12 +1016,12 @@ export default function App() {
         <div className="w-full max-w-[428px] h-full flex flex-col pt-12 px-5 relative">
           
           {/* Header with Navigation */}
-          <header className="flex flex-wrap justify-between items-center gap-y-4 mb-8">
-            <div className="flex flex-col gap-3">
-              <h1 className="text-2xl sm:text-3xl font-medium tracking-tight flex flex-wrap gap-2 items-center select-none">
-                {dayName} <span className="text-white/30 font-light">{dayNum}</span>
-              </h1>
-              
+          <header className="flex flex-col gap-3 mb-8">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex flex-wrap gap-2 items-center select-none">
+              {dayName} <span className="text-white/30 font-light">{dayNum}</span>
+            </h1>
+            
+            <div className="flex flex-wrap items-center justify-between gap-2 mt-1">
               {/* Date Navigation Controls */}
               <div className="flex items-center gap-2">
                 <button onClick={handlePrevDay} className="p-1.5 bg-[#1C1C1E] border border-white/5 rounded-full text-white/40 hover:text-white transition-all duration-200 active:scale-90">
@@ -1036,13 +1036,13 @@ export default function App() {
                   </button>
                 )}
               </div>
-            </div>
-            
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1">
-              <span className="text-[10px] font-bold tracking-widest uppercase px-2.5 py-1.5 rounded-full bg-[#1C1C1E] flex items-center gap-1.5 border border-white/5 select-none text-white/60">
-                <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${!isOnline ? 'bg-red-500 shadow-[0_0_8px_#ef4444]' : isSyncing ? 'bg-[#FF9F0A] pulse-glow shadow-[0_0_8px_#FF9F0A]' : 'bg-green-500 shadow-[0_0_8px_#22c55e]'}`} />
-                {!isOnline ? 'Offline' : isSyncing ? 'Syncing' : 'Synced'}
-              </span>
+
+              {/* Status and Action Buttons */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold tracking-widest uppercase px-2.5 py-1.5 rounded-full bg-[#1C1C1E] flex items-center gap-1.5 border border-white/5 select-none text-white/60">
+                  <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${!isOnline ? 'bg-red-500 shadow-[0_0_8px_#ef4444]' : isSyncing ? 'bg-[#FF9F0A] pulse-glow shadow-[0_0_8px_#FF9F0A]' : 'bg-green-500 shadow-[0_0_8px_#22c55e]'}`} />
+                  {!isOnline ? 'Offline' : isSyncing ? 'Syncing' : 'Synced'}
+                </span>
 
               {/* Emergency Cards Icon Button */}
               <button
@@ -1057,6 +1057,7 @@ export default function App() {
                 <SlidersHorizontal size={18} strokeWidth={2.2} />
                 <input type="color" value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
               </label>
+              </div>
             </div>
           </header>
 
