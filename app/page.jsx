@@ -915,6 +915,7 @@ export default function App() {
                       const isActive = pomodoroInitialTime === m * 60;
                       return (
                         <button key={m} onClick={() => {
+                          haptic('light');
                           const secs = m * 60;
                           setPomodoroInitialTime(secs);
                           setPomodoroTime(secs);
@@ -970,14 +971,14 @@ export default function App() {
                         </div>
                         <div style={{ display: 'flex', gap: '8px', marginTop: '4px', justifyContent: 'center' }}>
                           {isTimerRunning ? (
-                            <button onClick={() => setIsTimerRunning(false)} style={{
+                            <button onClick={() => { haptic('light'); setIsTimerRunning(false); }} style={{
                               padding: '9px 20px', borderRadius: '999px', fontWeight: 700,
                               fontSize: '13px', background: 'rgba(239,68,68,0.12)',
                               color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)', cursor: 'pointer',
                             }}>Stop</button>
                           ) : (
                             <>
-                              <button onClick={() => setIsTimerRunning(true)} style={{
+                              <button onClick={() => { haptic('light'); getAudioCtx(); setIsTimerRunning(true); }} style={{
                                 padding: '9px 22px', borderRadius: '999px', fontWeight: 700,
                                 fontSize: '13px', background: neon, color: '#000', border: 'none', cursor: 'pointer',
                                 boxShadow: `0 0 20px ${neon}88`,
