@@ -1015,16 +1015,16 @@ export default function App() {
         )}
 
 
-      <div className="min-h-screen bg-black text-white font-sans flex justify-center w-full selection:bg-white/20 pb-28">
+      <div className="min-h-screen bg-black text-white font-sans flex justify-center w-full selection:bg-white/20 pb-28 overflow-x-hidden">
         <div ref={topRef} /> 
 
         {/* ---------------- MAIN APP UI ---------------- */}
         <div className="w-full max-w-[428px] h-full flex flex-col pt-12 px-5 relative">
           
           {/* Header with Navigation */}
-          <header className="flex justify-between items-start mb-8">
+          <header className="flex flex-wrap justify-between items-center gap-y-4 mb-8">
             <div className="flex flex-col gap-3">
-              <h1 className="text-3xl font-medium tracking-tight flex gap-2 items-center select-none">
+              <h1 className="text-2xl sm:text-3xl font-medium tracking-tight flex flex-wrap gap-2 items-center select-none">
                 {dayName} <span className="text-white/30 font-light">{dayNum}</span>
               </h1>
               
@@ -1044,7 +1044,7 @@ export default function App() {
               </div>
             </div>
             
-            <div className="flex items-center gap-3 mt-1">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1">
               <span className="text-[10px] font-bold tracking-widest uppercase px-2.5 py-1.5 rounded-full bg-[#1C1C1E] flex items-center gap-1.5 border border-white/5 select-none text-white/60">
                 <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${!isOnline ? 'bg-red-500 shadow-[0_0_8px_#ef4444]' : isSyncing ? 'bg-[#FF9F0A] pulse-glow shadow-[0_0_8px_#FF9F0A]' : 'bg-green-500 shadow-[0_0_8px_#22c55e]'}`} />
                 {!isOnline ? 'Offline' : isSyncing ? 'Syncing' : 'Synced'}
@@ -1119,7 +1119,7 @@ export default function App() {
           </div>
 
           {/* ---------------- HABITS GRID ---------------- */}
-          <div className="grid grid-cols-2 gap-3 mb-10 items-start">
+          <div className="grid grid-cols-1 min-[381px]:grid-cols-2 gap-3 mb-10 items-start">
             {habits.map((habit) => {
               const isMulti = habit.type === 'multi';
               const isExpanded = expandedHabits.includes(habit.id);
@@ -1144,15 +1144,14 @@ export default function App() {
                     borderRadius: '24px',
                     backgroundColor: isAllChecked ? themeColor : '#1C1C1E',
                     color: isAllChecked ? '#000000' : '#FFFFFF',
-                    aspectRatio: (isMulti && isExpanded) ? 'auto' : '2.4 / 1',
-                    minHeight: (isMulti && isExpanded) ? 'auto' : '0',
+                    minHeight: (isMulti && isExpanded) ? 'auto' : '100px',
                     border: isAllChecked ? '1px solid transparent' : '1px solid rgba(255,255,255,0.03)',
                     boxShadow: isAllChecked ? `0 10px 25px -8px ${themeColor}88` : 'none' 
                   }}
                 >
                   <div 
                     onClick={() => isMulti ? toggleExpand(habit.id) : toggleCheck(habit.id)}
-                    className="flex items-center justify-between p-4.5 h-full cursor-pointer select-none"
+                    className="flex items-center justify-between p-5 h-full cursor-pointer select-none"
                   >
                     <div className="flex flex-col flex-1 pr-2 overflow-hidden">
                       {/* Streak & Note row */}
@@ -1164,7 +1163,7 @@ export default function App() {
                           <BookOpen size={14}/>
                         </button>
                       </div>
-                      <span className="text-[15px] font-semibold tracking-tight leading-tight truncate">{habit.name}</span>
+                      <span className="text-[15px] font-semibold tracking-tight leading-tight whitespace-normal break-words line-clamp-2">{habit.name}</span>
                       {isMulti && !isExpanded && (
                         <span className="text-[10px] opacity-50 mt-0.5 font-bold tracking-wider">{checkedCount}/{habit.subItems.length}</span>
                       )}
@@ -1273,7 +1272,7 @@ export default function App() {
           </div>
 
           {/* --- FLOATING NAV --- */}
-          <div className="fixed bottom-0 left-0 w-full flex justify-center pb-8 pt-4 bg-gradient-to-t from-black via-black to-transparent pointer-events-none z-40">
+          <div className="fixed bottom-0 left-0 w-full flex justify-center pt-4 bg-gradient-to-t from-black via-black to-transparent pointer-events-none z-40 pb-[calc(2rem+env(safe-area-inset-bottom))]">
             <div className="w-full max-w-[428px] px-6 flex justify-between items-center pointer-events-auto">
               <div className="bg-[#1C1C1E]/80 backdrop-blur-xl border border-white/5 rounded-full flex items-center p-1.5 gap-1.5 shadow-2xl shadow-black/80">
                 <button onClick={() => topRef.current?.scrollIntoView({ behavior: 'smooth' })} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white transition-all duration-200 active:scale-90"><Home size={18} /></button>
