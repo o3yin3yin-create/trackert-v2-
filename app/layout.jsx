@@ -4,6 +4,11 @@ import './globals.css'
 export const metadata = {
   title: '6afra Tracker',
   description: 'Premium Habit Tracker',
+  manifest: '/manifest.json',
+}
+
+export const viewport = {
+  themeColor: '#000000',
 }
 
 export default function RootLayout({ children }) {
