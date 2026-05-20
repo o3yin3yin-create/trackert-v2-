@@ -4,7 +4,7 @@ import { messaging, getToken } from '../lib/firebase';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { useUser } from '@clerk/nextjs'; 
+import { useUser, Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs'; 
 
 // --- Custom Hook for Premium Animated Score ---
 function useAnimatedScore(targetValue) {
@@ -277,8 +277,11 @@ export default function App() {
         // لو مكسبش الكارت بتاع الستريك ده قبل كده، إديله واحد
         if (!newLog[grantKey]) {
           newLog[grantKey] = true;
-          newCards[habit.id] = (newCards[habit.id] ?? 1) + 1; // بيديله كارت زيادة
-          newCardsGranted = true;
+          const currentCards = newCards[habit.id] ?? 1;
+          if (currentCards < 1) {
+            newCards[habit.id] = 1;
+            newCardsGranted = true;
+          }
         }
       }
     });
@@ -429,6 +432,16 @@ export default function App() {
 
   // --- Functions ---
   const toggleCheck = (habitId, subItem = null) => {
+    const todayStr = getFormatDateStr(new Date());
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = getFormatDateStr(yesterday);
+    
+    if (activeDateStr !== todayStr && activeDateStr !== yesterdayStr) {
+      alert("لا يمكنك تسجيل العادات في أيام سابقة، مسموح فقط بتسجيل اليوم أو الأمس لمنع الـ Farming 🛡️");
+      return;
+    }
+
     haptic('light');
     const key = subItem ? `${activeDateStr}-${habitId}-${subItem}` : `${activeDateStr}-${habitId}`;
     setDailyData(prev => ({ ...prev, [key]: !prev[key] }));
@@ -1017,9 +1030,30 @@ export default function App() {
           
           {/* Header with Navigation */}
           <header className="flex flex-col gap-3 mb-8">
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex flex-wrap gap-2 items-center select-none">
-              {dayName} <span className="text-white/30 font-light">{dayNum}</span>
-            </h1>
+            <div className="flex justify-between items-center w-full">
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex flex-wrap gap-2 items-center select-none">
+                {dayName} <span className="text-white/30 font-light">{dayNum}</span>
+              </h1>
+              
+              <div className="flex items-center gap-4">
+                <Show when="signed-out">
+                  <SignInButton mode="modal">
+                    <button className="text-white/70 hover:text-white font-medium text-sm transition-colors">
+                      Log In
+                    </button>
+                  </SignInButton>
+                  <SignUpButton mode="modal">
+                    <button className="bg-[#FF9F0A] text-black rounded-full font-bold text-sm h-9 px-5 cursor-pointer hover:opacity-80 transition-opacity">
+                      Sign Up
+                    </button>
+                  </SignUpButton>
+                </Show>
+                
+                <Show when="signed-in">
+                  <UserButton appearance={{ elements: { avatarBox: "w-9 h-9" } }} />
+                </Show>
+              </div>
+            </div>
             
             <div className="flex flex-wrap items-center justify-between gap-2 mt-1">
               {/* Date Navigation Controls */}
@@ -1149,14 +1183,9 @@ export default function App() {
                     className="flex items-center justify-between p-4 h-full cursor-pointer select-none"
                   >
                     <div className="flex flex-col flex-1 pr-2 overflow-hidden">
-                      {/* Streak & Note row */}
+                      {/* Streak row */}
                       <div className="flex justify-between items-start mb-2">
                         <span className="text-[10px] font-bold" style={{ color: isAllChecked ? 'rgba(0,0,0,0.5)' : themeColor }}>{getStreak(habit.id) > 0 ? `🔥 ${getStreak(habit.id)}` : ''}</span>
-                        <button onClick={(e) => { e.stopPropagation(); haptic('light'); setActiveNoteHabit(habit.id); setNoteInput(habitNotes[`${activeDateStr}-${habit.id}`] || ""); setIsNoteModalOpen(true); }} 
-                                className="p-1 transition-colors duration-200"
-                                style={{ color: isAllChecked ? '#000000' : '#FFFFFF' }}>
-                          <BookOpen size={14}/>
-                        </button>
                       </div>
                       <span className="text-[15px] font-semibold tracking-tight leading-tight truncate">{habit.name}</span>
                       {isMulti && !isExpanded && (
