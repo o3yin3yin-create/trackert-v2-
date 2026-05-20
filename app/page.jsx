@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings } from 'lucide-react';
+import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause } from 'lucide-react';
 import { messaging, getToken } from '../lib/firebase';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -1139,14 +1139,14 @@ export default function App() {
                     borderRadius: '24px',
                     backgroundColor: isAllChecked ? themeColor : '#1C1C1E',
                     color: isAllChecked ? '#000000' : '#FFFFFF',
-                    minHeight: (isMulti && isExpanded) ? 'auto' : '100px',
+                    height: (isMulti && isExpanded) ? 'auto' : '80px',
                     border: isAllChecked ? '1px solid transparent' : '1px solid rgba(255,255,255,0.03)',
                     boxShadow: isAllChecked ? `0 10px 25px -8px ${themeColor}88` : 'none' 
                   }}
                 >
                   <div 
                     onClick={() => isMulti ? toggleExpand(habit.id) : toggleCheck(habit.id)}
-                    className="flex items-center justify-between p-5 h-full cursor-pointer select-none"
+                    className="flex items-center justify-between p-4 h-full cursor-pointer select-none"
                   >
                     <div className="flex flex-col flex-1 pr-2 overflow-hidden">
                       {/* Streak & Note row */}
@@ -1158,7 +1158,7 @@ export default function App() {
                           <BookOpen size={14}/>
                         </button>
                       </div>
-                      <span className="text-[15px] font-semibold tracking-tight leading-tight whitespace-normal break-words line-clamp-2">{habit.name}</span>
+                      <span className="text-[15px] font-semibold tracking-tight leading-tight truncate">{habit.name}</span>
                       {isMulti && !isExpanded && (
                         <span className="text-[10px] opacity-50 mt-0.5 font-bold tracking-wider">{checkedCount}/{habit.subItems.length}</span>
                       )}
