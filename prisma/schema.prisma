@@ -43,6 +43,7 @@ model DailyLog {
   id        String   @id @default(cuid())
   date      String   // بصيغة "YYYY-MM-DD"
   logs      Json     // هيخزن الـ state الكاملة للـ Checked عادات في اليوم ده
+  tasks     Json?    @default("[]") // المهام المؤقتة لليوم ده
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   updatedAt DateTime @updatedAt

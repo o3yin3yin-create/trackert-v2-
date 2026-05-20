@@ -29,7 +29,8 @@ export async function GET(req) {
         success: true,
         habits: [],
         dailyData: {},
-        sleepData: {}
+        sleepData: {},
+        dailyTasksData: {}
       });
     }
 
@@ -60,11 +61,20 @@ export async function GET(req) {
       sleepData[log.date] = log.hours;
     });
 
+    // تجميع المهام اليومية (Daily Tasks)
+    const dailyTasksData = {};
+    user.dailyLogs.forEach(log => {
+      if (log.tasks && Array.isArray(log.tasks)) {
+        dailyTasksData[log.date] = log.tasks;
+      }
+    });
+
     return NextResponse.json({
       success: true,
       habits,
       dailyData,
-      sleepData
+      sleepData,
+      dailyTasksData
     });
   } catch (error) {
     console.error("Sync GET API Error:", error);
@@ -76,7 +86,7 @@ export async function GET(req) {
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { clerkId, email, habits, dailyData, sleepData } = body;
+    const { clerkId, email, habits, dailyData, sleepData, dailyTasksData } = body;
 
     if (!clerkId) {
       return NextResponse.json({ success: false, error: "Missing Clerk ID" }, { status: 400 });
@@ -144,6 +154,20 @@ export async function POST(req) {
 
       // كتابة السجلات في الداتابيز
       for (const [date, logs] of Object.entries(dailyLogsByDate)) {
+        // Prepare update/create objects
+        const updateData = { logs: logs };
+        const createData = {
+            userId: clerkId,
+            date: date,
+            logs: logs
+        };
+
+        // إذا كان هناك tasks لنفس اليوم، نضيفها
+        if (dailyTasksData && dailyTasksData[date]) {
+            updateData.tasks = dailyTasksData[date];
+            createData.tasks = dailyTasksData[date];
+        }
+
         await prisma.dailyLog.upsert({
           where: {
             userId_date: {
@@ -151,12 +175,30 @@ export async function POST(req) {
               date: date
             }
           },
-          update: { logs: logs },
-          create: {
-            userId: clerkId,
-            date: date,
-            logs: logs
-          }
+          update: updateData,
+          create: createData
+        });
+      }
+
+      // إذا كان هناك tasks لأيام ليس لها logs بعد (نادر الحدوث لكن وارد)
+      if (dailyTasksData && typeof dailyTasksData === 'object') {
+        for (const [date, tasks] of Object.entries(dailyTasksData)) {
+            if (!dailyLogsByDate[date]) {
+                await prisma.dailyLog.upsert({
+                    where: { userId_date: { userId: clerkId, date: date } },
+                    update: { tasks: tasks },
+                    create: { userId: clerkId, date: date, logs: {}, tasks: tasks }
+                });
+            }
+        }
+      }
+    } else if (dailyTasksData && typeof dailyTasksData === 'object') {
+      // إذا لم يكن هناك dailyData على الإطلاق، لكن يوجد tasks
+      for (const [date, tasks] of Object.entries(dailyTasksData)) {
+        await prisma.dailyLog.upsert({
+            where: { userId_date: { userId: clerkId, date: date } },
+            update: { tasks: tasks },
+            create: { userId: clerkId, date: date, logs: {}, tasks: tasks }
         });
       }
     }

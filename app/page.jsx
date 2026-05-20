@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause } from 'lucide-react';
+import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon } from 'lucide-react';
 import { messaging, getToken } from '../lib/firebase';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -177,6 +177,24 @@ export default function App() {
   // --- Exact Real-Time Date Initialization ---
   const [baseDate, setBaseDate] = useState(() => new Date());
 
+  // --- Daily Tasks State ---
+  const [dailyTasks, setDailyTasks] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return JSON.parse(localStorage.getItem('daybase_daily_tasks_v4') || "[]");
+    }
+    return [];
+  });
+  const [dailyTasksDateStr, setDailyTasksDateStr] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('daybase_daily_tasks_date_v4') || "";
+    }
+    return "";
+  });
+  const [isTasksModalOpen, setIsTasksModalOpen] = useState(false);
+  const [newTaskInput, setNewTaskInput] = useState("");
+
+  const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
+
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
@@ -250,6 +268,15 @@ export default function App() {
     setSleepInput(sleepData[activeDateStr] || "");
   }, [activeDateStr, sleepData]);
 
+  // Handle daily tasks date reset
+  useEffect(() => {
+    const todayStr = getFormatDateStr(new Date());
+    if (dailyTasksDateStr !== todayStr) {
+      setDailyTasks([]);
+      setDailyTasksDateStr(todayStr);
+    }
+  }, [baseDate, dailyTasksDateStr]);
+
   // --- Effects (Save to LocalStorage) ---
   useEffect(() => { if (isMounted) localStorage.setItem('daybase_habits_v4', JSON.stringify(habits)); }, [habits, isMounted]);
   useEffect(() => { if (isMounted) localStorage.setItem('daybase_dailyData_v4', JSON.stringify(dailyData)); }, [dailyData, isMounted]);
@@ -258,6 +285,8 @@ export default function App() {
   useEffect(() => { if (isMounted) localStorage.setItem('daybase_themeColor_v4', themeColor); }, [themeColor, isMounted]);
   useEffect(() => { if (isMounted) localStorage.setItem('daybase_habitNotes_v4', JSON.stringify(habitNotes)); }, [habitNotes, isMounted]);
   useEffect(() => { if (isMounted) localStorage.setItem('daybase_cards_v4', JSON.stringify(habitCards)); }, [habitCards, isMounted]);
+  useEffect(() => { if (isMounted) localStorage.setItem('daybase_daily_tasks_v4', JSON.stringify(dailyTasks)); }, [dailyTasks, isMounted]);
+  useEffect(() => { if (isMounted) localStorage.setItem('daybase_daily_tasks_date_v4', dailyTasksDateStr); }, [dailyTasksDateStr, isMounted]);
   useEffect(() => { if (isMounted) localStorage.setItem('daybase_granted_cards_log_v4', JSON.stringify(grantedCardsLog)); }, [grantedCardsLog, isMounted]);
 
   // --- Streak Function ---
@@ -393,10 +422,11 @@ export default function App() {
     };
   }, []);
 
-  const triggerSync = async (h, d, s) => {
+  const triggerSync = async (h, d, s, tasks, tasksDate) => {
     if (!navigator.onLine || !user) return;
     setIsSyncing(true);
     try {
+      const dailyTasksData = tasks.length > 0 && tasksDate ? { [tasksDate]: tasks } : {};
       await fetch('/api/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -405,7 +435,8 @@ export default function App() {
           email: user.primaryEmailAddress?.emailAddress,
           habits: h,
           dailyData: d,
-          sleepData: s
+          sleepData: s,
+          dailyTasksData: dailyTasksData
         })
       });
       console.log("[Sync Engine] Cloud sync completed successfully.");
@@ -419,11 +450,11 @@ export default function App() {
   useEffect(() => {
     if (isMounted && user && isOnline) {
       const delayDebounce = setTimeout(() => {
-        triggerSync(habits, dailyData, sleepData);
+        triggerSync(habits, dailyData, sleepData, dailyTasks, dailyTasksDateStr);
       }, 1000); 
       return () => clearTimeout(delayDebounce);
     }
-  }, [habits, dailyData, sleepData, user, isMounted, isOnline]);
+  }, [habits, dailyData, sleepData, dailyTasks, dailyTasksDateStr, user, isMounted, isOnline]);
 
   // --- جلب البيانات من السحابة عند تحميل الصفحة لأول مرة للمستخدم ---
   useEffect(() => {
@@ -432,10 +463,17 @@ export default function App() {
       try {
         const res = await fetch(`/api/sync?clerkId=${user.id}`);
         const data = await res.json();
-        if (data.success && (data.habits.length > 0 || Object.keys(data.dailyData).length > 0 || Object.keys(data.sleepData).length > 0)) {
+        if (data.success && (data.habits.length > 0 || Object.keys(data.dailyData).length > 0 || Object.keys(data.sleepData).length > 0 || Object.keys(data.dailyTasksData || {}).length > 0)) {
           setHabits(data.habits);
           setDailyData(data.dailyData);
           setSleepData(data.sleepData);
+          
+          const todayStr = getFormatDateStr(new Date());
+          if (data.dailyTasksData && data.dailyTasksData[todayStr]) {
+            setDailyTasks(data.dailyTasksData[todayStr]);
+            setDailyTasksDateStr(todayStr);
+          }
+
           console.log("[Sync Engine] Loaded data from cloud successfully.");
         }
         setIsCloudLoaded(true);
@@ -1187,6 +1225,18 @@ export default function App() {
             </div>
           </div>
 
+          {/* Sleep Logger Card (Moved here) */}
+          <div className="w-full p-4 mb-8 bg-[#1C1C1E] rounded-3xl border border-white/5 flex justify-between items-center shadow-lg">
+            <div className="flex items-center gap-2">
+              <Moon size={18} className="text-indigo-400" strokeWidth={2.5} />
+              <span className="text-sm font-bold tracking-widest uppercase text-white/80">Sleep (Hrs)</span>
+            </div>
+            <div className="flex gap-2">
+              <input type="number" placeholder="0" value={sleepInput} onChange={(e) => setSleepInput(e.target.value)} className="w-14 bg-black border border-white/10 text-white px-2 py-1.5 rounded-xl outline-none text-center font-bold text-sm focus:border-white/30 transition-colors" />
+              <button onClick={logSleep} className="bg-white text-black px-4 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 hover:bg-white/90">Save</button>
+            </div>
+          </div>
+
           {/* ---------------- HABITS GRID ---------------- */}
           <div className="grid grid-cols-2 gap-3 mb-10 items-start">
             {habits.map((habit) => {
@@ -1274,62 +1324,80 @@ export default function App() {
           </div>
 
 
-          {/* --- SLEEP VS SCORE CHART SECTION --- */}
-          <div ref={chartRef} className="mt-2 mb-4 pt-4">
-            <div className="flex justify-between items-center mb-6 px-1">
-              <h3 className="text-xl font-bold tracking-tight select-none">Log Sleep (Hrs)</h3>
-              <div className="flex gap-2">
-                <input type="number" placeholder="0" value={sleepInput} onChange={(e) => setSleepInput(e.target.value)} className="w-14 bg-[#1C1C1E] border border-white/5 text-white px-2 py-2 rounded-xl outline-none text-center font-bold text-sm focus:border-white/20 transition-colors" />
-                <button onClick={logSleep} className="bg-white text-black px-4 py-2 rounded-xl font-bold text-xs transition-all active:scale-95 hover:bg-white/90">Save</button>
-              </div>
-            </div>
+          {/* --- ANALYTICS MODAL --- */}
+          {isAnalyticsModalOpen && createPortal(
+            <div style={{
+              position: 'fixed', inset: 0, zIndex: 9999,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              padding: '24px',
+              background: 'rgba(0,0,0,0.95)',
+              backdropFilter: 'blur(32px)',
+              WebkitBackdropFilter: 'blur(32px)',
+            }}>
+              <div style={{
+                width: '100%', maxWidth: '380px',
+                background: '#111', borderRadius: '32px',
+                border: `1px solid rgba(255,255,255,0.08)`,
+                boxShadow: `0 0 60px ${themeColor}22, 0 30px 60px rgba(0,0,0,0.8)`,
+                padding: '36px 24px',
+                position: 'relative',
+              }}>
+                <button onClick={() => setIsAnalyticsModalOpen(false)} style={{
+                  position: 'absolute', top: '16px', right: '16px',
+                  background: 'rgba(255,255,255,0.05)', border: 'none',
+                  borderRadius: '50%', width: '32px', height: '32px',
+                  color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}><X size={16} /></button>
 
-            <div className="w-full p-6 bg-[#1C1C1E] rounded-[2.5rem] border border-white/5">
-              <h3 className="text-sm font-bold tracking-widest text-white/30 uppercase mb-6 select-none">Analytics</h3>
-              <div className="w-full h-44 mb-4 relative">
+                <h3 className="text-sm font-bold tracking-widest text-white/50 uppercase mb-6 select-none text-center">Analytics</h3>
                 
-                <svg style={{ height: 0, width: 0, position: 'absolute' }}>
-                  <defs>
-                    <linearGradient id="cursorGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#2C2C2E" stopOpacity={0.8}/>
-                      <stop offset="100%" stopColor="#2C2C2E" stopOpacity={0.0}/>
-                    </linearGradient>
-                  </defs>
-                </svg>
+                <div className="w-full h-48 mb-6 relative">
+                  <svg style={{ height: 0, width: 0, position: 'absolute' }}>
+                    <defs>
+                      <linearGradient id="cursorGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#2C2C2E" stopOpacity={0.8}/>
+                        <stop offset="100%" stopColor="#2C2C2E" stopOpacity={0.0}/>
+                      </linearGradient>
+                    </defs>
+                  </svg>
 
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={sleepChartData} barGap={2} barCategoryGap={8}>
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8E8E93', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em' }} dy={10} />
-                    <YAxis yAxisId="sleep" orientation="left" hide domain={[0, 24]} />
-                    <YAxis yAxisId="score" orientation="right" hide domain={[0, 100]} />
-                    <YAxis yAxisId="focus" orientation="right" hide domain={[0, 180]} />
-                    
-                    <Tooltip 
-                      cursor={<CustomCursor />} 
-                      contentStyle={{ backgroundColor: '#1C1C1E', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', color: '#FFFFFF', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
-                      itemStyle={{ color: '#FFFFFF', fontWeight: 600, fontSize: '12px' }} 
-                      formatter={(value, name) => { 
-                        if (name === "Sleep") return [`${value} hrs`, "Sleep"];
-                        if (name === "Focus") return [`${value} min`, "Focus"];
-                        return [`${value.toFixed(0)}%`, "Score"]; 
-                      }} 
-                    />
-                    
-                    <Bar yAxisId="sleep" dataKey="sleep" fill="#FFFFFF" radius={[3, 3, 3, 3]} barSize={4} name="Sleep" />
-                    <Bar yAxisId="score" dataKey="score" fill={themeColor} radius={[3, 3, 3, 3]} barSize={4} name="Score" />
-                    <Bar yAxisId="focus" dataKey="focus" fill="#22d3ee" radius={[3, 3, 3, 3]} barSize={4} name="Focus" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex flex-col gap-3 select-none">
-                <div className="flex items-center justify-center gap-6">
-                  <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-white"/><span className="text-[9px] font-bold tracking-widest text-[#8E8E93] uppercase">SLEEP</span></div>
-                  <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: themeColor}}/><span className="text-[9px] font-bold tracking-widest text-[#8E8E93] uppercase">SCORE</span></div>
-                  <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-cyan-400"/><span className="text-[9px] font-bold tracking-widest text-[#8E8E93] uppercase">FOCUS</span></div>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={sleepChartData} barGap={2} barCategoryGap={8}>
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8E8E93', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em' }} dy={10} />
+                      <YAxis yAxisId="sleep" orientation="left" hide domain={[0, 24]} />
+                      <YAxis yAxisId="score" orientation="right" hide domain={[0, 100]} />
+                      <YAxis yAxisId="focus" orientation="right" hide domain={[0, 180]} />
+                      
+                      <Tooltip 
+                        cursor={<CustomCursor />} 
+                        contentStyle={{ backgroundColor: '#1C1C1E', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', color: '#FFFFFF', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
+                        itemStyle={{ color: '#FFFFFF', fontWeight: 600, fontSize: '12px' }} 
+                        formatter={(value, name) => { 
+                          if (name === "Sleep") return [`${value} hrs`, "Sleep"];
+                          if (name === "Focus") return [`${value} min`, "Focus"];
+                          return [`${value.toFixed(0)}%`, "Score"]; 
+                        }} 
+                      />
+                      
+                      <Bar yAxisId="sleep" dataKey="sleep" fill="#FFFFFF" radius={[3, 3, 3, 3]} barSize={4} name="Sleep" />
+                      <Bar yAxisId="score" dataKey="score" fill={themeColor} radius={[3, 3, 3, 3]} barSize={4} name="Score" />
+                      <Bar yAxisId="focus" dataKey="focus" fill="#22d3ee" radius={[3, 3, 3, 3]} barSize={4} name="Focus" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                <div className="flex flex-col gap-3 select-none">
+                  <div className="flex items-center justify-center gap-6">
+                    <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-white"/><span className="text-[9px] font-bold tracking-widest text-[#8E8E93] uppercase">SLEEP</span></div>
+                    <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: themeColor}}/><span className="text-[9px] font-bold tracking-widest text-[#8E8E93] uppercase">SCORE</span></div>
+                    <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-cyan-400"/><span className="text-[9px] font-bold tracking-widest text-[#8E8E93] uppercase">FOCUS</span></div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </div>, document.body
+          )}
 
           {/* --- CREATOR SIGNATURE --- */}
           <div className="flex justify-center items-center mt-6 mb-8 opacity-30 hover:opacity-80 transition-opacity duration-300">
@@ -1338,13 +1406,97 @@ export default function App() {
             </span>
           </div>
 
+          {/* --- DAILY TASKS MODAL --- */}
+          {isTasksModalOpen && createPortal(
+            <div style={{
+              position: 'fixed', inset: 0, zIndex: 9999,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              padding: '24px',
+              background: 'rgba(0,0,0,0.95)',
+              backdropFilter: 'blur(32px)',
+              WebkitBackdropFilter: 'blur(32px)',
+            }}>
+              <div style={{
+                width: '100%', maxWidth: '380px',
+                background: '#111', borderRadius: '32px',
+                border: `1px solid rgba(255,255,255,0.08)`,
+                boxShadow: `0 0 60px ${themeColor}22, 0 30px 60px rgba(0,0,0,0.8)`,
+                padding: '36px 24px',
+                position: 'relative',
+              }}>
+                <button onClick={() => setIsTasksModalOpen(false)} style={{
+                  position: 'absolute', top: '16px', right: '16px',
+                  background: 'rgba(255,255,255,0.05)', border: 'none',
+                  borderRadius: '50%', width: '32px', height: '32px',
+                  color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}><X size={16} /></button>
+
+                <div className="flex items-center gap-2 mb-6">
+                  <ListChecks size={20} className="text-white/80" />
+                  <h3 className="text-sm font-bold tracking-widest text-white/80 uppercase select-none">Today's Tasks</h3>
+                </div>
+
+                <div className="flex flex-col gap-3 mb-6 max-h-[300px] overflow-y-auto pr-2">
+                  {dailyTasks.map((task, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 rounded-2xl bg-[#1C1C1E] border border-white/5">
+                      <div className="flex items-center gap-3 cursor-pointer flex-1" onClick={() => {
+                        haptic('light');
+                        setDailyTasks(prev => prev.map((t, i) => i === idx ? { ...t, completed: !t.completed } : t));
+                      }}>
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${task.completed ? 'bg-black border-transparent' : 'border-white/20'}`} style={{ borderColor: task.completed ? themeColor : undefined }}>
+                          {task.completed && <Check size={12} strokeWidth={4} style={{ color: themeColor }} />}
+                        </div>
+                        <span className={`text-sm font-semibold transition-all ${task.completed ? 'text-white/30 line-through' : 'text-white/90'}`}>{task.text}</span>
+                      </div>
+                      <button onClick={() => setDailyTasks(prev => prev.filter((_, i) => i !== idx))} className="text-white/20 hover:text-red-400 p-1 transition-colors">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                  {dailyTasks.length === 0 && (
+                    <div className="text-center text-white/30 text-xs font-bold uppercase tracking-widest py-8">No tasks for today</div>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="Add a new task..." 
+                    value={newTaskInput}
+                    onChange={(e) => setNewTaskInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newTaskInput.trim() !== '') {
+                        haptic('light');
+                        setDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
+                        setNewTaskInput("");
+                      }
+                    }}
+                    className="flex-1 bg-[#1C1C1E] border border-white/10 text-white px-4 py-3 rounded-2xl outline-none text-sm font-semibold focus:border-white/30 transition-colors placeholder:text-white/30" 
+                  />
+                  <button onClick={() => {
+                    if (newTaskInput.trim() !== '') {
+                      haptic('light');
+                      setDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
+                      setNewTaskInput("");
+                    }
+                  }} className="bg-white text-black px-4 py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 hover:bg-white/90">
+                    <Plus size={18} strokeWidth={3} />
+                  </button>
+                </div>
+              </div>
+            </div>, document.body
+          )}
+
           {/* --- FLOATING NAV --- */}
           <div className="fixed bottom-0 left-0 w-full flex justify-center pt-4 bg-gradient-to-t from-black via-black to-transparent pointer-events-none z-40 pb-[calc(2rem+env(safe-area-inset-bottom))]">
             <div className="w-full max-w-[428px] px-6 flex justify-between items-center pointer-events-auto">
               <div className="bg-[#1C1C1E]/80 backdrop-blur-xl border border-white/5 rounded-full flex items-center p-1.5 gap-1.5 shadow-2xl shadow-black/80">
                 <button onClick={() => topRef.current?.scrollIntoView({ behavior: 'smooth' })} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white transition-all duration-200 active:scale-90"><Home size={18} /></button>
-                <button onClick={() => chartRef.current?.scrollIntoView({ behavior: 'smooth' })} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><BarChart2 size={18} /></button>
-                <button onClick={() => { setIsPomodoroOpen(true); }} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><Timer size={18} /></button>
+                <button onClick={() => setIsAnalyticsModalOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><BarChart2 size={18} /></button>
+                <button onClick={() => setIsTasksModalOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
+                <button onClick={() => setIsPomodoroOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><Timer size={18} /></button>
               </div>
               <button onClick={handleOpenManage} className="w-13 h-13 rounded-full bg-[#1C1C1E] border border-white/10 flex items-center justify-center hover:bg-[#2C2C2E] transition-all duration-200 active:scale-90 shadow-2xl shadow-black/60"><Edit2 size={18} className="text-white/90" /></button>
             </div>
