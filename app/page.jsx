@@ -964,9 +964,9 @@ export default function App() {
 
                     {!isEditingPomodoro ? (
                       <>
-                        <div style={{ fontSize: '40px', fontWeight: 900, letterSpacing: '2px', lineHeight: 1, color: '#fff', fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'baseline', gap: '12px' }}>
+                        <div style={{ fontSize: '32px', fontWeight: 900, letterSpacing: '4px', lineHeight: 1, color: '#fff', fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'baseline', gap: '16px' }}>
                           <span>{String(Math.floor(pomodoroTime / 60)).padStart(2,'0')}</span>
-                          <span style={{ color: neon, opacity: 0.4, fontSize: '28px' }}>:</span>
+                          <span style={{ color: neon, opacity: 0.4, fontSize: '24px' }}>:</span>
                           <span>{String(pomodoroTime % 60).padStart(2,'0')}</span>
                         </div>
                         <div style={{ display: 'flex', gap: '8px', marginTop: '4px', justifyContent: 'center' }}>
