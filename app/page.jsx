@@ -840,7 +840,7 @@ export default function App() {
         {isPomodoroOpen && createPortal(
           (() => {
             const PRESETS = [10, 20, 25, 30];
-            const radius = 58;
+            const radius = 80;
             const circ = 2 * Math.PI * radius;
             const progress = pomodoroInitialTime > 0 ? pomodoroTime / pomodoroInitialTime : 1;
             const dashOffset = circ * (1 - progress);
@@ -885,13 +885,13 @@ export default function App() {
 
                 {/* Main Card — Horizontal */}
                 <div style={{
-                  width: '100%', maxWidth: '420px',
-                  background: '#111', borderRadius: '28px',
+                  width: '100%', maxWidth: '360px',
+                  background: '#111', borderRadius: '32px',
                   border: `1px solid rgba(255,255,255,0.08)`,
                   boxShadow: `0 0 60px ${neon}22, 0 30px 60px rgba(0,0,0,0.8)`,
-                  display: 'flex', alignItems: 'center',
-                  padding: '28px 24px',
-                  gap: '24px',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  padding: '36px 24px',
+                  gap: '32px',
                   position: 'relative',
                 }}>
                   {/* Close */}
@@ -903,8 +903,8 @@ export default function App() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}><X size={16} /></button>
 
-                  {/* LEFT: Label + Time + Stop */}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {/* TOP: Label + Time + Stop */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', width: '100%' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.12em', color: `${neon}cc`, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
                       <Timer size={12} /> Timer
                     </span>
@@ -916,7 +916,7 @@ export default function App() {
                           <span style={{ color: neon, opacity: 0.4, fontSize: '28px' }}>:</span>
                           <span>{String(pomodoroTime % 60).padStart(2,'0')}</span>
                         </div>
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '4px', justifyContent: 'center' }}>
                           {isTimerRunning ? (
                             <button onClick={() => setIsTimerRunning(false)} style={{
                               padding: '9px 20px', borderRadius: '999px', fontWeight: 700,
@@ -941,7 +941,7 @@ export default function App() {
                         </div>
                       </>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
                         <label style={{ fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em' }}>SET MINUTES</label>
                         <input type="number" defaultValue={Math.floor(pomodoroInitialTime / 60)}
                           onChange={e => {
@@ -959,21 +959,21 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* RIGHT: SVG Ring */}
-                  <div style={{ position: 'relative', width: '140px', height: '140px', flexShrink: 0 }}>
+                  {/* BOTTOM: SVG Ring */}
+                  <div style={{ position: 'relative', width: '180px', height: '180px', flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                     {/* Outer glow */}
                     <div style={{
-                      position: 'absolute', inset: '-12px', borderRadius: '50%',
+                      position: 'absolute', inset: '-16px', borderRadius: '50%',
                       background: `radial-gradient(circle, ${neon}20 0%, transparent 70%)`,
                       pointerEvents: 'none',
                     }} />
-                    <svg width="140" height="140" style={{ transform: 'rotate(-90deg)' }}>
+                    <svg width="180" height="180" style={{ transform: 'rotate(-90deg)', position: 'absolute' }}>
                       {/* Track */}
-                      <circle cx="70" cy="70" r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+                      <circle cx="90" cy="90" r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="10" />
                       {/* Progress */}
-                      <circle cx="70" cy="70" r={radius} fill="none"
+                      <circle cx="90" cy="90" r={radius} fill="none"
                         stroke={neon}
-                        strokeWidth="8"
+                        strokeWidth="10"
                         strokeLinecap="round"
                         strokeDasharray={circ}
                         strokeDashoffset={dashOffset}
@@ -984,22 +984,16 @@ export default function App() {
                     <button
                       onClick={() => setIsTimerRunning(r => !r)}
                       style={{
-                        position: 'absolute', top: '50%', left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        width: '56px', height: '56px', borderRadius: '50%',
+                        position: 'relative',
+                        width: '72px', height: '72px', borderRadius: '50%',
                         background: isTimerRunning ? '#1a1a1a' : neon,
-                        border: isTimerRunning ? `2px solid ${neon}55` : 'none',
-                        color: isTimerRunning ? neon : '#000',
-                        cursor: 'pointer',
+                        border: 'none', color: isTimerRunning ? neon : '#000', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: isTimerRunning ? `0 0 20px ${neon}33` : `0 0 24px ${neon}99`,
-                        transition: 'all 0.2s ease',
+                        boxShadow: isTimerRunning ? `inset 0 0 10px rgba(0,0,0,0.5)` : `0 0 20px ${neon}88`,
+                        transition: 'all 0.3s ease',
                       }}
                     >
-                      {isTimerRunning
-                        ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                        : <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
-                      }
+                      {isTimerRunning ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" style={{ marginLeft: '4px' }} />}
                     </button>
                   </div>
                 </div>
@@ -1119,7 +1113,7 @@ export default function App() {
           </div>
 
           {/* ---------------- HABITS GRID ---------------- */}
-          <div className="grid grid-cols-1 min-[381px]:grid-cols-2 gap-3 mb-10 items-start">
+          <div className="grid grid-cols-2 gap-3 mb-10 items-start">
             {habits.map((habit) => {
               const isMulti = habit.type === 'multi';
               const isExpanded = expandedHabits.includes(habit.id);
