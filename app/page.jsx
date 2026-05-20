@@ -4,7 +4,8 @@ import { messaging, getToken } from '../lib/firebase';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { useUser, Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs'; 
+import { useUser, Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
+import { motion } from 'framer-motion';
 
 // --- Custom Hook for Premium Animated Score ---
 function useAnimatedScore(targetValue) {
@@ -298,6 +299,29 @@ export default function App() {
       if (navigator.vibrate) {
         navigator.vibrate(style === 'heavy' ? [30, 20, 50] : style === 'medium' ? [15, 10, 15] : [8]);
       }
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (AudioContext) {
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        if (style === 'light') {
+          osc.frequency.setValueAtTime(800, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.05);
+          gain.gain.setValueAtTime(0.03, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 0.05);
+        } else {
+          osc.frequency.setValueAtTime(500, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.08);
+          gain.gain.setValueAtTime(0.06, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 0.08);
+        }
+      }
     } catch(e) {}
   };
 
@@ -438,7 +462,7 @@ export default function App() {
     const yesterdayStr = getFormatDateStr(yesterday);
     
     if (activeDateStr !== todayStr && activeDateStr !== yesterdayStr) {
-      alert("لا يمكنك تسجيل العادات في أيام سابقة، مسموح فقط بتسجيل اليوم أو الأمس لمنع الـ Farming 🛡️");
+      alert("You cannot log habits for past days.");
       return;
     }
 
@@ -1026,7 +1050,7 @@ export default function App() {
         <div ref={topRef} /> 
 
         {/* ---------------- MAIN APP UI ---------------- */}
-        <div className="w-full max-w-[428px] h-full flex flex-col pt-12 px-5 relative">
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full max-w-[428px] h-full flex flex-col pt-12 px-5 relative">
           
           {/* Header with Navigation */}
           <header className="flex flex-col gap-3 mb-8">
@@ -1166,7 +1190,10 @@ export default function App() {
               const gridClass = (isMulti && isExpanded) ? 'col-span-2' : 'col-span-1';
               
               return (
-                <div
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3 }}
                   key={habit.id}
                   className={`relative flex flex-col transition-all duration-300 ease-out active:scale-[0.98] ${gridClass}`}
                   style={{ 
@@ -1225,7 +1252,7 @@ export default function App() {
                       })}
                     </div>
                   )}
-                </div>
+                </motion.div>
               );
             })}
           </div>
@@ -1307,7 +1334,7 @@ export default function App() {
             </div>
           </div>
 
-        </div>
+        </motion.div>
       </div>
     </>
   );
