@@ -743,6 +743,30 @@ export default function App() {
             0%, 100% { opacity: 0.6; transform: scale(1); }
             50% { opacity: 1; transform: scale(1.15); }
           }
+          .aurora-anim-1 {
+            animation: aurora1 15s ease-in-out infinite alternate;
+          }
+          .aurora-anim-2 {
+            animation: aurora2 20s ease-in-out infinite alternate-reverse;
+          }
+          .aurora-anim-3 {
+            animation: aurora3 18s ease-in-out infinite alternate;
+          }
+          @keyframes aurora1 {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(5vw, 10vh) scale(1.2); }
+            100% { transform: translate(-5vw, -5vh) scale(0.9); }
+          }
+          @keyframes aurora2 {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-10vw, -10vh) scale(1.1); }
+            100% { transform: translate(5vw, 5vh) scale(1.3); }
+          }
+          @keyframes aurora3 {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(8vw, -8vh) scale(0.8); }
+            100% { transform: translate(-8vw, 10vh) scale(1.2); }
+          }
         `}
       </style>
       
@@ -1100,11 +1124,19 @@ export default function App() {
         )}
 
 
-      <div className="min-h-screen bg-black text-white font-sans flex justify-center w-full selection:bg-white/20 pb-28 overflow-x-hidden">
-        <div ref={topRef} /> 
+      <div className="min-h-screen bg-transparent text-white font-sans flex justify-center w-full selection:bg-white/20 pb-28 overflow-x-hidden relative">
+        
+        {/* Animated Aurora Background */}
+        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-black">
+          <div className="absolute top-[-10%] left-[-20%] w-[70vw] h-[70vw] rounded-full opacity-40 blur-[100px] mix-blend-screen aurora-anim-1" style={{ background: themeColor }}></div>
+          <div className="absolute bottom-[-20%] right-[-10%] w-[80vw] h-[80vw] rounded-full opacity-30 blur-[120px] mix-blend-screen aurora-anim-2" style={{ background: themeColor }}></div>
+          <div className="absolute top-[40%] left-[50%] w-[60vw] h-[60vw] rounded-full opacity-20 blur-[90px] mix-blend-screen aurora-anim-3" style={{ background: themeColor }}></div>
+        </div>
+
+        <div ref={topRef} className="absolute top-0" /> 
 
         {/* ---------------- MAIN APP UI ---------------- */}
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full max-w-[428px] h-full flex flex-col pt-12 px-5 relative">
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full max-w-[428px] h-full flex flex-col pt-12 px-5 relative z-10">
           
           {/* Header with Navigation */}
           <header className="flex flex-col gap-3 mb-8">
