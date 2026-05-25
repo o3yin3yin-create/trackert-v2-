@@ -10,7 +10,7 @@ export async function GET() {
       return NextResponse.json({ error: "No flights found" }, { status: 500 });
     }
 
-    const numToFetch = 80; // Fetch 80 random flights in parallel to ensure we get ~20 good ones
+    const numToFetch = 40; // Reduced to 40 to prevent Vercel 10s timeout
     const randomFlights = [];
     for (let i = 0; i < numToFetch; i++) {
       const randomIdx = Math.floor(Math.random() * flights.length);

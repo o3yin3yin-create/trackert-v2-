@@ -1019,7 +1019,7 @@ export default function App() {
             padding: '24px', background: 'rgba(0,0,0,0.95)',
             backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
           }}>
-            <div style={{ width: '100%', maxWidth: '380px', position: 'relative', background: '#111', borderRadius: '32px', border: `1px solid rgba(255,255,255,0.08)`, padding: '36px 24px', boxShadow: `0 0 60px ${themeColor}22, 0 30px 60px rgba(0,0,0,0.8)` }}>
+            <div className="w-full max-w-[380px] md:max-w-[600px] relative bg-[#111] rounded-[32px] px-6 py-8" style={{ border: `1px solid rgba(255,255,255,0.08)`, boxShadow: `0 0 60px ${themeColor}22, 0 30px 60px rgba(0,0,0,0.8)` }}>
               <button onClick={() => { setIsFlightFocusOpen(false); setSelectedFlight(null); }} style={{
                 position: 'absolute', top: '16px', right: '16px',
                 background: 'rgba(255,255,255,0.05)', border: 'none',
@@ -1051,7 +1051,7 @@ export default function App() {
                     <span className="text-xs font-medium text-white/40 uppercase tracking-widest block">{selectedFlight.model}</span>
                   </div>
 
-                  <div className="flex justify-center mb-8 scale-75 md:scale-90 origin-top">
+                  <div className="flex justify-center mb-8 w-full">
                     <FlipClock countdownSeconds={flightTimer} />
                   </div>
                   
