@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Clock, PlaneTakeoff, Loader2 } from 'lucide-react';
+import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, PlaneTakeoff, Loader2 } from 'lucide-react';
 import { messaging, getToken } from '../lib/firebase';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -7,6 +7,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import { useUser, Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 import FlipClock from '../components/FlipClock';
+import { translations } from '../lib/translations';
 
 let globalAudioCtx = null;
 const getAudioCtx = () => {
@@ -168,6 +169,42 @@ export default function App() {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [isEmergencyCardsOpen, setIsEmergencyCardsOpen] = useState(false);
   const [isHowToUseOpen, setIsHowToUseOpen] = useState(false);
+
+  // --- Theme & Language ---
+  const [lang, setLang] = useState('en');
+  const [theme, setTheme] = useState('dark');
+  const t = (key) => translations[lang][key] || key;
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedLang = localStorage.getItem('daybase_lang') || 'en';
+      const savedTheme = localStorage.getItem('daybase_theme') || 'dark';
+      setLang(savedLang);
+      setTheme(savedTheme);
+      if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  }, []);
+
+  const toggleLang = () => {
+    const newLang = lang === 'en' ? 'ar' : 'en';
+    setLang(newLang);
+    if (typeof window !== 'undefined') localStorage.setItem('daybase_lang', newLang);
+  };
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    if (typeof window !== 'undefined') localStorage.setItem('daybase_theme', newTheme);
+  };
 
   // --- Focus Time Tracking (seconds per day) ---
   const [focusTimeData, setFocusTimeData] = useState(() => {
@@ -791,11 +828,11 @@ export default function App() {
   if (!isMounted) return null;
 
   return (
-    <>
+    <div dir={lang === 'ar' ? 'rtl' : 'ltr'} className={`min-h-screen mesh-bg text-black dark:text-white transition-colors duration-500 font-sans`}>
       <style>
         {`
           body, html, #root {
-            background-color: #000000 !important;
+            background-color: transparent !important;
             margin: 0;
             padding: 0;
             -webkit-tap-highlight-color: transparent;
@@ -844,62 +881,72 @@ export default function App() {
       
         {/* ---------------- ADD HABIT MODAL ---------------- */}
         {isAddMounted && (
-          <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xl transition-opacity duration-300 ease-out ${isAddVisible ? 'opacity-100' : 'opacity-0'}`}>
-            <div className={`relative w-full max-w-sm p-6 bg-[#1C1C1E] rounded-[2.5rem] border border-white/10 max-h-[90vh] overflow-y-auto transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isAddVisible ? 'translate-y-0 scale-100' : '-translate-y-4 scale-95 opacity-0'}`}>
+          <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-xl transition-opacity duration-300 ease-out ${isAddVisible ? 'opacity-100' : 'opacity-0'}`}>
+            <div className={`relative w-full max-w-sm p-6 liquid-panel rounded-[2.5rem] max-h-[90vh] overflow-y-auto transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isAddVisible ? 'translate-y-0 scale-100' : '-translate-y-4 scale-95 opacity-0'}`}>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold tracking-tight">New Habit</h2>
-                <button onClick={handleCloseAdd} className="p-2 bg-white/5 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-all duration-200"><X size={18} /></button>
+                <h2 className="text-xl font-bold tracking-tight">{t('newHabit')}</h2>
+                <button onClick={handleCloseAdd} className="p-2 bg-black/5 dark:bg-white/5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-gray-500 dark:text-white/50 hover:text-black dark:hover:text-white transition-all duration-200"><X size={18} /></button>
               </div>
               
-              <input type="text" placeholder="Habit Name (e.g., Workout)" value={newHabitName} onChange={(e) => setNewHabitName(e.target.value)} className="w-full bg-black text-white px-4 py-4 rounded-2xl outline-none border border-white/5 focus:border-white/20 mb-4 font-medium placeholder:text-white/20 transition-all duration-200" />
+              <input type="text" placeholder={t('habitNamePlaceholder')} value={newHabitName} onChange={(e) => setNewHabitName(e.target.value)} className="w-full bg-white/50 dark:bg-black/50 text-black dark:text-white px-4 py-4 rounded-2xl outline-none border border-black/5 dark:border-white/5 focus:border-black/20 dark:focus:border-white/20 mb-4 font-medium placeholder:text-gray-500 dark:placeholder:text-white/20 transition-all duration-200" />
               
-              <div className="flex bg-black rounded-2xl p-1 mb-5 border border-white/5">
-                <button onClick={() => setNewHabitType('single')} className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${newHabitType === 'single' ? 'bg-[#1C1C1E] text-white shadow-md' : 'text-white/40 hover:text-white/60'}`}>Single</button>
-                <button onClick={() => setNewHabitType('multi')} className={`flex-1 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 ${newHabitType === 'multi' ? 'bg-[#1C1C1E] text-white shadow-md' : 'text-white/40 hover:text-white/60'}`}><ListChecks size={16}/> Checklist</button>
+              <div className="flex bg-white/30 dark:bg-black rounded-2xl p-1 mb-5 border border-black/5 dark:border-white/5">
+                <button onClick={() => setNewHabitType('single')} className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${newHabitType === 'single' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-md' : 'text-gray-600 dark:text-white/40 hover:text-black dark:hover:text-white/60'}`}>{t('single')}</button>
+                <button onClick={() => setNewHabitType('multi')} className={`flex-1 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 ${newHabitType === 'multi' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-md' : 'text-gray-600 dark:text-white/40 hover:text-black dark:hover:text-white/60'}`}><ListChecks size={16}/> {t('checklist')}</button>
               </div>
 
               {newHabitType === 'multi' && (
-                <div className="space-y-2.5 mb-5 bg-black/30 p-4 rounded-2xl border border-white/5 transition-all duration-300">
-                  <p className="text-xs font-bold tracking-widest text-white/30 uppercase mb-1">Checklist items:</p>
+                <div className="space-y-2.5 mb-5 bg-white/20 dark:bg-black/30 p-4 rounded-2xl border border-black/5 dark:border-white/5 transition-all duration-300">
+                  <p className="text-xs font-bold tracking-widest text-gray-500 dark:text-white/30 uppercase mb-1">{t('checklistItems')}</p>
                   {newHabitSubItems.map((sub, idx) => (
                     <div key={idx} className="flex gap-2 transition-all duration-200">
-                      <input type="text" placeholder={`Task ${idx + 1}...`} value={sub} onChange={(e) => updateSubItem(idx, e.target.value)} className="flex-1 bg-black text-white px-4 py-3 rounded-xl outline-none border border-white/5 focus:border-white/20 text-sm placeholder:text-white/20" />
-                      <button onClick={() => removeSubItem(idx)} className="p-3 bg-red-500/5 text-red-400 rounded-xl hover:bg-red-500/10 transition-colors duration-200"><X size={16} /></button>
+                      <input type="text" placeholder={`${t('task')} ${idx + 1}...`} value={sub} onChange={(e) => updateSubItem(idx, e.target.value)} className="flex-1 bg-white/50 dark:bg-black text-black dark:text-white px-4 py-3 rounded-xl outline-none border border-black/5 dark:border-white/5 focus:border-black/20 dark:focus:border-white/20 text-sm placeholder:text-gray-400 dark:placeholder:text-white/20" />
+                      <button onClick={() => removeSubItem(idx)} className="p-3 bg-red-500/10 text-red-500 dark:text-red-400 rounded-xl hover:bg-red-500/20 transition-colors duration-200"><X size={16} /></button>
                     </div>
                   ))}
-                  <button onClick={handleAddSubItem} className="w-full py-3 border border-dashed border-white/10 rounded-xl text-white/40 hover:text-white hover:border-white/20 text-xs font-semibold transition-colors duration-200">+ Add Item</button>
+                  <button onClick={handleAddSubItem} className="w-full py-3 border border-dashed border-black/20 dark:border-white/10 rounded-xl text-gray-500 dark:text-white/40 hover:text-black dark:hover:text-white hover:border-black/40 dark:hover:border-white/20 text-xs font-semibold transition-colors duration-200">{t('addItem')}</button>
                 </div>
               )}
 
-              <button onClick={confirmAddHabit} className="w-full py-4 rounded-2xl font-bold text-md tracking-wide transition-all duration-200 active:scale-[0.97] shadow-lg shadow-black/40" style={{backgroundColor: themeColor, color: '#000'}}>Create Habit</button>
+              <button onClick={confirmAddHabit} className="w-full py-4 rounded-2xl font-bold text-md tracking-wide transition-all duration-200 active:scale-[0.97] shadow-lg shadow-black/20 dark:shadow-black/40" style={{backgroundColor: themeColor, color: '#000'}}>{t('createHabit')}</button>
             </div>
           </div>
         )}
 
         {/* ---------------- MANAGE HABITS MODAL ---------------- */}
         {isManageMounted && (
-          <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xl transition-opacity duration-300 ease-out ${isManageVisible ? 'opacity-100' : 'opacity-0'}`}>
-            <div className={`relative w-full max-w-sm p-6 bg-[#1C1C1E] rounded-[2rem] border border-white/10 transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isManageVisible ? 'translate-y-0 scale-100' : '-translate-y-4 scale-95 opacity-0'}`}>
+          <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-xl transition-opacity duration-300 ease-out ${isManageVisible ? 'opacity-100' : 'opacity-0'}`}>
+            <div className={`relative w-full max-w-sm p-6 liquid-panel rounded-[2rem] transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isManageVisible ? 'translate-y-0 scale-100' : '-translate-y-4 scale-95 opacity-0'}`}>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold tracking-tight">Manage</h2>
-                <button onClick={handleCloseManage} className="p-2 bg-white/5 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-all duration-200"><X size={18} /></button>
+                <h2 className="text-xl font-bold tracking-tight">{t('settings')}</h2>
+                <button onClick={handleCloseManage} className="p-2 bg-black/5 dark:bg-white/5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-gray-500 dark:text-white/50 hover:text-black dark:hover:text-white transition-all duration-200"><X size={18} /></button>
               </div>
               
-              <button onClick={() => {handleCloseManage(); handleOpenAdd();}} className="w-full py-4 mb-6 rounded-2xl font-bold flex justify-center items-center gap-2 border border-white/5 bg-white/5 hover:bg-white/10 transition-all duration-200 active:scale-[0.98]">
-                <Plus size={18}/> Add New Habit
+              <div className="flex gap-2 mb-4">
+                <button onClick={toggleLang} className="flex-1 py-3 rounded-2xl font-bold text-sm flex justify-center items-center gap-2 border border-black/10 dark:border-white/5 bg-white/20 dark:bg-white/5 hover:bg-white/40 dark:hover:bg-white/10 transition-all duration-200 active:scale-[0.98]">
+                  {lang === 'en' ? 'عربي' : 'English'}
+                </button>
+                <button onClick={toggleTheme} className="flex-1 py-3 rounded-2xl font-bold text-sm flex justify-center items-center gap-2 border border-black/10 dark:border-white/5 bg-white/20 dark:bg-white/5 hover:bg-white/40 dark:hover:bg-white/10 transition-all duration-200 active:scale-[0.98]">
+                  {theme === 'dark' ? <Sun size={16}/> : <Moon size={16}/>} 
+                  {theme === 'dark' ? t('lightMode') : t('darkMode')}
+                </button>
+              </div>
+              
+              <button onClick={() => {handleCloseManage(); handleOpenAdd();}} className="w-full py-4 mb-6 rounded-2xl font-bold flex justify-center items-center gap-2 border border-black/10 dark:border-white/5 bg-white/20 dark:bg-white/5 hover:bg-white/40 dark:hover:bg-white/10 transition-all duration-200 active:scale-[0.98]">
+                <Plus size={18}/> {t('addNewHabit')}
               </button>
 
               <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
                 {habits.map(h => (
                   <div key={h.id} className="flex items-center gap-2 transition-all duration-200">
-                    <div className="flex-1 bg-black text-white px-4 py-3 rounded-2xl truncate flex items-center justify-between border border-white/5">
-                      <span className="text-sm font-medium">{h.name}</span>
-                      {h.type === 'multi' && <span className="text-[10px] bg-white/10 px-2 py-1 rounded-xl text-white/40 font-semibold">{h.subItems.length} items</span>}
+                    <div className="flex-1 bg-white/30 dark:bg-black px-4 py-3 rounded-2xl truncate flex items-center justify-between border border-black/5 dark:border-white/5 shadow-sm">
+                      <span className="text-sm font-medium text-black dark:text-white">{h.name}</span>
+                      {h.type === 'multi' && <span className="text-[10px] bg-black/10 dark:bg-white/10 px-2 py-1 rounded-xl text-gray-700 dark:text-white/60 font-semibold">{h.subItems.length} {t('items')}</span>}
                     </div>
-                    <button onClick={() => deleteHabit(h.id)} className="p-3 bg-red-500/10 text-red-400 rounded-2xl hover:bg-red-500/20 transition-colors duration-200"><Trash2 size={16} /></button>
+                    <button onClick={() => deleteHabit(h.id)} className="p-3 bg-red-500/10 text-red-500 dark:text-red-400 rounded-2xl hover:bg-red-500/20 transition-colors duration-200"><Trash2 size={16} /></button>
                   </div>
                 ))}
-                {habits.length === 0 && <p className="text-center text-white/30 py-6 text-sm">No habits yet.</p>}
+                {habits.length === 0 && <p className="text-center text-gray-500 dark:text-white/30 py-6 text-sm">{t('noHabitsYet')}</p>}
               </div>
             </div>
           </div>
@@ -921,19 +968,17 @@ export default function App() {
           <div style={{
             position: 'fixed', inset: 0, zIndex: 9999,
             display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-            background: 'rgba(0,0,0,0.7)',
+            background: 'rgba(0,0,0,0.6)',
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
             padding: '0 0 24px 0',
           }} onClick={() => setIsCardsModalOpen(false)}>
             <div
+              className="liquid-panel shadow-2xl"
               onClick={e => e.stopPropagation()}
               style={{
                 width: '100%', maxWidth: '428px',
-                background: '#111',
                 borderRadius: '32px 32px 24px 24px',
-                border: '1px solid rgba(255,255,255,0.08)',
-                boxShadow: `0 -20px 60px rgba(0,0,0,0.8), 0 0 40px ${themeColor}18`,
                 overflow: 'hidden',
                 maxHeight: '80vh',
                 display: 'flex',
@@ -943,20 +988,20 @@ export default function App() {
               {/* Header */}
               <div style={{ padding: '20px 20px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  <span style={{ fontSize: '17px', fontWeight: 800, color: '#fff', letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <ShieldAlert size={18} color={themeColor} /> Emergency Cards
+                  <span className="text-black dark:text-white" style={{ fontSize: '17px', fontWeight: 800, letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ShieldAlert size={18} color={themeColor} /> {t('emergencyCards')}
                   </span>
-                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', fontWeight: 600, letterSpacing: '0.06em' }}>7-day streak on a habit = 1 card earned</span>
+                  <span className="text-gray-500 dark:text-white/30" style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em' }}>{t('streakRule')}</span>
                 </div>
-                <button onClick={() => setIsCardsModalOpen(false)} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <X size={16} />
+                <button onClick={() => setIsCardsModalOpen(false)} style={{ background: 'rgba(128,128,128,0.2)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', color: 'rgba(128,128,128,0.8)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <X size={16} className="text-black dark:text-white" />
                 </button>
               </div>
 
               {/* Cards list */}
               <div style={{ overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {habits.filter(h => h.type === 'single').length === 0 ? (
-                  <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.2)', padding: '32px 0', fontSize: '14px' }}>No single habits yet.</p>
+                  <p className="text-gray-400 dark:text-white/20" style={{ textAlign: 'center', padding: '32px 0', fontSize: '14px' }}>{t('noSingleHabits')}</p>
                 ) : (
                   habits.filter(h => h.type === 'single').map(h => {
                     const cards = habitCards[h.id] ?? 1;
@@ -969,9 +1014,9 @@ export default function App() {
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                         padding: '16px 18px', borderRadius: '20px',
                         background: hasCards
-                          ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #1a1a2e 100%)'
-                          : 'rgba(255,255,255,0.03)',
-                        border: hasCards ? `1px solid ${themeColor}44` : '1px solid rgba(255,255,255,0.06)',
+                          ? (theme === 'dark' ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #1a1a2e 100%)' : 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 40%, #a5b4fc 70%, #e0e7ff 100%)')
+                          : (theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'),
+                        border: hasCards ? `1px solid ${themeColor}44` : (theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)'),
                         boxShadow: hasCards ? `0 0 20px ${themeColor}22, inset 0 1px 0 rgba(255,255,255,0.08)` : 'none',
                         position: 'relative', overflow: 'hidden',
                       }}>
@@ -979,9 +1024,9 @@ export default function App() {
                           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.05) 50%, transparent 70%)', pointerEvents: 'none' }} />
                         )}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', zIndex: 1, flex: 1, minWidth: 0, paddingRight: '8px' }}>
-                          <span style={{ fontSize: '15px', fontWeight: 700, color: hasCards ? '#fff' : 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.name}</span>
-                          <span style={{ fontSize: '11px', fontWeight: 600, color: hasCards ? `${themeColor}cc` : 'rgba(255,255,255,0.2)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                            {streak > 0 ? `🔥 ${streak}-day streak` : 'No active streak'}
+                          <span className={`${hasCards ? (theme === 'dark' ? 'text-white' : 'text-gray-900') : (theme === 'dark' ? 'text-white/30' : 'text-gray-400')}`} style={{ fontSize: '15px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.name}</span>
+                          <span className={hasCards ? 'opacity-80' : 'opacity-50'} style={{ fontSize: '11px', fontWeight: 600, color: hasCards ? (theme === 'dark' ? `${themeColor}cc` : '#3b82f6') : 'inherit', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                            {streak > 0 ? `🔥 ${streak} ${t('dayStreak')}` : t('noActiveStreak')}
                           </span>
                         </div>
                         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', zIndex: 1, flexShrink: 0 }}>
@@ -991,7 +1036,7 @@ export default function App() {
                               className="px-3 py-1.5 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all active:scale-95"
                               style={{ backgroundColor: themeColor, color: '#000', boxShadow: `0 4px 12px ${themeColor}66` }}
                             >
-                              Use
+                              {t('use')}
                             </button>
                           )}
                           <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
@@ -1009,7 +1054,7 @@ export default function App() {
                                 </div>
                               ))
                             ) : (
-                              <span style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>No cards</span>
+                              <span className="text-gray-400 dark:text-white/20" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('noCards')}</span>
                             )}
                             {cards > 3 && <span style={{ fontSize: '12px', fontWeight: 800, color: themeColor }}>+{cards - 3}</span>}
                           </div>
@@ -1030,24 +1075,24 @@ export default function App() {
             position: 'fixed', inset: 0, zIndex: 9999,
             display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center',
-            padding: '24px', background: 'rgba(0,0,0,0.95)',
+            padding: '24px', background: 'rgba(0,0,0,0.6)',
             backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
           }}>
-            <div className="w-full max-w-[380px] md:max-w-[600px] relative bg-[#111] rounded-[32px] px-6 py-4 md:py-8" style={{ border: `1px solid rgba(255,255,255,0.08)`, boxShadow: `0 0 60px ${themeColor}22, 0 30px 60px rgba(0,0,0,0.8)` }}>
+            <div className="w-full max-w-[380px] md:max-w-[600px] relative liquid-panel rounded-[32px] px-6 py-4 md:py-8 shadow-2xl">
               <button onClick={() => { setIsFlightFocusOpen(false); setSelectedFlight(null); setIsFlightTimerRunning(false); }} style={{
                 position: 'absolute', top: '16px', right: '16px',
-                background: 'rgba(255,255,255,0.05)', border: 'none',
+                background: 'rgba(128,128,128,0.2)', border: 'none',
                 borderRadius: '50%', width: '32px', height: '32px',
-                color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
+                color: 'rgba(128,128,128,0.8)', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}><X size={16} /></button>
+              }}><X size={16} className="text-black dark:text-white" /></button>
 
-              <h3 className="text-sm font-bold tracking-widest text-white/50 uppercase mb-4 select-none text-center">Flight Focus ✈️</h3>
+              <h3 className="text-sm font-bold tracking-widest text-gray-500 dark:text-white/50 uppercase mb-4 select-none text-center">{t('flightFocus')} ✈️</h3>
 
               {flightLoading ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-4">
-                  <Loader2 className="animate-spin text-white/30" size={32} />
-                  <span className="text-xs font-bold tracking-widest text-white/30 uppercase animate-pulse">Finding active flights...</span>
+                  <Loader2 className="animate-spin text-gray-400 dark:text-white/30" size={32} />
+                  <span className="text-xs font-bold tracking-widest text-gray-500 dark:text-white/30 uppercase animate-pulse">{t('findingFlights')}</span>
                 </div>
               ) : selectedFlight ? (
                 <div className="flex flex-col items-center">
@@ -1061,10 +1106,10 @@ export default function App() {
                     </div>
                   </div>
                   <div className="text-center mb-4 md:mb-8">
-                    <span className="text-sm font-bold tracking-tight text-white/70 block mb-1">
-                      {selectedFlight.airline} <span className="text-white/30 px-1">|</span> <span className="text-white/90">Flight {selectedFlight.callsign}</span>
+                    <span className="text-sm font-bold tracking-tight text-gray-700 dark:text-white/70 block mb-1">
+                      {selectedFlight.airline} <span className="text-gray-300 dark:text-white/30 px-1">|</span> <span className="text-black dark:text-white/90">{t('flightNumber')} {selectedFlight.callsign}</span>
                     </span>
-                    <span className="text-[10px] md:text-xs font-medium text-white/40 uppercase tracking-widest block">{selectedFlight.model}</span>
+                    <span className="text-[10px] md:text-xs font-medium text-gray-500 dark:text-white/40 uppercase tracking-widest block">{selectedFlight.model}</span>
                   </div>
 
                   <div className="flex justify-center mb-2 md:mb-8 w-full">
@@ -1076,9 +1121,9 @@ export default function App() {
                       {!isFlightTimerRunning ? (
                         <button 
                           onClick={() => setIsFlightTimerRunning(true)}
-                          className="px-8 py-3 bg-[#1C1C1E] border border-white/10 rounded-2xl font-bold text-white tracking-widest hover:bg-[#2C2C2E] transition-colors active:scale-95 shadow-xl w-full max-w-[200px]"
+                          className="px-8 py-3 bg-white/50 dark:bg-[#1C1C1E] border border-black/10 dark:border-white/10 rounded-2xl font-bold text-black dark:text-white tracking-widest hover:bg-white dark:hover:bg-[#2C2C2E] transition-colors active:scale-95 shadow-xl w-full max-w-[200px]"
                         >
-                          START
+                          {t('start')}
                         </button>
                       ) : (
                         <button 
@@ -1086,14 +1131,14 @@ export default function App() {
                             setIsFlightTimerRunning(false);
                             setSelectedFlight(null);
                           }}
-                          className="px-8 py-3 bg-red-500/10 border border-red-500/30 text-red-400 rounded-2xl font-bold tracking-widest hover:bg-red-500/20 transition-colors active:scale-95 shadow-xl w-full max-w-[200px]"
+                          className="px-8 py-3 bg-red-500/10 border border-red-500/30 text-red-500 dark:text-red-400 rounded-2xl font-bold tracking-widest hover:bg-red-500/20 transition-colors active:scale-95 shadow-xl w-full max-w-[200px]"
                         >
-                          GIVE UP
+                          {t('giveUp')}
                         </button>
                       )}
                     </div>
                   ) : (
-                    <span className="text-green-400 font-bold tracking-widest uppercase text-sm animate-pulse mt-4">Landed! 🎉</span>
+                    <span className="text-green-500 dark:text-green-400 font-bold tracking-widest uppercase text-sm animate-pulse mt-4">{t('landed')}</span>
                   )}
                 </div>
               ) : (
@@ -1173,36 +1218,27 @@ export default function App() {
                 )}
 
                 {/* Main Card — Horizontal */}
-                <div style={{
-                  width: '100%', maxWidth: '360px',
-                  background: '#111', borderRadius: '32px',
-                  border: `1px solid rgba(255,255,255,0.08)`,
-                  boxShadow: `0 0 60px ${neon}22, 0 30px 60px rgba(0,0,0,0.8)`,
-                  display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  padding: '36px 24px',
-                  gap: '32px',
-                  position: 'relative',
-                }}>
+                <div className="w-full max-w-[360px] liquid-panel rounded-[32px] p-9 flex flex-col items-center relative shadow-2xl" style={{ gap: '32px' }}>
                   {/* Close */}
                   <button onClick={() => { setIsPomodoroOpen(false); setIsEditingPomodoro(false); setIsTimerRunning(false); }} style={{
                     position: 'absolute', top: '14px', right: '14px',
-                    background: 'rgba(255,255,255,0.05)', border: 'none',
+                    background: 'rgba(128,128,128,0.2)', border: 'none',
                     borderRadius: '50%', width: '32px', height: '32px',
-                    color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
+                    color: 'rgba(128,128,128,0.8)', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}><X size={16} /></button>
+                  }}><X size={16} className="text-black dark:text-white" /></button>
 
                   {/* TOP: Label + Time + Stop */}
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', width: '100%' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.12em', color: `${neon}cc`, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <Timer size={12} /> Timer
+                      <Timer size={12} /> {t('pomodoro')}
                     </span>
 
                     {!isEditingPomodoro ? (
                       <>
-                        <div style={{ fontSize: '32px', fontWeight: 900, letterSpacing: '4px', lineHeight: 1, color: '#fff', fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'baseline', gap: '16px' }}>
+                        <div className="text-black dark:text-white" style={{ fontSize: '32px', fontWeight: 900, letterSpacing: '4px', lineHeight: 1, fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'baseline', gap: '16px' }}>
                           <span>{String(Math.floor(pomodoroTime / 60)).padStart(2,'0')}</span>
-                          <span style={{ color: neon, opacity: 0.4, fontSize: '24px' }}>:</span>
+                          <span style={{ color: neon, opacity: 0.8, fontSize: '24px' }}>:</span>
                           <span>{String(pomodoroTime % 60).padStart(2,'0')}</span>
                         </div>
                         <div style={{ display: 'flex', gap: '8px', marginTop: '4px', justifyContent: 'center' }}>
@@ -1211,39 +1247,39 @@ export default function App() {
                               padding: '9px 20px', borderRadius: '999px', fontWeight: 700,
                               fontSize: '13px', background: 'rgba(239,68,68,0.12)',
                               color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)', cursor: 'pointer',
-                            }}>Stop</button>
+                            }}>{t('stopFocus')}</button>
                           ) : (
                             <>
                               <button onClick={() => { haptic('light'); getAudioCtx(); setIsTimerRunning(true); }} style={{
                                 padding: '9px 22px', borderRadius: '999px', fontWeight: 700,
                                 fontSize: '13px', background: neon, color: '#000', border: 'none', cursor: 'pointer',
                                 boxShadow: `0 0 20px ${neon}88`,
-                              }}>Start</button>
-                              <button onClick={() => setIsEditingPomodoro(true)} style={{
+                              }}>{t('start')}</button>
+                              <button onClick={() => setIsEditingPomodoro(true)} className="bg-white/20 dark:bg-white/5 text-black dark:text-white/50 border border-black/10 dark:border-white/10" style={{
                                 padding: '9px 14px', borderRadius: '999px', fontWeight: 700,
-                                fontSize: '12px', background: 'rgba(255,255,255,0.06)',
-                                color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
+                                fontSize: '12px', cursor: 'pointer',
                                 display: 'flex', alignItems: 'center', gap: '4px',
-                              }}><Settings size={14} /> Edit</button>
+                              }}><Settings size={14} /> {t('edit')}</button>
                             </>
                           )}
                         </div>
                       </>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                        <label style={{ fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em' }}>SET MINUTES</label>
+                        <label className="text-gray-500 dark:text-white/30" style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em' }}>{t('minutes')}</label>
                         <input type="number" defaultValue={Math.floor(pomodoroInitialTime / 60)}
                           onChange={e => {
                             const secs = (parseInt(e.target.value) || 0) * 60;
                             setPomodoroInitialTime(secs);
                             setPomodoroTime(secs);
                           }}
-                          style={{ width: '100px', background: '#000', border: `1px solid ${neon}55`, padding: '10px 12px', borderRadius: '16px', fontSize: '24px', fontWeight: 900, color: '#fff', outline: 'none', textAlign: 'center' }}
+                          className="bg-white/50 dark:bg-[#000] text-black dark:text-white"
+                          style={{ width: '100px', border: `1px solid ${neon}55`, padding: '10px 12px', borderRadius: '16px', fontSize: '24px', fontWeight: 900, outline: 'none', textAlign: 'center' }}
                         />
-                        <button onClick={() => setIsEditingPomodoro(false)} style={{
+                        <button onClick={() => setIsEditingPomodoro(false)} className="bg-black text-white dark:bg-white dark:text-black" style={{
                           padding: '9px 20px', borderRadius: '999px', fontWeight: 700, fontSize: '13px',
-                          background: '#fff', color: '#000', border: 'none', cursor: 'pointer', width: 'fit-content',
-                        }}>Confirm</button>
+                          border: 'none', cursor: 'pointer', width: 'fit-content',
+                        }}>{t('save')}</button>
                       </div>
                     )}
                   </div>
@@ -1386,9 +1422,9 @@ export default function App() {
               
               {/* Mission Card (Premium Cinematic Progress) */}
           <div 
-            className="w-full p-6 flex flex-col mb-8 transition-all duration-500 ease-out" 
+            className="w-full p-6 flex flex-col mb-8 transition-all duration-500 ease-out liquid-panel" 
             style={{ 
-              backgroundColor: themeColor, 
+              backgroundColor: theme === 'dark' ? `${themeColor}cc` : `${themeColor}aa`, 
               borderRadius: '28px', 
               color: '#000000',
               boxShadow: `0 12px 40px -12px ${themeColor}aa` 
@@ -1397,12 +1433,12 @@ export default function App() {
             {mission ? (
               <div className="flex items-center gap-1.5 mb-2 opacity-70">
                 <Target size={14} strokeWidth={2.5} />
-                <span className="text-[10px] font-bold tracking-widest uppercase">My Mission</span>
+                <span className="text-[10px] font-bold tracking-widest uppercase">{t('myMission')}</span>
               </div>
             ) : (
               <button onClick={() => setIsEditingMission(true)} className="flex items-center gap-1.5 mb-2 hover:opacity-60 transition-opacity">
                 <Target size={14} strokeWidth={2.5} />
-                <span className="text-[10px] font-bold tracking-widest uppercase">Set Mission</span>
+                <span className="text-[10px] font-bold tracking-widest uppercase">{t('setMission')}</span>
               </button>
             )}
             
@@ -1410,7 +1446,7 @@ export default function App() {
               <input 
                 autoFocus value={missionInput} onChange={(e) => setMissionInput(e.target.value)} onBlur={saveMission} onKeyDown={(e) => e.key === 'Enter' && saveMission()}
                 className="text-2xl font-black tracking-tight outline-none bg-transparent mb-6 pb-1 border-b border-black/20 w-full placeholder:text-black/30"
-                style={{ color: '#000000' }} placeholder="What's your goal?"
+                style={{ color: '#000000' }} placeholder={t('whatsYourGoal')}
               />
             ) : (
               mission && (
@@ -1427,7 +1463,7 @@ export default function App() {
             <div className="flex gap-10 select-none">
               <div className="flex flex-col">
                 <span className="text-[9px] font-bold tracking-widest opacity-50 uppercase mb-0.5">
-                  Score ({activeDateStr === realTodayStr ? 'Today' : 'Viewed'})
+                  {t('score')} ({activeDateStr === realTodayStr ? t('today') : t('viewed')})
                 </span>
                 <span className="text-4xl font-black tracking-tighter tabular-nums">
                   {scoreDisplay}<span className="text-xl font-bold ml-0.5 opacity-80">%</span>
@@ -1437,14 +1473,14 @@ export default function App() {
           </div>
 
           {/* Sleep Logger Card (Moved here) */}
-          <div className="w-full p-4 mb-8 bg-[#1C1C1E] rounded-3xl border border-white/5 flex justify-between items-center shadow-lg">
+          <div className="w-full p-4 mb-8 liquid-panel rounded-3xl flex justify-between items-center shadow-lg">
             <div className="flex items-center gap-2">
-              <Moon size={18} className="text-indigo-400" strokeWidth={2.5} />
-              <span className="text-sm font-bold tracking-widest uppercase text-white/80">Sleep (Hrs)</span>
+              <Moon size={18} className="text-indigo-500 dark:text-indigo-400" strokeWidth={2.5} />
+              <span className="text-sm font-bold tracking-widest uppercase text-gray-700 dark:text-white/80">{t('sleep')}</span>
             </div>
             <div className="flex gap-2">
-              <input type="number" placeholder="0" value={sleepInput} onChange={(e) => setSleepInput(e.target.value)} className="w-14 bg-black border border-white/10 text-white px-2 py-1.5 rounded-xl outline-none text-center font-bold text-sm focus:border-white/30 transition-colors" />
-              <button onClick={logSleep} className="bg-white text-black px-4 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 hover:bg-white/90">Save</button>
+              <input type="number" placeholder="0" value={sleepInput} onChange={(e) => setSleepInput(e.target.value)} className="w-14 bg-white/50 dark:bg-black border border-black/10 dark:border-white/10 text-black dark:text-white px-2 py-1.5 rounded-xl outline-none text-center font-bold text-sm focus:border-black/30 dark:focus:border-white/30 transition-colors" />
+              <button onClick={logSleep} className="bg-black text-white dark:bg-white dark:text-black px-4 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 hover:bg-black/80 dark:hover:bg-white/90">{t('save')}</button>
             </div>
           </div>
           </div> {/* End of Left Column */}
@@ -1475,13 +1511,13 @@ export default function App() {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.3 }}
                   key={habit.id}
-                  className={`relative flex flex-col transition-all duration-300 ease-out active:scale-[0.98] ${gridClass}`}
+                  className={`relative flex flex-col transition-all duration-300 ease-out active:scale-[0.98] ${gridClass} liquid-panel`}
                   style={{ 
                     borderRadius: '24px',
-                    backgroundColor: isAllChecked ? themeColor : '#1C1C1E',
-                    color: isAllChecked ? '#000000' : '#FFFFFF',
+                    backgroundColor: isAllChecked ? themeColor : (theme === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.4)'),
+                    color: isAllChecked ? '#000000' : (theme === 'dark' ? '#FFFFFF' : '#000000'),
                     height: (isMulti && isExpanded) ? 'auto' : '80px',
-                    border: isAllChecked ? '1px solid transparent' : '1px solid rgba(255,255,255,0.03)',
+                    border: isAllChecked ? '1px solid transparent' : '1px solid rgba(255,255,255,0.2)',
                     boxShadow: isAllChecked ? `0 10px 25px -8px ${themeColor}88` : 'none' 
                   }}
                 >
@@ -1501,12 +1537,12 @@ export default function App() {
                     </div>
                     
                     {isMulti ? (
-                      <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-black/5 text-current transition-transform duration-300" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                      <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-black/10 dark:bg-black/20 text-current transition-transform duration-300" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
                         <ChevronDown size={14} strokeWidth={2.5} />
                       </div>
                     ) : (
-                      <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200" style={{ backgroundColor: isAllChecked ? 'rgba(0,0,0,0.08)' : '#2C2C2E' }}>
-                        {isAllChecked ? <Check size={14} strokeWidth={3.5} style={{ color: '#000000' }} /> : <div className="w-1.5 h-1.5 bg-white/40 rounded-full" />}
+                      <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200" style={{ backgroundColor: isAllChecked ? 'rgba(0,0,0,0.08)' : (theme === 'dark' ? '#2C2C2E' : 'rgba(0,0,0,0.1)') }}>
+                        {isAllChecked ? <Check size={14} strokeWidth={3.5} style={{ color: '#000000' }} /> : <div className="w-1.5 h-1.5 bg-black/40 dark:bg-white/40 rounded-full" />}
                       </div>
                     )}
                   </div>
@@ -1546,27 +1582,25 @@ export default function App() {
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
               padding: '24px',
-              background: 'rgba(0,0,0,0.95)',
+              background: 'rgba(0,0,0,0.6)',
               backdropFilter: 'blur(32px)',
               WebkitBackdropFilter: 'blur(32px)',
             }}>
-              <div style={{
+              <div className="liquid-panel shadow-2xl" style={{
                 width: '100%', maxWidth: '380px',
-                background: '#111', borderRadius: '32px',
-                border: `1px solid rgba(255,255,255,0.08)`,
-                boxShadow: `0 0 60px ${themeColor}22, 0 30px 60px rgba(0,0,0,0.8)`,
+                borderRadius: '32px',
                 padding: '36px 24px',
                 position: 'relative',
               }}>
                 <button onClick={() => setIsAnalyticsModalOpen(false)} style={{
                   position: 'absolute', top: '16px', right: '16px',
-                  background: 'rgba(255,255,255,0.05)', border: 'none',
+                  background: 'rgba(128,128,128,0.2)', border: 'none',
                   borderRadius: '50%', width: '32px', height: '32px',
-                  color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
+                  color: 'rgba(128,128,128,0.8)', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}><X size={16} /></button>
+                }}><X size={16} className="text-black dark:text-white" /></button>
 
-                <h3 className="text-sm font-bold tracking-widest text-white/50 uppercase mb-6 select-none text-center">Analytics</h3>
+                <h3 className="text-sm font-bold tracking-widest text-gray-500 dark:text-white/50 uppercase mb-6 select-none text-center">{t('analytics')}</h3>
                 
                 <div className="w-full h-48 mb-6 relative">
                   <svg style={{ height: 0, width: 0, position: 'absolute' }}>
@@ -1618,17 +1652,17 @@ export default function App() {
           <div className="flex justify-center w-full relative z-50 mb-4 mt-8">
             <button 
               onClick={() => setIsHowToUseOpen(true)} 
-              className="px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-[10px] font-bold tracking-widest uppercase text-white/70 transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+              className="px-5 py-2.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black/10 dark:border-white/10 rounded-full text-[10px] font-bold tracking-widest uppercase text-gray-700 dark:text-white/70 transition-all active:scale-95 flex items-center gap-2 shadow-lg"
             >
               <BookOpen size={14} />
-              How to use
+              {t('howToUse')}
             </button>
           </div>
 
           {/* --- CREATOR SIGNATURE --- */}
-          <div className="flex justify-center items-center mb-8 opacity-30 hover:opacity-80 transition-opacity duration-300 w-full relative z-10 pb-[100px]">
-            <span className="text-[9px] font-bold tracking-widest uppercase select-none text-center">
-              This tracker crafted in Egypt by <a href="https://www.instagram.com/jj3_xx?igsh=MWVkaGI5ZjNsb3Nreg%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" style={{ color: themeColor }} className="underline decoration-dashed underline-offset-4 font-bold">6afra</a>
+          <div className="flex justify-center items-center mb-8 opacity-40 hover:opacity-100 transition-opacity duration-300 w-full relative z-10 pb-[100px]">
+            <span className="text-[9px] font-bold tracking-widest uppercase select-none text-center text-gray-800 dark:text-white/50">
+              {t('creatorSignature')} <a href="https://www.instagram.com/jj3_xx?igsh=MWVkaGI5ZjNsb3Nreg%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" style={{ color: themeColor }} className="underline decoration-dashed underline-offset-4 font-bold">6afra</a>
             </span>
           </div>
 
@@ -1639,57 +1673,55 @@ export default function App() {
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
               padding: '24px',
-              background: 'rgba(0,0,0,0.95)',
+              background: 'rgba(0,0,0,0.6)',
               backdropFilter: 'blur(32px)',
               WebkitBackdropFilter: 'blur(32px)',
             }}>
-              <div style={{
+              <div className="liquid-panel shadow-2xl" style={{
                 width: '100%', maxWidth: '380px',
-                background: '#111', borderRadius: '32px',
-                border: `1px solid rgba(255,255,255,0.08)`,
-                boxShadow: `0 0 60px ${themeColor}22, 0 30px 60px rgba(0,0,0,0.8)`,
+                borderRadius: '32px',
                 padding: '36px 24px',
                 position: 'relative',
               }}>
                 <button onClick={() => setIsTasksModalOpen(false)} style={{
                   position: 'absolute', top: '16px', right: '16px',
-                  background: 'rgba(255,255,255,0.05)', border: 'none',
+                  background: 'rgba(128,128,128,0.2)', border: 'none',
                   borderRadius: '50%', width: '32px', height: '32px',
-                  color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
+                  color: 'rgba(128,128,128,0.8)', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}><X size={16} /></button>
+                }}><X size={16} className="text-black dark:text-white" /></button>
 
                 <div className="flex items-center gap-2 mb-6">
-                  <ListChecks size={20} className="text-white/80" />
-                  <h3 className="text-sm font-bold tracking-widest text-white/80 uppercase select-none">Today's Tasks</h3>
+                  <ListChecks size={20} className="text-gray-700 dark:text-white/80" />
+                  <h3 className="text-sm font-bold tracking-widest text-gray-700 dark:text-white/80 uppercase select-none">{t('todaysTasks')}</h3>
                 </div>
 
                 <div className="flex flex-col gap-3 mb-6 max-h-[300px] overflow-y-auto pr-2">
                   {dailyTasks.map((task, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 rounded-2xl bg-[#1C1C1E] border border-white/5">
+                    <div key={idx} className="flex items-center justify-between p-3 rounded-2xl bg-white/30 dark:bg-[#1C1C1E] border border-black/5 dark:border-white/5">
                       <div className="flex items-center gap-3 cursor-pointer flex-1" onClick={() => {
                         haptic('light');
                         setDailyTasks(prev => prev.map((t, i) => i === idx ? { ...t, completed: !t.completed } : t));
                       }}>
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${task.completed ? 'bg-black border-transparent' : 'border-white/20'}`} style={{ borderColor: task.completed ? themeColor : undefined }}>
-                          {task.completed && <Check size={12} strokeWidth={4} style={{ color: themeColor }} />}
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${task.completed ? 'bg-black dark:bg-white border-transparent' : 'border-black/20 dark:border-white/20'}`} style={{ borderColor: task.completed ? themeColor : undefined }}>
+                          {task.completed && <Check size={12} strokeWidth={4} style={{ color: theme === 'dark' ? themeColor : '#fff' }} />}
                         </div>
-                        <span className={`text-sm font-semibold transition-all ${task.completed ? 'text-white/30 line-through' : 'text-white/90'}`}>{task.text}</span>
+                        <span className={`text-sm font-semibold transition-all ${task.completed ? 'text-gray-400 dark:text-white/30 line-through' : 'text-black dark:text-white/90'}`}>{task.text}</span>
                       </div>
-                      <button onClick={() => setDailyTasks(prev => prev.filter((_, i) => i !== idx))} className="text-white/20 hover:text-red-400 p-1 transition-colors">
+                      <button onClick={() => setDailyTasks(prev => prev.filter((_, i) => i !== idx))} className="text-gray-400 dark:text-white/20 hover:text-red-500 dark:hover:text-red-400 p-1 transition-colors">
                         <Trash2 size={16} />
                       </button>
                     </div>
                   ))}
                   {dailyTasks.length === 0 && (
-                    <div className="text-center text-white/30 text-xs font-bold uppercase tracking-widest py-8">No tasks for today</div>
+                    <div className="text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-8">{t('noTasks')}</div>
                   )}
                 </div>
 
                 <div className="flex gap-2">
                   <input 
                     type="text" 
-                    placeholder="Add a new task..." 
+                    placeholder={t('addTaskPlaceholder')}
                     value={newTaskInput}
                     onChange={(e) => setNewTaskInput(e.target.value)}
                     onKeyDown={(e) => {
@@ -1699,7 +1731,7 @@ export default function App() {
                         setNewTaskInput("");
                       }
                     }}
-                    className="flex-1 bg-[#1C1C1E] border border-white/10 text-white px-4 py-3 rounded-2xl outline-none text-sm font-semibold focus:border-white/30 transition-colors placeholder:text-white/30" 
+                    className="flex-1 bg-white/50 dark:bg-[#1C1C1E] border border-black/10 dark:border-white/10 text-black dark:text-white px-4 py-3 rounded-2xl outline-none text-sm font-semibold focus:border-black/30 dark:focus:border-white/30 transition-colors placeholder:text-gray-400 dark:placeholder:text-white/30" 
                   />
                   <button onClick={() => {
                     if (newTaskInput.trim() !== '') {
@@ -1707,7 +1739,7 @@ export default function App() {
                       setDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
                       setNewTaskInput("");
                     }
-                  }} className="bg-white text-black px-4 py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 hover:bg-white/90">
+                  }} className="bg-black text-white dark:bg-white dark:text-black px-4 py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 hover:bg-black/80 dark:hover:bg-white/90">
                     <Plus size={18} strokeWidth={3} />
                   </button>
                 </div>
@@ -1721,59 +1753,57 @@ export default function App() {
               position: 'fixed', inset: 0, zIndex: 9999,
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
-              padding: '24px', background: 'rgba(0,0,0,0.95)',
+              padding: '24px', background: 'rgba(0,0,0,0.6)',
               backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
             }}>
-              <div style={{
+              <div className="liquid-panel shadow-2xl" style={{
                 width: '100%', maxWidth: '400px', maxHeight: '80vh',
-                background: '#111', borderRadius: '32px',
-                border: `1px solid rgba(255,255,255,0.08)`,
-                boxShadow: `0 0 60px ${themeColor}22, 0 30px 60px rgba(0,0,0,0.8)`,
+                borderRadius: '32px',
                 padding: '36px 24px', position: 'relative',
                 display: 'flex', flexDirection: 'column'
               }}>
                 <button onClick={() => setIsHowToUseOpen(false)} style={{
                   position: 'absolute', top: '16px', right: '16px',
-                  background: 'rgba(255,255,255,0.05)', border: 'none',
+                  background: 'rgba(128,128,128,0.2)', border: 'none',
                   borderRadius: '50%', width: '32px', height: '32px',
-                  color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
+                  color: 'rgba(128,128,128,0.8)', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   zIndex: 10
-                }}><X size={16} /></button>
+                }}><X size={16} className="text-black dark:text-white" /></button>
 
                 <div className="flex items-center gap-2 mb-6 justify-center">
-                  <BookOpen size={20} className="text-white/80" />
-                  <h3 className="text-sm font-bold tracking-widest text-white/80 uppercase select-none">How to Use</h3>
+                  <BookOpen size={20} className="text-gray-700 dark:text-white/80" />
+                  <h3 className="text-sm font-bold tracking-widest text-gray-700 dark:text-white/80 uppercase select-none">{t('howToUse')}</h3>
                 </div>
 
-                <div className="flex flex-col gap-6 overflow-y-auto pr-2 pb-4 text-sm text-white/70">
+                <div className="flex flex-col gap-6 overflow-y-auto pr-2 pb-4 text-sm text-gray-800 dark:text-white/70">
                   <div>
-                    <h4 className="font-bold text-white mb-2 flex items-center gap-2"><Target size={16} style={{color: themeColor}}/> Daily Mission</h4>
-                    <p className="text-xs leading-relaxed">Set ONE main goal for the day. This keeps you focused on what truly matters before tackling smaller tasks.</p>
+                    <h4 className="font-bold text-black dark:text-white mb-2 flex items-center gap-2"><Target size={16} style={{color: themeColor}}/> {t('htu_mission_title')}</h4>
+                    <p className="text-xs leading-relaxed">{t('htu_mission_desc')}</p>
                   </div>
                   <div>
-                    <h4 className="font-bold text-white mb-2 flex items-center gap-2"><div className="w-3 h-3 rounded-sm bg-white/20"/> Habit Tracker</h4>
-                    <p className="text-xs leading-relaxed">Tap the small squares to track up to 3 positive habits. Long-press the negative habit squares (red) to reset them if you slip up.</p>
+                    <h4 className="font-bold text-black dark:text-white mb-2 flex items-center gap-2"><div className="w-3 h-3 rounded-sm bg-black/20 dark:bg-white/20"/> {t('htu_habits_title')}</h4>
+                    <p className="text-xs leading-relaxed">{t('htu_habits_desc')}</p>
                   </div>
                   <div>
-                    <h4 className="font-bold text-white mb-2 flex items-center gap-2"><PlaneTakeoff size={16} className="text-blue-400"/> Flight Focus</h4>
-                    <p className="text-xs leading-relaxed">Join real-world flights currently in the sky. Hit START to track your focus time alongside the plane's live ETA.</p>
+                    <h4 className="font-bold text-black dark:text-white mb-2 flex items-center gap-2"><PlaneTakeoff size={16} className="text-blue-500 dark:text-blue-400"/> {t('htu_flight_title')}</h4>
+                    <p className="text-xs leading-relaxed">{t('htu_flight_desc')}</p>
                   </div>
                   <div>
-                    <h4 className="font-bold text-white mb-2 flex items-center gap-2"><Timer size={16} className="text-green-400"/> Pomodoro</h4>
-                    <p className="text-xs leading-relaxed">Classic time management. Set a timer and work without distractions until it rings.</p>
+                    <h4 className="font-bold text-black dark:text-white mb-2 flex items-center gap-2"><Timer size={16} className="text-green-500 dark:text-green-400"/> {t('htu_pomodoro_title')}</h4>
+                    <p className="text-xs leading-relaxed">{t('htu_pomodoro_desc')}</p>
                   </div>
                   <div>
-                    <h4 className="font-bold text-white mb-2 flex items-center gap-2"><ShieldAlert size={16} className="text-red-400"/> Emergency Cards</h4>
-                    <p className="text-xs leading-relaxed">When you're about to break a bad habit, open these cards. They provide immediate psychological interventions to keep you on track.</p>
+                    <h4 className="font-bold text-black dark:text-white mb-2 flex items-center gap-2"><ShieldAlert size={16} className="text-red-500 dark:text-red-400"/> {t('htu_emergency_title')}</h4>
+                    <p className="text-xs leading-relaxed">{t('htu_emergency_desc')}</p>
                   </div>
                   <div>
-                    <h4 className="font-bold text-white mb-2 flex items-center gap-2"><ListChecks size={16} className="text-purple-400"/> Daily Tasks</h4>
-                    <p className="text-xs leading-relaxed">A simple checklist for your secondary tasks. Check them off as you go.</p>
+                    <h4 className="font-bold text-black dark:text-white mb-2 flex items-center gap-2"><ListChecks size={16} className="text-purple-500 dark:text-purple-400"/> {t('htu_tasks_title')}</h4>
+                    <p className="text-xs leading-relaxed">{t('htu_tasks_desc')}</p>
                   </div>
                   <div>
-                    <h4 className="font-bold text-white mb-2 flex items-center gap-2"><BarChart2 size={16} className="text-orange-400"/> Analytics</h4>
-                    <p className="text-xs leading-relaxed">View your sleep, focus time, and overall score trends over the last 7 days.</p>
+                    <h4 className="font-bold text-black dark:text-white mb-2 flex items-center gap-2"><BarChart2 size={16} className="text-orange-500 dark:text-orange-400"/> {t('htu_analytics_title')}</h4>
+                    <p className="text-xs leading-relaxed">{t('htu_analytics_desc')}</p>
                   </div>
                 </div>
               </div>
@@ -1781,21 +1811,21 @@ export default function App() {
           )}
 
           {/* --- FLOATING NAV --- */}
-          <div className="fixed bottom-0 left-0 w-full flex justify-center pt-4 bg-gradient-to-t from-black via-black to-transparent pointer-events-none z-40 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+          <div className="fixed bottom-0 left-0 w-full flex justify-center pt-4 bg-gradient-to-t from-white/20 dark:from-black via-white/10 dark:via-black to-transparent pointer-events-none z-40 pb-[calc(2rem+env(safe-area-inset-bottom))]">
             <div className="w-full max-w-[428px] px-6 flex justify-between items-center pointer-events-auto">
-              <div className="bg-[#1C1C1E]/80 backdrop-blur-xl border border-white/5 rounded-full flex items-center p-1.5 gap-1.5 shadow-2xl shadow-black/80">
-                <button onClick={() => topRef.current?.scrollIntoView({ behavior: 'smooth' })} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white transition-all duration-200 active:scale-90"><Home size={18} /></button>
-                <button onClick={() => setIsAnalyticsModalOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><BarChart2 size={18} /></button>
-                <button onClick={() => setIsTasksModalOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
-                <button onClick={() => setIsPomodoroOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><Timer size={18} /></button>
-                <button onClick={() => setIsFlightFocusOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><PlaneTakeoff size={18} /></button>
+              <div className="bg-white/50 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border border-black/10 dark:border-white/5 rounded-full flex items-center p-1.5 gap-1.5 shadow-2xl dark:shadow-black/80">
+                <button onClick={() => topRef.current?.scrollIntoView({ behavior: 'smooth' })} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white transition-all duration-200 active:scale-90"><Home size={18} /></button>
+                <button onClick={() => setIsAnalyticsModalOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><BarChart2 size={18} /></button>
+                <button onClick={() => setIsTasksModalOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
+                <button onClick={() => setIsPomodoroOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><Timer size={18} /></button>
+                <button onClick={() => setIsFlightFocusOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><PlaneTakeoff size={18} /></button>
               </div>
-              <button onClick={handleOpenManage} className="w-13 h-13 rounded-full bg-[#1C1C1E] border border-white/10 flex items-center justify-center hover:bg-[#2C2C2E] transition-all duration-200 active:scale-90 shadow-2xl shadow-black/60"><Edit2 size={18} className="text-white/90" /></button>
+              <button onClick={handleOpenManage} className="w-13 h-13 rounded-full bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-[#2C2C2E] transition-all duration-200 active:scale-90 shadow-2xl dark:shadow-black/60"><Edit2 size={18} className="text-black dark:text-white/90" /></button>
             </div>
           </div>
 
         </motion.div>
       </div>
-    </>
+    </div>
   );
 }

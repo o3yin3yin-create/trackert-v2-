@@ -6,6 +6,58 @@
   --font-scribble: "Reenie Beanie", cursive;
 }
 
+.mesh-bg {
+  background-color: #f8fafc;
+  background-image: 
+    radial-gradient(at 40% 20%, hsla(228,100%,74%,0.4) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, hsla(189,100%,56%,0.4) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, hsla(355,100%,93%,0.4) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, hsla(340,100%,76%,0.4) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, hsla(22,100%,77%,0.4) 0px, transparent 50%),
+    radial-gradient(at 80% 100%, hsla(242,100%,70%,0.4) 0px, transparent 50%),
+    radial-gradient(at 0% 0%, hsla(343,100%,76%,0.4) 0px, transparent 50%);
+  background-attachment: fixed;
+  background-size: cover;
+}
+
+.dark .mesh-bg {
+  background-color: #050505;
+  background-image: 
+    radial-gradient(at 40% 20%, hsla(228,100%,74%,0.15) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, hsla(189,100%,56%,0.15) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, hsla(355,100%,93%,0.1) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, hsla(340,100%,76%,0.15) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, hsla(22,100%,77%,0.15) 0px, transparent 50%),
+    radial-gradient(at 80% 100%, hsla(242,100%,70%,0.15) 0px, transparent 50%),
+    radial-gradient(at 0% 0%, hsla(343,100%,76%,0.15) 0px, transparent 50%);
+}
+
+.liquid-glass {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(40px) saturate(150%);
+  -webkit-backdrop-filter: blur(40px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+}
+
+.dark .liquid-glass {
+  background: rgba(20, 20, 22, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+}
+
+.liquid-panel {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.dark .liquid-panel {
+  background: rgba(40, 40, 44, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
 .bg-dotted {
   background-image: radial-gradient(rgba(48, 47, 44, 0.15) 1.5px, transparent 1.5px);
   background-size: 24px 24px;
