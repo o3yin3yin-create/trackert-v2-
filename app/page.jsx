@@ -242,19 +242,21 @@ export default function App() {
 
   useEffect(() => {
     let interval = null;
-    if (selectedFlight && isFlightTimerRunning && flightTimer > 0) {
+    if (selectedFlight && flightTimer > 0) {
       interval = setInterval(() => {
         setFlightTimer(prev => prev - 1);
         
-        // Track focus time for today
-        const todayStr = getFormatDateStr(new Date());
-        setFocusTimeData(prev => {
-          const updated = { ...prev, [todayStr]: (prev[todayStr] || 0) + 1 };
-          localStorage.setItem('daybase_focusTime_v4', JSON.stringify(updated));
-          return updated;
-        });
+        // Track focus time for today ONLY if user has joined the flight
+        if (isFlightTimerRunning) {
+          const todayStr = getFormatDateStr(new Date());
+          setFocusTimeData(prev => {
+            const updated = { ...prev, [todayStr]: (prev[todayStr] || 0) + 1 };
+            localStorage.setItem('daybase_focusTime_v4', JSON.stringify(updated));
+            return updated;
+          });
+        }
       }, 1000);
-    } else if (flightTimer <= 0 && selectedFlight && isFlightTimerRunning) {
+    } else if (flightTimer <= 0 && selectedFlight) {
       // Flight landed!
       setIsFlightTimerRunning(false);
       if (globalAudioCtx) {
