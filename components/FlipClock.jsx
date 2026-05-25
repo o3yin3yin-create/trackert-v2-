@@ -72,7 +72,7 @@ export default function FlipClock({ countdownSeconds }) {
   }
 
   return (
-    <div className={`flex justify-center items-center gap-2 md:gap-4 select-none ${isCountdown ? 'scale-[0.8] md:scale-100 my-4' : 'mb-12 mt-20 scale-110 md:scale-[1.6]'}`}>
+    <div className={`flex justify-center items-center gap-2 md:gap-4 select-none ${isCountdown ? 'scale-[0.7] md:scale-100 my-2 md:my-4' : 'mb-12 mt-20 scale-110 md:scale-[1.6]'}`}>
       <FlipUnit val={hStr} label="Hours" />
       <div className="flex flex-col gap-3 justify-center items-center pb-6">
         <div className="w-2 md:w-3 h-2 md:h-3 rounded-full bg-white/40 animate-pulse" />

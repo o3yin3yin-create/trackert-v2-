@@ -1019,7 +1019,7 @@ export default function App() {
             padding: '24px', background: 'rgba(0,0,0,0.95)',
             backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
           }}>
-            <div className="w-full max-w-[380px] md:max-w-[600px] relative bg-[#111] rounded-[32px] px-6 py-8" style={{ border: `1px solid rgba(255,255,255,0.08)`, boxShadow: `0 0 60px ${themeColor}22, 0 30px 60px rgba(0,0,0,0.8)` }}>
+            <div className="w-full max-w-[380px] md:max-w-[600px] relative bg-[#111] rounded-[32px] px-6 py-4 md:py-8" style={{ border: `1px solid rgba(255,255,255,0.08)`, boxShadow: `0 0 60px ${themeColor}22, 0 30px 60px rgba(0,0,0,0.8)` }}>
               <button onClick={() => { setIsFlightFocusOpen(false); setSelectedFlight(null); }} style={{
                 position: 'absolute', top: '16px', right: '16px',
                 background: 'rgba(255,255,255,0.05)', border: 'none',
@@ -1028,7 +1028,7 @@ export default function App() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}><X size={16} /></button>
 
-              <h3 className="text-sm font-bold tracking-widest text-white/50 uppercase mb-6 select-none text-center">Flight Focus ✈️</h3>
+              <h3 className="text-sm font-bold tracking-widest text-white/50 uppercase mb-4 select-none text-center">Flight Focus ✈️</h3>
 
               {flightLoading ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-4">
@@ -1037,7 +1037,7 @@ export default function App() {
                 </div>
               ) : selectedFlight ? (
                 <div className="flex flex-col items-center">
-                  <div className="flex items-center gap-4 w-full mb-6 text-center justify-center">
+                  <div className="flex items-center gap-4 w-full mb-3 md:mb-6 text-center justify-center">
                     <div className="flex flex-col items-end">
                       <span className="text-2xl font-black">{selectedFlight.origin}</span>
                     </div>
@@ -1046,12 +1046,12 @@ export default function App() {
                       <span className="text-2xl font-black">{selectedFlight.destination}</span>
                     </div>
                   </div>
-                  <div className="text-center mb-8">
+                  <div className="text-center mb-4 md:mb-8">
                     <span className="text-sm font-bold tracking-tight text-white/70 block mb-1">{selectedFlight.airline}</span>
-                    <span className="text-xs font-medium text-white/40 uppercase tracking-widest block">{selectedFlight.model}</span>
+                    <span className="text-[10px] md:text-xs font-medium text-white/40 uppercase tracking-widest block">{selectedFlight.model}</span>
                   </div>
 
-                  <div className="flex justify-center mb-8 w-full">
+                  <div className="flex justify-center mb-2 md:mb-8 w-full">
                     <FlipClock countdownSeconds={flightTimer} />
                   </div>
                   
