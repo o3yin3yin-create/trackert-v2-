@@ -151,7 +151,7 @@ export default function App() {
     return {};
   });
 
-  const [isFlipClockOpen, setIsFlipClockOpen] = useState(false);
+
   
   // --- Flight Focus States ---
   const [isFlightFocusOpen, setIsFlightFocusOpen] = useState(false);
@@ -1009,31 +1009,6 @@ export default function App() {
           </div>,
           document.body
         )}
-        
-        {/* ---------------- FLIP CLOCK MODAL ---------------- */}
-        {isFlipClockOpen && createPortal(
-          <div style={{
-            position: 'fixed', inset: 0, zIndex: 9999,
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            padding: '24px', background: 'rgba(0,0,0,0.95)',
-            backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
-          }}>
-            <div style={{ width: '100%', maxWidth: '380px', position: 'relative' }}>
-              <button onClick={() => setIsFlipClockOpen(false)} style={{
-                position: 'absolute', top: '-48px', right: '0px',
-                background: 'rgba(255,255,255,0.05)', border: 'none',
-                borderRadius: '50%', width: '32px', height: '32px',
-                color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}><X size={16} /></button>
-              
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
-                <FlipClock />
-              </div>
-            </div>
-          </div>, document.body
-        )}
 
         {/* ---------------- FLIGHT FOCUS MODAL ---------------- */}
         {isFlightFocusOpen && createPortal(
@@ -1076,8 +1051,8 @@ export default function App() {
                     <span className="text-xs font-medium text-white/40 uppercase tracking-widest block">{selectedFlight.model}</span>
                   </div>
 
-                  <div className="text-6xl font-black tabular-nums tracking-tighter mb-8" style={{ color: themeColor }}>
-                    {String(Math.floor(flightTimer / 60)).padStart(2, '0')}<span className="text-white/30">:</span>{String(flightTimer % 60).padStart(2, '0')}
+                  <div className="flex justify-center mb-8 scale-75 md:scale-90 origin-top">
+                    <FlipClock countdownSeconds={flightTimer} />
                   </div>
                   
                   {flightTimer <= 0 && (
@@ -1085,12 +1060,12 @@ export default function App() {
                   )}
                 </div>
               ) : (
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-3 overflow-y-auto max-h-[50vh] pr-2">
                   {flightOptions.map((f, i) => (
-                    <div key={i} onClick={() => { setSelectedFlight(f); setFlightTimer(f.remainingSeconds); }} className="bg-[#1C1C1E] border border-white/5 p-4 rounded-2xl cursor-pointer hover:bg-[#2C2C2E] transition-colors active:scale-95">
+                    <div key={i} onClick={() => { setSelectedFlight(f); setFlightTimer(f.remainingSeconds); }} className="bg-[#1C1C1E] border border-white/5 p-4 rounded-2xl cursor-pointer hover:bg-[#2C2C2E] transition-colors active:scale-95 shrink-0">
                       <div className="flex justify-between items-start mb-2">
                         <span className="font-bold text-sm">{f.airline}</span>
-                        <span className="text-xs font-bold px-2 py-0.5 bg-white/10 rounded-full">{Math.floor(f.remainingSeconds / 60)} min</span>
+                        <span className="text-xs font-bold px-2 py-0.5 bg-white/10 rounded-full text-white/50">? min</span>
                       </div>
                       <div className="flex items-center gap-2 text-white/50 text-sm font-semibold">
                         <span>{f.origin}</span>
@@ -1697,7 +1672,6 @@ export default function App() {
                 <button onClick={() => setIsAnalyticsModalOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><BarChart2 size={18} /></button>
                 <button onClick={() => setIsTasksModalOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
                 <button onClick={() => setIsPomodoroOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><Timer size={18} /></button>
-                <button onClick={() => setIsFlipClockOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><Clock size={18} /></button>
                 <button onClick={() => setIsFlightFocusOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><PlaneTakeoff size={18} /></button>
               </div>
               <button onClick={handleOpenManage} className="w-13 h-13 rounded-full bg-[#1C1C1E] border border-white/10 flex items-center justify-center hover:bg-[#2C2C2E] transition-all duration-200 active:scale-90 shadow-2xl shadow-black/60"><Edit2 size={18} className="text-white/90" /></button>

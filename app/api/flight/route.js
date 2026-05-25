@@ -11,11 +11,11 @@ export async function GET() {
     }
 
     const validFlights = [];
-    const maxAttempts = 20;
+    const maxAttempts = 100;
     let attempts = 0;
 
-    // Pick random flights until we have 3 good ones
-    while (validFlights.length < 3 && attempts < maxAttempts) {
+    // Pick random flights until we have 20 good ones
+    while (validFlights.length < 20 && attempts < maxAttempts) {
       attempts++;
       const randomIdx = Math.floor(Math.random() * flights.length);
       const flight = flights[randomIdx];

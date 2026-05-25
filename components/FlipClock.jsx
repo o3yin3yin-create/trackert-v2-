@@ -33,29 +33,43 @@ const FlipUnit = ({ val, label }) => {
   );
 };
 
-export default function FlipClock() {
+export default function FlipClock({ countdownSeconds }) {
   const [time, setTime] = useState(null);
+  const isCountdown = countdownSeconds !== undefined;
 
   useEffect(() => {
+    if (isCountdown) return; // handled by prop
     const interval = setInterval(() => {
       setTime(new Date());
     }, 1000);
     setTime(new Date());
     return () => clearInterval(interval);
-  }, []);
+  }, [isCountdown]);
 
-  if (!time) return <div className="h-32"></div>;
+  if (!isCountdown && !time) return <div className="h-32"></div>;
 
-  let hours = time.getHours();
-  const minutes = time.getMinutes();
-  const seconds = time.getSeconds();
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12; // the hour '0' should be '12'
+  let hStr, mStr, sStr, ampm;
 
-  const hStr = String(hours).padStart(2, '0');
-  const mStr = String(minutes).padStart(2, '0');
-  const sStr = String(seconds).padStart(2, '0');
+  if (isCountdown) {
+    const hrs = Math.floor(countdownSeconds / 3600);
+    const mins = Math.floor((countdownSeconds % 3600) / 60);
+    const secs = countdownSeconds % 60;
+    
+    hStr = String(hrs).padStart(2, '0');
+    mStr = String(mins).padStart(2, '0');
+    sStr = String(secs).padStart(2, '0');
+  } else {
+    let hours = time.getHours();
+    const minutes = time.getMinutes();
+    const seconds = time.getSeconds();
+    ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+
+    hStr = String(hours).padStart(2, '0');
+    mStr = String(minutes).padStart(2, '0');
+    sStr = String(seconds).padStart(2, '0');
+  }
 
   return (
     <div className="flex justify-center items-center gap-2 md:gap-4 select-none mb-12 mt-20 scale-110 md:scale-[1.6]">
@@ -70,9 +84,11 @@ export default function FlipClock() {
         <div className="w-2 md:w-3 h-2 md:h-3 rounded-full bg-white/40 animate-pulse delay-75" />
       </div>
       <FlipUnit val={sStr} label="Seconds" />
-      <div className="flex flex-col justify-end pb-8 ml-2">
-        <span className="text-sm md:text-lg font-bold tracking-widest text-white/50">{ampm}</span>
-      </div>
+      {!isCountdown && (
+        <div className="flex flex-col justify-end pb-8 ml-2">
+          <span className="text-sm md:text-lg font-bold tracking-widest text-white/50">{ampm}</span>
+        </div>
+      )}
     </div>
   );
 }
