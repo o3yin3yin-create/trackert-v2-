@@ -169,6 +169,7 @@ export default function App() {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [isEmergencyCardsOpen, setIsEmergencyCardsOpen] = useState(false);
   const [isHowToUseOpen, setIsHowToUseOpen] = useState(false);
+  const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
 
   // --- Theme & Language ---
   const [lang, setLang] = useState('en');
@@ -254,7 +255,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [baseDate]);
 
-  const dayName = baseDate.toLocaleString('en-US', { weekday: 'long' }); 
+  const dayName = baseDate.toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'long' });
   const dayNum = String(baseDate.getDate()).padStart(2, '0'); 
 
   // --- Flight Focus Logic ---
@@ -1398,36 +1399,34 @@ export default function App() {
                   {!isOnline ? 'Offline' : isSyncing ? 'Syncing' : 'Synced'}
                 </span>
 
-              {/* Settings: Language & Theme */}
-              <button
-                onClick={toggleLang}
-                className="p-2 liquid-panel rounded-full text-black dark:text-white/50 hover:text-black dark:hover:text-white transition-all duration-200 active:scale-90"
-                title="Toggle Language"
-              >
-                <Globe size={18} strokeWidth={2.2} className="text-black dark:text-white" />
-              </button>
+              {/* Settings Dropdown */}
+              <div className="relative z-50">
+                <button
+                  onClick={() => setIsSettingsMenuOpen(!isSettingsMenuOpen)}
+                  className="p-2 liquid-panel rounded-full text-black dark:text-white/80 hover:text-black dark:hover:text-white transition-all duration-200 active:scale-90"
+                  title="Settings"
+                >
+                  <Settings size={18} strokeWidth={2.2} className="text-black dark:text-white" />
+                </button>
 
-              <button
-                onClick={toggleTheme}
-                className="p-2 liquid-panel rounded-full text-black dark:text-white/50 hover:text-black dark:hover:text-white transition-all duration-200 active:scale-90"
-                title="Toggle Theme"
-              >
-                {theme === 'dark' ? <Sun size={18} strokeWidth={2.2} className="text-white" /> : <Moon size={18} strokeWidth={2.2} className="text-black" />}
-              </button>
-
-              {/* Emergency Cards Icon Button */}
-              <button
-                onClick={() => setIsCardsModalOpen(true)}
-                className="p-2 liquid-panel rounded-full text-black dark:text-white/50 hover:text-black dark:hover:text-white transition-all duration-200 active:scale-90"
-                title="Emergency Cards"
-              >
-                <ShieldAlert size={18} strokeWidth={2.2} className="text-black dark:text-white" />
-              </button>
-
-              <label className="p-2 liquid-panel rounded-full text-black dark:text-white/50 hover:text-black dark:hover:text-white transition-all duration-200 active:scale-90 cursor-pointer relative">
-                <SlidersHorizontal size={18} strokeWidth={2.2} className="text-black dark:text-white" />
-                <input type="color" value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
-              </label>
+                {isSettingsMenuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-48 liquid-panel rounded-2xl p-2 flex flex-col gap-1 shadow-2xl animate-in fade-in zoom-in duration-200">
+                    <button onClick={() => { toggleLang(); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-black dark:text-white">
+                      <Globe size={16} /> {lang === 'en' ? 'العربية' : 'English'}
+                    </button>
+                    <button onClick={() => { toggleTheme(); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-black dark:text-white">
+                      {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />} {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                    </button>
+                    <button onClick={() => { setIsCardsModalOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-red-500 dark:text-red-400">
+                      <ShieldAlert size={16} /> {t('emergencyCards')}
+                    </button>
+                    <label className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold cursor-pointer relative text-black dark:text-white">
+                      <SlidersHorizontal size={16} /> Accent Color
+                      <input type="color" value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="absolute opacity-0 w-0 h-0" />
+                    </label>
+                  </div>
+                )}
+              </div>
               </div>
             </div>
           </header>
