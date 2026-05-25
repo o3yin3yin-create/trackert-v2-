@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useUser, Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
+import FlipClock from '../components/FlipClock';
 
 let globalAudioCtx = null;
 const getAudioCtx = () => {
@@ -1136,10 +1137,10 @@ export default function App() {
         <div ref={topRef} className="absolute top-0" /> 
 
         {/* ---------------- MAIN APP UI ---------------- */}
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full max-w-[428px] h-full flex flex-col pt-12 px-5 relative z-10">
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full max-w-[428px] md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto h-full flex flex-col pt-12 px-5 md:px-10 relative z-10">
           
           {/* Header with Navigation */}
-          <header className="flex flex-col gap-3 mb-8">
+          <header className="flex flex-col gap-3 mb-8 w-full md:max-w-[428px]">
             <div className="flex justify-between items-center w-full">
               <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex flex-wrap gap-2 items-center select-none">
                 {dayName} <span className="text-white/30 font-light">{dayNum}</span>
@@ -1205,7 +1206,14 @@ export default function App() {
             </div>
           </header>
 
-          {/* Mission Card (Premium Cinematic Progress) */}
+          <div className="flex flex-col md:flex-row gap-6 md:gap-12 w-full">
+            
+            {/* Left Column (Desktop) */}
+            <div className="flex flex-col w-full md:w-[360px] lg:w-[400px] shrink-0">
+              
+              <FlipClock />
+
+              {/* Mission Card (Premium Cinematic Progress) */}
           <div 
             className="w-full p-6 flex flex-col mb-8 transition-all duration-500 ease-out" 
             style={{ 
@@ -1268,9 +1276,12 @@ export default function App() {
               <button onClick={logSleep} className="bg-white text-black px-4 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 hover:bg-white/90">Save</button>
             </div>
           </div>
+          </div> {/* End of Left Column */}
 
-          {/* ---------------- HABITS GRID ---------------- */}
-          <div className="grid grid-cols-2 gap-3 mb-10 items-start">
+            {/* Right Column (Desktop) */}
+            <div className="flex flex-col flex-1 w-full">
+              {/* ---------------- HABITS GRID ---------------- */}
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-10 items-start">
             {habits.map((habit) => {
               const isMulti = habit.type === 'multi';
               const isExpanded = expandedHabits.includes(habit.id);
@@ -1312,7 +1323,7 @@ export default function App() {
                       <div className="flex justify-between items-start mb-2">
                         <span className="text-[10px] font-bold" style={{ color: isAllChecked ? 'rgba(0,0,0,0.5)' : themeColor }}>{getStreak(habit.id) > 0 ? `🔥 ${getStreak(habit.id)}` : ''}</span>
                       </div>
-                      <span className="text-[15px] font-semibold tracking-tight leading-tight truncate">{habit.name}</span>
+                      <span className="text-[15px] font-semibold tracking-tight leading-tight line-clamp-2">{habit.name}</span>
                       {isMulti && !isExpanded && (
                         <span className="text-[10px] opacity-50 mt-0.5 font-bold tracking-wider">{checkedCount}/{habit.subItems.length}</span>
                       )}
@@ -1354,7 +1365,8 @@ export default function App() {
               );
             })}
           </div>
-
+          </div> {/* End of Right Column */}
+          </div> {/* End of Columns Wrapper */}
 
           {/* --- ANALYTICS MODAL --- */}
           {isAnalyticsModalOpen && createPortal(
@@ -1432,8 +1444,8 @@ export default function App() {
           )}
 
           {/* --- CREATOR SIGNATURE --- */}
-          <div className="flex justify-center items-center mt-6 mb-8 opacity-30 hover:opacity-80 transition-opacity duration-300">
-            <span className="text-[9px] font-bold tracking-widest uppercase select-none">
+          <div className="flex justify-center items-center mt-6 mb-8 opacity-30 hover:opacity-80 transition-opacity duration-300 w-full relative z-10">
+            <span className="text-[9px] font-bold tracking-widest uppercase select-none text-center">
               This tracker crafted in Egypt by <a href="https://www.instagram.com/jj3_xx?igsh=MWVkaGI5ZjNsb3Nreg%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" style={{ color: themeColor }} className="underline decoration-dashed underline-offset-4 font-bold">6afra</a>
             </span>
           </div>

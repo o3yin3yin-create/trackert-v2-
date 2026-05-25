@@ -1,0 +1,9 @@
+{
+  "appId": "com.tafra.tracker",
+  "appName": "Tafra Tracker",
+  "webDir": "public",
+  "server": {
+    "url": "https://YOUR_VERCEL_APP_URL.vercel.app",
+    "cleartext": true
+  }
+}
