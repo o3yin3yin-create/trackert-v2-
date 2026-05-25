@@ -159,6 +159,7 @@ export default function App() {
   const [selectedFlight, setSelectedFlight] = useState(null);
   const [flightLoading, setFlightLoading] = useState(false);
   const [flightTimer, setFlightTimer] = useState(0);
+  const [isFlightTimerRunning, setIsFlightTimerRunning] = useState(false);
   const [isPomodoroOpen, setIsPomodoroOpen] = useState(false);
   const [isEditingPomodoro, setIsEditingPomodoro] = useState(false);
   const [editMinutes, setEditMinutes] = useState(25);
@@ -241,12 +242,21 @@ export default function App() {
 
   useEffect(() => {
     let interval = null;
-    if (selectedFlight && flightTimer > 0) {
+    if (selectedFlight && isFlightTimerRunning && flightTimer > 0) {
       interval = setInterval(() => {
         setFlightTimer(prev => prev - 1);
+        
+        // Track focus time for today
+        const todayStr = getFormatDateStr(new Date());
+        setFocusTimeData(prev => {
+          const updated = { ...prev, [todayStr]: (prev[todayStr] || 0) + 1 };
+          localStorage.setItem('daybase_focusTime_v4', JSON.stringify(updated));
+          return updated;
+        });
       }, 1000);
-    } else if (flightTimer <= 0 && selectedFlight) {
+    } else if (flightTimer <= 0 && selectedFlight && isFlightTimerRunning) {
       // Flight landed!
+      setIsFlightTimerRunning(false);
       if (globalAudioCtx) {
         const osc = globalAudioCtx.createOscillator();
         const gain = globalAudioCtx.createGain();
@@ -264,7 +274,7 @@ export default function App() {
       setSelectedFlight(null);
     }
     return () => clearInterval(interval);
-  }, [selectedFlight, flightTimer]);
+  }, [selectedFlight, flightTimer, isFlightTimerRunning]);
 
   // --- Modals & Inputs ---
   const [isEditingMission, setIsEditingMission] = useState(false);
@@ -1020,7 +1030,7 @@ export default function App() {
             backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
           }}>
             <div className="w-full max-w-[380px] md:max-w-[600px] relative bg-[#111] rounded-[32px] px-6 py-4 md:py-8" style={{ border: `1px solid rgba(255,255,255,0.08)`, boxShadow: `0 0 60px ${themeColor}22, 0 30px 60px rgba(0,0,0,0.8)` }}>
-              <button onClick={() => { setIsFlightFocusOpen(false); setSelectedFlight(null); }} style={{
+              <button onClick={() => { setIsFlightFocusOpen(false); setSelectedFlight(null); setIsFlightTimerRunning(false); }} style={{
                 position: 'absolute', top: '16px', right: '16px',
                 background: 'rgba(255,255,255,0.05)', border: 'none',
                 borderRadius: '50%', width: '32px', height: '32px',
@@ -1055,8 +1065,29 @@ export default function App() {
                     <FlipClock countdownSeconds={flightTimer} />
                   </div>
                   
-                  {flightTimer <= 0 && (
-                    <span className="text-green-400 font-bold tracking-widest uppercase text-sm animate-pulse">Landed! 🎉</span>
+                  {flightTimer > 0 ? (
+                    <div className="flex justify-center w-full mt-4">
+                      {!isFlightTimerRunning ? (
+                        <button 
+                          onClick={() => setIsFlightTimerRunning(true)}
+                          className="px-8 py-3 bg-[#1C1C1E] border border-white/10 rounded-2xl font-bold text-white tracking-widest hover:bg-[#2C2C2E] transition-colors active:scale-95 shadow-xl w-full max-w-[200px]"
+                        >
+                          START
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => {
+                            setIsFlightTimerRunning(false);
+                            setSelectedFlight(null);
+                          }}
+                          className="px-8 py-3 bg-red-500/10 border border-red-500/30 text-red-400 rounded-2xl font-bold tracking-widest hover:bg-red-500/20 transition-colors active:scale-95 shadow-xl w-full max-w-[200px]"
+                        >
+                          GIVE UP
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-green-400 font-bold tracking-widest uppercase text-sm animate-pulse mt-4">Landed! 🎉</span>
                   )}
                 </div>
               ) : (
