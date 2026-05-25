@@ -1059,7 +1059,9 @@ export default function App() {
                     </div>
                   </div>
                   <div className="text-center mb-4 md:mb-8">
-                    <span className="text-sm font-bold tracking-tight text-white/70 block mb-1">{selectedFlight.airline}</span>
+                    <span className="text-sm font-bold tracking-tight text-white/70 block mb-1">
+                      {selectedFlight.airline} <span className="text-white/30 px-1">|</span> <span className="text-white/90">Flight {selectedFlight.callsign}</span>
+                    </span>
                     <span className="text-[10px] md:text-xs font-medium text-white/40 uppercase tracking-widest block">{selectedFlight.model}</span>
                   </div>
 
@@ -1097,7 +1099,10 @@ export default function App() {
                   {flightOptions.map((f, i) => (
                     <div key={i} onClick={() => { setSelectedFlight(f); setFlightTimer(f.remainingSeconds); }} className="bg-[#1C1C1E] border border-white/5 p-4 rounded-2xl cursor-pointer hover:bg-[#2C2C2E] transition-colors active:scale-95 shrink-0">
                       <div className="flex justify-between items-start mb-2">
-                        <span className="font-bold text-sm">{f.airline}</span>
+                        <span className="font-bold text-sm flex items-center gap-2">
+                          {f.airline}
+                          <span className="text-[10px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-white/50">{f.callsign}</span>
+                        </span>
                         <span className="text-xs font-bold px-2 py-0.5 bg-white/10 rounded-full text-white/50">? min</span>
                       </div>
                       <div className="flex items-center gap-2 text-white/50 text-sm font-semibold">
