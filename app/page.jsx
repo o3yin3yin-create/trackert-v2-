@@ -1615,8 +1615,12 @@ export default function App() {
           )}
 
           {/* --- HOW TO USE BUTTON --- */}
-          <div className="flex justify-center w-full relative z-10 mb-2 mt-4">
-            <button onClick={() => setIsHowToUseOpen(true)} className="text-[10px] font-bold tracking-widest uppercase text-white/30 hover:text-white/60 transition-colors underline decoration-dashed underline-offset-4">
+          <div className="flex justify-center w-full relative z-50 mb-4 mt-8">
+            <button 
+              onClick={() => setIsHowToUseOpen(true)} 
+              className="px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-[10px] font-bold tracking-widest uppercase text-white/70 transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+            >
+              <BookOpen size={14} />
               How to use
             </button>
           </div>
