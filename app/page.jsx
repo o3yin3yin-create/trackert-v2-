@@ -166,6 +166,8 @@ export default function App() {
   const [pomodoroInitialTime, setPomodoroInitialTime] = useState(25 * 60);
   const [pomodoroTime, setPomodoroTime] = useState(25 * 60);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [isEmergencyCardsOpen, setIsEmergencyCardsOpen] = useState(false);
+  const [isHowToUseOpen, setIsHowToUseOpen] = useState(false);
 
   // --- Focus Time Tracking (seconds per day) ---
   const [focusTimeData, setFocusTimeData] = useState(() => {
@@ -1612,8 +1614,15 @@ export default function App() {
             </div>, document.body
           )}
 
+          {/* --- HOW TO USE BUTTON --- */}
+          <div className="flex justify-center w-full relative z-10 mb-2 mt-4">
+            <button onClick={() => setIsHowToUseOpen(true)} className="text-[10px] font-bold tracking-widest uppercase text-white/30 hover:text-white/60 transition-colors underline decoration-dashed underline-offset-4">
+              How to use
+            </button>
+          </div>
+
           {/* --- CREATOR SIGNATURE --- */}
-          <div className="flex justify-center items-center mt-6 mb-8 opacity-30 hover:opacity-80 transition-opacity duration-300 w-full relative z-10">
+          <div className="flex justify-center items-center mb-8 opacity-30 hover:opacity-80 transition-opacity duration-300 w-full relative z-10 pb-[100px]">
             <span className="text-[9px] font-bold tracking-widest uppercase select-none text-center">
               This tracker crafted in Egypt by <a href="https://www.instagram.com/jj3_xx?igsh=MWVkaGI5ZjNsb3Nreg%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" style={{ color: themeColor }} className="underline decoration-dashed underline-offset-4 font-bold">6afra</a>
             </span>
