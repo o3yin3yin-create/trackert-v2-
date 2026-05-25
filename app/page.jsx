@@ -1715,6 +1715,71 @@ export default function App() {
             </div>, document.body
           )}
 
+          {/* --- HOW TO USE MODAL --- */}
+          {isHowToUseOpen && createPortal(
+            <div style={{
+              position: 'fixed', inset: 0, zIndex: 9999,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              padding: '24px', background: 'rgba(0,0,0,0.95)',
+              backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
+            }}>
+              <div style={{
+                width: '100%', maxWidth: '400px', maxHeight: '80vh',
+                background: '#111', borderRadius: '32px',
+                border: `1px solid rgba(255,255,255,0.08)`,
+                boxShadow: `0 0 60px ${themeColor}22, 0 30px 60px rgba(0,0,0,0.8)`,
+                padding: '36px 24px', position: 'relative',
+                display: 'flex', flexDirection: 'column'
+              }}>
+                <button onClick={() => setIsHowToUseOpen(false)} style={{
+                  position: 'absolute', top: '16px', right: '16px',
+                  background: 'rgba(255,255,255,0.05)', border: 'none',
+                  borderRadius: '50%', width: '32px', height: '32px',
+                  color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  zIndex: 10
+                }}><X size={16} /></button>
+
+                <div className="flex items-center gap-2 mb-6 justify-center">
+                  <BookOpen size={20} className="text-white/80" />
+                  <h3 className="text-sm font-bold tracking-widest text-white/80 uppercase select-none">How to Use</h3>
+                </div>
+
+                <div className="flex flex-col gap-6 overflow-y-auto pr-2 pb-4 text-sm text-white/70">
+                  <div>
+                    <h4 className="font-bold text-white mb-2 flex items-center gap-2"><Target size={16} style={{color: themeColor}}/> Daily Mission</h4>
+                    <p className="text-xs leading-relaxed">Set ONE main goal for the day. This keeps you focused on what truly matters before tackling smaller tasks.</p>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white mb-2 flex items-center gap-2"><div className="w-3 h-3 rounded-sm bg-white/20"/> Habit Tracker</h4>
+                    <p className="text-xs leading-relaxed">Tap the small squares to track up to 3 positive habits. Long-press the negative habit squares (red) to reset them if you slip up.</p>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white mb-2 flex items-center gap-2"><PlaneTakeoff size={16} className="text-blue-400"/> Flight Focus</h4>
+                    <p className="text-xs leading-relaxed">Join real-world flights currently in the sky. Hit START to track your focus time alongside the plane's live ETA.</p>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white mb-2 flex items-center gap-2"><Timer size={16} className="text-green-400"/> Pomodoro</h4>
+                    <p className="text-xs leading-relaxed">Classic time management. Set a timer and work without distractions until it rings.</p>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white mb-2 flex items-center gap-2"><ShieldAlert size={16} className="text-red-400"/> Emergency Cards</h4>
+                    <p className="text-xs leading-relaxed">When you're about to break a bad habit, open these cards. They provide immediate psychological interventions to keep you on track.</p>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white mb-2 flex items-center gap-2"><ListChecks size={16} className="text-purple-400"/> Daily Tasks</h4>
+                    <p className="text-xs leading-relaxed">A simple checklist for your secondary tasks. Check them off as you go.</p>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white mb-2 flex items-center gap-2"><BarChart2 size={16} className="text-orange-400"/> Analytics</h4>
+                    <p className="text-xs leading-relaxed">View your sleep, focus time, and overall score trends over the last 7 days.</p>
+                  </div>
+                </div>
+              </div>
+            </div>, document.body
+          )}
+
           {/* --- FLOATING NAV --- */}
           <div className="fixed bottom-0 left-0 w-full flex justify-center pt-4 bg-gradient-to-t from-black via-black to-transparent pointer-events-none z-40 pb-[calc(2rem+env(safe-area-inset-bottom))]">
             <div className="w-full max-w-[428px] px-6 flex justify-between items-center pointer-events-auto">
