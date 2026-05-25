@@ -58,7 +58,7 @@ export default function FlipClock() {
   const sStr = String(seconds).padStart(2, '0');
 
   return (
-    <div className="flex justify-center items-center gap-2 md:gap-4 select-none mb-8 mt-12 scale-[0.8] md:scale-100">
+    <div className="flex justify-center items-center gap-2 md:gap-4 select-none mb-12 mt-20 scale-110 md:scale-[1.6]">
       <FlipUnit val={hStr} label="Hours" />
       <div className="flex flex-col gap-3 justify-center items-center pb-6">
         <div className="w-2 md:w-3 h-2 md:h-3 rounded-full bg-white/40 animate-pulse" />

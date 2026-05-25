@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Clock } from 'lucide-react';
+import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Clock, PlaneTakeoff, Loader2 } from 'lucide-react';
 import { messaging, getToken } from '../lib/firebase';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -152,6 +152,13 @@ export default function App() {
   });
 
   const [isFlipClockOpen, setIsFlipClockOpen] = useState(false);
+  
+  // --- Flight Focus States ---
+  const [isFlightFocusOpen, setIsFlightFocusOpen] = useState(false);
+  const [flightOptions, setFlightOptions] = useState([]);
+  const [selectedFlight, setSelectedFlight] = useState(null);
+  const [flightLoading, setFlightLoading] = useState(false);
+  const [flightTimer, setFlightTimer] = useState(0);
   const [isPomodoroOpen, setIsPomodoroOpen] = useState(false);
   const [isEditingPomodoro, setIsEditingPomodoro] = useState(false);
   const [editMinutes, setEditMinutes] = useState(25);
@@ -209,6 +216,55 @@ export default function App() {
 
   const dayName = baseDate.toLocaleString('en-US', { weekday: 'long' }); 
   const dayNum = String(baseDate.getDate()).padStart(2, '0'); 
+
+  // --- Flight Focus Logic ---
+  const fetchFlights = async () => {
+    setFlightLoading(true);
+    setFlightOptions([]);
+    try {
+      const res = await fetch('/api/flight');
+      const data = await res.json();
+      if (data.flights) {
+        setFlightOptions(data.flights);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setFlightLoading(false);
+  };
+
+  useEffect(() => {
+    if (isFlightFocusOpen && flightOptions.length === 0 && !selectedFlight) {
+      fetchFlights();
+    }
+  }, [isFlightFocusOpen]);
+
+  useEffect(() => {
+    let interval = null;
+    if (selectedFlight && flightTimer > 0) {
+      interval = setInterval(() => {
+        setFlightTimer(prev => prev - 1);
+      }, 1000);
+    } else if (flightTimer <= 0 && selectedFlight) {
+      // Flight landed!
+      if (globalAudioCtx) {
+        const osc = globalAudioCtx.createOscillator();
+        const gain = globalAudioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(523.25, globalAudioCtx.currentTime); // C5
+        osc.frequency.setValueAtTime(659.25, globalAudioCtx.currentTime + 0.2); // E5
+        osc.frequency.setValueAtTime(783.99, globalAudioCtx.currentTime + 0.4); // G5
+        gain.gain.setValueAtTime(0.5, globalAudioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, globalAudioCtx.currentTime + 1.5);
+        osc.connect(gain);
+        gain.connect(globalAudioCtx.destination);
+        osc.start();
+        osc.stop(globalAudioCtx.currentTime + 1.5);
+      }
+      setSelectedFlight(null);
+    }
+    return () => clearInterval(interval);
+  }, [selectedFlight, flightTimer]);
 
   // --- Modals & Inputs ---
   const [isEditingMission, setIsEditingMission] = useState(false);
@@ -979,6 +1035,81 @@ export default function App() {
           </div>, document.body
         )}
 
+        {/* ---------------- FLIGHT FOCUS MODAL ---------------- */}
+        {isFlightFocusOpen && createPortal(
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            padding: '24px', background: 'rgba(0,0,0,0.95)',
+            backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
+          }}>
+            <div style={{ width: '100%', maxWidth: '380px', position: 'relative', background: '#111', borderRadius: '32px', border: `1px solid rgba(255,255,255,0.08)`, padding: '36px 24px', boxShadow: `0 0 60px ${themeColor}22, 0 30px 60px rgba(0,0,0,0.8)` }}>
+              <button onClick={() => { setIsFlightFocusOpen(false); setSelectedFlight(null); }} style={{
+                position: 'absolute', top: '16px', right: '16px',
+                background: 'rgba(255,255,255,0.05)', border: 'none',
+                borderRadius: '50%', width: '32px', height: '32px',
+                color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}><X size={16} /></button>
+
+              <h3 className="text-sm font-bold tracking-widest text-white/50 uppercase mb-6 select-none text-center">Flight Focus ✈️</h3>
+
+              {flightLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-4">
+                  <Loader2 className="animate-spin text-white/30" size={32} />
+                  <span className="text-xs font-bold tracking-widest text-white/30 uppercase animate-pulse">Finding active flights...</span>
+                </div>
+              ) : selectedFlight ? (
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center gap-4 w-full mb-6 text-center justify-center">
+                    <div className="flex flex-col items-end">
+                      <span className="text-2xl font-black">{selectedFlight.origin}</span>
+                    </div>
+                    <PlaneTakeoff size={24} className="text-white/40" />
+                    <div className="flex flex-col items-start">
+                      <span className="text-2xl font-black">{selectedFlight.destination}</span>
+                    </div>
+                  </div>
+                  <div className="text-center mb-8">
+                    <span className="text-sm font-bold tracking-tight text-white/70 block mb-1">{selectedFlight.airline}</span>
+                    <span className="text-xs font-medium text-white/40 uppercase tracking-widest block">{selectedFlight.model}</span>
+                  </div>
+
+                  <div className="text-6xl font-black tabular-nums tracking-tighter mb-8" style={{ color: themeColor }}>
+                    {String(Math.floor(flightTimer / 60)).padStart(2, '0')}<span className="text-white/30">:</span>{String(flightTimer % 60).padStart(2, '0')}
+                  </div>
+                  
+                  {flightTimer <= 0 && (
+                    <span className="text-green-400 font-bold tracking-widest uppercase text-sm animate-pulse">Landed! 🎉</span>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {flightOptions.map((f, i) => (
+                    <div key={i} onClick={() => { setSelectedFlight(f); setFlightTimer(f.remainingSeconds); }} className="bg-[#1C1C1E] border border-white/5 p-4 rounded-2xl cursor-pointer hover:bg-[#2C2C2E] transition-colors active:scale-95">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="font-bold text-sm">{f.airline}</span>
+                        <span className="text-xs font-bold px-2 py-0.5 bg-white/10 rounded-full">{Math.floor(f.remainingSeconds / 60)} min</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-white/50 text-sm font-semibold">
+                        <span>{f.origin}</span>
+                        <PlaneTakeoff size={14} />
+                        <span>{f.destination}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {flightOptions.length === 0 && (
+                    <div className="text-center py-8">
+                      <span className="text-xs font-bold text-red-400">Could not find flights. Try again later.</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>, document.body
+        )}
+
         {isPomodoroOpen && createPortal(
           (() => {
             const PRESETS = [10, 20, 25, 30];
@@ -1567,6 +1698,7 @@ export default function App() {
                 <button onClick={() => setIsTasksModalOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
                 <button onClick={() => setIsPomodoroOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><Timer size={18} /></button>
                 <button onClick={() => setIsFlipClockOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><Clock size={18} /></button>
+                <button onClick={() => setIsFlightFocusOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><PlaneTakeoff size={18} /></button>
               </div>
               <button onClick={handleOpenManage} className="w-13 h-13 rounded-full bg-[#1C1C1E] border border-white/10 flex items-center justify-center hover:bg-[#2C2C2E] transition-all duration-200 active:scale-90 shadow-2xl shadow-black/60"><Edit2 size={18} className="text-white/90" /></button>
             </div>
