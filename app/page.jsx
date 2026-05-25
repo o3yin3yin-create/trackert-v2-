@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, PlaneTakeoff, Loader2 } from 'lucide-react';
+import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, PlaneTakeoff, Loader2, Globe } from 'lucide-react';
 import { messaging, getToken } from '../lib/firebase';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -1398,17 +1398,34 @@ export default function App() {
                   {!isOnline ? 'Offline' : isSyncing ? 'Syncing' : 'Synced'}
                 </span>
 
+              {/* Settings: Language & Theme */}
+              <button
+                onClick={toggleLang}
+                className="p-2 liquid-panel rounded-full text-black dark:text-white/50 hover:text-black dark:hover:text-white transition-all duration-200 active:scale-90"
+                title="Toggle Language"
+              >
+                <Globe size={18} strokeWidth={2.2} className="text-black dark:text-white" />
+              </button>
+
+              <button
+                onClick={toggleTheme}
+                className="p-2 liquid-panel rounded-full text-black dark:text-white/50 hover:text-black dark:hover:text-white transition-all duration-200 active:scale-90"
+                title="Toggle Theme"
+              >
+                {theme === 'dark' ? <Sun size={18} strokeWidth={2.2} className="text-white" /> : <Moon size={18} strokeWidth={2.2} className="text-black" />}
+              </button>
+
               {/* Emergency Cards Icon Button */}
               <button
                 onClick={() => setIsCardsModalOpen(true)}
-                className="p-2 bg-[#1C1C1E] border border-white/5 rounded-full text-white/50 hover:text-white transition-all duration-200 active:scale-90"
+                className="p-2 liquid-panel rounded-full text-black dark:text-white/50 hover:text-black dark:hover:text-white transition-all duration-200 active:scale-90"
                 title="Emergency Cards"
               >
-                <ShieldAlert size={18} strokeWidth={2.2} />
+                <ShieldAlert size={18} strokeWidth={2.2} className="text-black dark:text-white" />
               </button>
 
-              <label className="p-2 bg-[#1C1C1E] border border-white/5 rounded-full text-white/50 hover:text-white transition-all duration-200 active:scale-90 cursor-pointer relative">
-                <SlidersHorizontal size={18} strokeWidth={2.2} />
+              <label className="p-2 liquid-panel rounded-full text-black dark:text-white/50 hover:text-black dark:hover:text-white transition-all duration-200 active:scale-90 cursor-pointer relative">
+                <SlidersHorizontal size={18} strokeWidth={2.2} className="text-black dark:text-white" />
                 <input type="color" value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
               </label>
               </div>
