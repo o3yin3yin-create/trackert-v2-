@@ -829,7 +829,7 @@ export default function App() {
   if (!isMounted) return null;
 
   return (
-    <div dir={lang === 'ar' ? 'rtl' : 'ltr'} className={`min-h-screen mesh-bg text-black dark:text-white transition-colors duration-500 font-sans`}>
+    <div dir={lang === 'ar' ? 'rtl' : 'ltr'} className={`min-h-screen text-black dark:text-white transition-colors duration-500 font-sans`}>
       <style>
         {`
           body, html, #root {
@@ -1338,10 +1338,10 @@ export default function App() {
       <div className="min-h-screen bg-transparent text-white font-sans flex justify-center w-full selection:bg-white/20 pb-28 overflow-x-hidden relative">
         
         {/* Animated Aurora Background */}
-        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-black">
-          <div className="absolute top-[-10%] left-[-20%] w-[70vw] h-[70vw] rounded-full opacity-40 blur-[100px] mix-blend-screen aurora-anim-1" style={{ background: themeColor }}></div>
-          <div className="absolute bottom-[-20%] right-[-10%] w-[80vw] h-[80vw] rounded-full opacity-30 blur-[120px] mix-blend-screen aurora-anim-2" style={{ background: themeColor }}></div>
-          <div className="absolute top-[40%] left-[50%] w-[60vw] h-[60vw] rounded-full opacity-20 blur-[90px] mix-blend-screen aurora-anim-3" style={{ background: themeColor }}></div>
+        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-white dark:bg-black transition-colors duration-500">
+          <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full opacity-40 blur-[80px] mix-blend-multiply dark:mix-blend-screen aurora-anim-1" style={{ background: themeColor }}></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full opacity-30 blur-[90px] mix-blend-multiply dark:mix-blend-screen aurora-anim-2" style={{ background: themeColor }}></div>
+          <div className="absolute top-[30%] left-[40%] w-[35vw] h-[35vw] rounded-full opacity-20 blur-[70px] mix-blend-multiply dark:mix-blend-screen aurora-anim-3" style={{ background: themeColor }}></div>
         </div>
 
         <div ref={topRef} className="absolute top-0" /> 
