@@ -48,21 +48,28 @@ export default function FlipClock() {
 
   let hours = time.getHours();
   const minutes = time.getMinutes();
+  const seconds = time.getSeconds();
   const ampm = hours >= 12 ? 'PM' : 'AM';
   hours = hours % 12;
   hours = hours ? hours : 12; // the hour '0' should be '12'
 
   const hStr = String(hours).padStart(2, '0');
   const mStr = String(minutes).padStart(2, '0');
+  const sStr = String(seconds).padStart(2, '0');
 
   return (
-    <div className="flex justify-center items-center gap-2 md:gap-4 select-none mb-8">
+    <div className="flex justify-center items-center gap-2 md:gap-4 select-none mb-8 mt-12 scale-[0.8] md:scale-100">
       <FlipUnit val={hStr} label="Hours" />
       <div className="flex flex-col gap-3 justify-center items-center pb-6">
         <div className="w-2 md:w-3 h-2 md:h-3 rounded-full bg-white/40 animate-pulse" />
         <div className="w-2 md:w-3 h-2 md:h-3 rounded-full bg-white/40 animate-pulse delay-75" />
       </div>
       <FlipUnit val={mStr} label="Minutes" />
+      <div className="flex flex-col gap-3 justify-center items-center pb-6">
+        <div className="w-2 md:w-3 h-2 md:h-3 rounded-full bg-white/40 animate-pulse" />
+        <div className="w-2 md:w-3 h-2 md:h-3 rounded-full bg-white/40 animate-pulse delay-75" />
+      </div>
+      <FlipUnit val={sStr} label="Seconds" />
       <div className="flex flex-col justify-end pb-8 ml-2">
         <span className="text-sm md:text-lg font-bold tracking-widest text-white/50">{ampm}</span>
       </div>

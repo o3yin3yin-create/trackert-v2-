@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon } from 'lucide-react';
+import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Clock } from 'lucide-react';
 import { messaging, getToken } from '../lib/firebase';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -151,6 +151,7 @@ export default function App() {
     return {};
   });
 
+  const [isFlipClockOpen, setIsFlipClockOpen] = useState(false);
   const [isPomodoroOpen, setIsPomodoroOpen] = useState(false);
   const [isEditingPomodoro, setIsEditingPomodoro] = useState(false);
   const [editMinutes, setEditMinutes] = useState(25);
@@ -952,6 +953,32 @@ export default function App() {
           </div>,
           document.body
         )}
+        
+        {/* ---------------- FLIP CLOCK MODAL ---------------- */}
+        {isFlipClockOpen && createPortal(
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            padding: '24px', background: 'rgba(0,0,0,0.95)',
+            backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
+          }}>
+            <div style={{ width: '100%', maxWidth: '380px', position: 'relative' }}>
+              <button onClick={() => setIsFlipClockOpen(false)} style={{
+                position: 'absolute', top: '-48px', right: '0px',
+                background: 'rgba(255,255,255,0.05)', border: 'none',
+                borderRadius: '50%', width: '32px', height: '32px',
+                color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}><X size={16} /></button>
+              
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
+                <FlipClock />
+              </div>
+            </div>
+          </div>, document.body
+        )}
+
         {isPomodoroOpen && createPortal(
           (() => {
             const PRESETS = [10, 20, 25, 30];
@@ -1211,8 +1238,6 @@ export default function App() {
             {/* Left Column (Desktop) */}
             <div className="flex flex-col w-full md:w-[360px] lg:w-[400px] shrink-0">
               
-              <FlipClock />
-
               {/* Mission Card (Premium Cinematic Progress) */}
           <div 
             className="w-full p-6 flex flex-col mb-8 transition-all duration-500 ease-out" 
@@ -1541,6 +1566,7 @@ export default function App() {
                 <button onClick={() => setIsAnalyticsModalOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><BarChart2 size={18} /></button>
                 <button onClick={() => setIsTasksModalOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
                 <button onClick={() => setIsPomodoroOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><Timer size={18} /></button>
+                <button onClick={() => setIsFlipClockOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/5 text-white/40 hover:text-white/60 transition-all duration-200 active:scale-90"><Clock size={18} /></button>
               </div>
               <button onClick={handleOpenManage} className="w-13 h-13 rounded-full bg-[#1C1C1E] border border-white/10 flex items-center justify-center hover:bg-[#2C2C2E] transition-all duration-200 active:scale-90 shadow-2xl shadow-black/60"><Edit2 size={18} className="text-white/90" /></button>
             </div>
