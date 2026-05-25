@@ -10,43 +10,47 @@ export async function GET() {
       return NextResponse.json({ error: "No flights found" }, { status: 500 });
     }
 
-    const validFlights = [];
-    const maxAttempts = 100;
-    let attempts = 0;
-
-    // Pick random flights until we have 20 good ones
-    while (validFlights.length < 20 && attempts < maxAttempts) {
-      attempts++;
+    const numToFetch = 80; // Fetch 80 random flights in parallel to ensure we get ~20 good ones
+    const randomFlights = [];
+    for (let i = 0; i < numToFetch; i++) {
       const randomIdx = Math.floor(Math.random() * flights.length);
-      const flight = flights[randomIdx];
+      randomFlights.push(flights[randomIdx]);
+    }
+
+    const results = await Promise.allSettled(
+      randomFlights.map(flight => frapi.getFlightDetails(flight))
+    );
+
+    const validFlights = [];
+    for (let i = 0; i < results.length; i++) {
+      if (validFlights.length >= 20) break;
+      const res = results[i];
+      if (res.status !== 'fulfilled' || !res.value) continue;
       
-      try {
-        const details = await frapi.getFlightDetails(flight);
-        
-        if (!details || !details.time || !details.airport) continue;
+      const details = res.value;
+      const flight = randomFlights[i];
 
-        const estimatedArrival = details.time.estimated?.arrival || details.time.scheduled?.arrival;
-        if (!estimatedArrival) continue;
+      if (!details.time || !details.airport) continue;
 
-        const now = Math.floor(Date.now() / 1000);
-        const remainingSeconds = estimatedArrival - now;
-        const remainingMinutes = Math.floor(remainingSeconds / 60);
+      const estimatedArrival = details.time.estimated?.arrival || details.time.scheduled?.arrival;
+      if (!estimatedArrival) continue;
 
-        // We want flights landing between 15 and 180 minutes from now
-        if (remainingMinutes >= 15 && remainingMinutes <= 180) {
-          validFlights.push({
-            id: flight.id,
-            airline: details.airline?.name || 'Unknown Airline',
-            callsign: details.identification?.callsign || flight.callsign,
-            origin: details.airport.origin?.code?.iata || details.airport.origin?.name || 'Unknown',
-            destination: details.airport.destination?.code?.iata || details.airport.destination?.name || 'Unknown',
-            remainingSeconds,
-            estimatedArrival,
-            model: details.aircraft?.model?.text || 'Unknown Aircraft'
-          });
-        }
-      } catch (err) {
-        console.error("Error fetching details for flight", flight.id, err);
+      const now = Math.floor(Date.now() / 1000);
+      const remainingSeconds = estimatedArrival - now;
+      const remainingMinutes = Math.floor(remainingSeconds / 60);
+
+      // We want flights landing between 15 and 240 minutes from now
+      if (remainingMinutes >= 15 && remainingMinutes <= 240) {
+        validFlights.push({
+          id: flight.id,
+          airline: details.airline?.name || 'Unknown Airline',
+          callsign: details.identification?.callsign || flight.callsign,
+          origin: details.airport.origin?.code?.iata || details.airport.origin?.name || 'Unknown',
+          destination: details.airport.destination?.code?.iata || details.airport.destination?.name || 'Unknown',
+          remainingSeconds,
+          estimatedArrival,
+          model: details.aircraft?.model?.text || 'Unknown Aircraft'
+        });
       }
     }
 
