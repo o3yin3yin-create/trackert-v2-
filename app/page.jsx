@@ -23,6 +23,30 @@ const getAudioCtx = () => {
   return globalAudioCtx;
 };
 
+// --- Simulated Flight Telemetry based on progress ---
+const getTelemetry = (progress) => {
+  let altitude = 35000;
+  let speed = 480;
+  
+  if (progress < 0.1) {
+    const ratio = progress / 0.1;
+    altitude = Math.floor(ratio * 35000);
+    speed = Math.floor(ratio * 480);
+  } else if (progress > 0.9) {
+    const ratio = (1 - progress) / 0.1;
+    altitude = Math.floor(ratio * 35000);
+    speed = Math.floor(150 + ratio * 330);
+  } else {
+    // Add subtle noise
+    const noiseAlt = Math.sin(progress * 100) * 150;
+    const noiseSpd = Math.cos(progress * 100) * 8;
+    altitude = Math.floor(35000 + noiseAlt);
+    speed = Math.floor(480 + noiseSpd);
+  }
+  
+  return { altitude, speed };
+};
+
 // --- Custom Hook for Premium Animated Score ---
 function useAnimatedScore(targetValue) {
   const [currentValue, setCurrentValue] = useState(0);
@@ -410,53 +434,58 @@ export default function App() {
   }, [isFlightFocusOpen, flightOptions.length, selectedFlight]);
 
   useEffect(() => {
-    if (!isFlightTimerRunning || !selectedFlight) return;
+    if (!selectedFlight) return;
     
-    // Flight timer runs purely on timestamp delta now.
-    // Instead of interval decrementing flightTimer, we compute it based on currentUnixTime.
+    // Flight timer runs purely on timestamp delta now and is always live!
     const remaining = selectedFlight.estimatedArrival - currentUnixTime;
     
     if (remaining > 0) {
       setFlightTimer(remaining);
-      // Track focus time for today 1s at a time (since currentUnixTime ticks every 1s)
-      const todayStr = getFormatDateStr(new Date());
-      setFocusTimeData(prev => {
-        const updated = { ...prev, [todayStr]: (prev[todayStr] || 0) + 1 };
-        localStorage.setItem('daybase_focusTime_v4', JSON.stringify(updated));
-        return updated;
-      });
-      // Also log flight session to tasks analytics
-      setPomodoroTasksData(prev => {
-        const flightLabel = `✈️ ${selectedFlight.origin} → ${selectedFlight.destination}`;
-        const flightColor = '#007AFF';
-        const updated = { ...prev };
-        if (!updated[todayStr]) updated[todayStr] = [];
-        const idx = updated[todayStr].findIndex(tk => tk.name === flightLabel && tk.color === flightColor);
-        if (idx > -1) {
-          updated[todayStr][idx].timeSpent += 1;
-        } else {
-          updated[todayStr].push({ name: flightLabel, color: flightColor, timeSpent: 1 });
-        }
-        localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(updated));
-        return updated;
-      });
+      
+      // ONLY log focus time if the focus timer is actively running
+      if (isFlightTimerRunning) {
+        const todayStr = getFormatDateStr(new Date());
+        setFocusTimeData(prev => {
+          const updated = { ...prev, [todayStr]: (prev[todayStr] || 0) + 1 };
+          localStorage.setItem('daybase_focusTime_v4', JSON.stringify(updated));
+          return updated;
+        });
+        
+        setPomodoroTasksData(prev => {
+          const flightLabel = `✈️ ${selectedFlight.origin} → ${selectedFlight.destination}`;
+          const flightColor = '#007AFF';
+          const updated = { ...prev };
+          if (!updated[todayStr]) updated[todayStr] = [];
+          const idx = updated[todayStr].findIndex(tk => tk.name === flightLabel && tk.color === flightColor);
+          if (idx > -1) {
+            updated[todayStr][idx].timeSpent += 1;
+          } else {
+            updated[todayStr].push({ name: flightLabel, color: flightColor, timeSpent: 1 });
+          }
+          localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(updated));
+          return updated;
+        });
+      }
     } else if (remaining <= 0) {
       // Flight landed!
       setFlightTimer(0);
       setIsFlightTimerRunning(false);
-      if (globalAudioCtx) {
-        const osc = globalAudioCtx.createOscillator();
-        const gain = globalAudioCtx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(523.25, globalAudioCtx.currentTime); // C5
-        osc.frequency.setValueAtTime(659.25, globalAudioCtx.currentTime + 0.2); // E5
-        osc.frequency.setValueAtTime(783.99, globalAudioCtx.currentTime + 0.4); // G5
-        gain.gain.setValueAtTime(0.5, globalAudioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, globalAudioCtx.currentTime + 1.5);
-        osc.connect(gain);
-        gain.connect(globalAudioCtx.destination);
-        osc.start();
-        osc.stop(globalAudioCtx.currentTime + 1.5);
+      // Only trigger sound once when it first hits 0
+      if (flightTimer > 0) {
+        if (globalAudioCtx) {
+          const osc = globalAudioCtx.createOscillator();
+          const gain = globalAudioCtx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, globalAudioCtx.currentTime); // C5
+          osc.frequency.setValueAtTime(659.25, globalAudioCtx.currentTime + 0.2); // E5
+          osc.frequency.setValueAtTime(783.99, globalAudioCtx.currentTime + 0.4); // G5
+          gain.gain.setValueAtTime(0.5, globalAudioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, globalAudioCtx.currentTime + 1.5);
+          osc.connect(gain);
+          gain.connect(globalAudioCtx.destination);
+          osc.start();
+          osc.stop(globalAudioCtx.currentTime + 1.5);
+        }
       }
       setSelectedFlight(null);
     }
@@ -1269,27 +1298,16 @@ export default function App() {
 
         {/* ---------------- FLIGHT FOCUS MODAL ---------------- */}
         {isFlightFocusOpen && createPortal(
-          <div style={{
-            position: 'fixed', inset: 0, zIndex: 9999,
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            padding: '24px', background: 'rgba(0,0,0,0.6)',
-            backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
-          }}>
-            <div className="w-full max-w-[380px] md:max-w-[600px] relative liquid-panel rounded-[32px] px-6 py-4 md:py-8 shadow-2xl mb-24">
+          <div className="fixed inset-0 z-[99999] overflow-y-auto bg-black/60 backdrop-blur-3xl flex items-center justify-center p-4 sm:p-6 md:p-10">
+            {/* Modal Box */}
+            <div className="w-full max-w-sm landscape:max-w-4xl md:max-w-4xl relative liquid-panel rounded-[32px] p-5 sm:p-8 shadow-2xl flex flex-col my-auto transition-all duration-300">
               <button onClick={() => { 
                 setIsFlightFocusOpen(false); 
                 if (!isFlightTimerRunning) {
                   setSelectedFlight(null);
                 }
-              }} style={{
-                position: 'absolute', top: '16px', right: '16px',
-                background: 'rgba(128,128,128,0.2)', border: 'none',
-                borderRadius: '50%', width: '32px', height: '32px',
-                color: 'rgba(128,128,128,0.8)', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                {isFlightTimerRunning ? <ChevronDown size={18} className="text-black dark:text-white" /> : <X size={16} className="text-black dark:text-white" />}
+              }} className="absolute top-4 right-4 bg-gray-500/10 hover:bg-gray-500/20 border-none rounded-full w-8 h-8 text-black dark:text-white cursor-pointer flex items-center justify-center transition-colors z-[100]">
+                {isFlightTimerRunning ? <ChevronDown size={18} /> : <X size={16} />}
               </button>
 
               <h3 className="text-sm font-bold tracking-widest text-gray-500 dark:text-white/50 uppercase mb-4 select-none text-center">{t('flightFocus')} ✈️</h3>
@@ -1300,66 +1318,248 @@ export default function App() {
                   <span className="text-xs font-bold tracking-widest text-gray-500 dark:text-white/30 uppercase animate-pulse">{t('findingFlights')}</span>
                 </div>
               ) : selectedFlight ? (
-                <div className="flex flex-col items-center">
-                  <div className="flex items-center gap-4 w-full mb-3 md:mb-6 text-center justify-center">
-                    <div className="flex flex-col items-end">
-                      <span className="text-2xl font-black">{selectedFlight.origin}</span>
+                <div className="flex flex-col items-center w-full">
+                  
+                  {/* Route & Airline for portrait small screens only */}
+                  <div className="w-full md:hidden landscape:hidden flex flex-col items-center mb-6 px-1">
+                    <div className="flex items-center justify-between w-full mb-2 text-center">
+                      <span className="text-2xl font-black text-black dark:text-white">{selectedFlight.origin}</span>
+                      <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-black/20 dark:via-white/20 to-transparent mx-3" />
+                      <PlaneTakeoff size={18} className="text-blue-500 animate-pulse rotate-45" />
+                      <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-black/20 dark:via-white/20 to-transparent mx-3" />
+                      <span className="text-2xl font-black text-black dark:text-white">{selectedFlight.destination}</span>
                     </div>
-                    <PlaneTakeoff size={24} className="text-white/40" />
-                    <div className="flex flex-col items-start">
-                      <span className="text-2xl font-black">{selectedFlight.destination}</span>
-                    </div>
-                  </div>
-                  <div className="text-center mb-4 md:mb-8">
-                    <span className="text-sm font-bold tracking-tight text-gray-700 dark:text-white/70 block mb-1">
-                      {selectedFlight.airline} <span className="text-gray-300 dark:text-white/30 px-1">|</span> <span className="text-black dark:text-white/90">{t('flightNumber')} {selectedFlight.callsign}</span>
+                    
+                    <span className="text-xs font-bold text-gray-600 dark:text-white/60 text-center">
+                      {selectedFlight.airline} <span className="text-black/10 dark:text-white/20 px-1">|</span> {selectedFlight.callsign}
                     </span>
-                    <span className="text-[10px] md:text-xs font-medium text-gray-500 dark:text-white/40 uppercase tracking-widest block">{selectedFlight.model}</span>
+                    <span className="text-[10px] text-gray-400 dark:text-white/30 uppercase font-mono tracking-widest mt-0.5">{selectedFlight.model}</span>
                   </div>
 
-                  <div className="flex justify-center mb-2 md:mb-8 w-full">
-                    <FlipClock countdownSeconds={flightTimer} />
-                  </div>
-                  
-                  {flightTimer > 0 ? (
-                    <div className="flex justify-center w-full mt-4">
-                      {!isFlightTimerRunning ? (
-                        <button 
-                          onClick={() => setIsFlightTimerRunning(true)}
-                          className="px-8 py-3 bg-white/50 dark:bg-[#1C1C1E] border border-black/10 dark:border-white/10 rounded-2xl font-bold text-black dark:text-white tracking-widest hover:bg-white dark:hover:bg-[#2C2C2E] transition-colors active:scale-95 shadow-xl w-full max-w-[200px]"
-                        >
-                          {t('start')}
-                        </button>
-                      ) : (
-                        <button 
-                          onClick={() => {
-                            setIsFlightTimerRunning(false);
-                            setSelectedFlight(null);
-                          }}
-                          className="px-8 py-3 bg-red-500/10 border border-red-500/30 text-red-500 dark:text-red-400 rounded-2xl font-bold tracking-widest hover:bg-red-500/20 transition-colors active:scale-95 shadow-xl w-full max-w-[200px]"
-                        >
-                          {t('giveUp')}
-                        </button>
-                      )}
+                  {/* TWO COLUMN GRID FOR LANDSCAPE / LAPTOP */}
+                  <div className="w-full grid grid-cols-1 md:grid-cols-12 landscape:grid-cols-12 gap-6 items-stretch">
+                    
+                    {/* LEFT COLUMN: Aviation details & curved path radar */}
+                    <div className="col-span-1 md:col-span-6 landscape:col-span-6 flex flex-col justify-between bg-white/10 dark:bg-black/20 border border-black/5 dark:border-white/5 p-4 sm:p-5 rounded-3xl shadow-inner">
+                      
+                      {/* Desktop Route Info (Visible on large screens and landscape mode) */}
+                      <div className="hidden md:flex landscape:flex flex-col w-full mb-4">
+                        <div className="flex items-center justify-between w-full mb-1 text-center">
+                          <span className="text-3xl font-black tracking-tight text-black dark:text-white">{selectedFlight.origin}</span>
+                          <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-black/10 dark:via-white/10 to-transparent mx-4" />
+                          <PlaneTakeoff size={20} className="text-blue-500 rotate-45" />
+                          <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-black/10 dark:via-white/10 to-transparent mx-4" />
+                          <span className="text-3xl font-black tracking-tight text-black dark:text-white">{selectedFlight.destination}</span>
+                        </div>
+                        
+                        <div className="flex justify-between items-center text-[10px] font-black text-gray-400 dark:text-white/30 uppercase tracking-widest mb-3 px-1">
+                          <span>{t('departure')}</span>
+                          <span>{t('arrival')}</span>
+                        </div>
+                        
+                        <div className="text-left bg-black/5 dark:bg-black/20 p-3 rounded-xl border border-black/5 dark:border-white/5">
+                          <span className="text-xs font-bold text-gray-800 dark:text-white/80 block">
+                            {selectedFlight.airline} • {selectedFlight.callsign}
+                          </span>
+                          <span className="text-[10px] text-gray-500 dark:text-white/40 font-mono tracking-tight uppercase block mt-0.5">
+                            {selectedFlight.model}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Curved Aviation Radar */}
+                      <div className="w-full relative py-2 mb-4 bg-black/5 dark:bg-black/40 border border-black/5 dark:border-white/5 rounded-2xl p-3 flex flex-col justify-center">
+                        {/* Bezier Radar Map */}
+                        {(() => {
+                          const progress = selectedFlight.initialSeconds ? Math.max(0, Math.min(1, (selectedFlight.initialSeconds - flightTimer) / selectedFlight.initialSeconds)) : 0;
+                          
+                          // Bezier calculator
+                          const p0 = { x: 30, y: 65 };
+                          const p1 = { x: 150, y: 15 };
+                          const p2 = { x: 270, y: 65 };
+                          
+                          const x = (1 - progress) * (1 - progress) * p0.x + 2 * (1 - progress) * progress * p1.x + progress * progress * p2.x;
+                          const y = (1 - progress) * (1 - progress) * p0.y + 2 * (1 - progress) * progress * p1.y + progress * progress * p2.y;
+                          
+                          const dx = 2 * (1 - progress) * (p1.x - p0.x) + 2 * progress * (p2.x - p1.x);
+                          const dy = 2 * (1 - progress) * (p1.y - p0.y) + 2 * progress * (p2.y - p1.y);
+                          const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+                          
+                          return (
+                            <div className="w-full">
+                              <svg viewBox="0 0 300 90" className="w-full h-auto overflow-visible select-none">
+                                <defs>
+                                  <linearGradient id="route-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.1" />
+                                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.9" />
+                                  </linearGradient>
+                                </defs>
+                                
+                                {/* Dashed trajectory */}
+                                <path 
+                                  d="M 30 65 Q 150 15 270 65" 
+                                  fill="none" 
+                                  className="stroke-gray-300 dark:stroke-white/10" 
+                                  strokeWidth="1.5" 
+                                  strokeDasharray="4 4" 
+                                />
+                                
+                                {/* Covered trail */}
+                                <path 
+                                  d="M 30 65 Q 150 15 270 65" 
+                                  fill="none" 
+                                  stroke="url(#route-grad)" 
+                                  strokeWidth="2.5" 
+                                  strokeDasharray="250" 
+                                  strokeDashoffset={250 * (1 - progress)}
+                                  className="transition-all duration-1000 ease-linear"
+                                />
+                                
+                                {/* Origin Node */}
+                                <g transform="translate(30, 65)">
+                                  <circle r="5" className="fill-blue-500/20" />
+                                  <circle r="2.5" className="fill-blue-500 animate-pulse" />
+                                  <circle r="7" className="fill-none stroke-blue-500/40 stroke-1 animate-ping" />
+                                </g>
+                                
+                                {/* Destination Node */}
+                                <g transform="translate(270, 65)">
+                                  <circle r="5" className="fill-gray-400/20 dark:fill-white/10" />
+                                  <circle r="2.5" className="fill-gray-400 dark:fill-white/40" />
+                                </g>
+                                
+                                {/* Flying Jet */}
+                                <g 
+                                  transform={`translate(${x}, ${y}) rotate(${angle})`} 
+                                  className="transition-all duration-1000 ease-linear"
+                                >
+                                  <circle r="10" className="fill-blue-500/30 blur-[2px]" />
+                                  <g transform="rotate(45) translate(-8, -8)">
+                                    <PlaneTakeoff size={16} className="text-blue-500 drop-shadow-[0_0_6px_rgba(59,130,246,0.8)]" />
+                                  </g>
+                                </g>
+                              </svg>
+                              
+                              <div className="flex justify-between items-center mt-1 px-1 text-[9px] font-mono text-gray-400 dark:text-white/30 uppercase tracking-widest font-black">
+                                <span>{selectedFlight.origin}</span>
+                                <span className="text-blue-500 dark:text-blue-400 font-bold">{Math.round(progress * 100)}% {lang === 'ar' ? 'اكتمل' : 'completed'}</span>
+                                <span>{selectedFlight.destination}</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Aviation simulated telemetry details */}
+                      {(() => {
+                        const progress = selectedFlight.initialSeconds ? Math.max(0, Math.min(1, (selectedFlight.initialSeconds - flightTimer) / selectedFlight.initialSeconds)) : 0;
+                        const { altitude, speed } = getTelemetry(progress);
+                        
+                        return (
+                          <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-gray-500 dark:text-white/40 border-t border-black/5 dark:border-white/5 pt-3">
+                            <div className="flex flex-col">
+                              <span>{lang === 'ar' ? 'الارتفاع:' : 'ALTITUDE:'}</span>
+                              <span className="font-black text-gray-800 dark:text-white/80">{altitude.toLocaleString()} FT</span>
+                            </div>
+                            <div className="flex flex-col text-right">
+                              <span>{lang === 'ar' ? 'السرعة:' : 'SPEED:'}</span>
+                              <span className="font-black text-gray-800 dark:text-white/80">{speed} KTS</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
-                  ) : (
-                    <span className="text-green-500 dark:text-green-400 font-bold tracking-widest uppercase text-sm animate-pulse mt-4">{t('landed')}</span>
-                  )}
+
+                    {/* RIGHT COLUMN: Futuristic glowing digital chronograph & control actions */}
+                    <div className="col-span-1 md:col-span-6 landscape:col-span-6 flex flex-col justify-between gap-4 p-4 sm:p-5 rounded-3xl bg-white/10 dark:bg-black/20 border border-black/5 dark:border-white/5 shadow-inner">
+                      
+                      {/* Top status header for timer column */}
+                      <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-white/40 px-1 select-none">
+                        <span>{lang === 'ar' ? 'حالة الرحلة:' : 'FLIGHT STATUS:'}</span>
+                        {isFlightTimerRunning ? (
+                          <span className="text-green-500 flex items-center gap-1 font-bold">
+                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping" />
+                            {lang === 'ar' ? 'جاري التركيز' : 'FOCUS ACTIVE'}
+                          </span>
+                        ) : (
+                          <span className="text-blue-500 flex items-center gap-1 font-bold">
+                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                            {lang === 'ar' ? 'في الطريق' : 'EN ROUTE'}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Futuristic Digital Cockpit Chronograph */}
+                      <div className="flex flex-col items-center justify-center py-6 px-4 rounded-2xl bg-black/40 dark:bg-black/50 border border-black/10 dark:border-white/5 w-full relative overflow-hidden shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_8px_32px_rgba(0,0,0,0.4)]">
+                         <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent pointer-events-none" />
+                         
+                         <span className="text-[9px] uppercase tracking-widest font-black text-blue-400 mb-3 flex items-center gap-1.5 select-none">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                            {t('remainingTime')}
+                         </span>
+                         
+                         <div className="text-4xl sm:text-5xl md:text-3xl lg:text-4xl xl:text-5xl font-mono font-black tracking-widest text-blue-500 dark:text-blue-400 drop-shadow-[0_0_10px_rgba(59,130,246,0.6)] select-all leading-none py-1 flex items-center justify-center gap-1.5 tabular-nums">
+                            <span className="bg-black/35 border border-white/5 px-2 py-1.5 rounded-xl min-w-[2.2ch] text-center">{String(Math.floor(flightTimer / 3600)).padStart(2, '0')}</span>
+                            <span className="text-xl text-blue-500/40 animate-pulse">:</span>
+                            <span className="bg-black/35 border border-white/5 px-2 py-1.5 rounded-xl min-w-[2.2ch] text-center">{String(Math.floor((flightTimer % 3600) / 60)).padStart(2, '0')}</span>
+                            <span className="text-xl text-blue-500/40 animate-pulse">:</span>
+                            <span className="bg-black/35 border border-white/5 px-2 py-1.5 rounded-xl min-w-[2.2ch] text-center">{String(flightTimer % 60).padStart(2, '0')}</span>
+                         </div>
+                         
+                         <div className="flex justify-between w-full mt-4 text-[9px] font-mono text-gray-500 dark:text-white/30 uppercase tracking-widest px-1">
+                            <span>SYS: ACTIVE</span>
+                            <span>ETA: {new Date(selectedFlight.estimatedArrival * 1000).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                         </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      {flightTimer > 0 ? (
+                        <div className="flex justify-center w-full mt-2">
+                          {!isFlightTimerRunning ? (
+                            <button 
+                              onClick={() => setIsFlightTimerRunning(true)}
+                              className="px-6 py-3 bg-blue-500 border border-blue-600 rounded-2xl font-bold text-white tracking-widest hover:bg-blue-600 transition-colors active:scale-95 shadow-xl w-full"
+                            >
+                              {t('startFocus')}
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => {
+                                setIsFlightTimerRunning(false);
+                                setSelectedFlight(null);
+                              }}
+                              className="px-6 py-3 bg-red-500/10 border border-red-500/30 text-red-500 dark:text-red-400 rounded-2xl font-bold tracking-widest hover:bg-red-500/20 transition-colors active:scale-95 shadow-xl w-full"
+                            >
+                              {t('giveUp')}
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-green-500 dark:text-green-400 font-bold tracking-widest uppercase text-sm text-center animate-pulse mt-4 w-full">{t('landed')}</span>
+                      )}
+
+                    </div>
+
+                  </div>
+
                 </div>
               ) : (
-                <div className="flex flex-col gap-3 overflow-y-auto max-h-[50vh] pr-2">
+                <div className="flex flex-col gap-3 overflow-y-auto max-h-[50vh] pr-2 w-full">
                   {flightOptions.map((f, i) => (
-                    <div key={i} onClick={() => { setSelectedFlight(f); setFlightTimer(f.remainingSeconds); }} className="bg-[#1C1C1E] border border-white/5 p-4 rounded-2xl cursor-pointer hover:bg-[#2C2C2E] transition-colors active:scale-95 shrink-0">
+                    <div key={i} onClick={() => { 
+                      const liveRemaining = f.estimatedArrival - Math.floor(Date.now() / 1000);
+                      setSelectedFlight({...f, initialSeconds: liveRemaining}); 
+                      setFlightTimer(Math.max(0, liveRemaining)); 
+                    }} className="bg-white/10 dark:bg-black/30 border border-black/5 dark:border-white/5 p-4 rounded-2xl cursor-pointer hover:bg-white/30 dark:hover:bg-black/50 transition-colors active:scale-95 shrink-0">
                       <div className="flex justify-between items-start mb-2">
-                        <span className="font-bold text-sm flex items-center gap-2">
+                        <span className="font-bold text-sm flex items-center gap-2 text-black dark:text-white">
                           {f.airline}
-                          <span className="text-[10px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-white/50">{f.callsign}</span>
+                          <span className="text-[10px] bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 px-1.5 py-0.5 rounded text-gray-500 dark:text-white/50">{f.callsign}</span>
                         </span>
-
                       </div>
-                      <div className="flex items-center gap-2 text-white/50 text-sm font-semibold">
+                      <div className="flex items-center gap-2 text-gray-500 dark:text-white/50 text-sm font-semibold">
                         <span>{f.origin}</span>
-                        <PlaneTakeoff size={14} />
+                        <PlaneTakeoff size={14} className="text-gray-400 dark:text-white/30" />
                         <span>{f.destination}</span>
                       </div>
                     </div>
