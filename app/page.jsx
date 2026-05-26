@@ -270,6 +270,109 @@ export default function App() {
     return {};
   });
 
+  // --- CLOUD SYNC LOGIC ---
+  useEffect(() => {
+    if (!user || !isMounted) return;
+    
+    async function fetchCloudState() {
+      setIsSyncing(true);
+      try {
+        const res = await fetch('/api/sync');
+        if (res.ok) {
+          const { state } = await res.json();
+          if (state) {
+            if (state.theme) {
+               setTheme(state.theme);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_theme', state.theme);
+            }
+            if (state.bgStyle) {
+               setBgStyle(state.bgStyle);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', state.bgStyle);
+            }
+            if (state.lang) {
+               setLang(state.lang);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_lang', state.lang);
+            }
+            if (state.themeColor) {
+               setThemeColor(state.themeColor);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', state.themeColor);
+            }
+            
+            if (state.habits && state.habits.length > 0) {
+               setHabits(state.habits);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_habits_v4', JSON.stringify(state.habits));
+            }
+            if (state.dailyData && Object.keys(state.dailyData).length > 0) {
+               setDailyData(state.dailyData);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_dailyData_v4', JSON.stringify(state.dailyData));
+            }
+            if (state.sleepData && Object.keys(state.sleepData).length > 0) {
+               setSleepData(state.sleepData);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_sleepData_v4', JSON.stringify(state.sleepData));
+            }
+            if (state.focusTimeData && Object.keys(state.focusTimeData).length > 0) {
+               setFocusTimeData(state.focusTimeData);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_focusTime_v4', JSON.stringify(state.focusTimeData));
+            }
+            if (state.pomodoroTasksData && Object.keys(state.pomodoroTasksData).length > 0) {
+               setPomodoroTasksData(state.pomodoroTasksData);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(state.pomodoroTasksData));
+            }
+            if (state.emergencyCards && state.emergencyCards.length > 0) {
+               setHabitCards(state.emergencyCards);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_cards_v4', JSON.stringify(state.emergencyCards));
+            }
+            if (state.grantedCardsLog && Object.keys(state.grantedCardsLog).length > 0) {
+               setGrantedCardsLog(state.grantedCardsLog);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_granted_cards_log_v4', JSON.stringify(state.grantedCardsLog));
+            }
+            
+            // Re-apply theme class
+            if (state.theme === 'dark') document.documentElement.classList.add('dark');
+            else document.documentElement.classList.remove('dark');
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch cloud state", err);
+      } finally {
+        setIsCloudLoaded(true);
+        setIsSyncing(false);
+      }
+    }
+    
+    fetchCloudState();
+  }, [user, isMounted]);
+
+  useEffect(() => {
+    if (!user || !isCloudLoaded) return; // Don't push before we pull!
+
+    const stateSnapshot = {
+      habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
+      theme, bgStyle, lang, focusTimeData, pomodoroTasksData, emergencyCards: habitCards
+    };
+
+    setIsSyncing(true);
+    const timerId = setTimeout(async () => {
+      try {
+        await fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(stateSnapshot)
+        });
+      } catch (err) {
+        console.error("Failed to push cloud state", err);
+      } finally {
+        setIsSyncing(false);
+      }
+    }, 2500);
+
+    return () => clearTimeout(timerId);
+  }, [
+    habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog, 
+    theme, bgStyle, lang, focusTimeData, pomodoroTasksData, 
+    user, isCloudLoaded
+  ]);
+
   // --- Live Time Tick for absolute timers ---
   const [currentUnixTime, setCurrentUnixTime] = useState(() => Math.floor(Date.now() / 1000));
   useEffect(() => {

@@ -1,233 +1,183 @@
-import prisma from "../../../lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { PrismaClient } from '@prisma/client';
 
-// --- GET: جلب البيانات السحابية بالكامل للمستخدم ---
-export async function GET(req) {
+const prisma = new PrismaClient();
+
+// Fetch the complete state for the user
+export async function GET() {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
-    const { searchParams } = new URL(req.url);
-    const clerkId = searchParams.get("clerkId");
-
-    if (!clerkId) {
-      return NextResponse.json({ success: false, error: "Missing Clerk ID" }, { status: 400 });
-    }
-
-    console.log("📥 Fetching cloud data for user:", clerkId);
-
-    // البحث عن المستخدم وتضمين بياناته بالكامل
-    const user = await prisma.user.findUnique({
-      where: { id: clerkId },
+    let user = await prisma.user.findUnique({
+      where: { id: userId },
       include: {
         habits: true,
         dailyLogs: true,
-        sleepLogs: true,
       },
     });
 
-    // لو اليوزر مش موجود أو جديد خالص بنرجع بيانات فارغة
     if (!user) {
-      return NextResponse.json({
-        success: true,
-        habits: [],
-        dailyData: {},
-        sleepData: {},
-        dailyTasksData: {}
+      // First time user, create default record
+      user = await prisma.user.create({
+        data: { id: userId, email: userId }, // clerk usually provides email, but ID is what matters for foreign keys
+        include: { habits: true, dailyLogs: true }
       });
     }
 
-    // فورمات العادات بالشكل المتوقع في الفرونت إند
-    const habits = user.habits.map(h => ({
-      id: h.id,
-      name: h.name,
-      type: h.type,
-      subItems: h.subItems,
-      isNotifyEnabled: h.isNotifyEnabled,
-      notifyTime: h.notifyTime,
-      customMessage: h.customMessage
-    }));
+    // Reconstruct the flat state object expected by the frontend
+    const state = {
+      theme: user.theme,
+      bgStyle: user.bgStyle,
+      lang: user.lang,
+      themeColor: user.themeColor,
+      emergencyCards: user.emergencyCards || [],
+      grantedCardsLog: user.grantedCards || {},
+      habits: user.habits,
+      dailyData: {},
+      sleepData: {},
+      focusTimeData: {},
+      pomodoroTasksData: {},
+    };
 
-    // دمج السجلات اليومية المفلطحة للفرونت إند
-    const dailyData = {};
+    // Unpack daily logs into their respective maps
     user.dailyLogs.forEach(log => {
+      // dailyData is merged directly
       if (log.logs && typeof log.logs === 'object') {
-        Object.entries(log.logs).forEach(([key, val]) => {
-          dailyData[key] = val;
-        });
+        Object.assign(state.dailyData, log.logs);
       }
-    });
-
-    // تحويل ساعات النوم
-    const sleepData = {};
-    user.sleepLogs.forEach(log => {
-      sleepData[log.date] = log.hours;
-    });
-
-    // تجميع المهام اليومية (Daily Tasks)
-    const dailyTasksData = {};
-    user.dailyLogs.forEach(log => {
+      
+      if (log.sleep) {
+        state.sleepData[log.date] = log.sleep;
+      }
+      
+      if (log.focusTime) {
+        state.focusTimeData[log.date] = log.focusTime;
+      }
+      
       if (log.tasks && Array.isArray(log.tasks)) {
-        dailyTasksData[log.date] = log.tasks;
+        state.pomodoroTasksData[log.date] = log.tasks;
       }
     });
 
-    return NextResponse.json({
-      success: true,
-      habits,
-      dailyData,
-      sleepData,
-      dailyTasksData
-    });
+    return NextResponse.json({ state });
+
   } catch (error) {
-    console.error("Sync GET API Error:", error);
-    return NextResponse.json({ success: false, error: "Failed to load cloud data" }, { status: 500 });
+    console.error('Sync GET Error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
-// --- POST: مزامنة وحفظ البيانات سحابياً ---
+// Save the complete state to the database
 export async function POST(req) {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
-    const body = await req.json();
-    const { clerkId, email, habits, dailyData, sleepData, dailyTasksData } = body;
+    const state = await req.json();
 
-    if (!clerkId) {
-      return NextResponse.json({ success: false, error: "Missing Clerk ID" }, { status: 400 });
-    }
-
-    console.log("🔄 Syncing and saving data for user:", clerkId);
-
-    // 1. مزامنة وحفظ بيانات المستخدم الأساسية (تم تعديل الحقل ليكون id)
+    // 1. Upsert User Settings
     await prisma.user.upsert({
-      where: { id: clerkId },
-      update: { email: email || "" },
-      create: { id: clerkId, email: email || "" },
+      where: { id: userId },
+      create: {
+        id: userId,
+        email: userId, // Placeholder if email isn't available from token
+        theme: state.theme || 'dark',
+        bgStyle: state.bgStyle || 'aurora',
+        lang: state.lang || 'en',
+        themeColor: state.themeColor || '#007AFF',
+        emergencyCards: state.emergencyCards || [],
+        grantedCards: state.grantedCardsLog || {},
+      },
+      update: {
+        theme: state.theme,
+        bgStyle: state.bgStyle,
+        lang: state.lang,
+        themeColor: state.themeColor,
+        emergencyCards: state.emergencyCards || [],
+        grantedCards: state.grantedCardsLog || {},
+      }
     });
 
-    // 2. مزامنة العادات (Habits)
-    if (habits && Array.isArray(habits)) {
-      const incomingIds = habits.map(h => h.id);
+    // 2. Sync Habits
+    if (state.habits && Array.isArray(state.habits)) {
+      const habitIds = state.habits.map(h => h.id);
       
-      // مسح العادات التي تم حذفها من واجهة المستخدم محلياً
+      // Delete habits that were removed
       await prisma.habit.deleteMany({
-        where: {
-          userId: clerkId,
-          id: { notIn: incomingIds }
-        }
+        where: { userId, id: { notIn: habitIds } }
       });
 
-      // حفظ العادات الحالية
-      for (const habit of habits) {
+      // Upsert existing/new habits
+      for (const h of state.habits) {
         await prisma.habit.upsert({
-          where: { id: habit.id },
+          where: { id: h.id },
+          create: {
+            id: h.id,
+            name: h.name,
+            type: h.type,
+            subItems: h.subItems || [],
+            isNotifyEnabled: h.isNotifyEnabled || false,
+            notifyTime: h.notifyTime,
+            customMessage: h.customMessage,
+            userId
+          },
           update: {
-            name: habit.name,
-            type: habit.type,
-            subItems: habit.subItems,
-            isNotifyEnabled: habit.isNotifyEnabled || false,
-            notifyTime: habit.notifyTime || null,
-            customMessage: habit.customMessage || null,
-          },
-          create: {
-            id: habit.id,
-            userId: clerkId,
-            name: habit.name,
-            type: habit.type,
-            subItems: habit.subItems,
-            isNotifyEnabled: habit.isNotifyEnabled || false,
-            notifyTime: habit.notifyTime || null,
-            customMessage: habit.customMessage || null,
+            name: h.name,
+            type: h.type,
+            subItems: h.subItems || [],
+            isNotifyEnabled: h.isNotifyEnabled || false,
+            notifyTime: h.notifyTime,
+            customMessage: h.customMessage,
           }
         });
       }
     }
 
-    // 3. مزامنة السجلات اليومية (Daily Logs)
-    if (dailyData && typeof dailyData === 'object') {
-      const dailyLogsByDate = {};
-      
-      // تجميع الـ state المفرود حسب التاريخ YYYY-MM-DD
-      Object.entries(dailyData).forEach(([key, val]) => {
-        const date = key.substring(0, 10);
-        if (!dailyLogsByDate[date]) {
-          dailyLogsByDate[date] = {};
+    // 3. Sync Daily Logs
+    // Extract unique dates from all data sources
+    const dates = new Set([
+      ...Object.keys(state.dailyData || {}).map(k => k.substring(0, 10)),
+      ...Object.keys(state.sleepData || {}),
+      ...Object.keys(state.focusTimeData || {}),
+      ...Object.keys(state.pomodoroTasksData || {})
+    ]);
+
+    for (const date of dates) {
+      if (!date || date.length !== 10) continue; // safety check
+
+      // Filter dailyData for this specific date
+      const dateDailyData = {};
+      for (const [k, v] of Object.entries(state.dailyData || {})) {
+        if (k.startsWith(date)) {
+          dateDailyData[k] = v;
         }
-        dailyLogsByDate[date][key] = val;
+      }
+
+      await prisma.dailyLog.upsert({
+        where: { userId_date: { userId, date } },
+        create: {
+          userId,
+          date,
+          logs: dateDailyData,
+          sleep: state.sleepData?.[date] || null,
+          focusTime: state.focusTimeData?.[date] || 0,
+          tasks: state.pomodoroTasksData?.[date] || [],
+        },
+        update: {
+          logs: dateDailyData,
+          sleep: state.sleepData?.[date] || null,
+          focusTime: state.focusTimeData?.[date] || 0,
+          tasks: state.pomodoroTasksData?.[date] || [],
+        }
       });
-
-      // كتابة السجلات في الداتابيز
-      for (const [date, logs] of Object.entries(dailyLogsByDate)) {
-        // Prepare update/create objects
-        const updateData = { logs: logs };
-        const createData = {
-            userId: clerkId,
-            date: date,
-            logs: logs
-        };
-
-        // إذا كان هناك tasks لنفس اليوم، نضيفها
-        if (dailyTasksData && dailyTasksData[date]) {
-            updateData.tasks = dailyTasksData[date];
-            createData.tasks = dailyTasksData[date];
-        }
-
-        await prisma.dailyLog.upsert({
-          where: {
-            userId_date: {
-              userId: clerkId,
-              date: date
-            }
-          },
-          update: updateData,
-          create: createData
-        });
-      }
-
-      // إذا كان هناك tasks لأيام ليس لها logs بعد (نادر الحدوث لكن وارد)
-      if (dailyTasksData && typeof dailyTasksData === 'object') {
-        for (const [date, tasks] of Object.entries(dailyTasksData)) {
-            if (!dailyLogsByDate[date]) {
-                await prisma.dailyLog.upsert({
-                    where: { userId_date: { userId: clerkId, date: date } },
-                    update: { tasks: tasks },
-                    create: { userId: clerkId, date: date, logs: {}, tasks: tasks }
-                });
-            }
-        }
-      }
-    } else if (dailyTasksData && typeof dailyTasksData === 'object') {
-      // إذا لم يكن هناك dailyData على الإطلاق، لكن يوجد tasks
-      for (const [date, tasks] of Object.entries(dailyTasksData)) {
-        await prisma.dailyLog.upsert({
-            where: { userId_date: { userId: clerkId, date: date } },
-            update: { tasks: tasks },
-            create: { userId: clerkId, date: date, logs: {}, tasks: tasks }
-        });
-      }
     }
 
-    // 4. مزامنة سجلات النوم (Sleep Logs)
-    if (sleepData && typeof sleepData === 'object') {
-      for (const [date, hours] of Object.entries(sleepData)) {
-        if (hours === null || hours === undefined || isNaN(Number(hours))) continue;
-        await prisma.sleepLog.upsert({
-          where: {
-            userId_date: {
-              userId: clerkId,
-              date: date
-            }
-          },
-          update: { hours: Number(hours) },
-          create: {
-            userId: clerkId,
-            date: date,
-            hours: Number(hours)
-          }
-        });
-      }
-    }
+    return NextResponse.json({ success: true });
 
-    return NextResponse.json({ success: true, message: "تمت المزامنة وحفظ البيانات سحابياً بنجاح! 🔄" });
-    
   } catch (error) {
-    console.error("Sync POST API Error:", error);
-    return NextResponse.json({ success: false, error: "Sync failed safely" }, { status: 500 });
+    console.error('Sync POST Error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

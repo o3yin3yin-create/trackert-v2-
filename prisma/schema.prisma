@@ -9,16 +9,21 @@ generator client {
 
 // 1. جدول المستخدمين ومربوط بـ Clerk
 model User {
-  id            String     @id // هنا هنخزن الـ clerkId الفريد
-  email         String     @unique
-  name          String?    @default("Zain")
-  fcmToken      String?    // توكن الإشعارات لجهاز المستخدم
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id             String     @id // هنا هنخزن الـ clerkId الفريد
+  email          String     @unique
+  name           String?    @default("Zain")
+  fcmToken       String?    // توكن الإشعارات لجهاز المستخدم
+  theme          String     @default("dark")
+  bgStyle        String     @default("aurora")
+  lang           String     @default("en")
+  themeColor     String     @default("#007AFF")
+  emergencyCards Json?      @default("[]") // Custom emergency cards
+  grantedCards   Json?      @default("{}") // The log of opened cards
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
   
-  habits        Habit[]
-  dailyLogs     DailyLog[]
-  sleepLogs     SleepLog[]
+  habits         Habit[]
+  dailyLogs      DailyLog[]
 }
 
 // 2. جدول العادات ببيانات الإشعارات المخصصة بنظام 12 ساعة
@@ -38,27 +43,17 @@ model Habit {
   updatedAt       DateTime @updatedAt
 }
 
-// 3. جدول تسجيل العادات اليومي (ذكي ومثالي للـ Offline Sync)
+// 3. جدول تسجيل العادات اليومي والإحصائيات
 model DailyLog {
   id        String   @id @default(cuid())
   date      String   // بصيغة "YYYY-MM-DD"
   logs      Json     // هيخزن الـ state الكاملة للـ Checked عادات في اليوم ده
-  tasks     Json?    @default("[]") // المهام المؤقتة لليوم ده
+  tasks     Json?    @default("[]") // المهام المؤقتة لليوم ده (البومودورو والرحلات)
+  sleep     String?  // ساعات النوم (كـ String أو Number)
+  focusTime Int?     @default(0) // إجمالي ثواني التركيز
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   updatedAt DateTime @updatedAt
 
   @@unique([userId, date]) // بيمنع تكرار نفس اليوم لنفس اليوزر
-}
-
-// 4. جدول تسجيل ساعات النوم
-model SleepLog {
-  id        String   @id @default(cuid())
-  date      String   // بصيغة "YYYY-MM-DD"
-  hours     Float
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, date])
 }
