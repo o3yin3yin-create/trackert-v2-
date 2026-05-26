@@ -1133,8 +1133,13 @@ export default function App() {
             padding: '24px', background: 'rgba(0,0,0,0.6)',
             backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
           }}>
-            <div className="w-full max-w-[380px] md:max-w-[600px] relative liquid-panel rounded-[32px] px-6 py-4 md:py-8 shadow-2xl">
-              <button onClick={() => { setIsFlightFocusOpen(false); setSelectedFlight(null); setIsFlightTimerRunning(false); }} style={{
+            <div className="w-full max-w-[380px] md:max-w-[600px] relative liquid-panel rounded-[32px] px-6 py-4 md:py-8 shadow-2xl mb-24">
+              <button onClick={() => { 
+                setIsFlightFocusOpen(false); 
+                if (!isFlightTimerRunning) {
+                  setSelectedFlight(null);
+                }
+              }} style={{
                 position: 'absolute', top: '16px', right: '16px',
                 background: 'rgba(128,128,128,0.2)', border: 'none',
                 borderRadius: '50%', width: '32px', height: '32px',
@@ -1277,7 +1282,7 @@ export default function App() {
                 )}
 
                 {/* Main Card — Horizontal */}
-                <div className="w-full max-w-[360px] liquid-panel rounded-[32px] p-9 flex flex-col items-center relative shadow-2xl" style={{ gap: '32px' }}>
+                <div className="w-full max-w-[360px] liquid-panel rounded-[32px] p-9 flex flex-col items-center relative shadow-2xl mb-24" style={{ gap: '32px' }}>
                   {/* Close / Minimize */}
                   <button onClick={() => { setIsPomodoroOpen(false); setIsEditingPomodoro(false); }} style={{
                     position: 'absolute', top: '14px', right: '14px',
@@ -1720,7 +1725,7 @@ export default function App() {
               backdropFilter: 'blur(32px)',
               WebkitBackdropFilter: 'blur(32px)',
             }}>
-              <div className="liquid-panel shadow-2xl" style={{
+              <div className="liquid-panel shadow-2xl mb-24" style={{
                 width: '100%', maxWidth: '380px',
                 borderRadius: '32px',
                 padding: '36px 24px',
@@ -1965,7 +1970,7 @@ export default function App() {
           )}
 
           {/* --- FLOATING NAV --- */}
-          <div className="fixed bottom-0 left-0 w-full flex justify-center pt-4 bg-gradient-to-t from-white/20 dark:from-black via-white/10 dark:via-black to-transparent pointer-events-none z-40 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+          <div className="fixed bottom-0 left-0 w-full flex justify-center pt-4 bg-gradient-to-t from-white/20 dark:from-black via-white/10 dark:via-black to-transparent pointer-events-none z-[10000] pb-[calc(2rem+env(safe-area-inset-bottom))]">
             <div className="w-full max-w-[428px] px-6 flex justify-between items-center pointer-events-auto">
               <div className="bg-white/50 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border border-black/10 dark:border-white/5 rounded-full flex items-center p-1.5 gap-1.5 shadow-2xl dark:shadow-black/80">
                 <button onClick={() => topRef.current?.scrollIntoView({ behavior: 'smooth' })} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white transition-all duration-200 active:scale-90"><Home size={18} /></button>
