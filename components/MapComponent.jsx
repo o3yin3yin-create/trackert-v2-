@@ -13,25 +13,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// A component to automatically fit the map bounds to the markers
-const FitBounds = ({ origin, destination, isCameraLocked, planePos, padding }) => {
-  const map = useMap();
 
-  useEffect(() => {
-    if (!origin || !destination) return;
-
-    if (isCameraLocked && planePos) {
-      // Zoom tightly on the plane if camera is locked
-      map.setView([planePos.lat, planePos.lng], 6, { animate: true, duration: 1.5 });
-    } else {
-      // Fit to see both origin and destination
-      const bounds = L.latLngBounds([origin.lat, origin.lng], [destination.lat, destination.lng]);
-      map.fitBounds(bounds, { padding: padding || [50, 50], animate: true, duration: 1.5 });
-    }
-  }, [map, origin, destination, isCameraLocked, planePos, padding]);
-
-  return null;
-};
 
 // Generate curved points for the dotted line
 const generateBezierCurve = (p0, p1, p2, numPoints = 100) => {
@@ -71,6 +53,7 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
 
   const p0 = useMemo(() => originCoords, [originCoords]);
   const p2 = useMemo(() => destCoords, [destCoords]);
+  const currentMapPadding = padding || [50, 50];
 
   const p1 = useMemo(() => {
     if (!p0 || !p2) return null;
@@ -85,24 +68,94 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
     return generateBezierCurve(p0, p1, p2);
   }, [p0, p1, p2]);
 
-  const planeData = useMemo(() => {
-    if (!p0 || !p1 || !p2) return null;
-    return getPlanePositionAndAngle(p0, p1, p2, progress || 0);
-  }, [p0, p1, p2, progress]);
+  const SmoothPlaneMarker = ({ p0, p1, p2, targetProgress, isCameraLocked, mapPadding }) => {
+    const markerRef = useRef(null);
+    const currentProgress = useRef(targetProgress);
+    const map = useMap();
 
-  if (!mounted || !p0 || !p2) return null;
+    // Re-fit bounds immediately when camera lock is turned OFF
+    useEffect(() => {
+      if (!isCameraLocked && p0 && p2) {
+        const bounds = L.latLngBounds([p0.lat, p0.lng], [p2.lat, p2.lng]);
+        map.fitBounds(bounds, { padding: mapPadding, animate: true, duration: 1.5 });
+      }
+    }, [isCameraLocked, map, p0, p2, mapPadding]);
 
-  // Custom icon for plane
-  const planeIcon = L.divIcon({
-    html: `<div style="transform: rotate(${planeData?.angle || 0}deg); display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 0 8px rgba(255,255,255,0.8));">
-        <path d="M21 16V14L13 9V3.5C13 2.67 12.33 2 11.5 2C10.67 2 10 2.67 10 3.5V9L2 14V16L10 13.5V19L8 20.5V22L11.5 21L15 22V20.5L13 19V13.5L21 16Z"/>
-      </svg>
-    </div>`,
-    className: 'plane-icon-custom',
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-  });
+    // Handle initial camera lock zoom
+    useEffect(() => {
+      if (isCameraLocked && p0 && p1 && p2) {
+        const data = getPlanePositionAndAngle(p0, p1, p2, currentProgress.current);
+        map.setView([data.lat, data.lng], 6, { animate: true, duration: 1.0 });
+      }
+    }, [isCameraLocked, map, p0, p1, p2]);
+
+    useEffect(() => {
+      let animationFrame;
+      let startTime = performance.now();
+      const startP = currentProgress.current;
+      const distance = targetProgress - startP;
+      
+      // Snap if jump is too big or no movement
+      if (Math.abs(distance) > 0.05 || distance === 0) {
+        currentProgress.current = targetProgress;
+        const data = getPlanePositionAndAngle(p0, p1, p2, targetProgress);
+        if (markerRef.current) {
+          markerRef.current.setLatLng([data.lat, data.lng]);
+          const inner = markerRef.current.getElement()?.querySelector('.plane-icon-inner');
+          if (inner) inner.style.transform = `rotate(${data.angle}deg)`;
+        }
+        return;
+      }
+
+      const animate = (time) => {
+        const elapsed = time - startTime;
+        const t = Math.min(1, elapsed / 1000);
+        currentProgress.current = startP + distance * t;
+        
+        const data = getPlanePositionAndAngle(p0, p1, p2, currentProgress.current);
+        
+        if (markerRef.current) {
+          markerRef.current.setLatLng([data.lat, data.lng]);
+          const inner = markerRef.current.getElement()?.querySelector('.plane-icon-inner');
+          if (inner) inner.style.transform = `rotate(${data.angle}deg)`;
+          
+          if (isCameraLocked) {
+            // Perfectly track the plane at 60fps without queued animations
+            map.setView([data.lat, data.lng], map.getZoom(), { animate: false });
+          }
+        }
+
+        if (t < 1) {
+          animationFrame = requestAnimationFrame(animate);
+        }
+      };
+      
+      animationFrame = requestAnimationFrame(animate);
+      return () => cancelAnimationFrame(animationFrame);
+    }, [targetProgress, p0, p1, p2, isCameraLocked, map]);
+
+    const icon = useMemo(() => L.divIcon({
+      html: `<div class="plane-icon-inner" style="transform: rotate(0deg); display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 0 8px rgba(255,255,255,0.8));">
+          <path d="M21 16V14L13 9V3.5C13 2.67 12.33 2 11.5 2C10.67 2 10 2.67 10 3.5V9L2 14V16L10 13.5V19L8 20.5V22L11.5 21L15 22V20.5L13 19V13.5L21 16Z"/>
+        </svg>
+      </div>`,
+      className: 'plane-icon-custom',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    }), []);
+
+    const initialData = getPlanePositionAndAngle(p0, p1, p2, currentProgress.current);
+
+    useEffect(() => {
+      if (markerRef.current) {
+        const inner = markerRef.current.getElement()?.querySelector('.plane-icon-inner');
+        if (inner) inner.style.transform = `rotate(${initialData.angle}deg)`;
+      }
+    }, [initialData.angle]);
+
+    return <Marker ref={markerRef} position={[initialData.lat, initialData.lng]} icon={icon} zIndexOffset={1000} />;
+  };
 
   const cityIcon = (color) => L.divIcon({
     html: `<div style="width: 12px; height: 12px; background-color: ${color}; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 10px ${color};"></div>`,
@@ -144,17 +197,16 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
         <Marker position={[p2.lat, p2.lng]} icon={cityIcon('#EF4444')} />
 
         {/* Plane Marker */}
-        {planeData && (
-          <Marker position={[planeData.lat, planeData.lng]} icon={planeIcon} zIndexOffset={1000} />
+        {p0 && p1 && p2 && (
+          <SmoothPlaneMarker 
+            p0={p0} 
+            p1={p1} 
+            p2={p2} 
+            targetProgress={progress || 0} 
+            isCameraLocked={isCameraLocked} 
+            mapPadding={currentMapPadding}
+          />
         )}
-
-        <FitBounds 
-          origin={p0} 
-          destination={p2} 
-          isCameraLocked={isCameraLocked} 
-          planePos={planeData}
-          padding={padding} 
-        />
       </MapContainer>
       <style dangerouslySetInnerHTML={{__html: `
         .leaflet-container {
