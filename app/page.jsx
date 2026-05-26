@@ -258,6 +258,22 @@ export default function App() {
   const dayName = baseDate.toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'long' });
   const dayNum = String(baseDate.getDate()).padStart(2, '0'); 
 
+  // --- Pomodoro Tasks Tracking ---
+  const [activePomodoroTask, setActivePomodoroTask] = useState({ name: '', color: '#FF9F0A' });
+  const [pomodoroTasksData, setPomodoroTasksData] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return JSON.parse(localStorage.getItem('daybase_pomodoro_tasks_v1') || '{}');
+    }
+    return {};
+  });
+
+  // --- Live Time Tick for absolute timers ---
+  const [currentUnixTime, setCurrentUnixTime] = useState(() => Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentUnixTime(Math.floor(Date.now() / 1000)), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   // --- Flight Focus Logic ---
   const fetchFlights = async () => {
     setFlightLoading(true);
@@ -278,26 +294,34 @@ export default function App() {
     if (isFlightFocusOpen && flightOptions.length === 0 && !selectedFlight) {
       fetchFlights();
     }
-  }, [isFlightFocusOpen]);
+    let intervalId;
+    if (isFlightFocusOpen) {
+      intervalId = setInterval(() => {
+        if (!selectedFlight) fetchFlights();
+      }, 15 * 60 * 1000); // Poll every 15 minutes if no flight selected
+    }
+    return () => clearInterval(intervalId);
+  }, [isFlightFocusOpen, flightOptions.length, selectedFlight]);
 
   useEffect(() => {
-    let interval = null;
-    if (selectedFlight && flightTimer > 0) {
-      interval = setInterval(() => {
-        setFlightTimer(prev => prev - 1);
-        
-        // Track focus time for today ONLY if user has joined the flight
-        if (isFlightTimerRunning) {
-          const todayStr = getFormatDateStr(new Date());
-          setFocusTimeData(prev => {
-            const updated = { ...prev, [todayStr]: (prev[todayStr] || 0) + 1 };
-            localStorage.setItem('daybase_focusTime_v4', JSON.stringify(updated));
-            return updated;
-          });
-        }
-      }, 1000);
-    } else if (flightTimer <= 0 && selectedFlight) {
+    if (!isFlightTimerRunning || !selectedFlight) return;
+    
+    // Flight timer runs purely on timestamp delta now.
+    // Instead of interval decrementing flightTimer, we compute it based on currentUnixTime.
+    const remaining = selectedFlight.estimatedArrival - currentUnixTime;
+    
+    if (remaining > 0) {
+      setFlightTimer(remaining);
+      // Track focus time for today 1s at a time (since currentUnixTime ticks every 1s)
+      const todayStr = getFormatDateStr(new Date());
+      setFocusTimeData(prev => {
+        const updated = { ...prev, [todayStr]: (prev[todayStr] || 0) + 1 };
+        localStorage.setItem('daybase_focusTime_v4', JSON.stringify(updated));
+        return updated;
+      });
+    } else if (remaining <= 0) {
       // Flight landed!
+      setFlightTimer(0);
       setIsFlightTimerRunning(false);
       if (globalAudioCtx) {
         const osc = globalAudioCtx.createOscillator();
@@ -315,8 +339,7 @@ export default function App() {
       }
       setSelectedFlight(null);
     }
-    return () => clearInterval(interval);
-  }, [selectedFlight, flightTimer, isFlightTimerRunning]);
+  }, [currentUnixTime, isFlightTimerRunning, selectedFlight]);
 
   // --- Modals & Inputs ---
   const [isEditingMission, setIsEditingMission] = useState(false);
@@ -478,48 +501,79 @@ export default function App() {
   };
 
   // --- Pomodoro Timer Effect ---
+  const pomodoroLastTickRef = useRef(null);
   useEffect(() => {
-    if (!isTimerRunning) return;
-    if (pomodoroTime <= 0) { 
-      setIsTimerRunning(false); 
-      haptic('heavy');
-      // Play a pleasant chime melody
-      try {
-        const ctx = getAudioCtx();
-        if (ctx) {
-          const playNote = (freq, start, dur, vol = 0.15) => {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
-            gain.gain.setValueAtTime(vol, ctx.currentTime + start);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start(ctx.currentTime + start);
-            osc.stop(ctx.currentTime + start + dur);
-          };
-          playNote(523, 0, 0.25);     // C5
-          playNote(659, 0.15, 0.25);  // E5
-          playNote(784, 0.30, 0.25);  // G5
-          playNote(1047, 0.45, 0.5);  // C6 (longer)
-        }
-      } catch(e) {}
-      alert("Focus Session Completed! 🔥 Time for a break.");
-      return; 
+    if (!isTimerRunning) {
+      pomodoroLastTickRef.current = null;
+      return;
     }
+    if (!pomodoroLastTickRef.current) {
+      pomodoroLastTickRef.current = Date.now();
+    }
+    
     const interval = setInterval(() => {
-      setPomodoroTime(t => t - 1);
-      // Track focus time for today
-      const todayStr = getFormatDateStr(new Date());
-      setFocusTimeData(prev => {
-        const updated = { ...prev, [todayStr]: (prev[todayStr] || 0) + 1 };
-        localStorage.setItem('daybase_focusTime_v4', JSON.stringify(updated));
-        return updated;
-      });
+      const now = Date.now();
+      const deltaMs = now - pomodoroLastTickRef.current;
+      const deltaSecs = Math.floor(deltaMs / 1000);
+      
+      if (deltaSecs >= 1) {
+        pomodoroLastTickRef.current = now - (deltaMs % 1000); // preserve remainder
+        
+        setPomodoroTime(t => {
+          const newT = t - deltaSecs;
+          if (newT <= 0) {
+            setIsTimerRunning(false); 
+            haptic('heavy');
+            try {
+              const ctx = getAudioCtx();
+              if (ctx) {
+                const playNote = (freq, start, dur, vol = 0.15) => {
+                  const osc = ctx.createOscillator();
+                  const gain = ctx.createGain();
+                  osc.type = 'sine';
+                  osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+                  gain.gain.setValueAtTime(vol, ctx.currentTime + start);
+                  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+                  osc.connect(gain);
+                  gain.connect(ctx.destination);
+                  osc.start(ctx.currentTime + start);
+                  osc.stop(ctx.currentTime + start + dur);
+                };
+                playNote(523, 0, 0.25); playNote(659, 0.15, 0.25); playNote(784, 0.30, 0.25); playNote(1047, 0.45, 0.5);
+              }
+            } catch(e) {}
+            setTimeout(() => alert(t('focusComplete') || "Focus Session Completed! 🔥 Time for a break."), 100);
+            return 0;
+          }
+          return newT;
+        });
+
+        // Add accurately to global focus time
+        const todayStr = getFormatDateStr(new Date());
+        setFocusTimeData(prev => {
+          const updated = { ...prev, [todayStr]: (prev[todayStr] || 0) + deltaSecs };
+          localStorage.setItem('daybase_focusTime_v4', JSON.stringify(updated));
+          return updated;
+        });
+
+        // Add accurately to named Pomodoro Task
+        setPomodoroTasksData(prev => {
+          if (!activePomodoroTask.name) return prev;
+          const updated = { ...prev };
+          if (!updated[todayStr]) updated[todayStr] = [];
+          const existingIdx = updated[todayStr].findIndex(tk => tk.name === activePomodoroTask.name && tk.color === activePomodoroTask.color);
+          if (existingIdx > -1) {
+             updated[todayStr][existingIdx].timeSpent += deltaSecs;
+          } else {
+             updated[todayStr].push({ name: activePomodoroTask.name, color: activePomodoroTask.color, timeSpent: deltaSecs });
+          }
+          localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(updated));
+          return updated;
+        });
+      }
     }, 1000);
     return () => clearInterval(interval);
-  }, [isTimerRunning, pomodoroTime]);
+  }, [isTimerRunning, activePomodoroTask]);
 
   // ─── موتور المزامنة الهجين (Sync Engine) ───
   useEffect(() => {
@@ -1086,7 +1140,9 @@ export default function App() {
                 borderRadius: '50%', width: '32px', height: '32px',
                 color: 'rgba(128,128,128,0.8)', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}><X size={16} className="text-black dark:text-white" /></button>
+              }}>
+                {isFlightTimerRunning ? <ChevronDown size={18} className="text-black dark:text-white" /> : <X size={16} className="text-black dark:text-white" />}
+              </button>
 
               <h3 className="text-sm font-bold tracking-widest text-gray-500 dark:text-white/50 uppercase mb-4 select-none text-center">{t('flightFocus')} ✈️</h3>
 
@@ -1151,7 +1207,9 @@ export default function App() {
                           {f.airline}
                           <span className="text-[10px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-white/50">{f.callsign}</span>
                         </span>
-                        <span className="text-xs font-bold px-2 py-0.5 bg-white/10 rounded-full text-white/50">? min</span>
+                        <span className="text-xs font-bold px-2 py-0.5 bg-white/10 rounded-full text-white/50">
+                           {Math.max(0, Math.ceil((f.estimatedArrival - currentUnixTime) / 60))} min
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 text-white/50 text-sm font-semibold">
                         <span>{f.origin}</span>
@@ -1220,14 +1278,39 @@ export default function App() {
 
                 {/* Main Card — Horizontal */}
                 <div className="w-full max-w-[360px] liquid-panel rounded-[32px] p-9 flex flex-col items-center relative shadow-2xl" style={{ gap: '32px' }}>
-                  {/* Close */}
-                  <button onClick={() => { setIsPomodoroOpen(false); setIsEditingPomodoro(false); setIsTimerRunning(false); }} style={{
+                  {/* Close / Minimize */}
+                  <button onClick={() => { setIsPomodoroOpen(false); setIsEditingPomodoro(false); }} style={{
                     position: 'absolute', top: '14px', right: '14px',
                     background: 'rgba(128,128,128,0.2)', border: 'none',
                     borderRadius: '50%', width: '32px', height: '32px',
                     color: 'rgba(128,128,128,0.8)', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}><X size={16} className="text-black dark:text-white" /></button>
+                  }}>
+                    {isTimerRunning ? <ChevronDown size={18} className="text-black dark:text-white" /> : <X size={16} className="text-black dark:text-white" />}
+                  </button>
+
+                  {/* Task Configuration (Before Start) */}
+                  {!isTimerRunning && !isEditingPomodoro && (
+                     <div className="w-full flex flex-col items-center gap-3 mt-4 -mb-2 z-10 animate-in fade-in">
+                        <input 
+                          type="text" 
+                          placeholder="What are you focusing on? (e.g. Python)" 
+                          value={activePomodoroTask.name}
+                          onChange={(e) => setActivePomodoroTask(prev => ({ ...prev, name: e.target.value }))}
+                          className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-center outline-none focus:border-black/30 dark:focus:border-white/30 text-black dark:text-white placeholder:text-black/30 dark:placeholder:text-white/30"
+                        />
+                        <div className="flex gap-2 justify-center">
+                           {['#FF9F0A', '#34C759', '#007AFF', '#FF3B30', '#AF52DE', '#FF2D55'].map(c => (
+                              <button 
+                                key={c} 
+                                onClick={() => setActivePomodoroTask(prev => ({ ...prev, color: c }))}
+                                className="w-6 h-6 rounded-full transition-all"
+                                style={{ backgroundColor: c, border: activePomodoroTask.color === c ? `2px solid ${theme === 'dark' ? '#fff' : '#000'}` : 'none', transform: activePomodoroTask.color === c ? 'scale(1.1)' : 'scale(1)' }}
+                              />
+                           ))}
+                        </div>
+                     </div>
+                  )}
 
                   {/* TOP: Label + Time + Stop */}
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', width: '100%' }}>
@@ -1351,6 +1434,41 @@ export default function App() {
           
           {/* Header with Navigation */}
           <header className="flex flex-col gap-3 mb-8 w-full md:max-w-[428px]">
+            {/* Live Activity Widgets */}
+            {(!isFlightFocusOpen && isFlightTimerRunning && selectedFlight) && (
+              <div onClick={() => setIsFlightFocusOpen(true)} className="mb-2 liquid-panel rounded-full px-4 py-3 flex items-center justify-between cursor-pointer animate-in fade-in slide-in-from-top-2 border-[1.5px] border-blue-500/30">
+                <div className="flex items-center gap-3">
+                   <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+                      <PlaneTakeoff size={16} className="text-blue-500" />
+                   </div>
+                   <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-gray-500 dark:text-white/50 uppercase">{selectedFlight.airline}</span>
+                      <span className="text-xs font-bold text-black dark:text-white">{t('flightFocus')} Active</span>
+                   </div>
+                </div>
+                <div className="flex items-center gap-2">
+                   <span className="text-sm font-bold text-blue-500">{String(Math.floor(flightTimer/60)).padStart(2,'0')}:{String(flightTimer%60).padStart(2,'0')}</span>
+                </div>
+              </div>
+            )}
+
+            {(!isPomodoroOpen && isTimerRunning) && (
+              <div onClick={() => setIsPomodoroOpen(true)} className="mb-2 liquid-panel rounded-full px-4 py-3 flex items-center justify-between cursor-pointer animate-in fade-in slide-in-from-top-2 border-[1.5px]" style={{ borderColor: `${activePomodoroTask.color}40` }}>
+                <div className="flex items-center gap-3">
+                   <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: `${activePomodoroTask.color}20` }}>
+                      <Timer size={16} color={activePomodoroTask.color} />
+                   </div>
+                   <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-gray-500 dark:text-white/50 uppercase">{activePomodoroTask.name || t('pomodoro')}</span>
+                      <span className="text-xs font-bold text-black dark:text-white">Focus Session</span>
+                   </div>
+                </div>
+                <div className="flex items-center gap-2">
+                   <span className="text-sm font-bold" style={{ color: activePomodoroTask.color }}>{String(Math.floor(pomodoroTime/60)).padStart(2,'0')}:{String(pomodoroTime%60).padStart(2,'0')}</span>
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-between items-center w-full">
               <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex flex-wrap gap-2 items-center select-none">
                 {dayName} <span className="text-white/30 font-light">{dayNum}</span>
@@ -1660,6 +1778,26 @@ export default function App() {
                     <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-cyan-400"/><span className="text-[9px] font-bold tracking-widest text-[#8E8E93] uppercase">FOCUS</span></div>
                   </div>
                 </div>
+
+                {/* Pomodoro Tasks Table */}
+                {pomodoroTasksData[getFormatDateStr(new Date())] && pomodoroTasksData[getFormatDateStr(new Date())].length > 0 && (
+                  <div className="mt-6 border-t border-black/10 dark:border-white/10 pt-4 w-full">
+                    <h4 className="text-[10px] font-bold text-black/50 dark:text-white/50 uppercase tracking-widest mb-3 text-center">Today's Focus Tasks</h4>
+                    <div className="flex flex-col gap-2 max-h-32 overflow-y-auto pr-1">
+                      {pomodoroTasksData[getFormatDateStr(new Date())]
+                        .sort((a, b) => b.timeSpent - a.timeSpent)
+                        .map((task, idx) => (
+                        <div key={idx} className="flex justify-between items-center bg-black/5 dark:bg-white/5 px-3 py-2 rounded-xl">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: task.color }} />
+                            <span className="text-sm font-bold text-black dark:text-white">{task.name}</span>
+                          </div>
+                          <span className="text-xs font-bold text-black/70 dark:text-white/70">{Math.ceil(task.timeSpent / 60)} min</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>, document.body
           )}
