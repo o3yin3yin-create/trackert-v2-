@@ -1641,7 +1641,7 @@ export default function App() {
                           const distanceSim = Math.round(Math.max(0, Math.sqrt(totalDistSim) * 10 * progressRemaining));
                           
                           return (
-                            <div className="w-full relative h-[200px] bg-[#051610] rounded-2xl overflow-hidden border border-emerald-900/30 shadow-[inset_0_2px_8px_rgba(0,0,0,0.8)] select-none py-2 mb-4">
+                            <div className="w-full relative h-[200px] bg-[#051610] rounded-2xl overflow-hidden border border-emerald-900/30 shadow-[inset_0_2px_8px_rgba(0,0,0,0.8)] select-none mb-4">
                               <MapComponent 
                                 originCoords={originCoords} 
                                 destCoords={destCoords} 
@@ -1652,7 +1652,7 @@ export default function App() {
                               />
                               
                               {/* HUD Controls */}
-                              <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
+                              <div className="absolute top-3 left-3 flex flex-col gap-2 z-[1000]">
                                 <button 
                                   onClick={() => {
                                     if (!isFlightTimerRunning) {
@@ -1679,7 +1679,7 @@ export default function App() {
                                 </button>
                               </div>
                               
-                              <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
+                              <div className="absolute top-3 right-3 flex flex-col gap-2 z-[1000]">
                                 <button 
                                   onClick={() => setIsMapView(false)}
                                   className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
@@ -1714,7 +1714,7 @@ export default function App() {
                               </div>
                               
                               {/* HUD Bottom Overlay */}
-                              <div className="absolute bottom-2.5 left-3.5 right-3.5 flex justify-between items-end pointer-events-none select-none text-white drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.95)]">
+                              <div className="absolute bottom-2.5 left-3.5 right-3.5 flex justify-between items-end pointer-events-none select-none text-white drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.95)] z-[1000]">
                                 <div className="flex flex-col text-left">
                                   <span className="text-[7.5px] font-black uppercase tracking-widest opacity-60 leading-none mb-0.5">{lang === 'ar' ? 'الوقت المتبقي' : 'TIME REMAINING'}</span>
                                   <span className="text-xs font-black tracking-tight leading-none">{timeRemainingStr}</span>
@@ -2247,7 +2247,10 @@ export default function App() {
                     </button>
                     <label className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold cursor-pointer relative text-black dark:text-white">
                       <SlidersHorizontal size={16} /> Accent Color
-                      <input type="color" value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="absolute opacity-0 w-0 h-0" />
+                      <input type="color" value={themeColor} onChange={(e) => {
+                        setThemeColor(e.target.value);
+                        if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', e.target.value);
+                      }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                     </label>
                   </div>
                 )}
@@ -2774,7 +2777,7 @@ export default function App() {
                         const distanceSim = Math.round(Math.max(0, Math.sqrt(totalDistSim) * 10 * progressRemaining));
                         
                         return (
-                          <div className="w-full relative h-[200px] bg-[#051610] rounded-2xl overflow-hidden border border-emerald-900/30 shadow-[inset_0_2px_8px_rgba(0,0,0,0.8)] select-none py-2 mb-4">
+                          <div className="w-full relative h-[200px] bg-[#051610] rounded-2xl overflow-hidden border border-emerald-900/30 shadow-[inset_0_2px_8px_rgba(0,0,0,0.8)] select-none mb-4">
                             <MapComponent 
                               originCoords={originCoords} 
                               destCoords={destCoords} 
@@ -2785,7 +2788,7 @@ export default function App() {
                             />
                             
                             {/* HUD Controls */}
-                            <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
+                            <div className="absolute top-3 left-3 flex flex-col gap-2 z-[1000]">
                               <button 
                                 onClick={() => {
                                   if (!isFlightTimerRunning) {
@@ -2812,7 +2815,7 @@ export default function App() {
                               </button>
                             </div>
                             
-                            <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
+                            <div className="absolute top-3 right-3 flex flex-col gap-2 z-[1000]">
                               <button 
                                 onClick={() => setIsMapView(false)}
                                 className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
@@ -2847,7 +2850,7 @@ export default function App() {
                             </div>
                             
                             {/* HUD Bottom Overlay */}
-                            <div className="absolute bottom-2.5 left-3.5 right-3.5 flex justify-between items-end pointer-events-none select-none text-white drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.95)]">
+                            <div className="absolute bottom-2.5 left-3.5 right-3.5 flex justify-between items-end pointer-events-none select-none text-white drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.95)] z-[1000]">
                               <div className="flex flex-col text-left">
                                 <span className="text-[7.5px] font-black uppercase tracking-widest opacity-60 leading-none mb-0.5">{lang === 'ar' ? 'الوقت المتبقي' : 'TIME REMAINING'}</span>
                                 <span className="text-xs font-black tracking-tight leading-none">{timeRemainingStr}</span>
