@@ -1325,7 +1325,7 @@ export default function App() {
                     <div className="flex items-center justify-between w-full mb-2 text-center">
                       <span className="text-2xl font-black text-black dark:text-white">{selectedFlight.origin}</span>
                       <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-black/20 dark:via-white/20 to-transparent mx-3" />
-                      <PlaneTakeoff size={18} className="text-blue-500 animate-pulse rotate-45" />
+                      <PlaneTakeoff size={18} color={themeColor} className="animate-pulse rotate-45" />
                       <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-black/20 dark:via-white/20 to-transparent mx-3" />
                       <span className="text-2xl font-black text-black dark:text-white">{selectedFlight.destination}</span>
                     </div>
@@ -1347,7 +1347,7 @@ export default function App() {
                         <div className="flex items-center justify-between w-full mb-1 text-center">
                           <span className="text-3xl font-black tracking-tight text-black dark:text-white">{selectedFlight.origin}</span>
                           <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-black/10 dark:via-white/10 to-transparent mx-4" />
-                          <PlaneTakeoff size={20} className="text-blue-500 rotate-45" />
+                          <PlaneTakeoff size={20} color={themeColor} className="rotate-45" />
                           <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-black/10 dark:via-white/10 to-transparent mx-4" />
                           <span className="text-3xl font-black tracking-tight text-black dark:text-white">{selectedFlight.destination}</span>
                         </div>
@@ -1390,8 +1390,8 @@ export default function App() {
                               <svg viewBox="0 0 300 90" className="w-full h-auto overflow-visible select-none">
                                 <defs>
                                   <linearGradient id="route-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.1" />
-                                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.9" />
+                                    <stop offset="0%" stopColor={themeColor} stopOpacity="0.1" />
+                                    <stop offset="100%" stopColor={themeColor} stopOpacity="0.9" />
                                   </linearGradient>
                                 </defs>
                                 
@@ -1417,9 +1417,9 @@ export default function App() {
                                 
                                 {/* Origin Node */}
                                 <g transform="translate(30, 65)">
-                                  <circle r="5" className="fill-blue-500/20" />
-                                  <circle r="2.5" className="fill-blue-500 animate-pulse" />
-                                  <circle r="7" className="fill-none stroke-blue-500/40 stroke-1 animate-ping" />
+                                  <circle r="5" style={{ fill: `${themeColor}33` }} />
+                                  <circle r="2.5" style={{ fill: themeColor }} className="animate-pulse" />
+                                  <circle r="7" style={{ stroke: themeColor, opacity: 0.4 }} className="fill-none stroke-1 animate-ping" />
                                 </g>
                                 
                                 {/* Destination Node */}
@@ -1433,16 +1433,16 @@ export default function App() {
                                   transform={`translate(${x}, ${y}) rotate(${angle})`} 
                                   className="transition-all duration-1000 ease-linear"
                                 >
-                                  <circle r="10" className="fill-blue-500/30 blur-[2px]" />
+                                  <circle r="10" style={{ fill: themeColor, opacity: 0.3 }} className="blur-[2px]" />
                                   <g transform="rotate(45) translate(-8, -8)">
-                                    <PlaneTakeoff size={16} className="text-blue-500 drop-shadow-[0_0_6px_rgba(59,130,246,0.8)]" />
+                                    <PlaneTakeoff size={16} color={themeColor} style={{ filter: `drop-shadow(0 0 6px ${themeColor})` }} />
                                   </g>
                                 </g>
                               </svg>
                               
                               <div className="flex justify-between items-center mt-1 px-1 text-[9px] font-mono text-gray-400 dark:text-white/30 uppercase tracking-widest font-black">
                                 <span>{selectedFlight.origin}</span>
-                                <span className="text-blue-500 dark:text-blue-400 font-bold">{Math.round(progress * 100)}% {lang === 'ar' ? 'اكتمل' : 'completed'}</span>
+                                <span className="font-bold" style={{ color: themeColor }}>{Math.round(progress * 100)}% {lang === 'ar' ? 'اكتمل' : 'completed'}</span>
                                 <span>{selectedFlight.destination}</span>
                               </div>
                             </div>
@@ -1482,8 +1482,8 @@ export default function App() {
                             {lang === 'ar' ? 'جاري التركيز' : 'FOCUS ACTIVE'}
                           </span>
                         ) : (
-                          <span className="text-blue-500 flex items-center gap-1 font-bold">
-                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                          <span className="flex items-center gap-1 font-bold animate-pulse" style={{ color: themeColor }}>
+                            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: themeColor }} />
                             {lang === 'ar' ? 'في الطريق' : 'EN ROUTE'}
                           </span>
                         )}
@@ -1493,16 +1493,16 @@ export default function App() {
                       <div className="flex flex-col items-center justify-center py-6 px-4 rounded-2xl bg-black/40 dark:bg-black/50 border border-black/10 dark:border-white/5 w-full relative overflow-hidden shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_8px_32px_rgba(0,0,0,0.4)]">
                          <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent pointer-events-none" />
                          
-                         <span className="text-[9px] uppercase tracking-widest font-black text-blue-400 mb-3 flex items-center gap-1.5 select-none">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                         <span className="text-[9px] uppercase tracking-widest font-black mb-3 flex items-center gap-1.5 select-none" style={{ color: theme === 'dark' ? `${themeColor}cc` : themeColor }}>
+                            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: themeColor }} />
                             {t('remainingTime')}
                          </span>
                          
-                         <div className="text-4xl sm:text-5xl md:text-3xl lg:text-4xl xl:text-5xl font-mono font-black tracking-widest text-blue-500 dark:text-blue-400 drop-shadow-[0_0_10px_rgba(59,130,246,0.6)] select-all leading-none py-1 flex items-center justify-center gap-1.5 tabular-nums">
+                         <div className="text-4xl sm:text-5xl md:text-3xl lg:text-4xl xl:text-5xl font-mono font-black tracking-widest select-all leading-none py-1 flex items-center justify-center gap-1.5 tabular-nums" style={{ color: themeColor, filter: `drop-shadow(0 0 10px ${themeColor}aa)` }}>
                             <span className="bg-black/35 border border-white/5 px-2 py-1.5 rounded-xl min-w-[2.2ch] text-center">{String(Math.floor(flightTimer / 3600)).padStart(2, '0')}</span>
-                            <span className="text-xl text-blue-500/40 animate-pulse">:</span>
+                            <span className="text-xl animate-pulse" style={{ color: `${themeColor}66` }}>:</span>
                             <span className="bg-black/35 border border-white/5 px-2 py-1.5 rounded-xl min-w-[2.2ch] text-center">{String(Math.floor((flightTimer % 3600) / 60)).padStart(2, '0')}</span>
-                            <span className="text-xl text-blue-500/40 animate-pulse">:</span>
+                            <span className="text-xl animate-pulse" style={{ color: `${themeColor}66` }}>:</span>
                             <span className="bg-black/35 border border-white/5 px-2 py-1.5 rounded-xl min-w-[2.2ch] text-center">{String(flightTimer % 60).padStart(2, '0')}</span>
                          </div>
                          
@@ -1518,7 +1518,7 @@ export default function App() {
                           {!isFlightTimerRunning ? (
                             <button 
                               onClick={() => setIsFlightTimerRunning(true)}
-                              className="px-6 py-3 bg-blue-500 border border-blue-600 rounded-2xl font-bold text-white tracking-widest hover:bg-blue-600 transition-colors active:scale-95 shadow-xl w-full"
+                              className="px-6 py-3 rounded-2xl font-bold tracking-widest transition-colors active:scale-95 shadow-xl w-full" style={{ backgroundColor: themeColor, color: '#000', border: `1px solid ${themeColor}`, boxShadow: `0 8px 24px ${themeColor}33` }}
                             >
                               {t('startFocus')}
                             </button>
@@ -1776,10 +1776,10 @@ export default function App() {
           <header className="flex flex-col gap-3 mb-8 w-full">
             {/* Live Activity Widgets */}
             {(!isFlightFocusOpen && isFlightTimerRunning && selectedFlight) && (
-              <div onClick={() => setIsFlightFocusOpen(true)} className="mb-2 liquid-panel rounded-full px-4 py-3 flex items-center justify-between cursor-pointer animate-in fade-in slide-in-from-top-2 border-[1.5px] border-blue-500/30">
+              <div onClick={() => setIsFlightFocusOpen(true)} className="mb-2 liquid-panel rounded-full px-4 py-3 flex items-center justify-between cursor-pointer animate-in fade-in slide-in-from-top-2 border-[1.5px]" style={{ borderColor: `${themeColor}48` }}>
                 <div className="flex items-center gap-3">
-                   <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
-                      <PlaneTakeoff size={16} className="text-blue-500" />
+                   <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: `${themeColor}22` }}>
+                      <PlaneTakeoff size={16} color={themeColor} />
                    </div>
                    <div className="flex flex-col">
                       <span className="text-[10px] font-bold text-gray-500 dark:text-white/50 uppercase">{selectedFlight.airline}</span>
@@ -1787,7 +1787,7 @@ export default function App() {
                    </div>
                 </div>
                 <div className="flex items-center gap-2">
-                   <span className="text-sm font-bold text-blue-500">{String(Math.floor(flightTimer/60)).padStart(2,'0')}:{String(flightTimer%60).padStart(2,'0')}</span>
+                   <span className="text-sm font-bold" style={{ color: themeColor }}>{String(Math.floor(flightTimer/60)).padStart(2,'0')}:{String(flightTimer%60).padStart(2,'0')}</span>
                 </div>
               </div>
             )}
