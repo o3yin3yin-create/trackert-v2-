@@ -171,17 +171,20 @@ export default function App() {
   const [isHowToUseOpen, setIsHowToUseOpen] = useState(false);
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
 
-  // --- Theme & Language ---
+  // --- Theme, Language & Background ---
   const [lang, setLang] = useState('en');
   const [theme, setTheme] = useState('dark');
+  const [bgStyle, setBgStyle] = useState('aurora'); // 'aurora' | 'solid'
   const t = (key) => translations[lang][key] || key;
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedLang = localStorage.getItem('daybase_lang') || 'en';
       const savedTheme = localStorage.getItem('daybase_theme') || 'dark';
+      const savedBg = localStorage.getItem('daybase_bgstyle') || 'aurora';
       setLang(savedLang);
       setTheme(savedTheme);
+      setBgStyle(savedBg);
       if (savedTheme === 'dark') {
         document.documentElement.classList.add('dark');
       } else {
@@ -1339,16 +1342,6 @@ export default function App() {
                           onChange={(e) => setActivePomodoroTask(prev => ({ ...prev, name: e.target.value }))}
                           className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-center outline-none focus:border-black/30 dark:focus:border-white/30 text-black dark:text-white placeholder:text-black/30 dark:placeholder:text-white/30"
                         />
-                        <div className="flex gap-2 justify-center">
-                           {['#FF9F0A', '#34C759', '#007AFF', '#FF3B30', '#AF52DE', '#FF2D55'].map(c => (
-                              <button 
-                                key={c} 
-                                onClick={() => setActivePomodoroTask(prev => ({ ...prev, color: c }))}
-                                className="w-6 h-6 rounded-full transition-all"
-                                style={{ backgroundColor: c, border: activePomodoroTask.color === c ? `2px solid ${theme === 'dark' ? '#fff' : '#000'}` : 'none', transform: activePomodoroTask.color === c ? 'scale(1.1)' : 'scale(1)' }}
-                              />
-                           ))}
-                        </div>
                      </div>
                   )}
 
@@ -1460,11 +1453,15 @@ export default function App() {
 
       <div className="min-h-screen bg-transparent text-white font-sans flex justify-center w-full selection:bg-white/20 pb-28 overflow-x-hidden relative">
         
-        {/* Animated Aurora Background */}
+        {/* Animated Aurora Background or Solid */}
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-white dark:bg-black transition-colors duration-500">
-          <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full opacity-40 blur-[80px] mix-blend-multiply dark:mix-blend-screen aurora-anim-1" style={{ background: themeColor }}></div>
-          <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full opacity-30 blur-[90px] mix-blend-multiply dark:mix-blend-screen aurora-anim-2" style={{ background: themeColor }}></div>
-          <div className="absolute top-[30%] left-[40%] w-[35vw] h-[35vw] rounded-full opacity-20 blur-[70px] mix-blend-multiply dark:mix-blend-screen aurora-anim-3" style={{ background: themeColor }}></div>
+          {bgStyle === 'aurora' && (
+            <>
+              <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full opacity-40 blur-[80px] mix-blend-multiply dark:mix-blend-screen aurora-anim-1" style={{ background: themeColor }}></div>
+              <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full opacity-30 blur-[90px] mix-blend-multiply dark:mix-blend-screen aurora-anim-2" style={{ background: themeColor }}></div>
+              <div className="absolute top-[30%] left-[40%] w-[35vw] h-[35vw] rounded-full opacity-20 blur-[70px] mix-blend-multiply dark:mix-blend-screen aurora-anim-3" style={{ background: themeColor }}></div>
+            </>
+          )}
         </div>
 
         <div ref={topRef} className="absolute top-0" /> 
@@ -1574,6 +1571,14 @@ export default function App() {
                     </button>
                     <button onClick={() => { toggleTheme(); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-black dark:text-white">
                       {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />} {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                    </button>
+                    <button onClick={() => { 
+                      const newStyle = bgStyle === 'aurora' ? 'solid' : 'aurora';
+                      setBgStyle(newStyle);
+                      if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', newStyle);
+                      setIsSettingsMenuOpen(false); 
+                    }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-black dark:text-white">
+                      <span className="w-4 h-4 flex items-center justify-center opacity-70">✨</span> {bgStyle === 'aurora' ? 'Solid Background' : 'Aurora Background'}
                     </button>
                     <button onClick={() => { setIsCardsModalOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-red-500 dark:text-red-400">
                       <ShieldAlert size={16} /> {t('emergencyCards')}
@@ -1821,11 +1826,11 @@ export default function App() {
 
                 {/* Pomodoro Tasks Table */}
                 <div className="mt-6 border-t border-black/10 dark:border-white/10 pt-4 w-full">
-                  <h4 className="text-[10px] font-bold text-black/50 dark:text-white/50 uppercase tracking-widest mb-3 text-center">Today's Focus Tasks</h4>
+                  <h4 className="text-[10px] font-bold text-black/50 dark:text-white/50 uppercase tracking-widest mb-3 text-center">{activeDateStr === realTodayStr ? "Today's Focus Tasks" : "Focus Tasks"}</h4>
                   
-                  {pomodoroTasksData[getFormatDateStr(new Date())] && pomodoroTasksData[getFormatDateStr(new Date())].length > 0 ? (
+                  {pomodoroTasksData[activeDateStr] && pomodoroTasksData[activeDateStr].length > 0 ? (
                     <div className="flex flex-col gap-2 max-h-32 overflow-y-auto pr-1">
-                      {pomodoroTasksData[getFormatDateStr(new Date())]
+                      {pomodoroTasksData[activeDateStr]
                         .sort((a, b) => b.timeSpent - a.timeSpent)
                         .map((task, idx) => (
                         <div key={idx} className="flex justify-between items-center bg-black/5 dark:bg-white/5 px-3 py-2 rounded-xl">
