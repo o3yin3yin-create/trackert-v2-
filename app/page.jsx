@@ -812,16 +812,16 @@ export default function App() {
   // --- Emergency Cards Modal ---
   const [isCardsModalOpen, setIsCardsModalOpen] = useState(false);
 
-  const [habitCustomMessage, setHabitCustomMessage] = useState("");
-
-  const [sleepInput, setSleepInput] = useState("");
-
-  const getFormatDateStr = (date) => {
+  function getFormatDateStr(date) {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const d = String(date.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
-  };
+  }
+
+  const [habitCustomMessage, setHabitCustomMessage] = useState("");
+
+  const [sleepInput, setSleepInput] = useState("");
 
   const activeDateStr = getFormatDateStr(baseDate);
   const realTodayStr = getFormatDateStr(new Date());
@@ -1189,7 +1189,7 @@ export default function App() {
   };
 
   // --- Emergency Card Function ---
-  const useEmergencyCard = (habitId) => {
+  const consumeEmergencyCard = (habitId) => {
     const cardsLeft = habitCards[habitId] ?? 1;
     if (cardsLeft <= 0) return;
     const key = `${activeDateStr}-${habitId}`;
@@ -1517,7 +1517,7 @@ export default function App() {
                         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', zIndex: 1, flexShrink: 0 }}>
                           {canUseCard && (
                             <button
-                              onClick={() => { haptic('medium'); useEmergencyCard(h.id); }}
+                              onClick={() => { haptic('medium'); consumeEmergencyCard(h.id); }}
                               className="px-3 py-1.5 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all active:scale-95"
                               style={{ backgroundColor: themeColor, color: '#000', boxShadow: `0 4px 12px ${themeColor}66` }}
                             >
@@ -2199,7 +2199,7 @@ export default function App() {
 
                 {/* Today focus time badge */}
                 <div style={{ marginTop: '16px', fontSize: '12px', color: 'rgba(255,255,255,0.3)', fontWeight: 600, letterSpacing: '0.06em' }}>
-                  Today's focus: <span style={{ color: neon }}>{Math.floor((focusTimeData[getFormatDateStr(new Date())] || 0) / 60)} min</span>
+                  Today&apos;s focus: <span style={{ color: neon }}>{Math.floor((focusTimeData[getFormatDateStr(new Date())] || 0) / 60)} min</span>
                 </div>
               </div>
             );
