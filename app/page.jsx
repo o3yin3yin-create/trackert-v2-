@@ -1897,283 +1897,442 @@ export default function App() {
             </div>
           </header>
 
-          <div className="flex flex-col md:flex-row gap-6 md:gap-12 w-full">
+          {/* ---------------- MOBILE-ONLY LAYOUT (md:hidden) ---------------- */}
+          {/* Preserves the original clean vertical mobile stack that the user loves */}
+          <div className="flex flex-col w-full md:hidden gap-6">
             
-            {/* Left Column (Desktop) */}
-            <div className="flex flex-col w-full md:w-[360px] lg:w-[400px] shrink-0">
+            {/* Mobile Mission Card */}
+            <div 
+              className="w-full p-6 flex flex-col transition-all duration-500 ease-out liquid-panel" 
+              style={{ 
+                backgroundColor: theme === 'dark' ? `${themeColor}cc` : `${themeColor}aa`, 
+                borderRadius: '28px', 
+                color: '#000000',
+                boxShadow: `0 12px 40px -12px ${themeColor}aa` 
+              }}
+            >
+              {mission ? (
+                <div className="flex items-center gap-1.5 mb-2 opacity-70">
+                  <Target size={14} strokeWidth={2.5} />
+                  <span className="text-[10px] font-bold tracking-widest uppercase">{t('myMission')}</span>
+                </div>
+              ) : (
+                <button onClick={() => setIsEditingMission(true)} className="flex items-center gap-1.5 mb-2 hover:opacity-60 transition-opacity">
+                  <Target size={14} strokeWidth={2.5} />
+                  <span className="text-[10px] font-bold tracking-widest uppercase">{t('setMission')}</span>
+                </button>
+              )}
               
-              {/* Mission Card (Premium Cinematic Progress) */}
-          <div 
-            className="w-full p-6 flex flex-col mb-8 transition-all duration-500 ease-out liquid-panel" 
-            style={{ 
-              backgroundColor: theme === 'dark' ? `${themeColor}cc` : `${themeColor}aa`, 
-              borderRadius: '28px', 
-              color: '#000000',
-              boxShadow: `0 12px 40px -12px ${themeColor}aa` 
-            }}
-          >
-            {mission ? (
-              <div className="flex items-center gap-1.5 mb-2 opacity-70">
-                <Target size={14} strokeWidth={2.5} />
-                <span className="text-[10px] font-bold tracking-widest uppercase">{t('myMission')}</span>
+              {isEditingMission ? (
+                <input 
+                  autoFocus value={missionInput} onChange={(e) => setMissionInput(e.target.value)} onBlur={saveMission} onKeyDown={(e) => e.key === 'Enter' && saveMission()}
+                  className="text-2xl font-black tracking-tight outline-none bg-transparent mb-6 pb-1 border-b border-black/20 w-full placeholder:text-black/30"
+                  style={{ color: '#000000' }} placeholder={t('whatsYourGoal')}
+                />
+              ) : (
+                mission && (
+                  <h2 onClick={() => setIsEditingMission(true)} className="text-2xl font-black tracking-tight mb-6 cursor-pointer break-words active:opacity-80 transition-opacity">
+                    {mission}
+                  </h2>
+                )
+              )}
+
+              <div className="w-full h-[4px] bg-black/10 mb-4 rounded-full overflow-hidden">
+                <div className="h-full bg-black rounded-full transition-all duration-500 ease-out" style={{ width: `${animatedScore}%` }}></div>
               </div>
-            ) : (
-              <button onClick={() => setIsEditingMission(true)} className="flex items-center gap-1.5 mb-2 hover:opacity-60 transition-opacity">
-                <Target size={14} strokeWidth={2.5} />
-                <span className="text-[10px] font-bold tracking-widest uppercase">{t('setMission')}</span>
-              </button>
-            )}
-            
-            {isEditingMission ? (
-              <input 
-                autoFocus value={missionInput} onChange={(e) => setMissionInput(e.target.value)} onBlur={saveMission} onKeyDown={(e) => e.key === 'Enter' && saveMission()}
-                className="text-2xl font-black tracking-tight outline-none bg-transparent mb-6 pb-1 border-b border-black/20 w-full placeholder:text-black/30"
-                style={{ color: '#000000' }} placeholder={t('whatsYourGoal')}
-              />
-            ) : (
-              mission && (
-                <h2 onClick={() => setIsEditingMission(true)} className="text-2xl font-black tracking-tight mb-6 cursor-pointer break-words active:opacity-80 transition-opacity">
-                  {mission}
-                </h2>
-              )
-            )}
 
-            <div className="w-full h-[4px] bg-black/10 mb-4 rounded-full overflow-hidden">
-              <div className="h-full bg-black rounded-full transition-all duration-500 ease-out" style={{ width: `${animatedScore}%` }}></div>
-            </div>
-
-            <div className="flex gap-10 select-none">
-              <div className="flex flex-col">
-                <span className="text-[9px] font-bold tracking-widest opacity-50 uppercase mb-0.5">
-                  {t('score')} ({activeDateStr === realTodayStr ? t('today') : t('viewed')})
-                </span>
-                <span className="text-4xl font-black tracking-tighter tabular-nums">
-                  {scoreDisplay}<span className="text-xl font-bold ml-0.5 opacity-80">%</span>
-                </span>
+              <div className="flex gap-10 select-none">
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-bold tracking-widest opacity-50 uppercase mb-0.5">
+                    {t('score')} ({activeDateStr === realTodayStr ? t('today') : t('viewed')})
+                  </span>
+                  <span className="text-4xl font-black tracking-tighter tabular-nums">
+                    {scoreDisplay}<span className="text-xl font-bold ml-0.5 opacity-80">%</span>
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Sleep Logger Card (Moved here) */}
-          <div className="w-full p-4 mb-8 liquid-panel rounded-3xl flex justify-between items-center shadow-lg">
-            <div className="flex items-center gap-2">
-              <Moon size={18} className="text-indigo-500 dark:text-indigo-400" strokeWidth={2.5} />
-              <span className="text-sm font-bold tracking-widest uppercase text-gray-700 dark:text-white/80">{t('sleep')}</span>
+            {/* Mobile Sleep Logger Card */}
+            <div className="w-full p-4 liquid-panel rounded-3xl flex justify-between items-center shadow-lg">
+              <div className="flex items-center gap-2">
+                <Moon size={18} className="text-indigo-500 dark:text-indigo-400" strokeWidth={2.5} />
+                <span className="text-sm font-bold tracking-widest uppercase text-gray-700 dark:text-white/80">{t('sleep')}</span>
+              </div>
+              <div className="flex gap-2">
+                <input type="number" placeholder="0" value={sleepInput} onChange={(e) => setSleepInput(e.target.value)} className="w-14 bg-white/50 dark:bg-black border border-black/10 dark:border-white/10 text-black dark:text-white px-2 py-1.5 rounded-xl outline-none text-center font-bold text-sm focus:border-black/30 dark:focus:border-white/30 transition-colors" />
+                <button onClick={logSleep} className="bg-black text-white dark:bg-white dark:text-black px-4 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 hover:bg-black/80 dark:hover:bg-white/90">{t('save')}</button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <input type="number" placeholder="0" value={sleepInput} onChange={(e) => setSleepInput(e.target.value)} className="w-14 bg-white/50 dark:bg-black border border-black/10 dark:border-white/10 text-black dark:text-white px-2 py-1.5 rounded-xl outline-none text-center font-bold text-sm focus:border-black/30 dark:focus:border-white/30 transition-colors" />
-              <button onClick={logSleep} className="bg-black text-white dark:bg-white dark:text-black px-4 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 hover:bg-black/80 dark:hover:bg-white/90">{t('save')}</button>
-            </div>
-          </div>
-          </div> {/* End of Left Column */}
 
-            {/* Right Column (Desktop) */}
-            <div className="flex flex-col flex-1 w-full">
-              {/* ---------------- HABITS GRID ---------------- */}
-              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-10 items-start">
-            {habits.map((habit) => {
-              const isMulti = habit.type === 'multi';
-              const isExpanded = expandedHabits.includes(habit.id);
-              
-              let isAllChecked = false;
-              let checkedCount = 0;
+            {/* Mobile Habits Cards Grid */}
+            <div className="grid grid-cols-2 gap-3 mb-10 items-start w-full">
+              {habits.map((habit) => {
+                const isMulti = habit.type === 'multi';
+                const isExpanded = expandedHabits.includes(habit.id);
+                
+                let isAllChecked = false;
+                let checkedCount = 0;
 
-              if (isMulti) {
-                checkedCount = habit.subItems.filter(sub => dailyData[`${activeDateStr}-${habit.id}-${sub}`]).length;
-                isAllChecked = checkedCount === habit.subItems.length && habit.subItems.length > 0;
-              } else {
-                isAllChecked = dailyData[`${activeDateStr}-${habit.id}`];
-              }
+                if (isMulti) {
+                  checkedCount = habit.subItems.filter(sub => dailyData[`${activeDateStr}-${habit.id}-${sub}`]).length;
+                  isAllChecked = checkedCount === habit.subItems.length && habit.subItems.length > 0;
+                } else {
+                  isAllChecked = dailyData[`${activeDateStr}-${habit.id}`];
+                }
 
-              const gridClass = (isMulti && isExpanded) ? 'col-span-2' : 'col-span-1';
-              
-              return (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3 }}
-                  key={habit.id}
-                  className={`relative flex flex-col transition-all duration-300 ease-out active:scale-[0.98] ${gridClass} liquid-panel`}
-                  style={{ 
-                    borderRadius: '24px',
-                    backgroundColor: isAllChecked ? themeColor : (theme === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.4)'),
-                    color: isAllChecked ? '#000000' : (theme === 'dark' ? '#FFFFFF' : '#000000'),
-                    height: (isMulti && isExpanded) ? 'auto' : '80px',
-                    border: isAllChecked ? '1px solid transparent' : '1px solid rgba(255,255,255,0.2)',
-                    boxShadow: isAllChecked ? `0 10px 25px -8px ${themeColor}88` : 'none' 
-                  }}
-                >
-                  <div 
-                    onClick={() => isMulti ? toggleExpand(habit.id) : toggleCheck(habit.id)}
-                    className="flex items-center justify-between p-4 h-full cursor-pointer select-none"
+                const gridClass = (isMulti && isExpanded) ? 'col-span-2' : 'col-span-1';
+                
+                return (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3 }}
+                    key={habit.id}
+                    className={`relative flex flex-col transition-all duration-300 ease-out active:scale-[0.98] ${gridClass} liquid-panel`}
+                    style={{ 
+                      borderRadius: '24px',
+                      backgroundColor: isAllChecked ? themeColor : (theme === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.4)'),
+                      color: isAllChecked ? '#000000' : (theme === 'dark' ? '#FFFFFF' : '#000000'),
+                      height: (isMulti && isExpanded) ? 'auto' : '80px',
+                      border: isAllChecked ? '1px solid transparent' : '1px solid rgba(255,255,255,0.2)',
+                      boxShadow: isAllChecked ? `0 10px 25px -8px ${themeColor}88` : 'none' 
+                    }}
                   >
-                    <div className="flex flex-col flex-1 pr-2 overflow-hidden">
-                      {/* Streak row */}
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-[10px] font-bold" style={{ color: isAllChecked ? 'rgba(0,0,0,0.5)' : themeColor }}>{getStreak(habit.id) > 0 ? `🔥 ${getStreak(habit.id)}` : ''}</span>
+                    <div 
+                      onClick={() => isMulti ? toggleExpand(habit.id) : toggleCheck(habit.id)}
+                      className="flex items-center justify-between p-4 h-full cursor-pointer select-none"
+                    >
+                      <div className="flex flex-col flex-1 pr-2 overflow-hidden">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-[10px] font-bold" style={{ color: isAllChecked ? 'rgba(0,0,0,0.5)' : themeColor }}>{getStreak(habit.id) > 0 ? `🔥 ${getStreak(habit.id)}` : ''}</span>
+                        </div>
+                        <span className="text-[15px] font-semibold tracking-tight leading-tight line-clamp-2">{habit.name}</span>
+                        {isMulti && !isExpanded && (
+                          <span className="text-[10px] opacity-50 mt-0.5 font-bold tracking-wider">{checkedCount}/{habit.subItems.length}</span>
+                        )}
                       </div>
-                      <span className="text-[15px] font-semibold tracking-tight leading-tight line-clamp-2">{habit.name}</span>
-                      {isMulti && !isExpanded && (
-                        <span className="text-[10px] opacity-50 mt-0.5 font-bold tracking-wider">{checkedCount}/{habit.subItems.length}</span>
+                      
+                      {isMulti ? (
+                        <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-black/10 dark:bg-black/20 text-current transition-transform duration-300" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                          <ChevronDown size={14} strokeWidth={2.5} />
+                        </div>
+                      ) : (
+                        <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200" style={{ backgroundColor: isAllChecked ? 'rgba(0,0,0,0.08)' : (theme === 'dark' ? '#2C2C2E' : 'rgba(0,0,0,0.1)') }}>
+                          {isAllChecked ? <Check size={14} strokeWidth={3.5} style={{ color: '#000000' }} /> : <div className="w-1.5 h-1.5 bg-black/40 dark:bg-white/40 rounded-full" />}
+                        </div>
                       )}
                     </div>
-                    
-                    {isMulti ? (
-                      <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-black/10 dark:bg-black/20 text-current transition-transform duration-300" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                        <ChevronDown size={14} strokeWidth={2.5} />
-                      </div>
-                    ) : (
-                      <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200" style={{ backgroundColor: isAllChecked ? 'rgba(0,0,0,0.08)' : (theme === 'dark' ? '#2C2C2E' : 'rgba(0,0,0,0.1)') }}>
-                        {isAllChecked ? <Check size={14} strokeWidth={3.5} style={{ color: '#000000' }} /> : <div className="w-1.5 h-1.5 bg-black/40 dark:bg-white/40 rounded-full" />}
+
+                    {isMulti && isExpanded && (
+                      <div className="flex flex-col gap-2 px-4 pb-4 pt-1 border-t border-black/5 transition-all duration-300 animate-fadeIn">
+                        {habit.subItems.map((sub, idx) => {
+                          const isSubChecked = dailyData[`${activeDateStr}-${habit.id}-${sub}`];
+                          return (
+                            <div 
+                              key={idx} 
+                              onClick={() => toggleCheck(habit.id, sub)}
+                              className="flex justify-between items-center p-3.5 rounded-xl cursor-pointer transition-all duration-200 active:scale-[0.99]"
+                              style={{ backgroundColor: isAllChecked ? 'rgba(0,0,0,0.04)' : '#2C2C2E' }}
+                            >
+                              <span className="text-sm font-medium tracking-tight opacity-90">{sub}</span>
+                              <div className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border-2 transition-all duration-200" style={{ borderColor: isSubChecked ? (isAllChecked ? '#000' : themeColor) : 'rgba(255,255,255,0.15)', backgroundColor: isSubChecked ? (isAllChecked ? '#000' : themeColor) : 'transparent' }}>
+                                {isSubChecked && <Check size={11} strokeWidth={4.5} style={{ color: isAllChecked ? themeColor : '#000' }} />}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
-                  </div>
+                  </motion.div>
+                );
+              })}
+            </div>
 
-                  {/* الـ Checklist الفرعية منسدلة بأنيميشن ناعم */}
-                  {isMulti && isExpanded && (
-                    <div className="flex flex-col gap-2 px-4 pb-4 pt-1 border-t border-black/5 transition-all duration-300 animate-fadeIn">
-                      {habit.subItems.map((sub, idx) => {
-                        const isSubChecked = dailyData[`${activeDateStr}-${habit.id}-${sub}`];
-                        return (
-                          <div 
-                            key={idx} 
-                            onClick={() => toggleCheck(habit.id, sub)}
-                            className="flex justify-between items-center p-3.5 rounded-xl cursor-pointer transition-all duration-200 active:scale-[0.99]"
-                            style={{ backgroundColor: isAllChecked ? 'rgba(0,0,0,0.04)' : '#2C2C2E' }}
-                          >
-                            <span className="text-sm font-medium tracking-tight opacity-90">{sub}</span>
-                            <div className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border-2 transition-all duration-200" style={{ borderColor: isSubChecked ? (isAllChecked ? '#000' : themeColor) : 'rgba(255,255,255,0.15)', backgroundColor: isSubChecked ? (isAllChecked ? '#000' : themeColor) : 'transparent' }}>
-                              {isSubChecked && <Check size={11} strokeWidth={4.5} style={{ color: isAllChecked ? themeColor : '#000' }} />}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </motion.div>
-              );
-            })}
           </div>
 
-          {/* ---------------- DESKTOP DASHBOARD WIDGETS ---------------- */}
-          {/* Visible on desktop/laptop screens (md and up), hidden on mobile */}
-          <div className="hidden md:grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6 mb-8 w-full">
+          {/* ---------------- DESKTOP-ONLY 3-COLUMN DASHBOARD (hidden md:flex) ---------------- */}
+          {/* Highly structured, symmetrical, clean dashboard optimized for laptops and desktop screens */}
+          <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12 items-start w-full">
             
-            {/* Daily Tasks Widget */}
-            <div className="liquid-panel p-6 shadow-xl border border-black/5 dark:border-white/5 flex flex-col" style={{ borderRadius: '28px' }}>
-              <div className="flex items-center justify-between mb-4 select-none">
-                <div className="flex items-center gap-2">
-                  <ListChecks size={18} style={{ color: themeColor }} />
-                  <h3 className="text-sm font-bold tracking-widest text-gray-700 dark:text-white/80 uppercase">{t('todaysTasks')}</h3>
-                </div>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold" style={{ backgroundColor: `${themeColor}22`, color: themeColor }}>
-                  {dailyTasks.filter(t => t.completed).length}/{dailyTasks.length}
-                </span>
-              </div>
-
-              <div className="flex flex-col gap-2.5 mb-5 max-h-[180px] overflow-y-auto pr-1">
-                {dailyTasks.map((task, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 rounded-2xl bg-white/20 dark:bg-black/20 border border-black/5 dark:border-white/5 transition-all duration-200">
-                    <div className="flex items-center gap-3 cursor-pointer flex-1" onClick={() => {
-                      haptic('light');
-                      setDailyTasks(prev => prev.map((t, i) => i === idx ? { ...t, completed: !t.completed } : t));
-                    }}>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${task.completed ? 'bg-black dark:bg-white border-transparent' : 'border-black/20 dark:border-white/20'}`} style={{ borderColor: task.completed ? themeColor : undefined }}>
-                        {task.completed && <Check size={12} strokeWidth={4} style={{ color: theme === 'dark' ? themeColor : '#fff' }} />}
-                      </div>
-                      <span className={`text-sm font-semibold transition-all ${task.completed ? 'text-gray-400 dark:text-white/30 line-through' : 'text-black dark:text-white/90'}`}>{task.text}</span>
-                    </div>
-                    <button onClick={() => setDailyTasks(prev => prev.filter((_, i) => i !== idx))} className="text-gray-400 dark:text-white/20 hover:text-red-500 dark:hover:text-red-400 p-1 transition-colors">
-                      <Trash2 size={16} />
-                    </button>
+            {/* COLUMN 1: Energy & Focus (التركيز والمهمة اليومية) */}
+            <div className="flex flex-col gap-6 w-full">
+              
+              {/* Mission & Score Card */}
+              <div 
+                className="w-full p-6 flex flex-col transition-all duration-500 ease-out liquid-panel" 
+                style={{ 
+                  backgroundColor: theme === 'dark' ? `${themeColor}cc` : `${themeColor}aa`, 
+                  borderRadius: '28px', 
+                  color: '#000000',
+                  boxShadow: `0 12px 40px -12px ${themeColor}aa` 
+                }}
+              >
+                {mission ? (
+                  <div className="flex items-center gap-1.5 mb-2 opacity-70">
+                    <Target size={14} strokeWidth={2.5} />
+                    <span className="text-[10px] font-bold tracking-widest uppercase">{t('myMission')}</span>
                   </div>
-                ))}
-                {dailyTasks.length === 0 && (
-                  <div className="text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-8 border border-dashed border-black/10 dark:border-white/10 rounded-2xl bg-black/5 dark:bg-white/5 select-none">{t('noTasks')}</div>
+                ) : (
+                  <button onClick={() => setIsEditingMission(true)} className="flex items-center gap-1.5 mb-2 hover:opacity-60 transition-opacity">
+                    <Target size={14} strokeWidth={2.5} />
+                    <span className="text-[10px] font-bold tracking-widest uppercase">{t('setMission')}</span>
+                  </button>
                 )}
+                
+                {isEditingMission ? (
+                  <input 
+                    autoFocus value={missionInput} onChange={(e) => setMissionInput(e.target.value)} onBlur={saveMission} onKeyDown={(e) => e.key === 'Enter' && saveMission()}
+                    className="text-2xl font-black tracking-tight outline-none bg-transparent mb-6 pb-1 border-b border-black/20 w-full placeholder:text-black/30"
+                    style={{ color: '#000000' }} placeholder={t('whatsYourGoal')}
+                  />
+                ) : (
+                  mission && (
+                    <h2 onClick={() => setIsEditingMission(true)} className="text-2xl font-black tracking-tight mb-6 cursor-pointer break-words active:opacity-80 transition-opacity">
+                      {mission}
+                    </h2>
+                  )
+                )}
+
+                <div className="w-full h-[4px] bg-black/10 mb-4 rounded-full overflow-hidden">
+                  <div className="h-full bg-black rounded-full transition-all duration-500 ease-out" style={{ width: `${animatedScore}%` }}></div>
+                </div>
+
+                <div className="flex gap-10 select-none">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold tracking-widest opacity-50 uppercase mb-0.5">
+                      {t('score')} ({activeDateStr === realTodayStr ? t('today') : t('viewed')})
+                    </span>
+                    <span className="text-4xl font-black tracking-tighter tabular-nums">
+                      {scoreDisplay}<span className="text-xl font-bold ml-0.5 opacity-80">%</span>
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex gap-2 mt-auto">
-                <input 
-                  type="text" 
-                  placeholder={t('addTaskPlaceholder')}
-                  value={newTaskInput}
-                  onChange={(e) => setNewTaskInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && newTaskInput.trim() !== '') {
+              {/* Sleep Logger Card */}
+              <div className="w-full p-5 liquid-panel rounded-3xl flex justify-between items-center shadow-lg border border-black/5 dark:border-white/5">
+                <div className="flex items-center gap-2 select-none">
+                  <Moon size={18} className="text-indigo-500 dark:text-indigo-400" strokeWidth={2.5} />
+                  <span className="text-xs font-bold tracking-widest uppercase text-gray-700 dark:text-white/80">{t('sleep')}</span>
+                </div>
+                <div className="flex gap-2">
+                  <input type="number" placeholder="0" value={sleepInput} onChange={(e) => setSleepInput(e.target.value)} className="w-14 bg-white/50 dark:bg-black/30 border border-black/10 dark:border-white/10 text-black dark:text-white px-2 py-1.5 rounded-xl outline-none text-center font-bold text-sm focus:border-black/30 dark:focus:border-white/30 transition-colors" />
+                  <button onClick={logSleep} className="bg-black text-white dark:bg-white dark:text-black px-4 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 hover:bg-black/80 dark:hover:bg-white/90">{t('save')}</button>
+                </div>
+              </div>
+
+            </div>
+
+            {/* COLUMN 2: Habits Routine (الروتين والعادات اليومية) */}
+            {/* Groups all habits inside a single magnificent, unified panel to eliminate scattered alignment issues */}
+            <div className="flex flex-col gap-6 w-full">
+              
+              <div className="liquid-panel p-6 shadow-xl border border-black/5 dark:border-white/5 flex flex-col w-full" style={{ borderRadius: '28px' }}>
+                <div className="flex items-center gap-2 mb-5 select-none">
+                  <SlidersHorizontal size={18} style={{ color: themeColor }} />
+                  <h3 className="text-sm font-bold tracking-widest text-gray-700 dark:text-white/80 uppercase">{t('positiveHabits')}</h3>
+                </div>
+
+                <div className="flex flex-col w-full pr-1 overflow-y-auto max-h-[360px]">
+                  {habits.map((habit) => {
+                    const isMulti = habit.type === 'multi';
+                    const isExpanded = expandedHabits.includes(habit.id);
+                    
+                    let isAllChecked = false;
+                    let checkedCount = 0;
+
+                    if (isMulti) {
+                      checkedCount = habit.subItems.filter(sub => dailyData[`${activeDateStr}-${habit.id}-${sub}`]).length;
+                      isAllChecked = checkedCount === habit.subItems.length && habit.subItems.length > 0;
+                    } else {
+                      isAllChecked = dailyData[`${activeDateStr}-${habit.id}`];
+                    }
+
+                    return (
+                      <div 
+                        key={habit.id} 
+                        className="flex flex-col rounded-2xl border border-black/5 dark:border-white/5 transition-all duration-300 mb-3 overflow-hidden" 
+                        style={{
+                          backgroundColor: isAllChecked ? `${themeColor}12` : (theme === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'),
+                          borderColor: isAllChecked ? `${themeColor}33` : undefined
+                        }}
+                      >
+                        <div 
+                          onClick={() => isMulti ? toggleExpand(habit.id) : toggleCheck(habit.id)} 
+                          className="flex items-center justify-between p-3.5 cursor-pointer select-none"
+                        >
+                          <div className="flex items-center gap-3">
+                            {/* Check circle */}
+                            <div className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200" style={{ backgroundColor: isAllChecked ? themeColor : (theme === 'dark' ? '#2C2C2E' : 'rgba(0,0,0,0.1)') }}>
+                              {isAllChecked ? <Check size={12} strokeWidth={4.5} style={{ color: '#000000' }} /> : <div className="w-1.5 h-1.5 bg-black/40 dark:bg-white/40 rounded-full" />}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className={`text-sm font-bold ${isAllChecked ? 'text-black dark:text-white font-black' : 'text-gray-800 dark:text-white/90'}`}>{habit.name}</span>
+                              {isMulti && (
+                                <span className="text-[9px] text-gray-500 dark:text-white/40 font-bold uppercase tracking-wider mt-0.5">{checkedCount}/{habit.subItems.length} {t('items')}</span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            {getStreak(habit.id) > 0 && (
+                              <span className="text-[10px] font-bold" style={{ color: themeColor }}>🔥 {getStreak(habit.id)}</span>
+                            )}
+                            {isMulti && (
+                              <ChevronDown size={14} className="text-gray-400 transition-transform duration-300" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+                            )}
+                          </div>
+                        </div>
+                        
+                        {isMulti && isExpanded && (
+                          <div className="flex flex-col gap-1.5 px-3 pb-3 pt-1 border-t border-black/5 dark:border-white/5 bg-black/5 dark:bg-black/25">
+                            {habit.subItems.map((sub, idx) => {
+                              const isSubChecked = dailyData[`${activeDateStr}-${habit.id}-${sub}`];
+                              return (
+                                <div 
+                                  key={idx} 
+                                  onClick={() => toggleCheck(habit.id, sub)} 
+                                  className="flex justify-between items-center p-2 rounded-xl cursor-pointer hover:bg-black/5 dark:hover:bg-white/5"
+                                >
+                                  <span className="text-xs font-semibold text-gray-700 dark:text-white/80">{sub}</span>
+                                  <div className="w-4 h-4 rounded-full flex items-center justify-center border-2 transition-all duration-200" style={{ borderColor: isSubChecked ? themeColor : 'rgba(255,255,255,0.15)', backgroundColor: isSubChecked ? themeColor : 'transparent' }}>
+                                    {isSubChecked && <Check size={9} strokeWidth={5} style={{ color: '#000' }} />}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {habits.length === 0 && (
+                    <div className="text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-12 select-none">{t('noHabitsYet')}</div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+            {/* COLUMN 3: Tasks & Performance (المهام اليومية والإحصائيات) */}
+            <div className="flex flex-col gap-6 w-full">
+              
+              {/* Daily Tasks Checklist Widget */}
+              <div className="liquid-panel p-6 shadow-xl border border-black/5 dark:border-white/5 flex flex-col w-full" style={{ borderRadius: '28px' }}>
+                <div className="flex items-center justify-between mb-4 select-none">
+                  <div className="flex items-center gap-2">
+                    <ListChecks size={18} style={{ color: themeColor }} />
+                    <h3 className="text-sm font-bold tracking-widest text-gray-700 dark:text-white/80 uppercase">{t('todaysTasks')}</h3>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold" style={{ backgroundColor: `${themeColor}22`, color: themeColor }}>
+                    {dailyTasks.filter(t => t.completed).length}/{dailyTasks.length}
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-2.5 mb-5 max-h-[170px] overflow-y-auto pr-1">
+                  {dailyTasks.map((task, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 rounded-2xl bg-white/20 dark:bg-black/20 border border-black/5 dark:border-white/5 transition-all duration-200">
+                      <div className="flex items-center gap-3 cursor-pointer flex-1" onClick={() => {
+                        haptic('light');
+                        setDailyTasks(prev => prev.map((t, i) => i === idx ? { ...t, completed: !t.completed } : t));
+                      }}>
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${task.completed ? 'bg-black dark:bg-white border-transparent' : 'border-black/20 dark:border-white/20'}`} style={{ borderColor: task.completed ? themeColor : undefined }}>
+                          {task.completed && <Check size={12} strokeWidth={4} style={{ color: theme === 'dark' ? themeColor : '#fff' }} />}
+                        </div>
+                        <span className={`text-sm font-semibold transition-all ${task.completed ? 'text-gray-400 dark:text-white/30 line-through' : 'text-black dark:text-white/90'}`}>{task.text}</span>
+                      </div>
+                      <button onClick={() => setDailyTasks(prev => prev.filter((_, i) => i !== idx))} className="text-gray-400 dark:text-white/20 hover:text-red-500 dark:hover:text-red-400 p-1 transition-colors">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                  {dailyTasks.length === 0 && (
+                    <div className="text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-8 border border-dashed border-black/10 dark:border-white/10 rounded-2xl bg-black/5 dark:bg-white/5 select-none">{t('noTasks')}</div>
+                  )}
+                </div>
+
+                <div className="flex gap-2 mt-auto">
+                  <input 
+                    type="text" 
+                    placeholder={t('addTaskPlaceholder')}
+                    value={newTaskInput}
+                    onChange={(e) => setNewTaskInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newTaskInput.trim() !== '') {
+                        haptic('light');
+                        setDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
+                        setNewTaskInput("");
+                      }
+                    }}
+                    className="flex-1 bg-white/50 dark:bg-black/20 border border-black/10 dark:border-white/5 text-black dark:text-white px-4 py-3 rounded-2xl outline-none text-sm font-semibold focus:border-black/30 dark:focus:border-white/30 transition-colors placeholder:text-gray-400 dark:placeholder:text-white/30" 
+                  />
+                  <button onClick={() => {
+                    if (newTaskInput.trim() !== '') {
                       haptic('light');
                       setDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
                       setNewTaskInput("");
                     }
-                  }}
-                  className="flex-1 bg-white/50 dark:bg-black/20 border border-black/10 dark:border-white/5 text-black dark:text-white px-4 py-3 rounded-2xl outline-none text-sm font-semibold focus:border-black/30 dark:focus:border-white/30 transition-colors placeholder:text-gray-400 dark:placeholder:text-white/30" 
-                />
-                <button onClick={() => {
-                  if (newTaskInput.trim() !== '') {
-                    haptic('light');
-                    setDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
-                    setNewTaskInput("");
-                  }
-                }} className="px-4 py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 hover:opacity-90" style={{ backgroundColor: themeColor, color: '#000' }}>
-                  <Plus size={18} strokeWidth={3} />
-                </button>
-              </div>
-            </div>
-
-            {/* Weekly Analytics Widget */}
-            <div className="liquid-panel p-6 shadow-xl border border-black/5 dark:border-white/5 flex flex-col justify-between" style={{ borderRadius: '28px' }}>
-              <div>
-                <div className="flex items-center gap-2 mb-4 select-none">
-                  <BarChart2 size={18} style={{ color: themeColor }} />
-                  <h3 className="text-sm font-bold tracking-widest text-gray-700 dark:text-white/80 uppercase">{t('analytics')}</h3>
-                </div>
-                
-                <div className="w-full h-36 relative">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={sleepChartData} barGap={2} barCategoryGap={8}>
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8E8E93', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em' }} dy={10} />
-                      <YAxis yAxisId="sleep" orientation="left" hide domain={[0, 24]} />
-                      <YAxis yAxisId="score" orientation="right" hide domain={[0, 100]} />
-                      <YAxis yAxisId="focus" orientation="right" hide domain={[0, 180]} />
-                      
-                      <Tooltip 
-                        cursor={<CustomCursor />} 
-                        contentStyle={{ backgroundColor: '#1C1C1E', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', color: '#FFFFFF', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
-                        itemStyle={{ color: '#FFFFFF', fontWeight: 600, fontSize: '11px' }} 
-                        formatter={(value, name) => { 
-                          if (name === "Sleep") return [`${value} hrs`, "Sleep"];
-                          if (name === "Focus") return [`${value} min`, "Focus"];
-                          return [`${value.toFixed(0)}%`, "Score"]; 
-                        }} 
-                      />
-                      
-                      <Bar yAxisId="sleep" dataKey="sleep" fill="#FFFFFF" radius={[3, 3, 3, 3]} barSize={4} name="Sleep" />
-                      <Bar yAxisId="score" dataKey="score" fill={themeColor} radius={[3, 3, 3, 3]} barSize={4} name="Score" />
-                      <Bar yAxisId="focus" dataKey="focus" fill="#22d3ee" radius={[3, 3, 3, 3]} barSize={4} name="Focus" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  }} className="px-4 py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 hover:opacity-90" style={{ backgroundColor: themeColor, color: '#000' }}>
+                    <Plus size={18} strokeWidth={3} />
+                  </button>
                 </div>
               </div>
 
-              <div className="flex items-center justify-center gap-6 mt-4 select-none border-t border-black/5 dark:border-white/5 pt-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-white"/>
-                  <span className="text-[9px] font-black tracking-widest text-gray-500 dark:text-[#8E8E93] uppercase">{t('sleep')}</span>
+              {/* Weekly Analytics Chart Card */}
+              <div className="liquid-panel p-6 shadow-xl border border-black/5 dark:border-white/5 flex flex-col justify-between w-full" style={{ borderRadius: '28px' }}>
+                <div>
+                  <div className="flex items-center gap-2 mb-4 select-none">
+                    <BarChart2 size={18} style={{ color: themeColor }} />
+                    <h3 className="text-sm font-bold tracking-widest text-gray-700 dark:text-white/80 uppercase">{t('analytics')}</h3>
+                  </div>
+                  
+                  <div className="w-full h-36 relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={sleepChartData} barGap={2} barCategoryGap={8}>
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8E8E93', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em' }} dy={10} />
+                        <YAxis yAxisId="sleep" orientation="left" hide domain={[0, 24]} />
+                        <YAxis yAxisId="score" orientation="right" hide domain={[0, 100]} />
+                        <YAxis yAxisId="focus" orientation="right" hide domain={[0, 180]} />
+                        
+                        <Tooltip 
+                          cursor={<CustomCursor />} 
+                          contentStyle={{ backgroundColor: '#1C1C1E', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', color: '#FFFFFF', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
+                          itemStyle={{ color: '#FFFFFF', fontWeight: 600, fontSize: '11px' }} 
+                          formatter={(value, name) => { 
+                            if (name === "Sleep") return [`${value} hrs`, "Sleep"];
+                            if (name === "Focus") return [`${value} min`, "Focus"];
+                            return [`${value.toFixed(0)}%`, "Score"]; 
+                          }} 
+                        />
+                        
+                        <Bar yAxisId="sleep" dataKey="sleep" fill="#FFFFFF" radius={[3, 3, 3, 3]} barSize={4} name="Sleep" />
+                        <Bar yAxisId="score" dataKey="score" fill={themeColor} radius={[3, 3, 3, 3]} barSize={4} name="Score" />
+                        <Bar yAxisId="focus" dataKey="focus" fill="#22d3ee" radius={[3, 3, 3, 3]} barSize={4} name="Focus" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: themeColor}}/>
-                  <span className="text-[9px] font-black tracking-widest text-gray-500 dark:text-[#8E8E93] uppercase">{t('score')}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-400"/>
-                  <span className="text-[9px] font-black tracking-widest text-gray-500 dark:text-[#8E8E93] uppercase">{t('focus')}</span>
+
+                <div className="flex items-center justify-center gap-6 mt-4 select-none border-t border-black/5 dark:border-white/5 pt-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-white"/>
+                    <span className="text-[9px] font-black tracking-widest text-gray-500 dark:text-[#8E8E93] uppercase">{t('sleep')}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: themeColor}}/>
+                    <span className="text-[9px] font-black tracking-widest text-gray-500 dark:text-[#8E8E93] uppercase">{t('score')}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-400"/>
+                    <span className="text-[9px] font-black tracking-widest text-gray-500 dark:text-[#8E8E93] uppercase">{t('focus')}</span>
+                  </div>
                 </div>
               </div>
+
             </div>
 
           </div>
-          </div> {/* End of Right Column */}
-          </div> {/* End of Columns Wrapper */}
 
           {/* --- ANALYTICS MODAL --- */}
           {isAnalyticsModalOpen && createPortal(
