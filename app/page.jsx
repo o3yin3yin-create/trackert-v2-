@@ -2054,6 +2054,124 @@ export default function App() {
               );
             })}
           </div>
+
+          {/* ---------------- DESKTOP DASHBOARD WIDGETS ---------------- */}
+          {/* Visible on desktop/laptop screens (md and up), hidden on mobile */}
+          <div className="hidden md:grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6 mb-8 w-full">
+            
+            {/* Daily Tasks Widget */}
+            <div className="liquid-panel p-6 shadow-xl border border-black/5 dark:border-white/5 flex flex-col" style={{ borderRadius: '28px' }}>
+              <div className="flex items-center justify-between mb-4 select-none">
+                <div className="flex items-center gap-2">
+                  <ListChecks size={18} style={{ color: themeColor }} />
+                  <h3 className="text-sm font-bold tracking-widest text-gray-700 dark:text-white/80 uppercase">{t('todaysTasks')}</h3>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold" style={{ backgroundColor: `${themeColor}22`, color: themeColor }}>
+                  {dailyTasks.filter(t => t.completed).length}/{dailyTasks.length}
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-2.5 mb-5 max-h-[180px] overflow-y-auto pr-1">
+                {dailyTasks.map((task, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 rounded-2xl bg-white/20 dark:bg-black/20 border border-black/5 dark:border-white/5 transition-all duration-200">
+                    <div className="flex items-center gap-3 cursor-pointer flex-1" onClick={() => {
+                      haptic('light');
+                      setDailyTasks(prev => prev.map((t, i) => i === idx ? { ...t, completed: !t.completed } : t));
+                    }}>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${task.completed ? 'bg-black dark:bg-white border-transparent' : 'border-black/20 dark:border-white/20'}`} style={{ borderColor: task.completed ? themeColor : undefined }}>
+                        {task.completed && <Check size={12} strokeWidth={4} style={{ color: theme === 'dark' ? themeColor : '#fff' }} />}
+                      </div>
+                      <span className={`text-sm font-semibold transition-all ${task.completed ? 'text-gray-400 dark:text-white/30 line-through' : 'text-black dark:text-white/90'}`}>{task.text}</span>
+                    </div>
+                    <button onClick={() => setDailyTasks(prev => prev.filter((_, i) => i !== idx))} className="text-gray-400 dark:text-white/20 hover:text-red-500 dark:hover:text-red-400 p-1 transition-colors">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+                {dailyTasks.length === 0 && (
+                  <div className="text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-8 border border-dashed border-black/10 dark:border-white/10 rounded-2xl bg-black/5 dark:bg-white/5 select-none">{t('noTasks')}</div>
+                )}
+              </div>
+
+              <div className="flex gap-2 mt-auto">
+                <input 
+                  type="text" 
+                  placeholder={t('addTaskPlaceholder')}
+                  value={newTaskInput}
+                  onChange={(e) => setNewTaskInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newTaskInput.trim() !== '') {
+                      haptic('light');
+                      setDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
+                      setNewTaskInput("");
+                    }
+                  }}
+                  className="flex-1 bg-white/50 dark:bg-black/20 border border-black/10 dark:border-white/5 text-black dark:text-white px-4 py-3 rounded-2xl outline-none text-sm font-semibold focus:border-black/30 dark:focus:border-white/30 transition-colors placeholder:text-gray-400 dark:placeholder:text-white/30" 
+                />
+                <button onClick={() => {
+                  if (newTaskInput.trim() !== '') {
+                    haptic('light');
+                    setDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
+                    setNewTaskInput("");
+                  }
+                }} className="px-4 py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 hover:opacity-90" style={{ backgroundColor: themeColor, color: '#000' }}>
+                  <Plus size={18} strokeWidth={3} />
+                </button>
+              </div>
+            </div>
+
+            {/* Weekly Analytics Widget */}
+            <div className="liquid-panel p-6 shadow-xl border border-black/5 dark:border-white/5 flex flex-col justify-between" style={{ borderRadius: '28px' }}>
+              <div>
+                <div className="flex items-center gap-2 mb-4 select-none">
+                  <BarChart2 size={18} style={{ color: themeColor }} />
+                  <h3 className="text-sm font-bold tracking-widest text-gray-700 dark:text-white/80 uppercase">{t('analytics')}</h3>
+                </div>
+                
+                <div className="w-full h-36 relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={sleepChartData} barGap={2} barCategoryGap={8}>
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8E8E93', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em' }} dy={10} />
+                      <YAxis yAxisId="sleep" orientation="left" hide domain={[0, 24]} />
+                      <YAxis yAxisId="score" orientation="right" hide domain={[0, 100]} />
+                      <YAxis yAxisId="focus" orientation="right" hide domain={[0, 180]} />
+                      
+                      <Tooltip 
+                        cursor={<CustomCursor />} 
+                        contentStyle={{ backgroundColor: '#1C1C1E', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', color: '#FFFFFF', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
+                        itemStyle={{ color: '#FFFFFF', fontWeight: 600, fontSize: '11px' }} 
+                        formatter={(value, name) => { 
+                          if (name === "Sleep") return [`${value} hrs`, "Sleep"];
+                          if (name === "Focus") return [`${value} min`, "Focus"];
+                          return [`${value.toFixed(0)}%`, "Score"]; 
+                        }} 
+                      />
+                      
+                      <Bar yAxisId="sleep" dataKey="sleep" fill="#FFFFFF" radius={[3, 3, 3, 3]} barSize={4} name="Sleep" />
+                      <Bar yAxisId="score" dataKey="score" fill={themeColor} radius={[3, 3, 3, 3]} barSize={4} name="Score" />
+                      <Bar yAxisId="focus" dataKey="focus" fill="#22d3ee" radius={[3, 3, 3, 3]} barSize={4} name="Focus" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center gap-6 mt-4 select-none border-t border-black/5 dark:border-white/5 pt-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-white"/>
+                  <span className="text-[9px] font-black tracking-widest text-gray-500 dark:text-[#8E8E93] uppercase">{t('sleep')}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: themeColor}}/>
+                  <span className="text-[9px] font-black tracking-widest text-gray-500 dark:text-[#8E8E93] uppercase">{t('score')}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-400"/>
+                  <span className="text-[9px] font-black tracking-widest text-gray-500 dark:text-[#8E8E93] uppercase">{t('focus')}</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
           </div> {/* End of Right Column */}
           </div> {/* End of Columns Wrapper */}
 
