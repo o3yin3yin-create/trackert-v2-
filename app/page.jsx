@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map } from 'lucide-react';
+import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane } from 'lucide-react';
 import { messaging, getToken } from '../lib/firebase';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -1669,7 +1669,7 @@ export default function App() {
                                   <circle r="8" style={{ fill: '#fff', opacity: 0.2 }} className="blur-[1px]" />
                                   <circle r="12" style={{ stroke: '#fff', opacity: 0.1 }} className="fill-none stroke-[0.5] animate-ping" />
                                   <g transform="rotate(45) translate(-7, -7)">
-                                    <PlaneTakeoff size={14} color="#ffffff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
+                                    <Plane size={14} color="#ffffff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
                                   </g>
                                 </g>
                               </svg>
@@ -1812,7 +1812,7 @@ export default function App() {
                                   >
                                     <circle r="10" style={{ fill: themeColor, opacity: 0.3 }} className="blur-[2px]" />
                                     <g transform="rotate(45) translate(-8, -8)">
-                                      <PlaneTakeoff size={16} color={themeColor} style={{ filter: `drop-shadow(0 0 6px ${themeColor})` }} />
+                                      <Plane size={16} color={themeColor} style={{ filter: `drop-shadow(0 0 6px ${themeColor})` }} />
                                     </g>
                                   </g>
                                 </svg>
@@ -2830,7 +2830,7 @@ export default function App() {
                                 <circle r="8" style={{ fill: '#fff', opacity: 0.2 }} className="blur-[1px]" />
                                 <circle r="12" style={{ stroke: '#fff', opacity: 0.1 }} className="fill-none stroke-[0.5] animate-ping" />
                                 <g transform="rotate(45) translate(-7, -7)">
-                                  <PlaneTakeoff size={14} color="#ffffff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
+                                  <Plane size={14} color="#ffffff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
                                 </g>
                               </g>
                             </svg>
@@ -2963,7 +2963,7 @@ export default function App() {
                                 <g transform={`translate(${x}, ${y}) rotate(${angle})`} className="transition-all duration-1000 ease-linear">
                                   <circle r="10" style={{ fill: themeColor, opacity: 0.3 }} className="blur-[2px]" />
                                   <g transform="rotate(45) translate(-8, -8)">
-                                    <PlaneTakeoff size={16} color={themeColor} style={{ filter: `drop-shadow(0 0 6px ${themeColor})` }} />
+                                    <Plane size={16} color={themeColor} style={{ filter: `drop-shadow(0 0 6px ${themeColor})` }} />
                                   </g>
                                 </g>
                               </svg>
