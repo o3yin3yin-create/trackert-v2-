@@ -1775,22 +1775,6 @@ export default function App() {
           {/* Header with Navigation */}
           <header className="flex flex-col gap-3 mb-8 w-full">
             {/* Live Activity Widgets */}
-            {(!isFlightFocusOpen && isFlightTimerRunning && selectedFlight) && (
-              <div onClick={() => setIsFlightFocusOpen(true)} className="mb-2 liquid-panel rounded-full px-4 py-3 flex items-center justify-between cursor-pointer animate-in fade-in slide-in-from-top-2 border-[1.5px]" style={{ borderColor: `${themeColor}48` }}>
-                <div className="flex items-center gap-3">
-                   <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: `${themeColor}22` }}>
-                      <PlaneTakeoff size={16} color={themeColor} />
-                   </div>
-                   <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-gray-500 dark:text-white/50 uppercase">{selectedFlight.airline}</span>
-                      <span className="text-xs font-bold text-black dark:text-white">{t('flightFocus')} Active</span>
-                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                   <span className="text-sm font-bold" style={{ color: themeColor }}>{String(Math.floor(flightTimer/60)).padStart(2,'0')}:{String(flightTimer%60).padStart(2,'0')}</span>
-                </div>
-              </div>
-            )}
 
             {(!isPomodoroOpen && isTimerRunning) && (
               <div onClick={() => setIsPomodoroOpen(true)} className="mb-2 liquid-panel rounded-full px-4 py-3 flex items-center justify-between cursor-pointer animate-in fade-in slide-in-from-top-2 border-[1.5px]" style={{ borderColor: `${activePomodoroTask.color}40` }}>
@@ -1983,7 +1967,7 @@ export default function App() {
                       backgroundColor: isAllChecked ? themeColor : (theme === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.4)'),
                       color: isAllChecked ? '#000000' : (theme === 'dark' ? '#FFFFFF' : '#000000'),
                       height: (isMulti && isExpanded) ? 'auto' : '80px',
-                      border: isAllChecked ? '1px solid transparent' : '1px solid rgba(255,255,255,0.2)',
+                      border: isAllChecked ? '1px solid transparent' : '1px solid rgba(255,255,255,0.28)',
                       boxShadow: isAllChecked ? `0 10px 25px -8px ${themeColor}88` : 'none' 
                     }}
                   >
@@ -2140,7 +2124,7 @@ export default function App() {
                         backgroundColor: isAllChecked ? themeColor : (theme === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.4)'),
                         color: isAllChecked ? '#000000' : (theme === 'dark' ? '#FFFFFF' : '#000000'),
                         height: (isMulti && isExpanded) ? 'auto' : '80px',
-                        border: isAllChecked ? '1px solid transparent' : '1px solid rgba(255,255,255,0.2)',
+                        border: isAllChecked ? '1px solid transparent' : '1px solid rgba(255,255,255,0.28)',
                         boxShadow: isAllChecked ? `0 10px 25px -8px ${themeColor}88` : 'none' 
                       }}
                     >
@@ -2203,7 +2187,7 @@ export default function App() {
             <div className="flex flex-col gap-6 w-full">
               
               {/* Sleep Logger Card */}
-              <div className="w-full p-5 liquid-panel rounded-3xl flex justify-between items-center shadow-lg border border-black/5 dark:border-white/5">
+              <div className="w-full p-5 liquid-panel rounded-3xl flex justify-between items-center shadow-lg">
                 <div className="flex items-center gap-2 select-none">
                   <Moon size={18} className="text-indigo-500 dark:text-indigo-400" strokeWidth={2.5} />
                   <span className="text-xs font-bold tracking-widest uppercase text-gray-700 dark:text-white/80">{t('sleep')}</span>
@@ -2215,7 +2199,7 @@ export default function App() {
               </div>
 
               {/* Daily Tasks Checklist Widget */}
-              <div className="liquid-panel p-6 shadow-xl border border-black/5 dark:border-white/5 flex flex-col w-full" style={{ borderRadius: '28px' }}>
+              <div className="liquid-panel p-6 shadow-xl flex flex-col w-full" style={{ borderRadius: '28px' }}>
                 <div className="flex items-center justify-between mb-4 select-none">
                   <div className="flex items-center gap-2">
                     <ListChecks size={18} style={{ color: themeColor }} />
@@ -2276,7 +2260,7 @@ export default function App() {
               </div>
 
               {/* Weekly Analytics Chart Card */}
-              <div className="liquid-panel p-6 shadow-xl border border-black/5 dark:border-white/5 flex flex-col justify-between w-full" style={{ borderRadius: '28px' }}>
+              <div className="liquid-panel p-6 shadow-xl flex flex-col justify-between w-full" style={{ borderRadius: '28px' }}>
                 <div>
                   <div className="flex items-center gap-2 mb-4 select-none">
                     <BarChart2 size={18} style={{ color: themeColor }} />
@@ -2332,7 +2316,7 @@ export default function App() {
             {/* Embeds a fully functional live flight tracking system directly on the dashboard */}
             <div className="flex flex-col gap-6 w-full">
               
-              <div className="liquid-panel p-6 shadow-xl border border-black/5 dark:border-white/5 flex flex-col w-full h-full justify-between" style={{ borderRadius: '28px' }}>
+              <div className="liquid-panel p-6 shadow-xl flex flex-col w-full h-full justify-between" style={{ borderRadius: '28px' }}>
                 {selectedFlight ? (
                   <div className="flex flex-col w-full">
                     {/* Active Flight Header */}
