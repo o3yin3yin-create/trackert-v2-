@@ -1234,9 +1234,7 @@ export default function App() {
                           {f.airline}
                           <span className="text-[10px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-white/50">{f.callsign}</span>
                         </span>
-                        <span className="text-xs font-bold px-2 py-0.5 bg-white/10 rounded-full text-white/50">
-                           ✨ ?
-                        </span>
+
                       </div>
                       <div className="flex items-center gap-2 text-white/50 text-sm font-semibold">
                         <span>{f.origin}</span>
