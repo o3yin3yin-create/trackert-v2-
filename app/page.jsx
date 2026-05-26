@@ -1573,7 +1573,7 @@ export default function App() {
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full max-w-[428px] md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto h-full flex flex-col pt-12 px-5 md:px-10 relative z-10">
           
           {/* Header with Navigation */}
-          <header className="flex flex-col gap-3 mb-8 w-full md:max-w-[428px]">
+          <header className="flex flex-col gap-3 mb-8 w-full">
             {/* Live Activity Widgets */}
             {(!isFlightFocusOpen && isFlightTimerRunning && selectedFlight) && (
               <div onClick={() => setIsFlightFocusOpen(true)} className="mb-2 liquid-panel rounded-full px-4 py-3 flex items-center justify-between cursor-pointer animate-in fade-in slide-in-from-top-2 border-[1.5px] border-blue-500/30">
@@ -2121,7 +2121,7 @@ export default function App() {
 
         {/* --- FLOATING NAV --- */}
         <div className="fixed bottom-0 left-0 w-full flex justify-center pt-4 bg-gradient-to-t from-white/20 dark:from-black via-white/10 dark:via-black to-transparent pointer-events-none z-[10000] pb-[calc(2rem+env(safe-area-inset-bottom))]">
-          <div className="w-full max-w-[428px] px-6 flex justify-between items-center pointer-events-auto">
+          <div className="w-full max-w-[428px] md:max-w-2xl lg:max-w-3xl px-6 flex justify-between items-center pointer-events-auto">
             <div className="bg-white/50 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border border-black/10 dark:border-white/5 rounded-full flex items-center p-1.5 gap-1.5 shadow-2xl dark:shadow-black/80">
               <button onClick={() => navTo('home')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white transition-all duration-200 active:scale-90"><Home size={18} /></button>
               <button onClick={() => navTo('analytics')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><BarChart2 size={18} /></button>
