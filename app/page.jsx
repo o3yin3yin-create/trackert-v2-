@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane } from 'lucide-react';
+import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize } from 'lucide-react';
 import { messaging, getToken } from '../lib/firebase';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -259,18 +259,37 @@ const stopCabinHum = () => {
 
 // --- Tactical Map Constant Outlines & Grids ---
 const landmasses = [
-  // North America
-  "M 100 150 L 150 120 L 250 100 L 320 120 L 350 200 L 300 250 L 280 200 L 250 250 L 220 300 L 200 350 L 180 320 L 120 300 L 80 220 Z",
+  // Detailed North America (with Alaska, Canada, Hudson Bay, Gulf of Mexico, Florida, Central America)
+  "M 60,180 C 80,160 110,150 140,170 C 160,150 190,130 220,130 C 230,130 240,150 240,165 C 245,170 265,175 270,160 C 275,145 295,140 310,150 C 330,165 350,180 360,200 C 355,220 345,230 325,240 C 315,260 320,285 325,310 C 325,325 315,340 305,345 C 295,350 290,335 285,325 C 270,320 250,335 240,350 C 245,380 265,410 280,440 C 275,445 265,440 255,420 C 240,390 225,360 205,340 C 190,325 175,310 170,290 C 172,280 182,275 185,295 C 190,305 195,290 190,270 C 180,250 160,230 135,215 C 105,210 80,225 60,205 Z",
+  
   // Greenland
-  "M 340 70 L 380 60 L 420 80 L 400 120 L 360 110 Z",
-  // South America
-  "M 260 500 L 310 520 L 340 550 L 360 620 L 340 700 L 320 800 L 300 850 L 290 800 L 270 700 L 250 600 L 240 540 Z",
-  // Eurasia (Europe & Asia)
-  "M 460 200 L 500 180 L 550 150 L 600 140 L 700 130 L 800 150 L 900 120 L 950 180 L 920 280 L 880 350 L 820 400 L 750 350 L 720 400 L 650 380 L 600 350 L 550 380 L 520 320 L 480 300 L 450 250 Z",
-  // Africa
-  "M 460 420 L 530 400 L 580 420 L 620 460 L 640 520 L 620 600 L 580 700 L 550 780 L 530 700 L 500 600 L 460 550 L 440 480 Z",
+  "M 340,70 C 365,55 395,50 410,65 C 420,80 405,105 390,115 C 365,125 345,105 340,85 Z",
+  
+  // Detailed South America
+  "M 280,440 C 300,450 330,470 350,490 C 380,520 400,560 395,600 C 385,650 355,700 330,760 C 315,800 300,840 290,850 C 285,845 275,770 270,700 C 260,630 250,570 245,540 C 240,510 260,460 280,440 Z",
+  
+  // Detailed Eurasia (Europe & Asia)
+  "M 450,420 C 460,400 480,380 495,350 C 490,320 480,290 480,260 C 490,230 515,220 530,245 C 520,270 510,300 520,325 C 555,305 580,285 620,270 C 670,250 730,240 800,245 C 870,235 930,220 960,240 C 975,255 965,285 935,315 C 910,350 890,390 875,420 C 860,440 840,490 835,530 C 830,530 825,500 820,460 C 810,430 790,460 770,490 C 765,495 755,495 750,470 C 730,445 700,455 675,475 C 660,485 645,510 635,515 C 625,515 620,490 625,475 C 640,460 655,455 660,440 C 645,435 620,430 580,420 C 550,410 520,415 500,425 C 480,415 470,425 450,420 Z",
+  
+  // Detailed Africa
+  "M 460,420 C 490,410 520,410 545,415 C 560,425 565,445 575,465 C 590,490 615,515 635,535 C 640,545 635,560 625,585 C 605,630 580,690 565,750 C 560,770 550,775 545,765 C 530,715 505,650 495,600 C 485,550 455,540 445,510 C 435,480 435,440 460,420 Z",
+  
   // Australia
-  "M 800 680 L 850 670 L 900 690 L 920 730 L 900 780 L 840 790 L 810 750 Z"
+  "M 800,680 C 830,660 870,660 900,680 C 925,700 930,735 915,770 C 895,790 855,795 830,785 C 815,775 805,750 800,720 C 795,700 790,690 800,680 Z",
+  
+  // Japan
+  "M 915,310 C 925,320 935,340 930,360 C 925,370 915,360 910,340 C 905,325 910,315 915,310 Z",
+  
+  // United Kingdom
+  "M 465,330 C 470,315 475,325 478,335 C 475,345 470,345 465,330 Z",
+  // Ireland
+  "M 457,335 C 460,330 463,335 463,342 C 460,348 457,345 457,335 Z",
+  
+  // Madagascar
+  "M 625,680 C 632,685 638,710 635,730 C 630,735 625,720 622,700 C 620,690 622,682 625,680 Z",
+  
+  // Iceland
+  "M 435,210 C 442,205 448,210 448,218 C 442,225 435,220 435,210 Z"
 ];
 
 const gridLines = [];
@@ -376,6 +395,8 @@ export default function App() {
   const [isFlightTimerRunning, setIsFlightTimerRunning] = useState(false);
   const [isMapView, setIsMapView] = useState(false);
   const [isCameraLocked, setIsCameraLocked] = useState(true);
+  const [isScreensaverOpen, setIsScreensaverOpen] = useState(false);
+  const [showFlightModeAdvice, setShowFlightModeAdvice] = useState(false);
   const [isCabinHumPlaying, setIsCabinHumPlaying] = useState(false);
   const [isPomodoroOpen, setIsPomodoroOpen] = useState(false);
   const [isEditingPomodoro, setIsEditingPomodoro] = useState(false);
@@ -1693,22 +1714,32 @@ export default function App() {
                                   <circle r="2" className="fill-white/40" />
                                   <circle r="6" className="fill-none stroke-white/20 stroke-[0.5]" />
                                 </g>
-                                <g 
-                                  transform={`translate(${planeX}, ${planeY}) rotate(${angle + 90})`} 
-                                  className="transition-all duration-1000 ease-linear"
-                                >
-                                  <circle r="8" style={{ fill: '#fff', opacity: 0.2 }} className="blur-[1px]" />
-                                  <circle r="12" style={{ stroke: '#fff', opacity: 0.1 }} className="fill-none stroke-[0.5] animate-ping" />
-                                  <g transform="translate(-7, -7)">
-                                    <Plane size={14} color="#ffffff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
-                                  </g>
-                                </g>
+                                 <g 
+                                   transform={`translate(${planeX}, ${planeY}) rotate(${angle + 90})`} 
+                                   className="transition-all duration-1000 ease-linear"
+                                 >
+                                   <circle r="8" style={{ fill: '#fff', opacity: 0.2 }} className="blur-[1px]" />
+                                   <circle r="12" style={{ stroke: '#fff', opacity: 0.1 }} className="fill-none stroke-[0.5] animate-ping" />
+                                   <path 
+                                     d="M 0,-7 L 1.4,-5.6 L 1.4,-2.1 L 7,1.4 L 7,2.8 L 1.4,1.4 L 1.4,5.6 L 3.5,7 L 3.5,7.7 L 0,7 L -3.5,7.7 L -3.5,7 L -1.4,5.6 L -1.4,1.4 L -7,2.8 L -7,1.4 L -1.4,-2.1 L -1.4,-5.6 Z" 
+                                     fill="#ffffff" 
+                                     stroke="#ffffff" 
+                                     strokeWidth="0.3" 
+                                     style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }}
+                                   />
+                                 </g>
                               </svg>
                               
                               {/* HUD Controls */}
                               <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
                                 <button 
-                                  onClick={() => setIsFlightTimerRunning(!isFlightTimerRunning)}
+                                  onClick={() => {
+                                    if (!isFlightTimerRunning) {
+                                      setShowFlightModeAdvice(true);
+                                    } else {
+                                      setIsFlightTimerRunning(false);
+                                    }
+                                  }}
                                   className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
                                   title={isFlightTimerRunning ? 'Pause' : 'Play'}
                                 >
@@ -1748,6 +1779,16 @@ export default function App() {
                                   title={lang === 'ar' ? 'كامل مسار الرحلة' : 'Full Route'}
                                 >
                                   <Map size={12} />
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    haptic('medium');
+                                    setIsScreensaverOpen(true);
+                                  }}
+                                  className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
+                                  title={lang === 'ar' ? 'شاشة التوقف المليئة بالبيانات' : 'Screensaver Mode'}
+                                >
+                                  <Maximize size={12} />
                                 </button>
                               </div>
                               
@@ -1790,7 +1831,7 @@ export default function App() {
                             const y = (1 - progress) * (1 - progress) * p0.y + 2 * (1 - progress) * progress * p1.y + progress * progress * p2.y;
                             
                             const dx = 2 * (1 - progress) * (p1.x - p0.x) + 2 * progress * (p2.x - p1.x);
-                            const dy = 2 * (1 - progress) * (p1.y - p0.y) + 2 * progress * (p2.x - p1.y);
+                            const dy = 2 * (1 - progress) * (p1.y - p0.y) + 2 * progress * (p2.y - p1.y);
                             const angle = Math.atan2(dy, dx) * (180 / Math.PI);
                             
                             return (
@@ -1842,9 +1883,13 @@ export default function App() {
                                     className="transition-all duration-1000 ease-linear"
                                   >
                                     <circle r="10" style={{ fill: themeColor, opacity: 0.3 }} className="blur-[2px]" />
-                                    <g transform="rotate(45) translate(-8, -8)">
-                                      <Plane size={16} color={themeColor} style={{ filter: `drop-shadow(0 0 6px ${themeColor})` }} />
-                                    </g>
+                                    <path 
+                                      d="M 0,-8 L 1.6,-6.4 L 1.6,-2.4 L 8,1.6 L 8,3.2 L 1.6,1.6 L 1.6,6.4 L 4,8 L 4,8.8 L 0,8 L -4,8.8 L -4,8 L -1.6,6.4 L -1.6,1.6 L -8,3.2 L -8,1.6 L -1.6,-2.4 L -1.6,-6.4 Z" 
+                                      fill={themeColor} 
+                                      stroke={themeColor} 
+                                      strokeWidth="0.3" 
+                                      style={{ filter: `drop-shadow(0 0 6px ${themeColor})` }}
+                                    />
                                   </g>
                                 </svg>
                                 
@@ -1926,7 +1971,7 @@ export default function App() {
                         <div className="flex justify-center w-full mt-2">
                           {!isFlightTimerRunning ? (
                             <button 
-                              onClick={() => setIsFlightTimerRunning(true)}
+                              onClick={() => setShowFlightModeAdvice(true)}
                               className="px-6 py-3 rounded-2xl font-bold tracking-widest transition-colors active:scale-95 shadow-xl w-full" style={{ backgroundColor: themeColor, color: '#000', border: `1px solid ${themeColor}`, boxShadow: `0 8px 24px ${themeColor}33` }}
                             >
                               {t('startFocus')}
@@ -2860,16 +2905,26 @@ export default function App() {
                               >
                                 <circle r="8" style={{ fill: '#fff', opacity: 0.2 }} className="blur-[1px]" />
                                 <circle r="12" style={{ stroke: '#fff', opacity: 0.1 }} className="fill-none stroke-[0.5] animate-ping" />
-                                <g transform="translate(-7, -7)">
-                                  <Plane size={14} color="#ffffff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
-                                </g>
+                                <path 
+                                  d="M 0,-7 L 1.4,-5.6 L 1.4,-2.1 L 7,1.4 L 7,2.8 L 1.4,1.4 L 1.4,5.6 L 3.5,7 L 3.5,7.7 L 0,7 L -3.5,7.7 L -3.5,7 L -1.4,5.6 L -1.4,1.4 L -7,2.8 L -7,1.4 L -1.4,-2.1 L -1.4,-5.6 Z" 
+                                  fill="#ffffff" 
+                                  stroke="#ffffff" 
+                                  strokeWidth="0.3" 
+                                  style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }}
+                                />
                               </g>
                             </svg>
                             
                             {/* HUD Controls */}
                             <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
                               <button 
-                                onClick={() => setIsFlightTimerRunning(!isFlightTimerRunning)}
+                                onClick={() => {
+                                  if (!isFlightTimerRunning) {
+                                    setShowFlightModeAdvice(true);
+                                  } else {
+                                    setIsFlightTimerRunning(false);
+                                  }
+                                }}
                                 className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
                                 title={isFlightTimerRunning ? 'Pause' : 'Play'}
                               >
@@ -2909,6 +2964,16 @@ export default function App() {
                                 title={lang === 'ar' ? 'كامل مسار الرحلة' : 'Full Route'}
                               >
                                 <Map size={12} />
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  haptic('medium');
+                                  setIsScreensaverOpen(true);
+                                }}
+                                className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
+                                title={lang === 'ar' ? 'شاشة التوقف المليئة بالبيانات' : 'Screensaver Mode'}
+                              >
+                                <Maximize size={12} />
                               </button>
                             </div>
                             
@@ -2993,9 +3058,13 @@ export default function App() {
                                 
                                 <g transform={`translate(${x}, ${y}) rotate(${angle + 90})`} className="transition-all duration-1000 ease-linear">
                                   <circle r="10" style={{ fill: themeColor, opacity: 0.3 }} className="blur-[2px]" />
-                                  <g transform="translate(-8, -8)">
-                                    <Plane size={16} color={themeColor} style={{ filter: `drop-shadow(0 0 6px ${themeColor})` }} />
-                                  </g>
+                                  <path 
+                                    d="M 0,-8 L 1.6,-6.4 L 1.6,-2.4 L 8,1.6 L 8,3.2 L 1.6,1.6 L 1.6,6.4 L 4,8 L 4,8.8 L 0,8 L -4,8.8 L -4,8 L -1.6,6.4 L -1.6,1.6 L -8,3.2 L -8,1.6 L -1.6,-2.4 L -1.6,-6.4 Z" 
+                                    fill={themeColor} 
+                                    stroke={themeColor} 
+                                    strokeWidth="0.3" 
+                                    style={{ filter: `drop-shadow(0 0 6px ${themeColor})` }}
+                                  />
                                 </g>
                               </svg>
                               
@@ -3033,7 +3102,7 @@ export default function App() {
                       <div className="flex justify-center w-full gap-2">
                         {!isFlightTimerRunning ? (
                           <button 
-                            onClick={() => setIsFlightTimerRunning(true)}
+                            onClick={() => setShowFlightModeAdvice(true)}
                             className="px-5 py-3 rounded-2xl font-bold text-xs tracking-widest transition-colors active:scale-95 shadow-xl w-full" style={{ backgroundColor: themeColor, color: '#000', border: `1px solid ${themeColor}`, boxShadow: `0 8px 24px ${themeColor}33` }}
                           >
                             {t('startFocus')}
@@ -3366,6 +3435,254 @@ export default function App() {
                   </div>
                 </div>
               </div>
+            </div>, document.body
+          )}
+
+          {/* --- FLIGHT MODE ADVICE MODAL --- */}
+          {showFlightModeAdvice && createPortal(
+            <div style={{
+              position: 'fixed', inset: 0, zIndex: 99999,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              padding: '24px', background: 'rgba(0,0,0,0.65)',
+              backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+            }}>
+              <div className="liquid-panel shadow-2xl border border-emerald-500/20 dark:border-white/10" style={{
+                width: '100%', maxWidth: '420px',
+                borderRadius: '32px',
+                padding: '32px 24px', position: 'relative',
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                background: theme === 'dark' ? 'rgba(28,28,30,0.85)' : 'rgba(255,255,255,0.85)',
+              }}>
+                <div className="w-16 h-16 rounded-full bg-emerald-500/10 dark:bg-emerald-500/25 flex items-center justify-center mb-6 animate-bounce shadow-lg">
+                  <PlaneTakeoff size={28} className="text-[#10B981] rotate-45" />
+                </div>
+                
+                <h3 className="text-xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-3">
+                  {t('flightModeAdviceTitle')}
+                </h3>
+                
+                <p className="text-sm font-semibold text-gray-600 dark:text-white/70 leading-relaxed mb-8 px-2">
+                  {t('flightModeAdviceText')}
+                </p>
+                
+                <div className="flex flex-col gap-3 w-full">
+                  <button 
+                    onClick={() => {
+                      haptic('medium');
+                      setIsFlightTimerRunning(true);
+                      setShowFlightModeAdvice(false);
+                    }}
+                    className="w-full py-4 rounded-2xl font-black text-sm tracking-wider uppercase transition-all duration-300 active:scale-[0.98] shadow-lg text-black bg-[#10B981] hover:bg-[#0f9f6e] border border-[#10B981] shadow-emerald-500/10"
+                  >
+                    {t('flightModeAdviceStart')}
+                  </button>
+                  <button 
+                    onClick={() => setShowFlightModeAdvice(false)}
+                    className="w-full py-3.5 rounded-2xl font-bold text-sm tracking-wider uppercase transition-all duration-300 active:scale-[0.98] hover:bg-black/5 dark:hover:bg-white/5 text-gray-500 dark:text-white/40 border border-transparent"
+                  >
+                    {t('cancel')}
+                  </button>
+                </div>
+              </div>
+            </div>, document.body
+          )}
+
+          {/* --- AMBIENT FLIGHT FOCUS SCREENSAVER --- */}
+          {isScreensaverOpen && selectedFlight && createPortal(
+            <div style={{
+              position: 'fixed', inset: 0, zIndex: 99999,
+              display: 'flex', flexDirection: 'column',
+              background: '#020907',
+              color: '#ffffff',
+              overflow: 'hidden',
+              userSelect: 'none'
+            }}>
+              {/* Fullscreen scrolling vector map */}
+              {(() => {
+                const originCoords = getAirportCoords(selectedFlight.origin);
+                const destCoords = getAirportCoords(selectedFlight.destination);
+                const p0 = projectCoords(originCoords.lat, originCoords.lng);
+                const p2 = projectCoords(destCoords.lat, destCoords.lng);
+                
+                const p1 = {
+                  x: (p0.x + p2.x) / 2 + (p2.y - p0.y) * 0.12,
+                  y: (p0.y + p2.y) / 2 - (p2.x - p0.x) * 0.12
+                };
+                
+                const progress = selectedFlight.initialSeconds ? Math.max(0, Math.min(1, (selectedFlight.initialSeconds - flightTimer) / selectedFlight.initialSeconds)) : 0;
+                const { x: planeX, y: planeY, angle } = getQuadraticBezierPoint(p0, p1, p2, progress);
+                const { altitude, speed } = getTelemetry(progress);
+                
+                let viewBox = "0 0 1000 1000";
+                if (isCameraLocked) {
+                  const viewSize = 180; // beautiful cinematic zoom in screensaver
+                  const boxX = planeX - viewSize / 2;
+                  const boxY = planeY - viewSize / 2;
+                  viewBox = `${boxX} ${boxY} ${viewSize} ${viewSize}`;
+                } else {
+                  const minX = Math.min(p0.x, p2.x) - 120;
+                  const maxX = Math.max(p0.x, p2.x) + 120;
+                  const minY = Math.min(p0.y, p2.y) - 120;
+                  const maxY = Math.max(p0.y, p2.y) + 120;
+                  const viewW = Math.max(100, maxX - minX);
+                  const viewH = Math.max(100, maxY - minY);
+                  viewBox = `${minX} ${minY} ${viewW} ${viewH}`;
+                }
+                
+                const grids = [];
+                for (let i = 0; i <= 1000; i += 30) {
+                  grids.push(<line key={`ss-h-${i}`} x1="0" y1={i} x2="1000" y2={i} stroke="rgba(16,185,129,0.04)" strokeWidth="0.3" />);
+                  grids.push(<line key={`ss-v-${i}`} x1={i} y1="0" x2={i} y2="1000" stroke="rgba(16,185,129,0.04)" strokeWidth="0.3" />);
+                }
+                
+                const progressRemaining = 1 - progress;
+                const totalDistSim = (p0.x - p2.x) ** 2 + (p0.y - p2.y) ** 2;
+                const distanceSim = Math.round(Math.max(0, Math.sqrt(totalDistSim) * 10 * progressRemaining));
+                
+                return (
+                  <>
+                    <svg viewBox={viewBox} className="absolute inset-0 w-full h-full select-none pointer-events-none transition-all duration-1000 ease-out">
+                      <rect x="0" y="0" width="1000" height="1000" fill="#010705" />
+                      {grids}
+                      {landmasses.map((d, index) => (
+                        <path 
+                          key={`ss-land-${index}`} 
+                          d={d} 
+                          fill="rgba(16,185,129,0.07)" 
+                          stroke="rgba(16,185,129,0.18)" 
+                          strokeWidth="0.6" 
+                        />
+                      ))}
+                      <path 
+                        d={`M ${p0.x} ${p0.y} Q ${p1.x} ${p1.y} ${p2.x} ${p2.y}`} 
+                        fill="none" 
+                        stroke="rgba(255,255,255,0.06)" 
+                        strokeWidth="1.2" 
+                        strokeDasharray="4 4" 
+                      />
+                      <path 
+                        d={`M ${p0.x} ${p0.y} Q ${p1.x} ${p1.y} ${p2.x} ${p2.y}`} 
+                        fill="none" 
+                        stroke={themeColor} 
+                        strokeWidth="1.8" 
+                        strokeDasharray="1000" 
+                        strokeDashoffset={1000 * (1 - progress)}
+                        style={{ filter: `drop-shadow(0 0 4px ${themeColor})` }}
+                      />
+                      
+                      {/* Origin Node */}
+                      <g transform={`translate(${p0.x}, ${p0.y})`}>
+                        <circle r="3" style={{ fill: `${themeColor}22` }} />
+                        <circle r="1.5" style={{ fill: themeColor }} className="animate-pulse" />
+                      </g>
+                      
+                      {/* Destination Node */}
+                      <g transform={`translate(${p2.x}, ${p2.y})`}>
+                        <circle r="3" className="fill-white/10" />
+                        <circle r="1.5" className="fill-white/30" />
+                      </g>
+                      
+                      {/* Plane and HUD Sweep in Screensaver */}
+                      <g transform={`translate(${planeX}, ${planeY}) rotate(${angle + 90})`}>
+                        <circle r="6" style={{ fill: '#fff', opacity: 0.2 }} className="blur-[1px]" />
+                        <circle r="10" style={{ stroke: '#fff', opacity: 0.15 }} className="fill-none stroke-[0.3] animate-ping" />
+                        
+                        {/* Interactive sweep radial radar animation */}
+                        <circle r="35" className="fill-none stroke-[#10B981]/15 stroke-[0.3] animate-pulse" />
+                        <path 
+                          d="M 0,-7 L 1.4,-5.6 L 1.4,-2.1 L 7,1.4 L 7,2.8 L 1.4,1.4 L 1.4,5.6 L 3.5,7 L 3.5,7.7 L 0,7 L -3.5,7.7 L -3.5,7 L -1.4,5.6 L -1.4,1.4 L -7,2.8 L -7,1.4 L -1.4,-2.1 L -1.4,-5.6 Z" 
+                          fill="#ffffff" 
+                          stroke="#ffffff" 
+                          strokeWidth="0.3" 
+                          style={{ filter: 'drop-shadow(0 1.5px 4px rgba(0,0,0,0.6))' }}
+                        />
+                      </g>
+                    </svg>
+                    
+                    {/* Cinematic Top Ambient HUD bar */}
+                    <div className="absolute top-0 left-0 w-full p-8 bg-gradient-to-b from-[#010705] via-[#010705]/80 to-transparent flex flex-col items-center justify-center gap-3 z-10 select-none">
+                      <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/5 border border-white/5 backdrop-blur-xl shadow-lg">
+                        <span className="text-xs font-black tracking-widest text-[#10B981] font-mono">{selectedFlight.origin}</span>
+                        <PlaneTakeoff size={14} className="text-white/40 animate-pulse rotate-45" />
+                        <span className="text-xs font-black tracking-widest text-[#10B981] font-mono">{selectedFlight.destination}</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping ml-1" />
+                      </div>
+                      
+                      {/* HUGE tabular figures digital clock */}
+                      <div className="text-6xl md:text-8xl font-mono font-black tracking-widest text-white flex items-center justify-center gap-2 tabular-nums drop-shadow-[0_4px_16px_rgba(16,185,129,0.15)] py-1">
+                        <span className="bg-black/40 border border-white/5 px-4 py-3 rounded-3xl min-w-[2.2ch] text-center shadow-2xl">{String(Math.floor(flightTimer / 3600)).padStart(2, '0')}</span>
+                        <span className="text-3xl text-white/20 animate-pulse">:</span>
+                        <span className="bg-black/40 border border-white/5 px-4 py-3 rounded-3xl min-w-[2.2ch] text-center shadow-2xl">{String(Math.floor((flightTimer % 3600) / 60)).padStart(2, '0')}</span>
+                        <span className="text-3xl text-white/20 animate-pulse">:</span>
+                        <span className="bg-black/40 border border-white/5 px-4 py-3 rounded-3xl min-w-[2.2ch] text-center shadow-2xl">{String(flightTimer % 60).padStart(2, '0')}</span>
+                      </div>
+                      
+                      <div className="text-[10px] font-mono text-white/30 uppercase tracking-widest font-black flex items-center gap-1.5 mt-1">
+                        <span>{selectedFlight.airline} • {selectedFlight.callsign}</span>
+                        <span>•</span>
+                        <span>{selectedFlight.model}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Screensaver Interactive Sidebar HUD Controls */}
+                    <div className="absolute top-1/2 right-6 -translate-y-1/2 flex flex-col gap-4 z-20">
+                      <button 
+                        onClick={() => setIsCameraLocked(!isCameraLocked)}
+                        className={`w-12 h-12 rounded-2xl flex items-center justify-center border shadow-2xl backdrop-blur-xl active:scale-95 transition-all select-none duration-300 ${isCameraLocked ? 'bg-white text-black border-white' : 'bg-black/50 text-white border-white/10 hover:bg-black/75'}`}
+                        title={lang === 'ar' ? 'قفل الكاميرا' : 'Camera Lock'}
+                      >
+                        <Navigation size={18} className={isCameraLocked ? 'fill-current rotate-45' : 'rotate-45'} />
+                      </button>
+                      
+                      <button 
+                        onClick={toggleCabinHum}
+                        className={`w-12 h-12 rounded-2xl flex items-center justify-center border shadow-2xl backdrop-blur-xl active:scale-95 transition-all select-none duration-300 ${isCabinHumPlaying ? 'bg-[#10B981] text-black border-[#10B981]' : 'bg-black/50 text-white border-white/10 hover:bg-black/75'}`}
+                        title={lang === 'ar' ? 'صوت كابينة الطائرة' : 'Cabin Noise'}
+                      >
+                        {isCabinHumPlaying ? (
+                          <motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ repeat: Infinity, duration: 1.2 }}>
+                            <Volume2 size={18} />
+                          </motion.div>
+                        ) : <VolumeX size={18} />}
+                      </button>
+                    </div>
+                    
+                    {/* Bottom Cinematic Telemetry Panel */}
+                    <div className="absolute bottom-0 left-0 w-full p-8 bg-gradient-to-t from-[#010705] via-[#010705]/80 to-transparent flex flex-col md:flex-row md:justify-between items-center gap-6 z-10 select-none">
+                      {/* Left: Monospace Avionics HUD */}
+                      <div className="flex flex-wrap gap-8 justify-center md:justify-start font-mono text-white/50 text-xs">
+                        <div className="flex flex-col text-left">
+                          <span className="text-[9px] uppercase tracking-widest text-[#10B981] font-black opacity-60 mb-0.5">{t('speed')}</span>
+                          <span className="text-sm font-black text-white">{speed} KTS / {Math.round(speed * 1.852)} KMH</span>
+                        </div>
+                        <div className="flex flex-col text-left">
+                          <span className="text-[9px] uppercase tracking-widest text-[#10B981] font-black opacity-60 mb-0.5">{t('altitude')}</span>
+                          <span className="text-sm font-black text-white">{altitude.toLocaleString()} FT / {Math.round(altitude * 0.3048).toLocaleString()} M</span>
+                        </div>
+                        <div className="flex flex-col text-left">
+                          <span className="text-[9px] uppercase tracking-widest text-[#10B981] font-black opacity-60 mb-0.5">{t('distanceRemaining')}</span>
+                          <span className="text-sm font-black text-white">{distanceSim} km</span>
+                        </div>
+                      </div>
+                      
+                      {/* Right: Close Screen saver button */}
+                      <button
+                        onClick={() => {
+                          haptic('light');
+                          setIsScreensaverOpen(false);
+                        }}
+                        className="px-6 py-3.5 bg-white/5 dark:bg-white/10 hover:bg-white/15 dark:hover:bg-white/20 border border-white/10 rounded-2xl text-xs font-black uppercase tracking-widest text-white shadow-2xl active:scale-95 transition-all duration-300 backdrop-blur-xl flex items-center gap-2"
+                      >
+                        <SlidersHorizontal size={14} className="text-[#10B981]" />
+                        <span>{t('exitScreensaver')}</span>
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
             </div>, document.body
           )}
 
