@@ -319,6 +319,21 @@ export default function App() {
         localStorage.setItem('daybase_focusTime_v4', JSON.stringify(updated));
         return updated;
       });
+      // Also log flight session to tasks analytics
+      setPomodoroTasksData(prev => {
+        const flightLabel = `✈️ ${selectedFlight.origin} → ${selectedFlight.destination}`;
+        const flightColor = '#007AFF';
+        const updated = { ...prev };
+        if (!updated[todayStr]) updated[todayStr] = [];
+        const idx = updated[todayStr].findIndex(tk => tk.name === flightLabel && tk.color === flightColor);
+        if (idx > -1) {
+          updated[todayStr][idx].timeSpent += 1;
+        } else {
+          updated[todayStr].push({ name: flightLabel, color: flightColor, timeSpent: 1 });
+        }
+        localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(updated));
+        return updated;
+      });
     } else if (remaining <= 0) {
       // Flight landed!
       setFlightTimer(0);
@@ -1395,23 +1410,23 @@ export default function App() {
 
                   {/* BOTTOM: SVG Ring */}
                   <div style={{ position: 'relative', width: '180px', height: '180px', flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    {/* Outer glow */}
+                    {/* Outer glow — subtle */}
                     <div style={{
-                      position: 'absolute', inset: '-16px', borderRadius: '50%',
-                      background: `radial-gradient(circle, ${neon}20 0%, transparent 70%)`,
+                      position: 'absolute', inset: '-8px', borderRadius: '50%',
+                      background: `radial-gradient(circle, ${neon}10 0%, transparent 60%)`,
                       pointerEvents: 'none',
                     }} />
                     <svg width="180" height="180" style={{ transform: 'rotate(-90deg)', position: 'absolute' }}>
                       {/* Track */}
-                      <circle cx="90" cy="90" r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="10" />
+                      <circle cx="90" cy="90" r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="4" />
                       {/* Progress */}
                       <circle cx="90" cy="90" r={radius} fill="none"
                         stroke={neon}
-                        strokeWidth="10"
+                        strokeWidth="4"
                         strokeLinecap="round"
                         strokeDasharray={circ}
                         strokeDashoffset={dashOffset}
-                        style={{ transition: 'stroke-dashoffset 0.9s linear', filter: `drop-shadow(0 0 8px ${neon})` }}
+                        style={{ transition: 'stroke-dashoffset 0.9s linear', filter: `drop-shadow(0 0 3px ${neon}88)` }}
                       />
                     </svg>
                     {/* Center button */}
