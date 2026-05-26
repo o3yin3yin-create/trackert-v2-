@@ -8,6 +8,12 @@ import { useUser, Show, SignInButton, SignUpButton, UserButton } from '@clerk/ne
 import { motion } from 'framer-motion';
 import FlipClock from '../components/FlipClock';
 import { translations } from '../lib/translations';
+import dynamic from 'next/dynamic';
+
+const MapComponent = dynamic(() => import('../components/MapComponent'), {
+  ssr: false,
+  loading: () => <div className="w-full h-full bg-[#051610] flex items-center justify-center text-emerald-500/50 text-xs font-bold tracking-widest uppercase animate-pulse">Initializing Global Radar...</div>
+});
 
 let globalAudioCtx = null;
 const getAudioCtx = () => {
@@ -257,40 +263,7 @@ const stopCabinHum = () => {
   }
 };
 
-// --- Tactical Map Constant Outlines & Grids ---
-const landmasses = [
-  // Detailed North America (with Alaska, Canada, Hudson Bay, Gulf of Mexico, Florida, Central America)
-  "M 60,180 C 80,160 110,150 140,170 C 160,150 190,130 220,130 C 230,130 240,150 240,165 C 245,170 265,175 270,160 C 275,145 295,140 310,150 C 330,165 350,180 360,200 C 355,220 345,230 325,240 C 315,260 320,285 325,310 C 325,325 315,340 305,345 C 295,350 290,335 285,325 C 270,320 250,335 240,350 C 245,380 265,410 280,440 C 275,445 265,440 255,420 C 240,390 225,360 205,340 C 190,325 175,310 170,290 C 172,280 182,275 185,295 C 190,305 195,290 190,270 C 180,250 160,230 135,215 C 105,210 80,225 60,205 Z",
-  
-  // Greenland
-  "M 340,70 C 365,55 395,50 410,65 C 420,80 405,105 390,115 C 365,125 345,105 340,85 Z",
-  
-  // Detailed South America
-  "M 280,440 C 300,450 330,470 350,490 C 380,520 400,560 395,600 C 385,650 355,700 330,760 C 315,800 300,840 290,850 C 285,845 275,770 270,700 C 260,630 250,570 245,540 C 240,510 260,460 280,440 Z",
-  
-  // Detailed Eurasia (Europe & Asia)
-  "M 450,420 C 460,400 480,380 495,350 C 490,320 480,290 480,260 C 490,230 515,220 530,245 C 520,270 510,300 520,325 C 555,305 580,285 620,270 C 670,250 730,240 800,245 C 870,235 930,220 960,240 C 975,255 965,285 935,315 C 910,350 890,390 875,420 C 860,440 840,490 835,530 C 830,530 825,500 820,460 C 810,430 790,460 770,490 C 765,495 755,495 750,470 C 730,445 700,455 675,475 C 660,485 645,510 635,515 C 625,515 620,490 625,475 C 640,460 655,455 660,440 C 645,435 620,430 580,420 C 550,410 520,415 500,425 C 480,415 470,425 450,420 Z",
-  
-  // Detailed Africa
-  "M 460,420 C 490,410 520,410 545,415 C 560,425 565,445 575,465 C 590,490 615,515 635,535 C 640,545 635,560 625,585 C 605,630 580,690 565,750 C 560,770 550,775 545,765 C 530,715 505,650 495,600 C 485,550 455,540 445,510 C 435,480 435,440 460,420 Z",
-  
-  // Australia
-  "M 800,680 C 830,660 870,660 900,680 C 925,700 930,735 915,770 C 895,790 855,795 830,785 C 815,775 805,750 800,720 C 795,700 790,690 800,680 Z",
-  
-  // Japan
-  "M 915,310 C 925,320 935,340 930,360 C 925,370 915,360 910,340 C 905,325 910,315 915,310 Z",
-  
-  // United Kingdom
-  "M 465,330 C 470,315 475,325 478,335 C 475,345 470,345 465,330 Z",
-  // Ireland
-  "M 457,335 C 460,330 463,335 463,342 C 460,348 457,345 457,335 Z",
-  
-  // Madagascar
-  "M 625,680 C 632,685 638,710 635,730 C 630,735 625,720 622,700 C 620,690 622,682 625,680 Z",
-  
-  // Iceland
-  "M 435,210 C 442,205 448,210 448,218 C 442,225 435,220 435,210 Z"
-];
+// Removed landmasses
 
 const gridLines = [];
 for (let val = 0; val <= 1000; val += 50) {
@@ -1657,12 +1630,6 @@ export default function App() {
                             viewBox = `${minX} ${minY} ${viewW} ${viewH}`;
                           }
                           
-                          const grids = [];
-                          for (let i = 0; i <= 1000; i += 40) {
-                            grids.push(<line key={`h-${i}`} x1="0" y1={i} x2="1000" y2={i} stroke="rgba(16,185,129,0.06)" strokeWidth="0.5" />);
-                            grids.push(<line key={`v-${i}`} x1={i} y1="0" x2={i} y2="1000" stroke="rgba(16,185,129,0.06)" strokeWidth="0.5" />);
-                          }
-                          
                           const timeRemainingSecs = flightTimer;
                           const timeRemainingMin = Math.round(timeRemainingSecs / 60);
                           const timeRemainingStr = timeRemainingMin >= 60 
@@ -1675,60 +1642,14 @@ export default function App() {
                           
                           return (
                             <div className="w-full relative h-[200px] bg-[#051610] rounded-2xl overflow-hidden border border-emerald-900/30 shadow-[inset_0_2px_8px_rgba(0,0,0,0.8)] select-none py-2 mb-4">
-                              <svg viewBox={viewBox} className="w-full h-full overflow-hidden select-none transition-all duration-700 ease-out">
-                                <rect x="0" y="0" width="1000" height="1000" fill="#04120D" />
-                                {grids}
-                                {landmasses.map((d, index) => (
-                                  <path 
-                                    key={`land-${index}`} 
-                                    d={d} 
-                                    fill="rgba(16,185,129,0.11)" 
-                                    stroke="rgba(16,185,129,0.22)" 
-                                    strokeWidth="0.8" 
-                                  />
-                                ))}
-                                <path 
-                                  d={`M ${p0.x} ${p0.y} Q ${p1.x} ${p1.y} ${p2.x} ${p2.y}`} 
-                                  fill="none" 
-                                  stroke="rgba(255,255,255,0.1)" 
-                                  strokeWidth="1.2" 
-                                  strokeDasharray="4 4" 
-                                />
-                                <path 
-                                  d={`M ${p0.x} ${p0.y} Q ${p1.x} ${p1.y} ${p2.x} ${p2.y}`} 
-                                  fill="none" 
-                                  stroke={themeColor} 
-                                  strokeWidth="2" 
-                                  strokeDasharray="1000" 
-                                  strokeDashoffset={1000 * (1 - progress)}
-                                  className="transition-all duration-1000 ease-linear"
-                                  style={{ filter: `drop-shadow(0 0 3px ${themeColor})` }}
-                                />
-                                <g transform={`translate(${p0.x}, ${p0.y})`}>
-                                  <circle r="4" style={{ fill: `${themeColor}22` }} />
-                                  <circle r="2" style={{ fill: themeColor }} className="animate-pulse" />
-                                  <circle r="6" style={{ stroke: themeColor, opacity: 0.3 }} className="fill-none stroke-[0.5] animate-ping" />
-                                </g>
-                                <g transform={`translate(${p2.x}, ${p2.y})`}>
-                                  <circle r="4" className="fill-white/10" />
-                                  <circle r="2" className="fill-white/40" />
-                                  <circle r="6" className="fill-none stroke-white/20 stroke-[0.5]" />
-                                </g>
-                                 <g 
-                                   transform={`translate(${planeX}, ${planeY}) rotate(${angle + 90})`} 
-                                   className="transition-all duration-1000 ease-linear"
-                                 >
-                                   <circle r="8" style={{ fill: '#fff', opacity: 0.2 }} className="blur-[1px]" />
-                                   <circle r="12" style={{ stroke: '#fff', opacity: 0.1 }} className="fill-none stroke-[0.5] animate-ping" />
-                                   <path 
-                                     d="M 0,-7 L 1.4,-5.6 L 1.4,-2.1 L 7,1.4 L 7,2.8 L 1.4,1.4 L 1.4,5.6 L 3.5,7 L 3.5,7.7 L 0,7 L -3.5,7.7 L -3.5,7 L -1.4,5.6 L -1.4,1.4 L -7,2.8 L -7,1.4 L -1.4,-2.1 L -1.4,-5.6 Z" 
-                                     fill="#ffffff" 
-                                     stroke="#ffffff" 
-                                     strokeWidth="0.3" 
-                                     style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }}
-                                   />
-                                 </g>
-                              </svg>
+                              <MapComponent 
+                                originCoords={originCoords} 
+                                destCoords={destCoords} 
+                                progress={progress} 
+                                isCameraLocked={isCameraLocked} 
+                                themeColor={themeColor} 
+                                padding={[20, 20]} 
+                              />
                               
                               {/* HUD Controls */}
                               <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
@@ -2842,12 +2763,6 @@ export default function App() {
                           viewBox = `${minX} ${minY} ${viewW} ${viewH}`;
                         }
                         
-                        const grids = [];
-                        for (let i = 0; i <= 1000; i += 40) {
-                          grids.push(<line key={`h-${i}`} x1="0" y1={i} x2="1000" y2={i} stroke="rgba(16,185,129,0.06)" strokeWidth="0.5" />);
-                          grids.push(<line key={`v-${i}`} x1={i} y1="0" x2={i} y2="1000" stroke="rgba(16,185,129,0.06)" strokeWidth="0.5" />);
-                        }
-                        
                         const timeRemainingSecs = flightTimer;
                         const timeRemainingMin = Math.round(timeRemainingSecs / 60);
                         const timeRemainingStr = timeRemainingMin >= 60 
@@ -2860,60 +2775,14 @@ export default function App() {
                         
                         return (
                           <div className="w-full relative h-[200px] bg-[#051610] rounded-2xl overflow-hidden border border-emerald-900/30 shadow-[inset_0_2px_8px_rgba(0,0,0,0.8)] select-none py-2 mb-4">
-                            <svg viewBox={viewBox} className="w-full h-full overflow-hidden select-none transition-all duration-700 ease-out">
-                              <rect x="0" y="0" width="1000" height="1000" fill="#04120D" />
-                              {grids}
-                              {landmasses.map((d, index) => (
-                                <path 
-                                  key={`land-${index}`} 
-                                  d={d} 
-                                  fill="rgba(16,185,129,0.11)" 
-                                  stroke="rgba(16,185,129,0.22)" 
-                                  strokeWidth="0.8" 
-                                />
-                              ))}
-                              <path 
-                                d={`M ${p0.x} ${p0.y} Q ${p1.x} ${p1.y} ${p2.x} ${p2.y}`} 
-                                fill="none" 
-                                stroke="rgba(255,255,255,0.1)" 
-                                strokeWidth="1.2" 
-                                strokeDasharray="4 4" 
-                              />
-                              <path 
-                                d={`M ${p0.x} ${p0.y} Q ${p1.x} ${p1.y} ${p2.x} ${p2.y}`} 
-                                fill="none" 
-                                stroke={themeColor} 
-                                strokeWidth="2" 
-                                strokeDasharray="1000" 
-                                strokeDashoffset={1000 * (1 - progress)}
-                                className="transition-all duration-1000 ease-linear"
-                                style={{ filter: `drop-shadow(0 0 3px ${themeColor})` }}
-                              />
-                              <g transform={`translate(${p0.x}, ${p0.y})`}>
-                                <circle r="4" style={{ fill: `${themeColor}22` }} />
-                                <circle r="2" style={{ fill: themeColor }} className="animate-pulse" />
-                                <circle r="6" style={{ stroke: themeColor, opacity: 0.3 }} className="fill-none stroke-[0.5] animate-ping" />
-                              </g>
-                              <g transform={`translate(${p2.x}, ${p2.y})`}>
-                                <circle r="4" className="fill-white/10" />
-                                <circle r="2" className="fill-white/40" />
-                                <circle r="6" className="fill-none stroke-white/20 stroke-[0.5]" />
-                              </g>
-                              <g 
-                                transform={`translate(${planeX}, ${planeY}) rotate(${angle + 90})`} 
-                                className="transition-all duration-1000 ease-linear"
-                              >
-                                <circle r="8" style={{ fill: '#fff', opacity: 0.2 }} className="blur-[1px]" />
-                                <circle r="12" style={{ stroke: '#fff', opacity: 0.1 }} className="fill-none stroke-[0.5] animate-ping" />
-                                <path 
-                                  d="M 0,-7 L 1.4,-5.6 L 1.4,-2.1 L 7,1.4 L 7,2.8 L 1.4,1.4 L 1.4,5.6 L 3.5,7 L 3.5,7.7 L 0,7 L -3.5,7.7 L -3.5,7 L -1.4,5.6 L -1.4,1.4 L -7,2.8 L -7,1.4 L -1.4,-2.1 L -1.4,-5.6 Z" 
-                                  fill="#ffffff" 
-                                  stroke="#ffffff" 
-                                  strokeWidth="0.3" 
-                                  style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }}
-                                />
-                              </g>
-                            </svg>
+                            <MapComponent 
+                              originCoords={originCoords} 
+                              destCoords={destCoords} 
+                              progress={progress} 
+                              isCameraLocked={isCameraLocked} 
+                              themeColor={themeColor} 
+                              padding={[20, 20]} 
+                            />
                             
                             {/* HUD Controls */}
                             <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
@@ -3532,75 +3401,22 @@ export default function App() {
                   viewBox = `${minX} ${minY} ${viewW} ${viewH}`;
                 }
                 
-                const grids = [];
-                for (let i = 0; i <= 1000; i += 30) {
-                  grids.push(<line key={`ss-h-${i}`} x1="0" y1={i} x2="1000" y2={i} stroke="rgba(16,185,129,0.04)" strokeWidth="0.3" />);
-                  grids.push(<line key={`ss-v-${i}`} x1={i} y1="0" x2={i} y2="1000" stroke="rgba(16,185,129,0.04)" strokeWidth="0.3" />);
-                }
-                
                 const progressRemaining = 1 - progress;
                 const totalDistSim = (p0.x - p2.x) ** 2 + (p0.y - p2.y) ** 2;
                 const distanceSim = Math.round(Math.max(0, Math.sqrt(totalDistSim) * 10 * progressRemaining));
                 
                 return (
                   <>
-                    <svg viewBox={viewBox} className="absolute inset-0 w-full h-full select-none pointer-events-none transition-all duration-1000 ease-out">
-                      <rect x="0" y="0" width="1000" height="1000" fill="#010705" />
-                      {grids}
-                      {landmasses.map((d, index) => (
-                        <path 
-                          key={`ss-land-${index}`} 
-                          d={d} 
-                          fill="rgba(16,185,129,0.07)" 
-                          stroke="rgba(16,185,129,0.18)" 
-                          strokeWidth="0.6" 
-                        />
-                      ))}
-                      <path 
-                        d={`M ${p0.x} ${p0.y} Q ${p1.x} ${p1.y} ${p2.x} ${p2.y}`} 
-                        fill="none" 
-                        stroke="rgba(255,255,255,0.06)" 
-                        strokeWidth="1.2" 
-                        strokeDasharray="4 4" 
+                    <div className="absolute inset-0 w-full h-full z-0">
+                      <MapComponent 
+                        originCoords={originCoords} 
+                        destCoords={destCoords} 
+                        progress={progress} 
+                        isCameraLocked={isCameraLocked} 
+                        themeColor={themeColor} 
+                        padding={[50, 50]} 
                       />
-                      <path 
-                        d={`M ${p0.x} ${p0.y} Q ${p1.x} ${p1.y} ${p2.x} ${p2.y}`} 
-                        fill="none" 
-                        stroke={themeColor} 
-                        strokeWidth="1.8" 
-                        strokeDasharray="1000" 
-                        strokeDashoffset={1000 * (1 - progress)}
-                        style={{ filter: `drop-shadow(0 0 4px ${themeColor})` }}
-                      />
-                      
-                      {/* Origin Node */}
-                      <g transform={`translate(${p0.x}, ${p0.y})`}>
-                        <circle r="3" style={{ fill: `${themeColor}22` }} />
-                        <circle r="1.5" style={{ fill: themeColor }} className="animate-pulse" />
-                      </g>
-                      
-                      {/* Destination Node */}
-                      <g transform={`translate(${p2.x}, ${p2.y})`}>
-                        <circle r="3" className="fill-white/10" />
-                        <circle r="1.5" className="fill-white/30" />
-                      </g>
-                      
-                      {/* Plane and HUD Sweep in Screensaver */}
-                      <g transform={`translate(${planeX}, ${planeY}) rotate(${angle + 90})`}>
-                        <circle r="6" style={{ fill: '#fff', opacity: 0.2 }} className="blur-[1px]" />
-                        <circle r="10" style={{ stroke: '#fff', opacity: 0.15 }} className="fill-none stroke-[0.3] animate-ping" />
-                        
-                        {/* Interactive sweep radial radar animation */}
-                        <circle r="35" className="fill-none stroke-[#10B981]/15 stroke-[0.3] animate-pulse" />
-                        <path 
-                          d="M 0,-7 L 1.4,-5.6 L 1.4,-2.1 L 7,1.4 L 7,2.8 L 1.4,1.4 L 1.4,5.6 L 3.5,7 L 3.5,7.7 L 0,7 L -3.5,7.7 L -3.5,7 L -1.4,5.6 L -1.4,1.4 L -7,2.8 L -7,1.4 L -1.4,-2.1 L -1.4,-5.6 Z" 
-                          fill="#ffffff" 
-                          stroke="#ffffff" 
-                          strokeWidth="0.3" 
-                          style={{ filter: 'drop-shadow(0 1.5px 4px rgba(0,0,0,0.6))' }}
-                        />
-                      </g>
-                    </svg>
+                    </div>
                     
                     {/* Cinematic Top Ambient HUD bar */}
                     <div className="absolute top-0 left-0 w-full p-8 bg-gradient-to-b from-[#010705] via-[#010705]/80 to-transparent flex flex-col items-center justify-center gap-3 z-10 select-none">
