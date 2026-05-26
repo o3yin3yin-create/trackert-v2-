@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, PlaneTakeoff, Loader2, Globe } from 'lucide-react';
+import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map } from 'lucide-react';
 import { messaging, getToken } from '../lib/firebase';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -21,6 +21,26 @@ const getAudioCtx = () => {
     globalAudioCtx.resume();
   }
   return globalAudioCtx;
+};
+
+// --- Aviation Coordinate Projection and Bezier calculations ---
+const projectCoords = (lat, lng) => {
+  // Longitude: -180 to 180 -> 0 to 1000
+  const x = ((lng + 180) / 360) * 1000;
+  // Latitude: 90 to -90 -> 0 to 1000
+  const y = ((90 - lat) / 180) * 1000;
+  return { x, y };
+};
+
+const getQuadraticBezierPoint = (p0, p1, p2, t) => {
+  const x = (1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x;
+  const y = (1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * p1.y + t * t * p2.y;
+  
+  const dx = 2 * (1 - t) * (p1.x - p0.x) + 2 * t * (p2.x - p1.x);
+  const dy = 2 * (1 - t) * (p1.y - p0.y) + 2 * t * (p2.y - p1.y);
+  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+  
+  return { x, y, angle };
 };
 
 // --- Simulated Flight Telemetry based on progress ---
@@ -89,6 +109,167 @@ const CustomCursor = (props) => {
     />
   );
 };
+
+// --- Airport Coordinates Database & Dynamic Generator ---
+const AIRPORT_COORDS = {
+  CAI: { lat: 30.1219, lng: 31.4056, name: "Cairo" },
+  KUL: { lat: 2.7456, lng: 101.7099, name: "Kuala Lumpur" },
+  ADL: { lat: -34.9462, lng: 138.5401, name: "Adelaide" },
+  DXB: { lat: 25.2532, lng: 55.3657, name: "Dubai" },
+  JFK: { lat: 40.6413, lng: -73.7781, name: "New York" },
+  LHR: { lat: 51.4700, lng: -0.4543, name: "London" },
+  CDG: { lat: 49.0097, lng: 2.5479, name: "Paris" },
+  IST: { lat: 41.2752, lng: 28.7519, name: "Istanbul" },
+  SIN: { lat: 1.3644, lng: 103.9915, name: "Singapore" },
+  HND: { lat: 35.5494, lng: 139.7798, name: "Tokyo" },
+  RUH: { lat: 24.9576, lng: 46.6988, name: "Riyadh" },
+  JED: { lat: 21.6796, lng: 39.1565, name: "Jeddah" },
+  DOH: { lat: 25.2611, lng: 51.5650, name: "Doha" },
+  MCT: { lat: 23.5933, lng: 58.2814, name: "Muscat" },
+  BAH: { lat: 26.2708, lng: 50.6336, name: "Bahrain" },
+  AMM: { lat: 31.7225, lng: 35.9933, name: "Amman" },
+  KWI: { lat: 29.2244, lng: 47.9689, name: "Kuwait" },
+  ATH: { lat: 37.9356, lng: 23.9484, name: "Athens" },
+  FCO: { lat: 41.8003, lng: 12.2389, name: "Rome" },
+  FRA: { lat: 50.0379, lng: 8.5622, name: "Frankfurt" },
+  AMS: { lat: 52.3105, lng: 4.7683, name: "Amsterdam" },
+  SYD: { lat: -33.9461, lng: 151.1772, name: "Sydney" },
+  MEL: { lat: -37.6690, lng: 144.8410, name: "Melbourne" },
+  LAX: { lat: 33.9416, lng: -118.4085, name: "Los Angeles" },
+  SFO: { lat: 37.6190, lng: -122.3749, name: "San Francisco" },
+  ORD: { lat: 41.9742, lng: -87.9073, name: "Chicago" },
+  MIA: { lat: 25.7959, lng: -80.2870, name: "Miami" }
+};
+
+const getAirportCoords = (code) => {
+  if (!code) return { lat: 0, lng: 0, name: "Unknown" };
+  const cleanCode = code.toUpperCase().trim();
+  if (AIRPORT_COORDS[cleanCode]) return AIRPORT_COORDS[cleanCode];
+  
+  // Deterministic generator so any IATA code returns valid map locations
+  let sum = 0;
+  for (let i = 0; i < cleanCode.length; i++) sum += cleanCode.charCodeAt(i);
+  const lat = ((sum * 17) % 90) - 45; // range -45 to 45
+  const lng = ((sum * 29) % 240) - 120; // range -120 to 120
+  return { lat, lng, name: cleanCode };
+};
+
+// --- Soothing Airplane Cabin Noise Web Audio Synthesizer (0kb offline ambient hum) ---
+let cabinHumSource = null;
+
+const startCabinHum = () => {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    
+    const ctx = new AudioContextClass();
+    
+    // 1. Wind Hiss: White noise fed through custom lowpass and highpass filter
+    const bufferSize = 2 * ctx.sampleRate;
+    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = Math.random() * 2 - 1;
+    }
+    
+    const whiteNoise = ctx.createBufferSource();
+    whiteNoise.buffer = noiseBuffer;
+    whiteNoise.loop = true;
+    
+    const lowpass = ctx.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.setValueAtTime(160, ctx.currentTime); // muffled lowpass rumble
+    
+    const highpass = ctx.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.setValueAtTime(32, ctx.currentTime); // remove bass mud
+    
+    // 2. Engine Tone: Oscillators producing deep structural vibrations
+    const engineLow = ctx.createOscillator();
+    engineLow.type = 'sine';
+    engineLow.frequency.setValueAtTime(70, ctx.currentTime); // 70Hz engine hum
+    
+    const engineHarmonic = ctx.createOscillator();
+    engineHarmonic.type = 'sine';
+    engineHarmonic.frequency.setValueAtTime(140, ctx.currentTime); // 140Hz second harmonic
+    
+    // Gain balancing
+    const windGain = ctx.createGain();
+    windGain.gain.setValueAtTime(0.2, ctx.currentTime);
+    
+    const engineLowGain = ctx.createGain();
+    engineLowGain.gain.setValueAtTime(0.09, ctx.currentTime);
+    
+    const engineHarmonicGain = ctx.createGain();
+    engineHarmonicGain.gain.setValueAtTime(0.04, ctx.currentTime);
+    
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0.0, ctx.currentTime);
+    // Smooth fade-in over 1.5s
+    masterGain.gain.linearRampToValueAtTime(0.55, ctx.currentTime + 1.5);
+    
+    // Connections
+    whiteNoise.connect(lowpass);
+    lowpass.connect(highpass);
+    highpass.connect(windGain);
+    windGain.connect(masterGain);
+    
+    engineLow.connect(engineLowGain);
+    engineLowGain.connect(masterGain);
+    
+    engineHarmonic.connect(engineHarmonicGain);
+    engineHarmonicGain.connect(masterGain);
+    
+    masterGain.connect(ctx.destination);
+    
+    whiteNoise.start();
+    engineLow.start();
+    engineHarmonic.start();
+    
+    cabinHumSource = {
+      ctx,
+      whiteNoise,
+      engineLow,
+      engineHarmonic,
+      masterGain
+    };
+  } catch (e) {
+    console.error("Synthesizer failed:", e);
+  }
+};
+
+const stopCabinHum = () => {
+  if (cabinHumSource) {
+    const { ctx, whiteNoise, engineLow, engineHarmonic, masterGain } = cabinHumSource;
+    try {
+      masterGain.gain.linearRampToValueAtTime(0.0, ctx.currentTime + 0.5); // Fade out over 0.5s
+      setTimeout(() => {
+        try {
+          whiteNoise.stop();
+          engineLow.stop();
+          engineHarmonic.stop();
+          ctx.close();
+        } catch (err) {}
+      }, 600);
+    } catch (err) {}
+    cabinHumSource = null;
+  }
+};
+
+// --- Tactical Map Constant Outlines & Grids ---
+const landmasses = [
+  "M 150 150 Q 250 100 350 200 T 500 150 T 600 300 T 450 450 T 250 350 Z",
+  "M 700 200 Q 800 100 900 150 T 950 400 T 800 600 T 650 500 T 600 350 Z",
+  "M 200 600 Q 300 500 450 650 T 550 800 T 400 950 T 250 850 Z",
+  "M 750 700 Q 850 650 950 750 T 900 900 T 800 950 T 700 850 Z"
+];
+
+const gridLines = [];
+for (let val = 0; val <= 1000; val += 50) {
+  gridLines.push(<line key={`h-${val}`} x1="0" y1={val} x2="1000" y2={val} stroke="rgba(12,60,38,0.18)" strokeWidth="0.5" />);
+  gridLines.push(<line key={`v-${val}`} x1={val} y1="0" x2={val} y2="1000" stroke="rgba(12,60,38,0.18)" strokeWidth="0.5" />);
+}
 
 export default function App() {
   const { user } = useUser(); 
@@ -185,6 +366,9 @@ export default function App() {
   const [flightLoading, setFlightLoading] = useState(false);
   const [flightTimer, setFlightTimer] = useState(0);
   const [isFlightTimerRunning, setIsFlightTimerRunning] = useState(false);
+  const [isMapView, setIsMapView] = useState(false);
+  const [isCameraLocked, setIsCameraLocked] = useState(true);
+  const [isCabinHumPlaying, setIsCabinHumPlaying] = useState(false);
   const [isPomodoroOpen, setIsPomodoroOpen] = useState(false);
   const [isEditingPomodoro, setIsEditingPomodoro] = useState(false);
   const [editMinutes, setEditMinutes] = useState(25);
@@ -215,6 +399,9 @@ export default function App() {
         document.documentElement.classList.remove('dark');
       }
     }
+    return () => {
+      stopCabinHum();
+    };
   }, []);
 
   const toggleLang = () => {
@@ -232,6 +419,20 @@ export default function App() {
       document.documentElement.classList.remove('dark');
     }
     if (typeof window !== 'undefined') localStorage.setItem('daybase_theme', newTheme);
+  };
+
+  const toggleCabinHum = () => {
+    if (typeof window === 'undefined') return;
+    haptic('light');
+    if (isCabinHumPlaying) {
+      stopCabinHum();
+      setIsCabinHumPlaying(false);
+    } else {
+      const ctx = getAudioCtx();
+      if (ctx) ctx.resume();
+      startCabinHum();
+      setIsCabinHumPlaying(true);
+    }
   };
 
   // --- Focus Time Tracking (seconds per day) ---
@@ -434,7 +635,12 @@ export default function App() {
   }, [isFlightFocusOpen, flightOptions.length, selectedFlight]);
 
   useEffect(() => {
-    if (!selectedFlight) return;
+    if (!selectedFlight) {
+      stopCabinHum();
+      if (isCabinHumPlaying) setIsCabinHumPlaying(false);
+      if (isMapView) setIsMapView(false);
+      return;
+    }
     
     // Flight timer runs purely on timestamp delta now and is always live!
     const remaining = selectedFlight.estimatedArrival - currentUnixTime;
@@ -1367,88 +1573,260 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Curved Aviation Radar */}
-                      <div className="w-full relative py-2 mb-4 bg-black/5 dark:bg-black/40 border border-black/5 dark:border-white/5 rounded-2xl p-3 flex flex-col justify-center">
-                        {/* Bezier Radar Map */}
-                        {(() => {
+                      {/* Curved Aviation Radar or Live Map */}
+                      {isMapView ? (
+                        (() => {
+                          const originCoords = getAirportCoords(selectedFlight.origin);
+                          const destCoords = getAirportCoords(selectedFlight.destination);
+                          const p0 = projectCoords(originCoords.lat, originCoords.lng);
+                          const p2 = projectCoords(destCoords.lat, destCoords.lng);
+                          
+                          const p1 = {
+                            x: (p0.x + p2.x) / 2 + (p2.y - p0.y) * 0.12,
+                            y: (p0.y + p2.y) / 2 - (p2.x - p0.x) * 0.12
+                          };
+                          
                           const progress = selectedFlight.initialSeconds ? Math.max(0, Math.min(1, (selectedFlight.initialSeconds - flightTimer) / selectedFlight.initialSeconds)) : 0;
+                          const { x: planeX, y: planeY, angle } = getQuadraticBezierPoint(p0, p1, p2, progress);
                           
-                          // Bezier calculator
-                          const p0 = { x: 30, y: 65 };
-                          const p1 = { x: 150, y: 15 };
-                          const p2 = { x: 270, y: 65 };
+                          let viewBox = "0 0 1000 1000";
+                          if (isCameraLocked) {
+                            const viewSize = 220;
+                            const boxX = planeX - viewSize / 2;
+                            const boxY = planeY - viewSize / 2;
+                            viewBox = `${boxX} ${boxY} ${viewSize} ${viewSize}`;
+                          } else {
+                            const minX = Math.min(p0.x, p2.x) - 80;
+                            const maxX = Math.max(p0.x, p2.x) + 80;
+                            const minY = Math.min(p0.y, p2.y) - 80;
+                            const maxY = Math.max(p0.y, p2.y) + 80;
+                            const viewW = Math.max(100, maxX - minX);
+                            const viewH = Math.max(100, maxY - minY);
+                            viewBox = `${minX} ${minY} ${viewW} ${viewH}`;
+                          }
                           
-                          const x = (1 - progress) * (1 - progress) * p0.x + 2 * (1 - progress) * progress * p1.x + progress * progress * p2.x;
-                          const y = (1 - progress) * (1 - progress) * p0.y + 2 * (1 - progress) * progress * p1.y + progress * progress * p2.y;
+                          const grids = [];
+                          for (let i = 0; i <= 1000; i += 40) {
+                            grids.push(<line key={`h-${i}`} x1="0" y1={i} x2="1000" y2={i} stroke="rgba(16,185,129,0.06)" strokeWidth="0.5" />);
+                            grids.push(<line key={`v-${i}`} x1={i} y1="0" x2={i} y2="1000" stroke="rgba(16,185,129,0.06)" strokeWidth="0.5" />);
+                          }
                           
-                          const dx = 2 * (1 - progress) * (p1.x - p0.x) + 2 * progress * (p2.x - p1.x);
-                          const dy = 2 * (1 - progress) * (p1.y - p0.y) + 2 * progress * (p2.y - p1.y);
-                          const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+                          const timeRemainingSecs = flightTimer;
+                          const timeRemainingMin = Math.round(timeRemainingSecs / 60);
+                          const timeRemainingStr = timeRemainingMin >= 60 
+                            ? `${Math.floor(timeRemainingMin / 60)}h ${timeRemainingMin % 60}m` 
+                            : `${timeRemainingMin} min`;
+                          
+                          const progressRemaining = 1 - progress;
+                          const totalDistSim = (p0.x - p2.x) ** 2 + (p0.y - p2.y) ** 2;
+                          const distanceSim = Math.round(Math.max(0, Math.sqrt(totalDistSim) * 10 * progressRemaining));
                           
                           return (
-                            <div className="w-full">
-                              <svg viewBox="0 0 300 90" className="w-full h-auto overflow-visible select-none">
-                                <defs>
-                                  <linearGradient id="route-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" stopColor={themeColor} stopOpacity="0.1" />
-                                    <stop offset="100%" stopColor={themeColor} stopOpacity="0.9" />
-                                  </linearGradient>
-                                </defs>
-                                
-                                {/* Dashed trajectory */}
+                            <div className="w-full relative h-[200px] bg-[#051610] rounded-2xl overflow-hidden border border-emerald-900/30 shadow-[inset_0_2px_8px_rgba(0,0,0,0.8)] select-none py-2 mb-4">
+                              <svg viewBox={viewBox} className="w-full h-full overflow-hidden select-none transition-all duration-700 ease-out">
+                                <rect x="0" y="0" width="1000" height="1000" fill="#04120D" />
+                                {grids}
+                                {landmasses.map((d, index) => (
+                                  <path 
+                                    key={`land-${index}`} 
+                                    d={d} 
+                                    fill="rgba(16,185,129,0.11)" 
+                                    stroke="rgba(16,185,129,0.22)" 
+                                    strokeWidth="0.8" 
+                                  />
+                                ))}
                                 <path 
-                                  d="M 30 65 Q 150 15 270 65" 
+                                  d={`M ${p0.x} ${p0.y} Q ${p1.x} ${p1.y} ${p2.x} ${p2.y}`} 
                                   fill="none" 
-                                  className="stroke-gray-300 dark:stroke-white/10" 
-                                  strokeWidth="1.5" 
+                                  stroke="rgba(255,255,255,0.1)" 
+                                  strokeWidth="1.2" 
                                   strokeDasharray="4 4" 
                                 />
-                                
-                                {/* Covered trail */}
                                 <path 
-                                  d="M 30 65 Q 150 15 270 65" 
+                                  d={`M ${p0.x} ${p0.y} Q ${p1.x} ${p1.y} ${p2.x} ${p2.y}`} 
                                   fill="none" 
-                                  stroke="url(#route-grad)" 
-                                  strokeWidth="2.5" 
-                                  strokeDasharray="250" 
-                                  strokeDashoffset={250 * (1 - progress)}
+                                  stroke={themeColor} 
+                                  strokeWidth="2" 
+                                  strokeDasharray="1000" 
+                                  strokeDashoffset={1000 * (1 - progress)}
                                   className="transition-all duration-1000 ease-linear"
+                                  style={{ filter: `drop-shadow(0 0 3px ${themeColor})` }}
                                 />
-                                
-                                {/* Origin Node */}
-                                <g transform="translate(30, 65)">
-                                  <circle r="5" style={{ fill: `${themeColor}33` }} />
-                                  <circle r="2.5" style={{ fill: themeColor }} className="animate-pulse" />
-                                  <circle r="7" style={{ stroke: themeColor, opacity: 0.4 }} className="fill-none stroke-1 animate-ping" />
+                                <g transform={`translate(${p0.x}, ${p0.y})`}>
+                                  <circle r="4" style={{ fill: `${themeColor}22` }} />
+                                  <circle r="2" style={{ fill: themeColor }} className="animate-pulse" />
+                                  <circle r="6" style={{ stroke: themeColor, opacity: 0.3 }} className="fill-none stroke-[0.5] animate-ping" />
                                 </g>
-                                
-                                {/* Destination Node */}
-                                <g transform="translate(270, 65)">
-                                  <circle r="5" className="fill-gray-400/20 dark:fill-white/10" />
-                                  <circle r="2.5" className="fill-gray-400 dark:fill-white/40" />
+                                <g transform={`translate(${p2.x}, ${p2.y})`}>
+                                  <circle r="4" className="fill-white/10" />
+                                  <circle r="2" className="fill-white/40" />
+                                  <circle r="6" className="fill-none stroke-white/20 stroke-[0.5]" />
                                 </g>
-                                
-                                {/* Flying Jet */}
                                 <g 
-                                  transform={`translate(${x}, ${y}) rotate(${angle})`} 
+                                  transform={`translate(${planeX}, ${planeY}) rotate(${angle + 45})`} 
                                   className="transition-all duration-1000 ease-linear"
                                 >
-                                  <circle r="10" style={{ fill: themeColor, opacity: 0.3 }} className="blur-[2px]" />
-                                  <g transform="rotate(45) translate(-8, -8)">
-                                    <PlaneTakeoff size={16} color={themeColor} style={{ filter: `drop-shadow(0 0 6px ${themeColor})` }} />
+                                  <circle r="8" style={{ fill: '#fff', opacity: 0.2 }} className="blur-[1px]" />
+                                  <circle r="12" style={{ stroke: '#fff', opacity: 0.1 }} className="fill-none stroke-[0.5] animate-ping" />
+                                  <g transform="rotate(45) translate(-7, -7)">
+                                    <PlaneTakeoff size={14} color="#ffffff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
                                   </g>
                                 </g>
                               </svg>
                               
-                              <div className="flex justify-between items-center mt-1 px-1 text-[9px] font-mono text-gray-400 dark:text-white/30 uppercase tracking-widest font-black">
-                                <span>{selectedFlight.origin}</span>
-                                <span className="font-bold" style={{ color: themeColor }}>{Math.round(progress * 100)}% {lang === 'ar' ? 'اكتمل' : 'completed'}</span>
-                                <span>{selectedFlight.destination}</span>
+                              {/* HUD Controls */}
+                              <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
+                                <button 
+                                  onClick={() => setIsFlightTimerRunning(!isFlightTimerRunning)}
+                                  className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
+                                  title={isFlightTimerRunning ? 'Pause' : 'Play'}
+                                >
+                                  {isFlightTimerRunning ? <Pause size={12} fill="currentColor" /> : <Play size={12} className="ml-0.5" fill="currentColor" />}
+                                </button>
+                                <button 
+                                  onClick={toggleCabinHum}
+                                  className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-lg backdrop-blur-md active:scale-95 transition-all select-none ${isCabinHumPlaying ? 'bg-[#10B981] text-black border-[#10B981]' : 'bg-black/60 dark:bg-black/75 text-white border-white/10'}`}
+                                  title={lang === 'ar' ? 'صوت كابينة الطائرة' : 'Cabin Noise'}
+                                >
+                                  {isCabinHumPlaying ? (
+                                    <motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ repeat: Infinity, duration: 1.2 }}>
+                                      <Volume2 size={12} />
+                                    </motion.div>
+                                  ) : <VolumeX size={12} />}
+                                </button>
+                              </div>
+                              
+                              <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
+                                <button 
+                                  onClick={() => setIsMapView(false)}
+                                  className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
+                                  title={lang === 'ar' ? 'رادار الرحلة' : 'Radar View'}
+                                >
+                                  <Compass size={12} className="animate-[spin_20s_linear_infinite]" />
+                                </button>
+                                <button 
+                                  onClick={() => setIsCameraLocked(!isCameraLocked)}
+                                  className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-lg backdrop-blur-md active:scale-95 transition-all select-none ${isCameraLocked ? 'bg-white text-black border-white' : 'bg-black/60 dark:bg-black/75 text-white border-white/10'}`}
+                                  title={lang === 'ar' ? 'قفل الكاميرا' : 'Camera Lock'}
+                                >
+                                  <Navigation size={12} className={isCameraLocked ? 'fill-current rotate-45' : 'rotate-45'} />
+                                </button>
+                                <button 
+                                  onClick={() => setIsCameraLocked(false)}
+                                  className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
+                                  title={lang === 'ar' ? 'كامل مسار الرحلة' : 'Full Route'}
+                                >
+                                  <Map size={12} />
+                                </button>
+                              </div>
+                              
+                              {/* HUD Bottom Overlay */}
+                              <div className="absolute bottom-2.5 left-3.5 right-3.5 flex justify-between items-end pointer-events-none select-none text-white drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.95)]">
+                                <div className="flex flex-col text-left">
+                                  <span className="text-[7.5px] font-black uppercase tracking-widest opacity-60 leading-none mb-0.5">{lang === 'ar' ? 'الوقت المتبقي' : 'TIME REMAINING'}</span>
+                                  <span className="text-xs font-black tracking-tight leading-none">{timeRemainingStr}</span>
+                                </div>
+                                <div className="flex flex-col text-right">
+                                  <span className="text-[7.5px] font-black uppercase tracking-widest opacity-60 leading-none mb-0.5">{lang === 'ar' ? 'المسافة المتبقية' : 'DISTANCE REMAINING'}</span>
+                                  <span className="text-xs font-black tracking-tight leading-none">{distanceSim} km</span>
+                                </div>
                               </div>
                             </div>
                           );
-                        })()}
-                      </div>
+                        })()
+                      ) : (
+                        <div className="w-full relative py-2 mb-4 bg-black/5 dark:bg-black/40 border border-black/5 dark:border-white/5 rounded-2xl p-3 flex flex-col justify-center">
+                          {/* Floating Map Toggle Button */}
+                          <button
+                            onClick={() => setIsMapView(true)}
+                            className="absolute top-2.5 right-2.5 z-10 px-2.5 py-1.5 rounded-xl bg-black/50 hover:bg-black/75 dark:bg-white/10 dark:hover:bg-white/20 border border-white/5 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 active:scale-95 select-none"
+                            title={lang === 'ar' ? 'عرض خريطة لايف' : 'Live Map'}
+                          >
+                            <Map size={11} className="text-[#10B981]" />
+                            <span>{lang === 'ar' ? 'خريطة لايف' : 'Live Map'}</span>
+                          </button>
+                          
+                          {/* Bezier Radar Map */}
+                          {(() => {
+                            const progress = selectedFlight.initialSeconds ? Math.max(0, Math.min(1, (selectedFlight.initialSeconds - flightTimer) / selectedFlight.initialSeconds)) : 0;
+                            
+                            // Bezier calculator
+                            const p0 = { x: 30, y: 65 };
+                            const p1 = { x: 150, y: 15 };
+                            const p2 = { x: 270, y: 65 };
+                            
+                            const x = (1 - progress) * (1 - progress) * p0.x + 2 * (1 - progress) * progress * p1.x + progress * progress * p2.x;
+                            const y = (1 - progress) * (1 - progress) * p0.y + 2 * (1 - progress) * progress * p1.y + progress * progress * p2.y;
+                            
+                            const dx = 2 * (1 - progress) * (p1.x - p0.x) + 2 * progress * (p2.x - p1.x);
+                            const dy = 2 * (1 - progress) * (p1.y - p0.y) + 2 * progress * (p2.x - p1.y);
+                            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+                            
+                            return (
+                              <div className="w-full">
+                                <svg viewBox="0 0 300 90" className="w-full h-auto overflow-visible select-none">
+                                  <defs>
+                                    <linearGradient id="route-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                      <stop offset="0%" stopColor={themeColor} stopOpacity="0.1" />
+                                      <stop offset="100%" stopColor={themeColor} stopOpacity="0.9" />
+                                    </linearGradient>
+                                  </defs>
+                                  
+                                  {/* Dashed trajectory */}
+                                  <path 
+                                    d="M 30 65 Q 150 15 270 65" 
+                                    fill="none" 
+                                    className="stroke-gray-300 dark:stroke-white/10" 
+                                    strokeWidth="1.5" 
+                                    strokeDasharray="4 4" 
+                                  />
+                                  
+                                  {/* Covered trail */}
+                                  <path 
+                                    d="M 30 65 Q 150 15 270 65" 
+                                    fill="none" 
+                                    stroke="url(#route-grad)" 
+                                    strokeWidth="2.5" 
+                                    strokeDasharray="250" 
+                                    strokeDashoffset={250 * (1 - progress)}
+                                    className="transition-all duration-1000 ease-linear"
+                                  />
+                                  
+                                  {/* Origin Node */}
+                                  <g transform="translate(30, 65)">
+                                    <circle r="5" style={{ fill: `${themeColor}33` }} />
+                                    <circle r="2.5" style={{ fill: themeColor }} className="animate-pulse" />
+                                    <circle r="7" style={{ stroke: themeColor, opacity: 0.4 }} className="fill-none stroke-1 animate-ping" />
+                                  </g>
+                                  
+                                  {/* Destination Node */}
+                                  <g transform="translate(270, 65)">
+                                    <circle r="5" className="fill-gray-400/20 dark:fill-white/10" />
+                                    <circle r="2.5" className="fill-gray-400 dark:fill-white/40" />
+                                  </g>
+                                  
+                                  {/* Flying Jet */}
+                                  <g 
+                                    transform={`translate(${x}, ${y}) rotate(${angle})`} 
+                                    className="transition-all duration-1000 ease-linear"
+                                  >
+                                    <circle r="10" style={{ fill: themeColor, opacity: 0.3 }} className="blur-[2px]" />
+                                    <g transform="rotate(45) translate(-8, -8)">
+                                      <PlaneTakeoff size={16} color={themeColor} style={{ filter: `drop-shadow(0 0 6px ${themeColor})` }} />
+                                    </g>
+                                  </g>
+                                </svg>
+                                
+                                <div className="flex justify-between items-center mt-1 px-1 text-[9px] font-mono text-gray-400 dark:text-white/30 uppercase tracking-widest font-black">
+                                  <span>{selectedFlight.origin}</span>
+                                  <span className="font-bold" style={{ color: themeColor }}>{Math.round(progress * 100)}% {lang === 'ar' ? 'اكتمل' : 'completed'}</span>
+                                  <span>{selectedFlight.destination}</span>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
 
                       {/* Aviation simulated telemetry details */}
                       {(() => {
@@ -2356,78 +2734,250 @@ export default function App() {
                       </span>
                     </div>
 
-                    {/* Curved Aviation Radar Track */}
-                    <div className="w-full relative py-2 mb-4 bg-black/5 dark:bg-black/40 border border-black/5 dark:border-white/5 rounded-2xl p-2.5 flex flex-col justify-center">
-                      {(() => {
+                    {/* Curved Aviation Radar Track or Live Map */}
+                    {isMapView ? (
+                      (() => {
+                        const originCoords = getAirportCoords(selectedFlight.origin);
+                        const destCoords = getAirportCoords(selectedFlight.destination);
+                        const p0 = projectCoords(originCoords.lat, originCoords.lng);
+                        const p2 = projectCoords(destCoords.lat, destCoords.lng);
+                        
+                        const p1 = {
+                          x: (p0.x + p2.x) / 2 + (p2.y - p0.y) * 0.12,
+                          y: (p0.y + p2.y) / 2 - (p2.x - p0.x) * 0.12
+                        };
+                        
                         const progress = selectedFlight.initialSeconds ? Math.max(0, Math.min(1, (selectedFlight.initialSeconds - flightTimer) / selectedFlight.initialSeconds)) : 0;
+                        const { x: planeX, y: planeY, angle } = getQuadraticBezierPoint(p0, p1, p2, progress);
                         
-                        const p0 = { x: 30, y: 65 };
-                        const p1 = { x: 150, y: 15 };
-                        const p2 = { x: 270, y: 65 };
+                        let viewBox = "0 0 1000 1000";
+                        if (isCameraLocked) {
+                          const viewSize = 220;
+                          const boxX = planeX - viewSize / 2;
+                          const boxY = planeY - viewSize / 2;
+                          viewBox = `${boxX} ${boxY} ${viewSize} ${viewSize}`;
+                        } else {
+                          const minX = Math.min(p0.x, p2.x) - 80;
+                          const maxX = Math.max(p0.x, p2.x) + 80;
+                          const minY = Math.min(p0.y, p2.y) - 80;
+                          const maxY = Math.max(p0.y, p2.y) + 80;
+                          const viewW = Math.max(100, maxX - minX);
+                          const viewH = Math.max(100, maxY - minY);
+                          viewBox = `${minX} ${minY} ${viewW} ${viewH}`;
+                        }
                         
-                        const x = (1 - progress) * (1 - progress) * p0.x + 2 * (1 - progress) * progress * p1.x + progress * progress * p2.x;
-                        const y = (1 - progress) * (1 - progress) * p0.y + 2 * (1 - progress) * progress * p1.y + progress * progress * p2.y;
+                        const grids = [];
+                        for (let i = 0; i <= 1000; i += 40) {
+                          grids.push(<line key={`h-${i}`} x1="0" y1={i} x2="1000" y2={i} stroke="rgba(16,185,129,0.06)" strokeWidth="0.5" />);
+                          grids.push(<line key={`v-${i}`} x1={i} y1="0" x2={i} y2="1000" stroke="rgba(16,185,129,0.06)" strokeWidth="0.5" />);
+                        }
                         
-                        const dx = 2 * (1 - progress) * (p1.x - p0.x) + 2 * progress * (p2.x - p1.x);
-                        const dy = 2 * (1 - progress) * (p1.y - p0.y) + 2 * progress * (p2.y - p1.y);
-                        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+                        const timeRemainingSecs = flightTimer;
+                        const timeRemainingMin = Math.round(timeRemainingSecs / 60);
+                        const timeRemainingStr = timeRemainingMin >= 60 
+                          ? `${Math.floor(timeRemainingMin / 60)}h ${timeRemainingMin % 60}m` 
+                          : `${timeRemainingMin} min`;
+                        
+                        const progressRemaining = 1 - progress;
+                        const totalDistSim = (p0.x - p2.x) ** 2 + (p0.y - p2.y) ** 2;
+                        const distanceSim = Math.round(Math.max(0, Math.sqrt(totalDistSim) * 10 * progressRemaining));
                         
                         return (
-                          <div className="w-full">
-                            <svg viewBox="0 0 300 90" className="w-full h-auto overflow-visible select-none">
-                              <defs>
-                                <linearGradient id="widget-route-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                  <stop offset="0%" stopColor={themeColor} stopOpacity="0.1" />
-                                  <stop offset="100%" stopColor={themeColor} stopOpacity="0.9" />
-                                </linearGradient>
-                              </defs>
-                              
+                          <div className="w-full relative h-[200px] bg-[#051610] rounded-2xl overflow-hidden border border-emerald-900/30 shadow-[inset_0_2px_8px_rgba(0,0,0,0.8)] select-none py-2 mb-4">
+                            <svg viewBox={viewBox} className="w-full h-full overflow-hidden select-none transition-all duration-700 ease-out">
+                              <rect x="0" y="0" width="1000" height="1000" fill="#04120D" />
+                              {grids}
+                              {landmasses.map((d, index) => (
+                                <path 
+                                  key={`land-${index}`} 
+                                  d={d} 
+                                  fill="rgba(16,185,129,0.11)" 
+                                  stroke="rgba(16,185,129,0.22)" 
+                                  strokeWidth="0.8" 
+                                />
+                              ))}
                               <path 
-                                d="M 30 65 Q 150 15 270 65" 
+                                d={`M ${p0.x} ${p0.y} Q ${p1.x} ${p1.y} ${p2.x} ${p2.y}`} 
                                 fill="none" 
-                                className="stroke-gray-300 dark:stroke-white/10" 
-                                strokeWidth="1.5" 
+                                stroke="rgba(255,255,255,0.1)" 
+                                strokeWidth="1.2" 
                                 strokeDasharray="4 4" 
                               />
-                              
                               <path 
-                                d="M 30 65 Q 150 15 270 65" 
+                                d={`M ${p0.x} ${p0.y} Q ${p1.x} ${p1.y} ${p2.x} ${p2.y}`} 
                                 fill="none" 
-                                stroke="url(#widget-route-grad)" 
-                                strokeWidth="2.5" 
-                                strokeDasharray="250" 
-                                strokeDashoffset={250 * (1 - progress)}
+                                stroke={themeColor} 
+                                strokeWidth="2" 
+                                strokeDasharray="1000" 
+                                strokeDashoffset={1000 * (1 - progress)}
                                 className="transition-all duration-1000 ease-linear"
+                                style={{ filter: `drop-shadow(0 0 3px ${themeColor})` }}
                               />
-                              
-                              <g transform="translate(30, 65)">
-                                <circle r="5" style={{ fill: `${themeColor}33` }} />
-                                <circle r="2.5" style={{ fill: themeColor }} className="animate-pulse" />
-                                <circle r="7" style={{ stroke: themeColor, opacity: 0.4 }} className="fill-none stroke-1 animate-ping" />
+                              <g transform={`translate(${p0.x}, ${p0.y})`}>
+                                <circle r="4" style={{ fill: `${themeColor}22` }} />
+                                <circle r="2" style={{ fill: themeColor }} className="animate-pulse" />
+                                <circle r="6" style={{ stroke: themeColor, opacity: 0.3 }} className="fill-none stroke-[0.5] animate-ping" />
                               </g>
-                              
-                              <g transform="translate(270, 65)">
-                                <circle r="5" className="fill-gray-400/20 dark:fill-white/10" />
-                                <circle r="2.5" className="fill-gray-400 dark:fill-white/40" />
+                              <g transform={`translate(${p2.x}, ${p2.y})`}>
+                                <circle r="4" className="fill-white/10" />
+                                <circle r="2" className="fill-white/40" />
+                                <circle r="6" className="fill-none stroke-white/20 stroke-[0.5]" />
                               </g>
-                              
-                              <g transform={`translate(${x}, ${y}) rotate(${angle})`} className="transition-all duration-1000 ease-linear">
-                                <circle r="10" style={{ fill: themeColor, opacity: 0.3 }} className="blur-[2px]" />
-                                <g transform="rotate(45) translate(-8, -8)">
-                                  <PlaneTakeoff size={16} color={themeColor} style={{ filter: `drop-shadow(0 0 6px ${themeColor})` }} />
+                              <g 
+                                transform={`translate(${planeX}, ${planeY}) rotate(${angle + 45})`} 
+                                className="transition-all duration-1000 ease-linear"
+                              >
+                                <circle r="8" style={{ fill: '#fff', opacity: 0.2 }} className="blur-[1px]" />
+                                <circle r="12" style={{ stroke: '#fff', opacity: 0.1 }} className="fill-none stroke-[0.5] animate-ping" />
+                                <g transform="rotate(45) translate(-7, -7)">
+                                  <PlaneTakeoff size={14} color="#ffffff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
                                 </g>
                               </g>
                             </svg>
                             
-                            <div className="flex justify-between items-center mt-1 px-1 text-[9px] font-mono text-gray-400 dark:text-white/30 uppercase tracking-widest font-black">
-                              <span>{selectedFlight.origin}</span>
-                              <span className="font-bold" style={{ color: themeColor }}>{Math.round(progress * 100)}% {lang === 'ar' ? 'اكتمل' : 'completed'}</span>
-                              <span>{selectedFlight.destination}</span>
+                            {/* HUD Controls */}
+                            <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
+                              <button 
+                                onClick={() => setIsFlightTimerRunning(!isFlightTimerRunning)}
+                                className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
+                                title={isFlightTimerRunning ? 'Pause' : 'Play'}
+                              >
+                                {isFlightTimerRunning ? <Pause size={12} fill="currentColor" /> : <Play size={12} className="ml-0.5" fill="currentColor" />}
+                              </button>
+                              <button 
+                                onClick={toggleCabinHum}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-lg backdrop-blur-md active:scale-95 transition-all select-none ${isCabinHumPlaying ? 'bg-[#10B981] text-black border-[#10B981]' : 'bg-black/60 dark:bg-black/75 text-white border-white/10'}`}
+                                title={lang === 'ar' ? 'صوت كابينة الطائرة' : 'Cabin Noise'}
+                              >
+                                {isCabinHumPlaying ? (
+                                  <motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ repeat: Infinity, duration: 1.2 }}>
+                                    <Volume2 size={12} />
+                                  </motion.div>
+                                ) : <VolumeX size={12} />}
+                              </button>
+                            </div>
+                            
+                            <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
+                              <button 
+                                onClick={() => setIsMapView(false)}
+                                className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
+                                title={lang === 'ar' ? 'رادار الرحلة' : 'Radar View'}
+                              >
+                                <Compass size={12} className="animate-[spin_20s_linear_infinite]" />
+                              </button>
+                              <button 
+                                onClick={() => setIsCameraLocked(!isCameraLocked)}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-lg backdrop-blur-md active:scale-95 transition-all select-none ${isCameraLocked ? 'bg-white text-black border-white' : 'bg-black/60 dark:bg-black/75 text-white border-white/10'}`}
+                                title={lang === 'ar' ? 'قفل الكاميرا' : 'Camera Lock'}
+                              >
+                                <Navigation size={12} className={isCameraLocked ? 'fill-current rotate-45' : 'rotate-45'} />
+                              </button>
+                              <button 
+                                onClick={() => setIsCameraLocked(false)}
+                                className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
+                                title={lang === 'ar' ? 'كامل مسار الرحلة' : 'Full Route'}
+                              >
+                                <Map size={12} />
+                              </button>
+                            </div>
+                            
+                            {/* HUD Bottom Overlay */}
+                            <div className="absolute bottom-2.5 left-3.5 right-3.5 flex justify-between items-end pointer-events-none select-none text-white drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.95)]">
+                              <div className="flex flex-col text-left">
+                                <span className="text-[7.5px] font-black uppercase tracking-widest opacity-60 leading-none mb-0.5">{lang === 'ar' ? 'الوقت المتبقي' : 'TIME REMAINING'}</span>
+                                <span className="text-xs font-black tracking-tight leading-none">{timeRemainingStr}</span>
+                              </div>
+                              <div className="flex flex-col text-right">
+                                <span className="text-[7.5px] font-black uppercase tracking-widest opacity-60 leading-none mb-0.5">{lang === 'ar' ? 'المسافة المتبقية' : 'DISTANCE REMAINING'}</span>
+                                <span className="text-xs font-black tracking-tight leading-none">{distanceSim} km</span>
+                              </div>
                             </div>
                           </div>
                         );
-                      })()}
-                    </div>
+                      })()
+                    ) : (
+                      <div className="w-full relative py-2 mb-4 bg-black/5 dark:bg-black/40 border border-black/5 dark:border-white/5 rounded-2xl p-2.5 flex flex-col justify-center">
+                        {/* Floating Map Toggle Button */}
+                        <button
+                          onClick={() => setIsMapView(true)}
+                          className="absolute top-2.5 right-2.5 z-10 px-2.5 py-1.5 rounded-xl bg-black/50 hover:bg-black/75 dark:bg-white/10 dark:hover:bg-white/20 border border-white/5 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 active:scale-95 select-none"
+                          title={lang === 'ar' ? 'عرض خريطة لايف' : 'Live Map'}
+                        >
+                          <Map size={11} className="text-[#10B981]" />
+                          <span>{lang === 'ar' ? 'خريطة لايف' : 'Live Map'}</span>
+                        </button>
+                        
+                        {(() => {
+                          const progress = selectedFlight.initialSeconds ? Math.max(0, Math.min(1, (selectedFlight.initialSeconds - flightTimer) / selectedFlight.initialSeconds)) : 0;
+                          
+                          const p0 = { x: 30, y: 65 };
+                          const p1 = { x: 150, y: 15 };
+                          const p2 = { x: 270, y: 65 };
+                          
+                          const x = (1 - progress) * (1 - progress) * p0.x + 2 * (1 - progress) * progress * p1.x + progress * progress * p2.x;
+                          const y = (1 - progress) * (1 - progress) * p0.y + 2 * (1 - progress) * progress * p1.y + progress * progress * p2.y;
+                          
+                          const dx = 2 * (1 - progress) * (p1.x - p0.x) + 2 * progress * (p2.x - p1.x);
+                          const dy = 2 * (1 - progress) * (p1.y - p0.y) + 2 * progress * (p2.y - p1.y);
+                          const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+                          
+                          return (
+                            <div className="w-full">
+                              <svg viewBox="0 0 300 90" className="w-full h-auto overflow-visible select-none">
+                                <defs>
+                                  <linearGradient id="widget-route-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stopColor={themeColor} stopOpacity="0.1" />
+                                    <stop offset="100%" stopColor={themeColor} stopOpacity="0.9" />
+                                  </linearGradient>
+                                </defs>
+                                
+                                <path 
+                                  d="M 30 65 Q 150 15 270 65" 
+                                  fill="none" 
+                                  className="stroke-gray-300 dark:stroke-white/10" 
+                                  strokeWidth="1.5" 
+                                  strokeDasharray="4 4" 
+                                />
+                                
+                                <path 
+                                  d="M 30 65 Q 150 15 270 65" 
+                                  fill="none" 
+                                  stroke="url(#widget-route-grad)" 
+                                  strokeWidth="2.5" 
+                                  strokeDasharray="250" 
+                                  strokeDashoffset={250 * (1 - progress)}
+                                  className="transition-all duration-1000 ease-linear"
+                                />
+                                
+                                <g transform="translate(30, 65)">
+                                  <circle r="5" style={{ fill: `${themeColor}33` }} />
+                                  <circle r="2.5" style={{ fill: themeColor }} className="animate-pulse" />
+                                  <circle r="7" style={{ stroke: themeColor, opacity: 0.4 }} className="fill-none stroke-1 animate-ping" />
+                                </g>
+                                
+                                <g transform="translate(270, 65)">
+                                  <circle r="5" className="fill-gray-400/20 dark:fill-white/10" />
+                                  <circle r="2.5" className="fill-gray-400 dark:fill-white/40" />
+                                </g>
+                                
+                                <g transform={`translate(${x}, ${y}) rotate(${angle})`} className="transition-all duration-1000 ease-linear">
+                                  <circle r="10" style={{ fill: themeColor, opacity: 0.3 }} className="blur-[2px]" />
+                                  <g transform="rotate(45) translate(-8, -8)">
+                                    <PlaneTakeoff size={16} color={themeColor} style={{ filter: `drop-shadow(0 0 6px ${themeColor})` }} />
+                                  </g>
+                                </g>
+                              </svg>
+                              
+                              <div className="flex justify-between items-center mt-1 px-1 text-[9px] font-mono text-gray-400 dark:text-white/30 uppercase tracking-widest font-black">
+                                <span>{selectedFlight.origin}</span>
+                                <span className="font-bold" style={{ color: themeColor }}>{Math.round(progress * 100)}% {lang === 'ar' ? 'اكتمل' : 'completed'}</span>
+                                <span>{selectedFlight.destination}</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
 
                     {/* Glowing Digital Cockpit Chronograph */}
                     <div className="flex flex-col items-center justify-center py-4 px-3 rounded-2xl bg-black/40 dark:bg-black/55 border border-black/10 dark:border-white/5 w-full relative overflow-hidden shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_8px_32px_rgba(0,0,0,0.4)] mb-4">
