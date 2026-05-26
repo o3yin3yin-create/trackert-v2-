@@ -1953,20 +1953,8 @@ export default function App() {
               </div>
             </div>
 
-            {/* Mobile Sleep Logger Card */}
-            <div className="w-full p-4 liquid-panel rounded-3xl flex justify-between items-center shadow-lg">
-              <div className="flex items-center gap-2">
-                <Moon size={18} className="text-indigo-500 dark:text-indigo-400" strokeWidth={2.5} />
-                <span className="text-sm font-bold tracking-widest uppercase text-gray-700 dark:text-white/80">{t('sleep')}</span>
-              </div>
-              <div className="flex gap-2">
-                <input type="number" placeholder="0" value={sleepInput} onChange={(e) => setSleepInput(e.target.value)} className="w-14 bg-white/50 dark:bg-black border border-black/10 dark:border-white/10 text-black dark:text-white px-2 py-1.5 rounded-xl outline-none text-center font-bold text-sm focus:border-black/30 dark:focus:border-white/30 transition-colors" />
-                <button onClick={logSleep} className="bg-black text-white dark:bg-white dark:text-black px-4 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 hover:bg-black/80 dark:hover:bg-white/90">{t('save')}</button>
-              </div>
-            </div>
-
             {/* Mobile Habits Cards Grid */}
-            <div className="grid grid-cols-2 gap-3 mb-10 items-start w-full">
+            <div className="grid grid-cols-2 gap-3 mb-6 items-start w-full">
               {habits.map((habit) => {
                 const isMulti = habit.type === 'multi';
                 const isExpanded = expandedHabits.includes(habit.id);
@@ -2049,13 +2037,25 @@ export default function App() {
               })}
             </div>
 
+            {/* Mobile Sleep Logger Card */}
+            <div className="w-full p-4 liquid-panel rounded-3xl flex justify-between items-center shadow-lg mb-10">
+              <div className="flex items-center gap-2">
+                <Moon size={18} className="text-indigo-500 dark:text-indigo-400" strokeWidth={2.5} />
+                <span className="text-sm font-bold tracking-widest uppercase text-gray-700 dark:text-white/80">{t('sleep')}</span>
+              </div>
+              <div className="flex gap-2">
+                <input type="number" placeholder="0" value={sleepInput} onChange={(e) => setSleepInput(e.target.value)} className="w-14 bg-white/50 dark:bg-black border border-black/10 dark:border-white/10 text-black dark:text-white px-2 py-1.5 rounded-xl outline-none text-center font-bold text-sm focus:border-black/30 dark:focus:border-white/30 transition-colors" />
+                <button onClick={logSleep} className="bg-black text-white dark:bg-white dark:text-black px-4 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 hover:bg-black/80 dark:hover:bg-white/90">{t('save')}</button>
+              </div>
+            </div>
+
           </div>
 
           {/* ---------------- DESKTOP-ONLY 3-COLUMN DASHBOARD (hidden md:flex) ---------------- */}
           {/* Highly structured, symmetrical, clean dashboard optimized for laptops and desktop screens */}
           <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12 items-start w-full">
             
-            {/* COLUMN 1: Energy & Focus (التركيز والمهمة اليومية) */}
+            {/* COLUMN 1: Personal Routine (التركيز والعادات اليومية) */}
             <div className="flex flex-col gap-6 w-full">
               
               {/* Mission & Score Card */}
@@ -2110,6 +2110,98 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Habits Cards Grid (Reverted back to the custom individual blocks, rendered neatly below Mission/Sleep) */}
+              <div className="grid grid-cols-2 gap-3 mt-1 items-start w-full">
+                {habits.map((habit) => {
+                  const isMulti = habit.type === 'multi';
+                  const isExpanded = expandedHabits.includes(habit.id);
+                  
+                  let isAllChecked = false;
+                  let checkedCount = 0;
+
+                  if (isMulti) {
+                    checkedCount = habit.subItems.filter(sub => dailyData[`${activeDateStr}-${habit.id}-${sub}`]).length;
+                    isAllChecked = checkedCount === habit.subItems.length && habit.subItems.length > 0;
+                  } else {
+                    isAllChecked = dailyData[`${activeDateStr}-${habit.id}`];
+                  }
+
+                  const gridClass = (isMulti && isExpanded) ? 'col-span-2' : 'col-span-1';
+                  
+                  return (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.3 }}
+                      key={habit.id}
+                      className={`relative flex flex-col transition-all duration-300 ease-out active:scale-[0.98] ${gridClass} liquid-panel`}
+                      style={{ 
+                        borderRadius: '24px',
+                        backgroundColor: isAllChecked ? themeColor : (theme === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.4)'),
+                        color: isAllChecked ? '#000000' : (theme === 'dark' ? '#FFFFFF' : '#000000'),
+                        height: (isMulti && isExpanded) ? 'auto' : '80px',
+                        border: isAllChecked ? '1px solid transparent' : '1px solid rgba(255,255,255,0.2)',
+                        boxShadow: isAllChecked ? `0 10px 25px -8px ${themeColor}88` : 'none' 
+                      }}
+                    >
+                      <div 
+                        onClick={() => isMulti ? toggleExpand(habit.id) : toggleCheck(habit.id)}
+                        className="flex items-center justify-between p-4 h-full cursor-pointer select-none"
+                      >
+                        <div className="flex flex-col flex-1 pr-2 overflow-hidden">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="text-[10px] font-bold" style={{ color: isAllChecked ? 'rgba(0,0,0,0.5)' : themeColor }}>{getStreak(habit.id) > 0 ? `🔥 ${getStreak(habit.id)}` : ''}</span>
+                          </div>
+                          <span className="text-[15px] font-semibold tracking-tight leading-tight line-clamp-2">{habit.name}</span>
+                          {isMulti && !isExpanded && (
+                            <span className="text-[10px] opacity-50 mt-0.5 font-bold tracking-wider">{checkedCount}/{habit.subItems.length}</span>
+                          )}
+                        </div>
+                        
+                        {isMulti ? (
+                          <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-black/10 dark:bg-black/20 text-current transition-transform duration-300" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                            <ChevronDown size={14} strokeWidth={2.5} />
+                          </div>
+                        ) : (
+                          <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200" style={{ backgroundColor: isAllChecked ? 'rgba(0,0,0,0.08)' : (theme === 'dark' ? '#2C2C2E' : 'rgba(0,0,0,0.1)') }}>
+                            {isAllChecked ? <Check size={14} strokeWidth={3.5} style={{ color: '#000000' }} /> : <div className="w-1.5 h-1.5 bg-black/40 dark:bg-white/40 rounded-full" />}
+                          </div>
+                        )}
+                      </div>
+
+                      {isMulti && isExpanded && (
+                        <div className="flex flex-col gap-2 px-4 pb-4 pt-1 border-t border-black/5 transition-all duration-300 animate-fadeIn">
+                          {habit.subItems.map((sub, idx) => {
+                            const isSubChecked = dailyData[`${activeDateStr}-${habit.id}-${sub}`];
+                            return (
+                              <div 
+                                key={idx} 
+                                onClick={() => toggleCheck(habit.id, sub)}
+                                className="flex justify-between items-center p-3.5 rounded-xl cursor-pointer transition-all duration-200 active:scale-[0.99]"
+                                style={{ backgroundColor: isAllChecked ? 'rgba(0,0,0,0.04)' : '#2C2C2E' }}
+                              >
+                                <span className="text-sm font-medium tracking-tight opacity-90">{sub}</span>
+                                <div className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border-2 transition-all duration-200" style={{ borderColor: isSubChecked ? (isAllChecked ? '#000' : themeColor) : 'rgba(255,255,255,0.15)', backgroundColor: isSubChecked ? (isAllChecked ? '#000' : themeColor) : 'transparent' }}>
+                                  {isSubChecked && <Check size={11} strokeWidth={4.5} style={{ color: isAllChecked ? themeColor : '#000' }} />}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })}
+                {habits.length === 0 && (
+                  <div className="col-span-2 text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-10 select-none">{t('noHabitsYet')}</div>
+                )}
+              </div>
+
+            </div>
+
+            {/* COLUMN 2: Tasks & Performance (المهام اليومية والإحصائيات) */}
+            <div className="flex flex-col gap-6 w-full">
+              
               {/* Sleep Logger Card */}
               <div className="w-full p-5 liquid-panel rounded-3xl flex justify-between items-center shadow-lg border border-black/5 dark:border-white/5">
                 <div className="flex items-center gap-2 select-none">
@@ -2122,102 +2214,6 @@ export default function App() {
                 </div>
               </div>
 
-            </div>
-
-            {/* COLUMN 2: Habits Routine (الروتين والعادات اليومية) */}
-            {/* Groups all habits inside a single magnificent, unified panel to eliminate scattered alignment issues */}
-            <div className="flex flex-col gap-6 w-full">
-              
-              <div className="liquid-panel p-6 shadow-xl border border-black/5 dark:border-white/5 flex flex-col w-full" style={{ borderRadius: '28px' }}>
-                <div className="flex items-center gap-2 mb-5 select-none">
-                  <SlidersHorizontal size={18} style={{ color: themeColor }} />
-                  <h3 className="text-sm font-bold tracking-widest text-gray-700 dark:text-white/80 uppercase">{t('positiveHabits')}</h3>
-                </div>
-
-                <div className="flex flex-col w-full pr-1 overflow-y-auto max-h-[360px]">
-                  {habits.map((habit) => {
-                    const isMulti = habit.type === 'multi';
-                    const isExpanded = expandedHabits.includes(habit.id);
-                    
-                    let isAllChecked = false;
-                    let checkedCount = 0;
-
-                    if (isMulti) {
-                      checkedCount = habit.subItems.filter(sub => dailyData[`${activeDateStr}-${habit.id}-${sub}`]).length;
-                      isAllChecked = checkedCount === habit.subItems.length && habit.subItems.length > 0;
-                    } else {
-                      isAllChecked = dailyData[`${activeDateStr}-${habit.id}`];
-                    }
-
-                    return (
-                      <div 
-                        key={habit.id} 
-                        className="flex flex-col rounded-2xl border border-black/5 dark:border-white/5 transition-all duration-300 mb-3 overflow-hidden" 
-                        style={{
-                          backgroundColor: isAllChecked ? `${themeColor}12` : (theme === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'),
-                          borderColor: isAllChecked ? `${themeColor}33` : undefined
-                        }}
-                      >
-                        <div 
-                          onClick={() => isMulti ? toggleExpand(habit.id) : toggleCheck(habit.id)} 
-                          className="flex items-center justify-between p-3.5 cursor-pointer select-none"
-                        >
-                          <div className="flex items-center gap-3">
-                            {/* Check circle */}
-                            <div className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200" style={{ backgroundColor: isAllChecked ? themeColor : (theme === 'dark' ? '#2C2C2E' : 'rgba(0,0,0,0.1)') }}>
-                              {isAllChecked ? <Check size={12} strokeWidth={4.5} style={{ color: '#000000' }} /> : <div className="w-1.5 h-1.5 bg-black/40 dark:bg-white/40 rounded-full" />}
-                            </div>
-                            <div className="flex flex-col">
-                              <span className={`text-sm font-bold ${isAllChecked ? 'text-black dark:text-white font-black' : 'text-gray-800 dark:text-white/90'}`}>{habit.name}</span>
-                              {isMulti && (
-                                <span className="text-[9px] text-gray-500 dark:text-white/40 font-bold uppercase tracking-wider mt-0.5">{checkedCount}/{habit.subItems.length} {t('items')}</span>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            {getStreak(habit.id) > 0 && (
-                              <span className="text-[10px] font-bold" style={{ color: themeColor }}>🔥 {getStreak(habit.id)}</span>
-                            )}
-                            {isMulti && (
-                              <ChevronDown size={14} className="text-gray-400 transition-transform duration-300" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }} />
-                            )}
-                          </div>
-                        </div>
-                        
-                        {isMulti && isExpanded && (
-                          <div className="flex flex-col gap-1.5 px-3 pb-3 pt-1 border-t border-black/5 dark:border-white/5 bg-black/5 dark:bg-black/25">
-                            {habit.subItems.map((sub, idx) => {
-                              const isSubChecked = dailyData[`${activeDateStr}-${habit.id}-${sub}`];
-                              return (
-                                <div 
-                                  key={idx} 
-                                  onClick={() => toggleCheck(habit.id, sub)} 
-                                  className="flex justify-between items-center p-2 rounded-xl cursor-pointer hover:bg-black/5 dark:hover:bg-white/5"
-                                >
-                                  <span className="text-xs font-semibold text-gray-700 dark:text-white/80">{sub}</span>
-                                  <div className="w-4 h-4 rounded-full flex items-center justify-center border-2 transition-all duration-200" style={{ borderColor: isSubChecked ? themeColor : 'rgba(255,255,255,0.15)', backgroundColor: isSubChecked ? themeColor : 'transparent' }}>
-                                    {isSubChecked && <Check size={9} strokeWidth={5} style={{ color: '#000' }} />}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {habits.length === 0 && (
-                    <div className="text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-12 select-none">{t('noHabitsYet')}</div>
-                  )}
-                </div>
-              </div>
-
-            </div>
-
-            {/* COLUMN 3: Tasks & Performance (المهام اليومية والإحصائيات) */}
-            <div className="flex flex-col gap-6 w-full">
-              
               {/* Daily Tasks Checklist Widget */}
               <div className="liquid-panel p-6 shadow-xl border border-black/5 dark:border-white/5 flex flex-col w-full" style={{ borderRadius: '28px' }}>
                 <div className="flex items-center justify-between mb-4 select-none">
@@ -2328,6 +2324,220 @@ export default function App() {
                     <span className="text-[9px] font-black tracking-widest text-gray-500 dark:text-[#8E8E93] uppercase">{t('focus')}</span>
                   </div>
                 </div>
+              </div>
+
+            </div>
+
+            {/* COLUMN 3: Flight Radar Cockpit (غرفة قيادة ومؤقت الطيران) */}
+            {/* Embeds a fully functional live flight tracking system directly on the dashboard */}
+            <div className="flex flex-col gap-6 w-full">
+              
+              <div className="liquid-panel p-6 shadow-xl border border-black/5 dark:border-white/5 flex flex-col w-full h-full justify-between" style={{ borderRadius: '28px' }}>
+                {selectedFlight ? (
+                  <div className="flex flex-col w-full">
+                    {/* Active Flight Header */}
+                    <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-white/40 px-1 select-none mb-3">
+                      <span className="flex items-center gap-1.5 font-bold" style={{ color: themeColor }}>
+                        <PlaneTakeoff size={14} color={themeColor} />
+                        {lang === 'ar' ? 'رحلة نشطة' : 'ACTIVE FLIGHT'}
+                      </span>
+                      {isFlightTimerRunning ? (
+                        <span className="text-green-500 flex items-center gap-1 font-bold">
+                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping" />
+                          {lang === 'ar' ? 'جاري التركيز' : 'FOCUS ACTIVE'}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 font-bold animate-pulse" style={{ color: themeColor }}>
+                          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: themeColor }} />
+                          {lang === 'ar' ? 'في الطريق' : 'EN ROUTE'}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Route Info */}
+                    <div className="flex items-center justify-between w-full mb-1 text-center select-none bg-black/5 dark:bg-black/25 p-3 rounded-2xl border border-black/5 dark:border-white/5">
+                      <span className="text-2xl font-black tracking-tight text-black dark:text-white">{selectedFlight.origin}</span>
+                      <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-black/10 dark:via-white/10 to-transparent mx-3" />
+                      <PlaneTakeoff size={16} color={themeColor} className="rotate-45 animate-pulse" />
+                      <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-black/10 dark:via-white/10 to-transparent mx-3" />
+                      <span className="text-2xl font-black tracking-tight text-black dark:text-white">{selectedFlight.destination}</span>
+                    </div>
+
+                    <div className="text-left bg-black/5 dark:bg-black/20 p-2.5 rounded-xl border border-black/5 dark:border-white/5 mt-2 mb-4">
+                      <span className="text-xs font-bold text-gray-800 dark:text-white/80 block select-none">
+                        {selectedFlight.airline} • {selectedFlight.callsign}
+                      </span>
+                      <span className="text-[10px] text-gray-500 dark:text-white/40 font-mono tracking-tight uppercase block mt-0.5 select-none">
+                        {selectedFlight.model}
+                      </span>
+                    </div>
+
+                    {/* Curved Aviation Radar Track */}
+                    <div className="w-full relative py-2 mb-4 bg-black/5 dark:bg-black/40 border border-black/5 dark:border-white/5 rounded-2xl p-2.5 flex flex-col justify-center">
+                      {(() => {
+                        const progress = selectedFlight.initialSeconds ? Math.max(0, Math.min(1, (selectedFlight.initialSeconds - flightTimer) / selectedFlight.initialSeconds)) : 0;
+                        
+                        const p0 = { x: 30, y: 65 };
+                        const p1 = { x: 150, y: 15 };
+                        const p2 = { x: 270, y: 65 };
+                        
+                        const x = (1 - progress) * (1 - progress) * p0.x + 2 * (1 - progress) * progress * p1.x + progress * progress * p2.x;
+                        const y = (1 - progress) * (1 - progress) * p0.y + 2 * (1 - progress) * progress * p1.y + progress * progress * p2.y;
+                        
+                        const dx = 2 * (1 - progress) * (p1.x - p0.x) + 2 * progress * (p2.x - p1.x);
+                        const dy = 2 * (1 - progress) * (p1.y - p0.y) + 2 * progress * (p2.y - p1.y);
+                        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+                        
+                        return (
+                          <div className="w-full">
+                            <svg viewBox="0 0 300 90" className="w-full h-auto overflow-visible select-none">
+                              <defs>
+                                <linearGradient id="widget-route-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                  <stop offset="0%" stopColor={themeColor} stopOpacity="0.1" />
+                                  <stop offset="100%" stopColor={themeColor} stopOpacity="0.9" />
+                                </linearGradient>
+                              </defs>
+                              
+                              <path 
+                                d="M 30 65 Q 150 15 270 65" 
+                                fill="none" 
+                                className="stroke-gray-300 dark:stroke-white/10" 
+                                strokeWidth="1.5" 
+                                strokeDasharray="4 4" 
+                              />
+                              
+                              <path 
+                                d="M 30 65 Q 150 15 270 65" 
+                                fill="none" 
+                                stroke="url(#widget-route-grad)" 
+                                strokeWidth="2.5" 
+                                strokeDasharray="250" 
+                                strokeDashoffset={250 * (1 - progress)}
+                                className="transition-all duration-1000 ease-linear"
+                              />
+                              
+                              <g transform="translate(30, 65)">
+                                <circle r="5" style={{ fill: `${themeColor}33` }} />
+                                <circle r="2.5" style={{ fill: themeColor }} className="animate-pulse" />
+                                <circle r="7" style={{ stroke: themeColor, opacity: 0.4 }} className="fill-none stroke-1 animate-ping" />
+                              </g>
+                              
+                              <g transform="translate(270, 65)">
+                                <circle r="5" className="fill-gray-400/20 dark:fill-white/10" />
+                                <circle r="2.5" className="fill-gray-400 dark:fill-white/40" />
+                              </g>
+                              
+                              <g transform={`translate(${x}, ${y}) rotate(${angle})`} className="transition-all duration-1000 ease-linear">
+                                <circle r="10" style={{ fill: themeColor, opacity: 0.3 }} className="blur-[2px]" />
+                                <g transform="rotate(45) translate(-8, -8)">
+                                  <PlaneTakeoff size={16} color={themeColor} style={{ filter: `drop-shadow(0 0 6px ${themeColor})` }} />
+                                </g>
+                              </g>
+                            </svg>
+                            
+                            <div className="flex justify-between items-center mt-1 px-1 text-[9px] font-mono text-gray-400 dark:text-white/30 uppercase tracking-widest font-black">
+                              <span>{selectedFlight.origin}</span>
+                              <span className="font-bold" style={{ color: themeColor }}>{Math.round(progress * 100)}% {lang === 'ar' ? 'اكتمل' : 'completed'}</span>
+                              <span>{selectedFlight.destination}</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Glowing Digital Cockpit Chronograph */}
+                    <div className="flex flex-col items-center justify-center py-4 px-3 rounded-2xl bg-black/40 dark:bg-black/55 border border-black/10 dark:border-white/5 w-full relative overflow-hidden shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_8px_32px_rgba(0,0,0,0.4)] mb-4">
+                       <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent pointer-events-none" />
+                       
+                       <span className="text-[9px] uppercase tracking-widest font-black mb-2 flex items-center gap-1 select-none" style={{ color: theme === 'dark' ? `${themeColor}cc` : themeColor }}>
+                          <span className="w-1 h-1 rounded-full animate-pulse" style={{ backgroundColor: themeColor }} />
+                          {t('remainingTime')}
+                       </span>
+                       
+                       <div className="text-3xl font-mono font-black tracking-widest leading-none py-1 flex items-center justify-center gap-1.5 tabular-nums select-all" style={{ color: themeColor, filter: `drop-shadow(0 0 8px ${themeColor}88)` }}>
+                          <span className="bg-black/35 border border-white/5 px-2 py-1 rounded-xl min-w-[2.2ch] text-center text-2xl">{String(Math.floor(flightTimer / 3600)).padStart(2, '0')}</span>
+                          <span className="text-lg animate-pulse" style={{ color: `${themeColor}55` }}>:</span>
+                          <span className="bg-black/35 border border-white/5 px-2 py-1 rounded-xl min-w-[2.2ch] text-center text-2xl">{String(Math.floor((flightTimer % 3600) / 60)).padStart(2, '0')}</span>
+                          <span className="text-lg animate-pulse" style={{ color: `${themeColor}55` }}>:</span>
+                          <span className="bg-black/35 border border-white/5 px-2 py-1 rounded-xl min-w-[2.2ch] text-center text-2xl">{String(flightTimer % 60).padStart(2, '0')}</span>
+                       </div>
+                    </div>
+
+                    {/* Flight Focus Actions */}
+                    {flightTimer > 0 ? (
+                      <div className="flex justify-center w-full gap-2">
+                        {!isFlightTimerRunning ? (
+                          <button 
+                            onClick={() => setIsFlightTimerRunning(true)}
+                            className="px-5 py-3 rounded-2xl font-bold text-xs tracking-widest transition-colors active:scale-95 shadow-xl w-full" style={{ backgroundColor: themeColor, color: '#000', border: `1px solid ${themeColor}`, boxShadow: `0 8px 24px ${themeColor}33` }}
+                          >
+                            {t('startFocus')}
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => {
+                              setIsFlightTimerRunning(false);
+                              setSelectedFlight(null);
+                            }}
+                            className="px-5 py-3 bg-red-500/10 border border-red-500/30 text-red-500 dark:text-red-400 rounded-2xl font-bold text-xs tracking-widest hover:bg-red-500/20 transition-colors active:scale-95 shadow-xl w-full"
+                          >
+                            {t('giveUp')}
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-green-500 dark:text-green-400 font-bold tracking-widest uppercase text-xs text-center animate-pulse py-2 w-full select-none">{t('landed')}</span>
+                    )}
+
+                  </div>
+                ) : (
+                  <div className="flex flex-col w-full h-full justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-3 select-none">
+                        <PlaneTakeoff size={18} style={{ color: themeColor }} />
+                        <h3 className="text-sm font-bold tracking-widest text-gray-700 dark:text-white/80 uppercase">{t('flightFocus')}</h3>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-white/40 mb-5 select-none leading-relaxed">
+                        {lang === 'ar' ? 'انضم لرحلة نشطة حالياً في السماء لتركيز إنتاجيتك معها.' : 'Join a real-world active flight to sync and gamify your focus session.'}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-2.5 overflow-y-auto max-h-[280px] pr-1 w-full flex-1">
+                      {flightLoading ? (
+                        <div className="flex flex-col items-center justify-center py-16 gap-3">
+                          <Loader2 className="animate-spin text-gray-400 dark:text-white/30" size={24} />
+                          <span className="text-[10px] font-bold tracking-widest text-gray-400 dark:text-white/30 uppercase animate-pulse">{t('findingFlights')}</span>
+                        </div>
+                      ) : flightOptions.map((f, i) => (
+                        <div key={i} onClick={() => { 
+                          const liveRemaining = f.estimatedArrival - Math.floor(Date.now() / 1000);
+                          setSelectedFlight({...f, initialSeconds: liveRemaining}); 
+                          setFlightTimer(Math.max(0, liveRemaining)); 
+                        }} className="bg-white/10 dark:bg-black/35 border border-black/5 dark:border-white/5 p-3 rounded-xl cursor-pointer hover:bg-white/30 dark:hover:bg-black/50 transition-all duration-200 active:scale-[0.98]">
+                          <div className="flex justify-between items-start mb-1 select-none">
+                            <span className="font-bold text-xs text-black dark:text-white flex items-center gap-1.5 leading-tight">
+                              {f.airline}
+                              <span className="text-[9px] bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 px-1.5 py-0.5 rounded text-gray-500 dark:text-white/50">{f.callsign}</span>
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-500 dark:text-white/45 text-xs font-semibold select-none">
+                            <span>{f.origin}</span>
+                            <PlaneTakeoff size={12} className="text-gray-400 dark:text-white/30" />
+                            <span>{f.destination}</span>
+                          </div>
+                        </div>
+                      ))}
+                      {flightOptions.length === 0 && !flightLoading && (
+                        <div className="text-center py-10 flex flex-col items-center gap-3">
+                          <span className="text-xs font-bold text-red-400">{t('couldNotFindFlights')}</span>
+                          <button onClick={fetchFlights} className="px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 hover:opacity-90 mt-2" style={{ backgroundColor: themeColor, color: '#000' }}>
+                             {lang === 'ar' ? 'بحث عن رحلات' : 'Fetch Flights'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
             </div>
