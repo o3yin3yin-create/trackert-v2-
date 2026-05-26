@@ -259,10 +259,18 @@ const stopCabinHum = () => {
 
 // --- Tactical Map Constant Outlines & Grids ---
 const landmasses = [
-  "M 150 150 Q 250 100 350 200 T 500 150 T 600 300 T 450 450 T 250 350 Z",
-  "M 700 200 Q 800 100 900 150 T 950 400 T 800 600 T 650 500 T 600 350 Z",
-  "M 200 600 Q 300 500 450 650 T 550 800 T 400 950 T 250 850 Z",
-  "M 750 700 Q 850 650 950 750 T 900 900 T 800 950 T 700 850 Z"
+  // North America
+  "M 100 150 L 150 120 L 250 100 L 320 120 L 350 200 L 300 250 L 280 200 L 250 250 L 220 300 L 200 350 L 180 320 L 120 300 L 80 220 Z",
+  // Greenland
+  "M 340 70 L 380 60 L 420 80 L 400 120 L 360 110 Z",
+  // South America
+  "M 260 500 L 310 520 L 340 550 L 360 620 L 340 700 L 320 800 L 300 850 L 290 800 L 270 700 L 250 600 L 240 540 Z",
+  // Eurasia (Europe & Asia)
+  "M 460 200 L 500 180 L 550 150 L 600 140 L 700 130 L 800 150 L 900 120 L 950 180 L 920 280 L 880 350 L 820 400 L 750 350 L 720 400 L 650 380 L 600 350 L 550 380 L 520 320 L 480 300 L 450 250 Z",
+  // Africa
+  "M 460 420 L 530 400 L 580 420 L 620 460 L 640 520 L 620 600 L 580 700 L 550 780 L 530 700 L 500 600 L 460 550 L 440 480 Z",
+  // Australia
+  "M 800 680 L 850 670 L 900 690 L 920 730 L 900 780 L 840 790 L 810 750 Z"
 ];
 
 const gridLines = [];
@@ -601,8 +609,13 @@ export default function App() {
   // --- Live Time Tick for absolute timers ---
   const [currentUnixTime, setCurrentUnixTime] = useState(() => Math.floor(Date.now() / 1000));
   useEffect(() => {
-    const interval = setInterval(() => setCurrentUnixTime(Math.floor(Date.now() / 1000)), 1000);
-    return () => clearInterval(interval);
+    const updateTime = () => setCurrentUnixTime(Math.floor(Date.now() / 1000));
+    const interval = setInterval(updateTime, 1000);
+    window.addEventListener('focus', updateTime);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', updateTime);
+    };
   }, []);
 
   // --- Flight Focus Logic ---
@@ -634,11 +647,14 @@ export default function App() {
     return () => clearInterval(intervalId);
   }, [isFlightFocusOpen, flightOptions.length, selectedFlight]);
 
+  const flightLastTickRef = useRef(null);
+
   useEffect(() => {
     if (!selectedFlight) {
       stopCabinHum();
       if (isCabinHumPlaying) setIsCabinHumPlaying(false);
       if (isMapView) setIsMapView(false);
+      flightLastTickRef.current = null;
       return;
     }
     
@@ -650,32 +666,47 @@ export default function App() {
       
       // ONLY log focus time if the focus timer is actively running
       if (isFlightTimerRunning) {
-        const todayStr = getFormatDateStr(new Date());
-        setFocusTimeData(prev => {
-          const updated = { ...prev, [todayStr]: (prev[todayStr] || 0) + 1 };
-          localStorage.setItem('daybase_focusTime_v4', JSON.stringify(updated));
-          return updated;
-        });
+        if (!flightLastTickRef.current) {
+          flightLastTickRef.current = Date.now();
+        }
         
-        setPomodoroTasksData(prev => {
-          const flightLabel = `✈️ ${selectedFlight.origin} → ${selectedFlight.destination}`;
-          const flightColor = '#007AFF';
-          const updated = { ...prev };
-          if (!updated[todayStr]) updated[todayStr] = [];
-          const idx = updated[todayStr].findIndex(tk => tk.name === flightLabel && tk.color === flightColor);
-          if (idx > -1) {
-            updated[todayStr][idx].timeSpent += 1;
-          } else {
-            updated[todayStr].push({ name: flightLabel, color: flightColor, timeSpent: 1 });
-          }
-          localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(updated));
-          return updated;
-        });
+        const now = Date.now();
+        const deltaMs = now - flightLastTickRef.current;
+        const delta = Math.floor(deltaMs / 1000);
+        
+        if (delta > 0) {
+          flightLastTickRef.current = now;
+          const todayStr = getFormatDateStr(new Date());
+          
+          setFocusTimeData(prev => {
+            const updated = { ...prev, [todayStr]: (prev[todayStr] || 0) + delta };
+            localStorage.setItem('daybase_focusTime_v4', JSON.stringify(updated));
+            return updated;
+          });
+          
+          setPomodoroTasksData(prev => {
+            const flightLabel = `✈️ ${selectedFlight.origin} → ${selectedFlight.destination}`;
+            const flightColor = '#007AFF';
+            const updated = { ...prev };
+            if (!updated[todayStr]) updated[todayStr] = [];
+            const idx = updated[todayStr].findIndex(tk => tk.name === flightLabel && tk.color === flightColor);
+            if (idx > -1) {
+              updated[todayStr][idx].timeSpent += delta;
+            } else {
+              updated[todayStr].push({ name: flightLabel, color: flightColor, timeSpent: delta });
+            }
+            localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(updated));
+            return updated;
+          });
+        }
+      } else {
+        flightLastTickRef.current = null;
       }
     } else if (remaining <= 0) {
       // Flight landed!
       setFlightTimer(0);
       setIsFlightTimerRunning(false);
+      flightLastTickRef.current = null;
       // Only trigger sound once when it first hits 0
       if (flightTimer > 0) {
         if (globalAudioCtx) {
@@ -1663,12 +1694,12 @@ export default function App() {
                                   <circle r="6" className="fill-none stroke-white/20 stroke-[0.5]" />
                                 </g>
                                 <g 
-                                  transform={`translate(${planeX}, ${planeY}) rotate(${angle + 45})`} 
+                                  transform={`translate(${planeX}, ${planeY}) rotate(${angle + 90})`} 
                                   className="transition-all duration-1000 ease-linear"
                                 >
                                   <circle r="8" style={{ fill: '#fff', opacity: 0.2 }} className="blur-[1px]" />
                                   <circle r="12" style={{ stroke: '#fff', opacity: 0.1 }} className="fill-none stroke-[0.5] animate-ping" />
-                                  <g transform="rotate(45) translate(-7, -7)">
+                                  <g transform="translate(-7, -7)">
                                     <Plane size={14} color="#ffffff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
                                   </g>
                                 </g>
@@ -1807,7 +1838,7 @@ export default function App() {
                                   
                                   {/* Flying Jet */}
                                   <g 
-                                    transform={`translate(${x}, ${y}) rotate(${angle})`} 
+                                    transform={`translate(${x}, ${y}) rotate(${angle + 90})`} 
                                     className="transition-all duration-1000 ease-linear"
                                   >
                                     <circle r="10" style={{ fill: themeColor, opacity: 0.3 }} className="blur-[2px]" />
@@ -2824,12 +2855,12 @@ export default function App() {
                                 <circle r="6" className="fill-none stroke-white/20 stroke-[0.5]" />
                               </g>
                               <g 
-                                transform={`translate(${planeX}, ${planeY}) rotate(${angle + 45})`} 
+                                transform={`translate(${planeX}, ${planeY}) rotate(${angle + 90})`} 
                                 className="transition-all duration-1000 ease-linear"
                               >
                                 <circle r="8" style={{ fill: '#fff', opacity: 0.2 }} className="blur-[1px]" />
                                 <circle r="12" style={{ stroke: '#fff', opacity: 0.1 }} className="fill-none stroke-[0.5] animate-ping" />
-                                <g transform="rotate(45) translate(-7, -7)">
+                                <g transform="translate(-7, -7)">
                                   <Plane size={14} color="#ffffff" style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.5))' }} />
                                 </g>
                               </g>
@@ -2960,9 +2991,9 @@ export default function App() {
                                   <circle r="2.5" className="fill-gray-400 dark:fill-white/40" />
                                 </g>
                                 
-                                <g transform={`translate(${x}, ${y}) rotate(${angle})`} className="transition-all duration-1000 ease-linear">
+                                <g transform={`translate(${x}, ${y}) rotate(${angle + 90})`} className="transition-all duration-1000 ease-linear">
                                   <circle r="10" style={{ fill: themeColor, opacity: 0.3 }} className="blur-[2px]" />
-                                  <g transform="rotate(45) translate(-8, -8)">
+                                  <g transform="translate(-8, -8)">
                                     <Plane size={16} color={themeColor} style={{ filter: `drop-shadow(0 0 6px ${themeColor})` }} />
                                   </g>
                                 </g>
