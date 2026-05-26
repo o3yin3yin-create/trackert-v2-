@@ -1785,9 +1785,10 @@ export default function App() {
                 </div>
 
                 {/* Pomodoro Tasks Table */}
-                {pomodoroTasksData[getFormatDateStr(new Date())] && pomodoroTasksData[getFormatDateStr(new Date())].length > 0 && (
-                  <div className="mt-6 border-t border-black/10 dark:border-white/10 pt-4 w-full">
-                    <h4 className="text-[10px] font-bold text-black/50 dark:text-white/50 uppercase tracking-widest mb-3 text-center">Today's Focus Tasks</h4>
+                <div className="mt-6 border-t border-black/10 dark:border-white/10 pt-4 w-full">
+                  <h4 className="text-[10px] font-bold text-black/50 dark:text-white/50 uppercase tracking-widest mb-3 text-center">Today's Focus Tasks</h4>
+                  
+                  {pomodoroTasksData[getFormatDateStr(new Date())] && pomodoroTasksData[getFormatDateStr(new Date())].length > 0 ? (
                     <div className="flex flex-col gap-2 max-h-32 overflow-y-auto pr-1">
                       {pomodoroTasksData[getFormatDateStr(new Date())]
                         .sort((a, b) => b.timeSpent - a.timeSpent)
@@ -1801,8 +1802,12 @@ export default function App() {
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="text-center py-3 border border-dashed border-black/10 dark:border-white/10 rounded-xl bg-black/5 dark:bg-white/5">
+                      <span className="text-[10px] font-medium text-black/40 dark:text-white/40 uppercase tracking-widest">No tasks recorded today</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>, document.body
           )}
@@ -1969,21 +1974,21 @@ export default function App() {
             </div>, document.body
           )}
 
-          {/* --- FLOATING NAV --- */}
-          <div className="fixed bottom-0 left-0 w-full flex justify-center pt-4 bg-gradient-to-t from-white/20 dark:from-black via-white/10 dark:via-black to-transparent pointer-events-none z-[10000] pb-[calc(2rem+env(safe-area-inset-bottom))]">
-            <div className="w-full max-w-[428px] px-6 flex justify-between items-center pointer-events-auto">
-              <div className="bg-white/50 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border border-black/10 dark:border-white/5 rounded-full flex items-center p-1.5 gap-1.5 shadow-2xl dark:shadow-black/80">
-                <button onClick={() => topRef.current?.scrollIntoView({ behavior: 'smooth' })} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white transition-all duration-200 active:scale-90"><Home size={18} /></button>
-                <button onClick={() => setIsAnalyticsModalOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><BarChart2 size={18} /></button>
-                <button onClick={() => setIsTasksModalOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
-                <button onClick={() => setIsPomodoroOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><Timer size={18} /></button>
-                <button onClick={() => setIsFlightFocusOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><PlaneTakeoff size={18} /></button>
-              </div>
-              <button onClick={handleOpenManage} className="w-13 h-13 rounded-full bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-[#2C2C2E] transition-all duration-200 active:scale-90 shadow-2xl dark:shadow-black/60"><Edit2 size={18} className="text-black dark:text-white/90" /></button>
-            </div>
-          </div>
-
         </motion.div>
+
+        {/* --- FLOATING NAV --- */}
+        <div className="fixed bottom-0 left-0 w-full flex justify-center pt-4 bg-gradient-to-t from-white/20 dark:from-black via-white/10 dark:via-black to-transparent pointer-events-none z-[10000] pb-[calc(2rem+env(safe-area-inset-bottom))]">
+          <div className="w-full max-w-[428px] px-6 flex justify-between items-center pointer-events-auto">
+            <div className="bg-white/50 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border border-black/10 dark:border-white/5 rounded-full flex items-center p-1.5 gap-1.5 shadow-2xl dark:shadow-black/80">
+              <button onClick={() => topRef.current?.scrollIntoView({ behavior: 'smooth' })} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white transition-all duration-200 active:scale-90"><Home size={18} /></button>
+              <button onClick={() => setIsAnalyticsModalOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><BarChart2 size={18} /></button>
+              <button onClick={() => setIsTasksModalOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
+              <button onClick={() => setIsPomodoroOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><Timer size={18} /></button>
+              <button onClick={() => setIsFlightFocusOpen(true)} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><PlaneTakeoff size={18} /></button>
+            </div>
+            <button onClick={handleOpenManage} className="w-13 h-13 rounded-full bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-[#2C2C2E] transition-all duration-200 active:scale-90 shadow-2xl dark:shadow-black/60"><Edit2 size={18} className="text-black dark:text-white/90" /></button>
+          </div>
+        </div>
       </div>
     </div>
   );
