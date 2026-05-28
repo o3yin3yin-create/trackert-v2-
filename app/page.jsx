@@ -2014,23 +2014,20 @@ export default function App() {
                       </div>
 
                       {/* Futuristic Digital Cockpit Chronograph */}
-                      <div className="flex flex-col items-center justify-center py-6 px-4 rounded-2xl bg-black/40 dark:bg-black/50 border border-black/10 dark:border-white/5 w-full relative overflow-hidden shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_8px_32px_rgba(0,0,0,0.4)]">
-                         <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent pointer-events-none" />
-                         
-                         <span className="text-[9px] uppercase tracking-widest font-black mb-3 flex items-center gap-1.5 select-none" style={{ color: theme === 'dark' ? `${themeColor}cc` : themeColor }}>
+                      <div className="flex flex-col items-center justify-center py-6 px-4 rounded-2xl w-full relative mb-4">
+                         <span className="text-[9px] uppercase tracking-widest font-black mb-4 flex items-center gap-1.5 select-none" style={{ color: theme === 'dark' ? `${themeColor}cc` : themeColor }}>
                             <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: themeColor }} />
                             {t('remainingTime')}
                          </span>
                          
-                         <div className="text-4xl sm:text-5xl md:text-3xl lg:text-4xl xl:text-5xl font-mono font-black tracking-widest select-all leading-none py-1 flex items-center justify-center gap-1.5 tabular-nums" style={{ color: themeColor, filter: `drop-shadow(0 0 10px ${themeColor}aa)` }}>
-                            <span className="bg-black/35 border border-white/5 px-2 py-1.5 rounded-xl min-w-[2.2ch] text-center">{String(Math.floor(flightTimer / 3600)).padStart(2, '0')}</span>
-                            <span className="text-xl animate-pulse" style={{ color: `${themeColor}66` }}>:</span>
-                            <span className="bg-black/35 border border-white/5 px-2 py-1.5 rounded-xl min-w-[2.2ch] text-center">{String(Math.floor((flightTimer % 3600) / 60)).padStart(2, '0')}</span>
-                            <span className="text-xl animate-pulse" style={{ color: `${themeColor}66` }}>:</span>
-                            <span className="bg-black/35 border border-white/5 px-2 py-1.5 rounded-xl min-w-[2.2ch] text-center">{String(flightTimer % 60).padStart(2, '0')}</span>
-                         </div>
+                         <MinimalTimer 
+                           timeSeconds={flightTimer} 
+                           totalSeconds={selectedFlight?.initialSeconds || 0} 
+                           themeColor={themeColor} 
+                           size="lg" 
+                         />
                          
-                         <div className="flex justify-between w-full mt-4 text-[9px] font-mono text-gray-500 dark:text-white/30 uppercase tracking-widest px-1">
+                         <div className="flex justify-between w-full mt-6 text-[9px] font-mono text-gray-500 dark:text-white/30 uppercase tracking-widest px-1">
                             <span>SYS: ACTIVE</span>
                             <span>ETA: {new Date(selectedFlight.estimatedArrival * 1000).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                          </div>
