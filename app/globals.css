@@ -2,8 +2,25 @@
 
 @font-face {
   font-family: 'DottedNumbers';
-  src: url('/fonts/dotgothic.woff2') format('woff2');
-  unicode-range: U+0030-0039, U+0025;
+  font-weight: 400;
+  src: url('/fonts/doto-400.woff2') format('woff2');
+  unicode-range: U+0030-0039, U+0025, U+003A;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DottedNumbers';
+  font-weight: 700;
+  src: url('/fonts/doto-700.woff2') format('woff2');
+  unicode-range: U+0030-0039, U+0025, U+003A;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DottedNumbers';
+  font-weight: 900;
+  src: url('/fonts/doto-900.woff2') format('woff2');
+  unicode-range: U+0030-0039, U+0025, U+003A;
   font-display: swap;
 }
 
