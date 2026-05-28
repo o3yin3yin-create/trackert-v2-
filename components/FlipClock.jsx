@@ -18,7 +18,7 @@ const FlipUnit = ({ val, label }) => {
             animate={{ rotateX: 0, opacity: 1 }}
             exit={{ rotateX: 90, opacity: 0 }}
             transition={{ duration: 0.4, type: "spring", bounce: 0.2 }}
-            className="text-4xl md:text-6xl font-black tabular-nums tracking-tighter"
+            className="text-4xl md:text-6xl font-normal font-dotted tabular-nums tracking-tighter"
             style={{ 
               transformOrigin: 'bottom',
               textShadow: '0 4px 20px rgba(0,0,0,0.5)'
