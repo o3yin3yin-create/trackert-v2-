@@ -2786,49 +2786,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Focus Time Summary Widget (Matching Screenshot) */}
-              <div className="liquid-panel p-6 shadow-xl flex items-center justify-center w-full relative overflow-hidden" style={{ borderRadius: '28px' }}>
-                <div className="flex items-center w-full max-w-sm mx-auto justify-center">
-                  
-                  {/* Segmented Ring Chart */}
-                  <div className="relative flex-shrink-0">
-                    <svg width="140" height="140" viewBox="0 0 140 140" className="-rotate-90">
-                      <defs>
-                        <linearGradient id="focusRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#6366f1" />
-                          <stop offset="50%" stopColor="#10b981" />
-                          <stop offset="100%" stopColor="#eab308" />
-                        </linearGradient>
-                      </defs>
-                      {/* Background Segments */}
-                      <circle cx="70" cy="70" r="58" fill="transparent" stroke="rgba(255,255,255,0.05)" strokeWidth="10" strokeDasharray="86.1 5" strokeLinecap="round" />
-                      {/* Foreground Progress (e.g., 75% complete) */}
-                      <circle cx="70" cy="70" r="58" fill="transparent" stroke="url(#focusRingGrad)" strokeWidth="10" strokeDasharray="86.1 5" strokeDashoffset="80" strokeLinecap="round" className="transition-all duration-1000 ease-out" />
-                    </svg>
-                    
-                    {/* Inner Text */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-1">
-                      <span className="text-[11px] text-gray-500 dark:text-gray-400 font-bold tracking-widest uppercase mb-1">Total</span>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-xl tracking-[0.1em]">15<span className="text-gray-600 text-sm font-dotted ml-0.5">d</span></span>
-                        <span className="text-xl tracking-[0.1em]">18<span className="text-gray-600 text-sm font-dotted ml-0.5">h</span></span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Floating Focus Time Card */}
-                  <div className="bg-[#161618] rounded-[24px] p-5 shadow-2xl border border-white/10 flex flex-col relative z-10 -ml-8 backdrop-blur-xl">
-                    <span className="text-[15px] font-semibold text-white/90 mb-3 tracking-wide">Focus Time</span>
-                    <span className="text-[#10B981] text-[11px] font-black mb-1.5 flex items-center gap-1">+30% <span className="text-[8px]">▲</span></span>
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-2xl tracking-[0.1em]">15<span className="text-gray-500 text-lg font-dotted ml-0.5">d</span></span>
-                      <span className="text-2xl tracking-[0.1em]">18<span className="text-gray-500 text-lg font-dotted ml-0.5">h</span></span>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
               {/* Weekly Analytics Chart Card */}
               <div className="liquid-panel p-6 shadow-xl flex flex-col justify-between w-full" style={{ borderRadius: '28px' }}>
                 <div>
