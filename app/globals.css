@@ -1,9 +1,24 @@
+@import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
 @import "tailwindcss";
+
+@font-face {
+  font-family: 'DottedNumbers';
+  src: url('https://fonts.gstatic.com/s/dotgothic16/v4/XoamqwJUy0O76z19k4Q56wD-wzQ.woff2') format('woff2');
+  unicode-range: U+0030-0039, U+0025;
+}
 
 @theme {
   --color-asphalt: #302F2C;
   --color-paper: #EFEDE3;
   --font-scribble: "Reenie Beanie", cursive;
+}
+
+body {
+  font-family: 'DottedNumbers', "Outfit", system-ui, sans-serif !important;
+}
+
+.font-dotted {
+  font-family: 'DotGothic16', monospace !important;
 }
 
 @keyframes moveOrbs {
