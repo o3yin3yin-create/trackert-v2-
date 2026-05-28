@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useUser, Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
-import FlipClock from '../components/FlipClock';
+import MinimalTimer from '../components/MinimalTimer';
 import { translations } from '../lib/translations';
 import dynamic from 'next/dynamic';
 
@@ -3101,21 +3101,18 @@ export default function App() {
                     )}
 
                     {/* Glowing Digital Cockpit Chronograph */}
-                    <div className="flex flex-col items-center justify-center py-4 px-3 rounded-2xl bg-black/40 dark:bg-black/55 border border-black/10 dark:border-white/5 w-full relative overflow-hidden shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_8px_32px_rgba(0,0,0,0.4)] mb-4">
-                       <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent pointer-events-none" />
-                       
-                       <span className="text-[9px] uppercase tracking-widest font-black mb-2 flex items-center gap-1 select-none" style={{ color: theme === 'dark' ? `${themeColor}cc` : themeColor }}>
+                    <div className="flex flex-col items-center justify-center py-4 px-3 rounded-2xl w-full relative mb-4">
+                       <span className="text-[9px] uppercase tracking-widest font-black mb-3 flex items-center gap-1 select-none" style={{ color: theme === 'dark' ? `${themeColor}cc` : themeColor }}>
                           <span className="w-1 h-1 rounded-full animate-pulse" style={{ backgroundColor: themeColor }} />
                           {t('remainingTime')}
                        </span>
                        
-                       <div className="text-3xl font-mono font-black tracking-widest leading-none py-1 flex items-center justify-center gap-1.5 tabular-nums select-all" style={{ color: themeColor, filter: `drop-shadow(0 0 8px ${themeColor}88)` }}>
-                          <span className="bg-black/35 border border-white/5 px-2 py-1 rounded-xl min-w-[2.2ch] text-center text-2xl">{String(Math.floor(flightTimer / 3600)).padStart(2, '0')}</span>
-                          <span className="text-lg animate-pulse" style={{ color: `${themeColor}55` }}>:</span>
-                          <span className="bg-black/35 border border-white/5 px-2 py-1 rounded-xl min-w-[2.2ch] text-center text-2xl">{String(Math.floor((flightTimer % 3600) / 60)).padStart(2, '0')}</span>
-                          <span className="text-lg animate-pulse" style={{ color: `${themeColor}55` }}>:</span>
-                          <span className="bg-black/35 border border-white/5 px-2 py-1 rounded-xl min-w-[2.2ch] text-center text-2xl">{String(flightTimer % 60).padStart(2, '0')}</span>
-                       </div>
+                       <MinimalTimer 
+                         timeSeconds={flightTimer} 
+                         totalSeconds={selectedFlight?.initialSeconds || 0} 
+                         themeColor={themeColor} 
+                         size="md" 
+                       />
                     </div>
 
                     {/* Flight Focus Actions */}
@@ -3580,12 +3577,13 @@ export default function App() {
                       </div>
                       
                       {/* HUGE tabular figures digital clock */}
-                      <div className="text-6xl md:text-8xl font-mono font-black tracking-widest text-white flex items-center justify-center gap-2 tabular-nums drop-shadow-[0_4px_16px_rgba(16,185,129,0.15)] py-1">
-                        <span className="bg-black/40 border border-white/5 px-4 py-3 rounded-3xl min-w-[2.2ch] text-center shadow-2xl">{String(Math.floor(flightTimer / 3600)).padStart(2, '0')}</span>
-                        <span className="text-3xl text-white/20 animate-pulse">:</span>
-                        <span className="bg-black/40 border border-white/5 px-4 py-3 rounded-3xl min-w-[2.2ch] text-center shadow-2xl">{String(Math.floor((flightTimer % 3600) / 60)).padStart(2, '0')}</span>
-                        <span className="text-3xl text-white/20 animate-pulse">:</span>
-                        <span className="bg-black/40 border border-white/5 px-4 py-3 rounded-3xl min-w-[2.2ch] text-center shadow-2xl">{String(flightTimer % 60).padStart(2, '0')}</span>
+                      <div className="py-4">
+                        <MinimalTimer 
+                          timeSeconds={flightTimer} 
+                          totalSeconds={selectedFlight?.initialSeconds || 0} 
+                          themeColor={themeColor} 
+                          size="lg" 
+                        />
                       </div>
                       
                       <div className="text-[10px] font-mono text-white/30 uppercase tracking-widest font-black flex items-center gap-1.5 mt-1">
