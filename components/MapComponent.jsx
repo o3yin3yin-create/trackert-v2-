@@ -136,7 +136,14 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
 
     const icon = useMemo(() => L.divIcon({
       html: `<div class="plane-icon-inner" style="transform: rotate(0deg); display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 0 8px rgba(255,255,255,0.8));">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg" style="overflow: visible;">
+          <defs>
+            <linearGradient id="mapTrailGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="white" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="white" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <ellipse cx="12" cy="24" rx="2.5" ry="12" fill="url(#mapTrailGradient)" opacity="0.6" style="filter: blur(2px);" />
           <path d="M21 16V14L13 9V3.5C13 2.67 12.33 2 11.5 2C10.67 2 10 2.67 10 3.5V9L2 14V16L10 13.5V19L8 20.5V22L11.5 21L15 22V20.5L13 19V13.5L21 16Z"/>
         </svg>
       </div>`,
@@ -173,10 +180,11 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
         attributionControl={false}
         style={{ width: '100%', height: '100%', background: '#090a0f' }}
       >
-        {/* CartoDB Dark Matter tiles */}
+        {/* Esri World Imagery (Satellite view) */}
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          subdomains={['a','b','c','d']}
+          className="dark-satellite-tiles"
+          url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+          attribution="&copy; Esri"
         />
 
         {/* Flight path curve as dotted line */}
@@ -210,7 +218,10 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
       </MapContainer>
       <style dangerouslySetInnerHTML={{__html: `
         .leaflet-container {
-          background-color: #090a0f !important;
+          background-color: #000 !important;
+        }
+        .dark-satellite-tiles {
+          filter: brightness(0.4) saturate(1.2) contrast(1.2);
         }
         .plane-icon-custom {
           background: transparent;

@@ -1615,24 +1615,6 @@ export default function App() {
               <h3 className="text-lg font-bold text-center m-0">{lang === 'ar' ? 'إعدادات الصوت' : 'Audio Settings'}</h3>
               
               <div className="flex flex-col gap-2">
-                <label className="text-xs text-white/70 font-semibold">{lang === 'ar' ? 'نوع الصوت' : 'Sound Type'}</label>
-                <div className="flex gap-2 bg-white/5 p-1 rounded-xl">
-                  {['cabin', 'rain', 'forest'].map(type => (
-                    <button
-                      key={type}
-                      onClick={() => {
-                        setAudioType(type);
-                        if (isCabinHumPlaying) startHumSynthesis(type);
-                      }}
-                      className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${audioType === type ? 'bg-[#10B981] text-black shadow-md' : 'text-white/70 hover:bg-white/10'}`}
-                    >
-                      {type === 'cabin' ? (lang === 'ar' ? 'طيارة' : 'Cabin') : type === 'rain' ? (lang === 'ar' ? 'مطر' : 'Rain') : (lang === 'ar' ? 'غابة' : 'Forest')}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
                 <label className="text-xs text-white/70 font-semibold flex justify-between">
                   <span>{lang === 'ar' ? 'مستوى الصوت' : 'Volume'}</span>
                   <span>{Math.round(audioVolume * 100)}%</span>
@@ -1913,6 +1895,13 @@ export default function App() {
                                     </linearGradient>
                                   </defs>
                                   
+                                  <defs>
+                                    <linearGradient id="trailGradient" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="0%" stopColor={themeColor} stopOpacity="1" />
+                                      <stop offset="100%" stopColor={themeColor} stopOpacity="0" />
+                                    </linearGradient>
+                                  </defs>
+                                  
                                   {/* Dashed trajectory */}
                                   <path 
                                     d="M 30 65 Q 150 15 270 65" 
@@ -1947,26 +1936,31 @@ export default function App() {
                                   </g>
                                   
                                   {/* Flying Jet */}
-                                  <g 
-                                    transform={`translate(${x}, ${y}) rotate(${angle + 90})`} 
-                                    className="transition-all duration-1000 ease-linear"
+                                  <motion.g 
+                                    animate={{ 
+                                      x: x, 
+                                      y: y, 
+                                      rotate: angle + 90 
+                                    }}
+                                    transition={{ ease: "linear", duration: 1.0 }}
                                   >
-                                    {/* Motion Blur Trail */}
-                                    <path 
-                                      d="M 0,-8 L 1.6,-6.4 L 1.6,-2.4 L 8,1.6 L 8,3.2 L 1.6,1.6 L 1.6,6.4 L 4,8 L 4,8.8 L 0,8 L -4,8.8 L -4,8 L -1.6,6.4 L -1.6,1.6 L -8,3.2 L -8,1.6 L -1.6,-2.4 L -1.6,-6.4 Z" 
-                                      fill={themeColor} 
-                                      opacity="0.3"
-                                      transform="translate(0, 4) scale(0.9)"
-                                      style={{ filter: `blur(1.5px)` }}
-                                    />
                                     <path 
                                       d="M 0,-8 L 1.6,-6.4 L 1.6,-2.4 L 8,1.6 L 8,3.2 L 1.6,1.6 L 1.6,6.4 L 4,8 L 4,8.8 L 0,8 L -4,8.8 L -4,8 L -1.6,6.4 L -1.6,1.6 L -8,3.2 L -8,1.6 L -1.6,-2.4 L -1.6,-6.4 Z" 
                                       fill={themeColor} 
                                       stroke={themeColor} 
                                       strokeWidth="0.3" 
-                                      style={{ filter: `drop-shadow(0 0 4px ${themeColor})` }}
                                     />
-                                  </g>
+                                      {/* Motion Blur Trail */}
+                                      <ellipse 
+                                        cx="0" 
+                                        cy="8" 
+                                        rx="2" 
+                                        ry="15" 
+                                        fill={`url(#trailGradient)`} 
+                                        opacity="0.6"
+                                        style={{ filter: 'blur(2px)' }}
+                                      />
+                                    </motion.g>
                                 </svg>
                                 
                                 <div className="flex justify-between items-center mt-1 px-1 text-[9px] font-mono text-gray-400 dark:text-white/30 uppercase tracking-widest font-black">
