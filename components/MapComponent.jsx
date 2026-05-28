@@ -109,7 +109,8 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
 
       const animate = (time) => {
         const elapsed = time - startTime;
-        const t = Math.min(1, elapsed / 1000);
+        // Extrapolate slightly to avoid pulsing if React state updates are delayed
+        const t = Math.min(1.2, elapsed / 1000);
         currentProgress.current = startP + distance * t;
         
         const data = getPlanePositionAndAngle(p0, p1, p2, currentProgress.current);
@@ -180,11 +181,11 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
         attributionControl={false}
         style={{ width: '100%', height: '100%', background: '#090a0f' }}
       >
-        {/* Esri World Imagery (Satellite view) */}
+        {/* Fast CartoDB Dark tiles with grid background */}
         <TileLayer
-          className="dark-satellite-tiles"
-          url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-          attribution="&copy; Esri"
+          className="dark-grid-tiles"
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          subdomains={['a','b','c','d']}
         />
 
         {/* Flight path curve as dotted line */}
@@ -218,10 +219,12 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
       </MapContainer>
       <style dangerouslySetInnerHTML={{__html: `
         .leaflet-container {
-          background-color: #000 !important;
+          background-color: #090a0f !important;
+          background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+          background-size: 24px 24px;
         }
-        .dark-satellite-tiles {
-          filter: brightness(0.4) saturate(1.2) contrast(1.2);
+        .dark-grid-tiles {
+          opacity: 0.9;
         }
         .plane-icon-custom {
           background: transparent;
