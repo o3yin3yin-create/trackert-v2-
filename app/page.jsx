@@ -1936,14 +1936,7 @@ export default function App() {
                                   </g>
                                   
                                   {/* Flying Jet */}
-                                  <motion.g 
-                                    animate={{ 
-                                      x: x, 
-                                      y: y, 
-                                      rotate: angle + 90 
-                                    }}
-                                    transition={{ ease: "linear", duration: 1.0 }}
-                                  >
+                                  <g transform={`translate(${x}, ${y}) rotate(${angle + 90})`} className="transition-all duration-1000 ease-linear">
                                     <path 
                                       d="M 0,-8 L 1.6,-6.4 L 1.6,-2.4 L 8,1.6 L 8,3.2 L 1.6,1.6 L 1.6,6.4 L 4,8 L 4,8.8 L 0,8 L -4,8.8 L -4,8 L -1.6,6.4 L -1.6,1.6 L -8,3.2 L -8,1.6 L -1.6,-2.4 L -1.6,-6.4 Z" 
                                       fill={themeColor} 
@@ -1960,7 +1953,7 @@ export default function App() {
                                         opacity="0.6"
                                         style={{ filter: 'blur(2px)' }}
                                       />
-                                    </motion.g>
+                                    </g>
                                 </svg>
                                 
                                 <div className="flex justify-between items-center mt-1 px-1 text-[9px] font-mono text-gray-400 dark:text-white/30 uppercase tracking-widest font-black">
@@ -2024,7 +2017,7 @@ export default function App() {
                            timeSeconds={flightTimer} 
                            totalSeconds={selectedFlight?.initialSeconds || 0} 
                            themeColor={themeColor} 
-                           size="lg" 
+                           size="md" 
                          />
                          
                          <div className="flex justify-between w-full mt-6 text-[9px] font-mono text-gray-500 dark:text-white/30 uppercase tracking-widest px-1">
