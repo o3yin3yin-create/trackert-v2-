@@ -479,7 +479,7 @@ export default function App() {
       }
     }
     return () => {
-      stopCabinHum();
+      stopHumSynthesis();
     };
   }, []);
 
@@ -721,7 +721,7 @@ export default function App() {
 
   useEffect(() => {
     if (!selectedFlight) {
-      stopCabinHum();
+      stopHumSynthesis();
       if (isCabinHumPlaying) setIsCabinHumPlaying(false);
       if (isMapView) setIsMapView(false);
       flightLastTickRef.current = null;
