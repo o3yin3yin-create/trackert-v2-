@@ -160,107 +160,181 @@ const getAirportCoords = (code) => {
   return { lat, lng, name: cleanCode };
 };
 
-// --- Soothing Airplane Cabin Noise Web Audio Synthesizer (0kb offline ambient hum) ---
-let cabinHumSource = null;
+// --- Soothing Audio Synthesizer (0kb offline ambient hum/rain/forest) ---
+let activeHumSource = null;
+let currentHumVolume = 0.55;
+let currentSoundType = 'cabin';
 
-const startCabinHum = () => {
+const SILENT_AUDIO_BASE64 = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+
+const updateHumVolume = (vol) => {
+  currentHumVolume = vol;
+  if (activeHumSource && activeHumSource.masterGain && activeHumSource.ctx) {
+    activeHumSource.masterGain.gain.setTargetAtTime(vol, activeHumSource.ctx.currentTime, 0.1);
+  }
+};
+
+const startHumSynthesis = (type = 'cabin') => {
   if (typeof window === 'undefined') return;
   try {
+    currentSoundType = type;
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) return;
     
-    const ctx = new AudioContextClass();
-    
-    // 1. Wind Hiss: White noise fed through custom lowpass and highpass filter
-    const bufferSize = 2 * ctx.sampleRate;
-    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const output = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      output[i] = Math.random() * 2 - 1;
+    // Play silent audio to keep context alive in background (iOS/Android trick)
+    let silentAudio = document.getElementById('bg-silent-audio');
+    if (!silentAudio) {
+      silentAudio = document.createElement('audio');
+      silentAudio.id = 'bg-silent-audio';
+      silentAudio.src = SILENT_AUDIO_BASE64;
+      silentAudio.loop = true;
+      silentAudio.setAttribute('playsinline', '');
+      document.body.appendChild(silentAudio);
     }
+    silentAudio.play().catch(e => console.log('Silent audio blocked:', e));
     
-    const whiteNoise = ctx.createBufferSource();
-    whiteNoise.buffer = noiseBuffer;
-    whiteNoise.loop = true;
+    const ctx = getAudioCtx() || new AudioContextClass();
+    if (ctx.state === 'suspended') ctx.resume();
     
-    const lowpass = ctx.createBiquadFilter();
-    lowpass.type = 'lowpass';
-    lowpass.frequency.setValueAtTime(160, ctx.currentTime); // muffled lowpass rumble
-    
-    const highpass = ctx.createBiquadFilter();
-    highpass.type = 'highpass';
-    highpass.frequency.setValueAtTime(32, ctx.currentTime); // remove bass mud
-    
-    // 2. Engine Tone: Oscillators producing deep structural vibrations
-    const engineLow = ctx.createOscillator();
-    engineLow.type = 'sine';
-    engineLow.frequency.setValueAtTime(70, ctx.currentTime); // 70Hz engine hum
-    
-    const engineHarmonic = ctx.createOscillator();
-    engineHarmonic.type = 'sine';
-    engineHarmonic.frequency.setValueAtTime(140, ctx.currentTime); // 140Hz second harmonic
-    
-    // Gain balancing
-    const windGain = ctx.createGain();
-    windGain.gain.setValueAtTime(0.2, ctx.currentTime);
-    
-    const engineLowGain = ctx.createGain();
-    engineLowGain.gain.setValueAtTime(0.09, ctx.currentTime);
-    
-    const engineHarmonicGain = ctx.createGain();
-    engineHarmonicGain.gain.setValueAtTime(0.04, ctx.currentTime);
+    // Stop previous if exists
+    if (activeHumSource) {
+      activeHumSource.masterGain.gain.setTargetAtTime(0, ctx.currentTime, 0.1);
+      const oldNodes = activeHumSource;
+      setTimeout(() => {
+        try {
+          if (oldNodes.sources) oldNodes.sources.forEach(s => s.stop());
+          if (oldNodes.masterGain) oldNodes.masterGain.disconnect();
+        } catch(e){}
+      }, 300);
+    }
     
     const masterGain = ctx.createGain();
     masterGain.gain.setValueAtTime(0.0, ctx.currentTime);
-    // Smooth fade-in over 1.5s
-    masterGain.gain.linearRampToValueAtTime(0.55, ctx.currentTime + 1.5);
-    
-    // Connections
-    whiteNoise.connect(lowpass);
-    lowpass.connect(highpass);
-    highpass.connect(windGain);
-    windGain.connect(masterGain);
-    
-    engineLow.connect(engineLowGain);
-    engineLowGain.connect(masterGain);
-    
-    engineHarmonic.connect(engineHarmonicGain);
-    engineHarmonicGain.connect(masterGain);
-    
+    masterGain.gain.linearRampToValueAtTime(currentHumVolume, ctx.currentTime + 1.5);
     masterGain.connect(ctx.destination);
     
-    whiteNoise.start();
-    engineLow.start();
-    engineHarmonic.start();
+    let sources = [];
     
-    cabinHumSource = {
-      ctx,
-      whiteNoise,
-      engineLow,
-      engineHarmonic,
-      masterGain
-    };
+    if (type === 'cabin') {
+      // 1. Wind Hiss
+      const bufferSize = 2 * ctx.sampleRate;
+      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+      
+      const whiteNoise = ctx.createBufferSource();
+      whiteNoise.buffer = noiseBuffer;
+      whiteNoise.loop = true;
+      
+      const lowpass = ctx.createBiquadFilter();
+      lowpass.type = 'lowpass';
+      lowpass.frequency.setValueAtTime(160, ctx.currentTime);
+      
+      const highpass = ctx.createBiquadFilter();
+      highpass.type = 'highpass';
+      highpass.frequency.setValueAtTime(32, ctx.currentTime);
+      
+      const engineLow = ctx.createOscillator();
+      engineLow.type = 'sine';
+      engineLow.frequency.setValueAtTime(70, ctx.currentTime);
+      
+      const engineHarmonic = ctx.createOscillator();
+      engineHarmonic.type = 'sine';
+      engineHarmonic.frequency.setValueAtTime(140, ctx.currentTime);
+      
+      const windGain = ctx.createGain(); windGain.gain.setValueAtTime(0.2, ctx.currentTime);
+      const engineLowGain = ctx.createGain(); engineLowGain.gain.setValueAtTime(0.09, ctx.currentTime);
+      const engineHarmonicGain = ctx.createGain(); engineHarmonicGain.gain.setValueAtTime(0.04, ctx.currentTime);
+      
+      whiteNoise.connect(lowpass).connect(highpass).connect(windGain).connect(masterGain);
+      engineLow.connect(engineLowGain).connect(masterGain);
+      engineHarmonic.connect(engineHarmonicGain).connect(masterGain);
+      
+      whiteNoise.start(); engineLow.start(); engineHarmonic.start();
+      sources = [whiteNoise, engineLow, engineHarmonic];
+      
+    } else if (type === 'rain') {
+      const bufferSize = 2 * ctx.sampleRate;
+      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      let lastOut = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        let white = Math.random() * 2 - 1;
+        output[i] = (lastOut + (0.02 * white)) / 1.02; // Brown noise
+        lastOut = output[i];
+      }
+      
+      const brownNoise = ctx.createBufferSource();
+      brownNoise.buffer = noiseBuffer;
+      brownNoise.loop = true;
+      
+      const lowpass = ctx.createBiquadFilter();
+      lowpass.type = 'lowpass';
+      lowpass.frequency.setValueAtTime(400, ctx.currentTime);
+      
+      const gain = ctx.createGain(); gain.gain.setValueAtTime(1.5, ctx.currentTime);
+      brownNoise.connect(lowpass).connect(gain).connect(masterGain);
+      brownNoise.start();
+      sources = [brownNoise];
+      
+    } else if (type === 'forest') {
+      // Wind
+      const bufferSize = 2 * ctx.sampleRate;
+      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+      const whiteNoise = ctx.createBufferSource();
+      whiteNoise.buffer = noiseBuffer;
+      whiteNoise.loop = true;
+      
+      const bandpass = ctx.createBiquadFilter();
+      bandpass.type = 'bandpass';
+      bandpass.frequency.setValueAtTime(600, ctx.currentTime);
+      const windGain = ctx.createGain(); windGain.gain.setValueAtTime(0.3, ctx.currentTime);
+      whiteNoise.connect(bandpass).connect(windGain).connect(masterGain);
+      whiteNoise.start();
+      
+      // Bird oscillator
+      const bird = ctx.createOscillator();
+      bird.type = 'sine';
+      bird.frequency.setValueAtTime(4000, ctx.currentTime);
+      const birdGain = ctx.createGain();
+      birdGain.gain.setValueAtTime(0, ctx.currentTime);
+      
+      setInterval(() => {
+         if (ctx.state === 'running' && activeHumSource && activeHumSource.ctx === ctx) {
+            const time = ctx.currentTime;
+            birdGain.gain.setTargetAtTime(0.05, time, 0.1);
+            bird.frequency.setTargetAtTime(4500 + Math.random()*1000, time, 0.1);
+            birdGain.gain.setTargetAtTime(0, time + 0.3, 0.1);
+         }
+      }, 4000);
+      
+      bird.connect(birdGain).connect(masterGain);
+      bird.start();
+      sources = [whiteNoise, bird];
+    }
+    
+    activeHumSource = { ctx, masterGain, sources };
   } catch (e) {
     console.error("Synthesizer failed:", e);
   }
 };
 
-const stopCabinHum = () => {
-  if (cabinHumSource) {
-    const { ctx, whiteNoise, engineLow, engineHarmonic, masterGain } = cabinHumSource;
-    try {
-      masterGain.gain.linearRampToValueAtTime(0.0, ctx.currentTime + 0.5); // Fade out over 0.5s
-      setTimeout(() => {
-        try {
-          whiteNoise.stop();
-          engineLow.stop();
-          engineHarmonic.stop();
-          ctx.close();
-        } catch (err) {}
-      }, 600);
-    } catch (err) {}
-    cabinHumSource = null;
+const stopHumSynthesis = () => {
+  if (activeHumSource) {
+    const { ctx, masterGain, sources } = activeHumSource;
+    masterGain.gain.setTargetAtTime(0, ctx.currentTime, 0.1); // fade out over 100ms
+    setTimeout(() => {
+      try {
+        sources.forEach(s => s.stop());
+        masterGain.disconnect();
+      } catch (e) {}
+    }, 200);
+    activeHumSource = null;
   }
+  const silentAudio = document.getElementById('bg-silent-audio');
+  if (silentAudio) silentAudio.pause();
 };
 
 // Removed landmasses
@@ -371,6 +445,9 @@ export default function App() {
   const [isScreensaverOpen, setIsScreensaverOpen] = useState(false);
   const [showFlightModeAdvice, setShowFlightModeAdvice] = useState(false);
   const [isCabinHumPlaying, setIsCabinHumPlaying] = useState(false);
+  const [isAudioSettingsOpen, setIsAudioSettingsOpen] = useState(false);
+  const [audioVolume, setAudioVolume] = useState(0.55);
+  const [audioType, setAudioType] = useState('cabin');
   const [isPomodoroOpen, setIsPomodoroOpen] = useState(false);
   const [isEditingPomodoro, setIsEditingPomodoro] = useState(false);
   const [editMinutes, setEditMinutes] = useState(25);
@@ -427,13 +504,12 @@ export default function App() {
     if (typeof window === 'undefined') return;
     haptic('light');
     if (isCabinHumPlaying) {
-      stopCabinHum();
-      setIsCabinHumPlaying(false);
+      setIsAudioSettingsOpen(true);
     } else {
-      const ctx = getAudioCtx();
-      if (ctx) ctx.resume();
-      startCabinHum();
+      startHumSynthesis(audioType);
+      updateHumVolume(audioVolume);
       setIsCabinHumPlaying(true);
+      setIsAudioSettingsOpen(true);
     }
   };
 
@@ -742,7 +818,7 @@ export default function App() {
   };
 
   const handleOpenManage = () => {
-    closeAllModals();
+    closeAllModals(true);
     setIsManageMounted(true);
     setTimeout(() => setIsManageVisible(true), 10);
   };
@@ -752,14 +828,16 @@ export default function App() {
   };
 
   // Close all modals/pages — ensures only one is visible at a time
-  const closeAllModals = () => {
+  const closeAllModals = (skipManage = false) => {
     setIsAnalyticsModalOpen(false);
     setIsTasksModalOpen(false);
     setIsPomodoroOpen(false);
     setIsFlightFocusOpen(false);
     setIsHowToUseOpen(false);
-    setIsManageVisible(false);
-    setTimeout(() => setIsManageMounted(false), 300);
+    if (!skipManage) {
+      setIsManageVisible(false);
+      setTimeout(() => setIsManageMounted(false), 300);
+    }
   };
 
   // Nav helpers: close everything, then open the target
@@ -1527,6 +1605,76 @@ export default function App() {
           document.body
         )}
 
+        {/* ---------------- AUDIO SETTINGS MODAL ---------------- */}
+        {isAudioSettingsOpen && createPortal(
+          <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 sm:p-6" onClick={() => setIsAudioSettingsOpen(false)}>
+            <div 
+              className="w-full max-w-xs relative bg-black/80 backdrop-blur-3xl rounded-[24px] p-5 shadow-2xl border border-white/10 flex flex-col gap-4 text-white font-[Outfit]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-bold text-center m-0">{lang === 'ar' ? 'إعدادات الصوت' : 'Audio Settings'}</h3>
+              
+              <div className="flex flex-col gap-2">
+                <label className="text-xs text-white/70 font-semibold">{lang === 'ar' ? 'نوع الصوت' : 'Sound Type'}</label>
+                <div className="flex gap-2 bg-white/5 p-1 rounded-xl">
+                  {['cabin', 'rain', 'forest'].map(type => (
+                    <button
+                      key={type}
+                      onClick={() => {
+                        setAudioType(type);
+                        if (isCabinHumPlaying) startHumSynthesis(type);
+                      }}
+                      className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${audioType === type ? 'bg-[#10B981] text-black shadow-md' : 'text-white/70 hover:bg-white/10'}`}
+                    >
+                      {type === 'cabin' ? (lang === 'ar' ? 'طيارة' : 'Cabin') : type === 'rain' ? (lang === 'ar' ? 'مطر' : 'Rain') : (lang === 'ar' ? 'غابة' : 'Forest')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-xs text-white/70 font-semibold flex justify-between">
+                  <span>{lang === 'ar' ? 'مستوى الصوت' : 'Volume'}</span>
+                  <span>{Math.round(audioVolume * 100)}%</span>
+                </label>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="1" 
+                  step="0.05" 
+                  value={audioVolume}
+                  onChange={(e) => {
+                    const vol = parseFloat(e.target.value);
+                    setAudioVolume(vol);
+                    if (isCabinHumPlaying) updateHumVolume(vol);
+                  }}
+                  className="w-full accent-[#10B981] h-1.5 bg-white/10 rounded-full appearance-none outline-none cursor-pointer"
+                />
+              </div>
+
+              <div className="flex gap-2 mt-2">
+                <button 
+                  onClick={() => {
+                    stopHumSynthesis();
+                    setIsCabinHumPlaying(false);
+                    setIsAudioSettingsOpen(false);
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 text-sm font-bold transition-all border border-red-500/20 active:scale-95"
+                >
+                  {lang === 'ar' ? 'إيقاف الصوت' : 'Stop Audio'}
+                </button>
+                <button 
+                  onClick={() => setIsAudioSettingsOpen(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-bold transition-all border border-white/5 active:scale-95"
+                >
+                  {lang === 'ar' ? 'تم' : 'Done'}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
         {/* ---------------- FLIGHT FOCUS MODAL ---------------- */}
         {isFlightFocusOpen && createPortal(
           <div className="fixed inset-0 z-[99999] overflow-y-auto bg-black/60 backdrop-blur-3xl flex items-center justify-center p-4 sm:p-6 md:p-10">
@@ -1803,13 +1951,20 @@ export default function App() {
                                     transform={`translate(${x}, ${y}) rotate(${angle + 90})`} 
                                     className="transition-all duration-1000 ease-linear"
                                   >
-                                    <circle r="10" style={{ fill: themeColor, opacity: 0.3 }} className="blur-[2px]" />
+                                    {/* Motion Blur Trail */}
+                                    <path 
+                                      d="M 0,-8 L 1.6,-6.4 L 1.6,-2.4 L 8,1.6 L 8,3.2 L 1.6,1.6 L 1.6,6.4 L 4,8 L 4,8.8 L 0,8 L -4,8.8 L -4,8 L -1.6,6.4 L -1.6,1.6 L -8,3.2 L -8,1.6 L -1.6,-2.4 L -1.6,-6.4 Z" 
+                                      fill={themeColor} 
+                                      opacity="0.3"
+                                      transform="translate(0, 4) scale(0.9)"
+                                      style={{ filter: `blur(1.5px)` }}
+                                    />
                                     <path 
                                       d="M 0,-8 L 1.6,-6.4 L 1.6,-2.4 L 8,1.6 L 8,3.2 L 1.6,1.6 L 1.6,6.4 L 4,8 L 4,8.8 L 0,8 L -4,8.8 L -4,8 L -1.6,6.4 L -1.6,1.6 L -8,3.2 L -8,1.6 L -1.6,-2.4 L -1.6,-6.4 Z" 
                                       fill={themeColor} 
                                       stroke={themeColor} 
                                       strokeWidth="0.3" 
-                                      style={{ filter: `drop-shadow(0 0 6px ${themeColor})` }}
+                                      style={{ filter: `drop-shadow(0 0 4px ${themeColor})` }}
                                     />
                                   </g>
                                 </svg>
