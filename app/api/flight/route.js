@@ -12,25 +12,29 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const durationParam = searchParams.get('duration');
+    const targetMinutes = (durationParam && !isNaN(durationParam) && Number(durationParam) > 0) 
+      ? Number(durationParam) * 60 
+      : 60; // Default to 1 hour if random or not provided
     
-    let minMinutes = 15;
-    let maxMinutes = 240;
-
-    if (durationParam && !isNaN(durationParam) && Number(durationParam) > 0) {
-      const targetMinutes = Number(durationParam) * 60;
-      // Wider ranges to ensure we find a match
-      if (targetMinutes <= 60) { minMinutes = 20; maxMinutes = 120; }
-      else if (targetMinutes <= 120) { minMinutes = 60; maxMinutes = 240; }
-      else if (targetMinutes <= 240) { minMinutes = 120; maxMinutes = 360; }
-      else if (targetMinutes <= 480) { minMinutes = 180; maxMinutes = 600; }
-      else { minMinutes = 240; maxMinutes = 1200; }
+    // Heuristic Filtering on the bulk list to improve odds before fetching details
+    let filteredBulk = flights;
+    if (targetMinutes >= 240) {
+      // Long flights: high altitude, high speed
+      filteredBulk = flights.filter(f => f.altitude > 30000 && f.groundSpeed > 400);
+    } else if (targetMinutes <= 120) {
+      // Short flights: lower altitude or lower speed
+      filteredBulk = flights.filter(f => f.altitude > 5000 && f.altitude < 35000);
     }
 
-    const numToFetch = 100; // Increased to 100
+    if (filteredBulk.length < 25) {
+      filteredBulk = flights; // Fallback if too strict
+    }
+
+    const numToFetch = 25; // Safe limit for Vercel 10s timeout
     const randomFlights = [];
     for (let i = 0; i < numToFetch; i++) {
-      const randomIdx = Math.floor(Math.random() * flights.length);
-      randomFlights.push(flights[randomIdx]);
+      const randomIdx = Math.floor(Math.random() * filteredBulk.length);
+      randomFlights.push(filteredBulk[randomIdx]);
     }
 
     const results = await Promise.allSettled(
@@ -38,7 +42,6 @@ export async function GET(request) {
     );
 
     const validFlights = [];
-    const allValidFlights = []; // fallback array
 
     for (let i = 0; i < results.length; i++) {
       const res = results[i];
@@ -54,11 +57,11 @@ export async function GET(request) {
 
       const now = Math.floor(Date.now() / 1000);
       const remainingSeconds = estimatedArrival - now;
-      const remainingMinutes = Math.floor(remainingSeconds / 60);
       
-      if (remainingMinutes <= 0) continue;
+      // We only want flights that are currently in the air and arriving in the future
+      if (remainingSeconds <= 0) continue;
 
-      const flightData = {
+      validFlights.push({
         id: flight.id,
         airline: details.airline?.name || 'Unknown Airline',
         callsign: details.identification?.callsign || flight.callsign,
@@ -67,32 +70,22 @@ export async function GET(request) {
         remainingSeconds,
         estimatedArrival,
         model: details.aircraft?.model?.text || 'Unknown Aircraft'
-      };
-
-      allValidFlights.push(flightData);
-
-      // Filter by the selected duration range
-      if (remainingMinutes >= minMinutes && remainingMinutes <= maxMinutes) {
-        if (validFlights.length < 20) {
-          validFlights.push(flightData);
-        }
-      }
-    }
-
-    // Fallback if no flights match the exact criteria
-    if (validFlights.length === 0 && allValidFlights.length > 0) {
-      // Sort all valid flights by how close they are to the desired minimum duration
-      const targetMinutes = durationParam ? Number(durationParam) * 60 : 60;
-      allValidFlights.sort((a, b) => {
-        const diffA = Math.abs((a.remainingSeconds / 60) - targetMinutes);
-        const diffB = Math.abs((b.remainingSeconds / 60) - targetMinutes);
-        return diffA - diffB;
       });
-      // Return the top 10 closest flights
-      return NextResponse.json({ flights: allValidFlights.slice(0, 10) });
     }
 
-    return NextResponse.json({ flights: validFlights });
+    if (validFlights.length === 0) {
+       return NextResponse.json({ error: "Could not fetch active flights. Try again." }, { status: 500 });
+    }
+
+    // Sort valid flights by how close they are to the desired duration
+    validFlights.sort((a, b) => {
+      const diffA = Math.abs((a.remainingSeconds / 60) - targetMinutes);
+      const diffB = Math.abs((b.remainingSeconds / 60) - targetMinutes);
+      return diffA - diffB;
+    });
+
+    // Return the top 8 closest flights (or all if less than 8)
+    return NextResponse.json({ flights: validFlights.slice(0, 8) });
   } catch (error) {
     console.error("API Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
