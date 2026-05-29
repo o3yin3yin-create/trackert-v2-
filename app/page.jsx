@@ -3299,38 +3299,121 @@ export default function App() {
                       </p>
                     </div>
 
-                    <div className="flex flex-col gap-2.5 overflow-y-auto max-h-[280px] pr-1 w-full flex-1">
-                      {flightLoading ? (
+                    <div className="flex flex-col gap-2.5 overflow-y-auto max-h-[350px] pr-1 w-full flex-1">
+                      {flightDurationFilter === null ? (
+                        <div className="flex flex-col gap-4 py-2 animate-in fade-in zoom-in-95 duration-300">
+                          <p className="text-xs text-gray-500 dark:text-white/60 font-bold tracking-widest uppercase mb-1">
+                            {lang === 'ar' ? 'ما هي مدة التركيز المطلوبة؟' : 'How long do you want to focus?'}
+                          </p>
+                          
+                          <div className="flex flex-col items-center gap-4 bg-black/5 dark:bg-white/5 p-4 rounded-3xl border border-black/5 dark:border-white/10">
+                            <div className="flex items-center justify-center gap-3">
+                              {tempFlightRandom ? (
+                                <div className="flex flex-col items-center gap-1 animate-in fade-in zoom-in duration-300">
+                                  <Dices size={36} className="text-black dark:text-white animate-bounce" />
+                                  <span className="text-lg font-black text-black dark:text-white">
+                                    {lang === 'ar' ? 'عشوائي' : 'Surprise Me'}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center gap-1 animate-in fade-in zoom-in duration-300">
+                                  <span className="text-3xl font-black text-black dark:text-white tabular-nums tracking-tighter">
+                                    {tempFlightDuration}
+                                  </span>
+                                  <span className="text-[10px] font-bold text-gray-500 dark:text-white/50 tracking-widest uppercase">
+                                    {lang === 'ar' 
+                                      ? (tempFlightDuration === 1 ? 'ساعة' : tempFlightDuration === 2 ? 'ساعتين' : tempFlightDuration <= 10 ? 'ساعات' : 'ساعة') 
+                                      : (tempFlightDuration === 1 ? 'Hour' : 'Hours')}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="w-full flex items-center gap-3 mt-2">
+                              <span className="text-[10px] font-bold text-gray-400">1</span>
+                              <input 
+                                type="range" 
+                                min="1" 
+                                max="12" 
+                                value={tempFlightDuration}
+                                onChange={(e) => {
+                                  setTempFlightDuration(parseInt(e.target.value));
+                                  setTempFlightRandom(false);
+                                }}
+                                className="flex-1 h-1.5 bg-gray-200 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-black dark:accent-white"
+                              />
+                              <span className="text-[10px] font-bold text-gray-400">12</span>
+                            </div>
+
+                            <div className="flex w-full gap-2 mt-1">
+                              <button
+                                onClick={() => setTempFlightRandom(true)}
+                                className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl border text-[10px] font-bold tracking-widest transition-all active:scale-95 ${tempFlightRandom ? 'bg-black text-white dark:bg-white dark:text-black border-transparent' : 'bg-transparent border-black/10 dark:border-white/20 text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5'}`}
+                              >
+                                <Dices size={14} />
+                                {lang === 'ar' ? 'عشوائي' : 'Random'}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const val = tempFlightRandom ? 0 : tempFlightDuration;
+                                  setFlightDurationFilter(val);
+                                  fetchFlights(val);
+                                }}
+                                className="flex-[2] py-2 rounded-xl text-[10px] font-bold tracking-widest transition-all active:scale-95 shadow-lg"
+                                style={{ backgroundColor: themeColor, color: '#000' }}
+                              >
+                                {lang === 'ar' ? 'بدأ البحث' : 'Search Flights'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : flightLoading ? (
                         <div className="flex flex-col items-center justify-center py-16 gap-3">
                           <Loader2 className="animate-spin text-gray-400 dark:text-white/30" size={24} />
                           <span className="text-[10px] font-bold tracking-widest text-gray-400 dark:text-white/30 uppercase animate-pulse">{t('findingFlights')}</span>
                         </div>
-                      ) : flightOptions.map((f, i) => (
-                        <div key={i} onClick={() => { 
-                          const liveRemaining = f.estimatedArrival - Math.floor(Date.now() / 1000);
-                          setSelectedFlight({...f, initialSeconds: liveRemaining}); 
-                          setFlightTimer(Math.max(0, liveRemaining)); 
-                        }} className="bg-white/10 dark:bg-black/35 border border-black/5 dark:border-white/5 p-3 rounded-xl cursor-pointer hover:bg-white/30 dark:hover:bg-black/50 transition-all duration-200 active:scale-[0.98]">
-                          <div className="flex justify-between items-start mb-1 select-none">
-                            <span className="font-bold text-xs text-black dark:text-white flex items-center gap-1.5 leading-tight">
-                              {f.airline}
-                              <span className="text-[9px] bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 px-1.5 py-0.5 rounded text-gray-500 dark:text-white/50">{f.callsign}</span>
-                            </span>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-[10px] font-bold text-gray-500 dark:text-white/40 uppercase tracking-widest">{t('flightFocus')}</span>
+                            <button 
+                              onClick={() => {
+                                setFlightDurationFilter(null);
+                                setFlightOptions([]);
+                              }}
+                              className="text-[10px] font-bold text-black/50 hover:text-black dark:text-white/50 dark:hover:text-white transition-colors"
+                            >
+                              {lang === 'ar' ? 'تغيير المدة' : 'Change Duration'}
+                            </button>
                           </div>
-                          <div className="flex items-center gap-2 text-gray-500 dark:text-white/45 text-xs font-semibold select-none">
-                            <span>{f.origin}</span>
-                            <PlaneTakeoff size={12} className="text-gray-400 dark:text-white/30" />
-                            <span>{f.destination}</span>
-                          </div>
-                        </div>
-                      ))}
-                      {flightOptions.length === 0 && !flightLoading && (
-                        <div className="text-center py-10 flex flex-col items-center gap-3">
-                          <span className="text-xs font-bold text-red-400">{t('couldNotFindFlights')}</span>
-                          <button onClick={fetchFlights} className="px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 hover:opacity-90 mt-2" style={{ backgroundColor: themeColor, color: '#000' }}>
-                             {lang === 'ar' ? 'بحث عن رحلات' : 'Fetch Flights'}
-                          </button>
-                        </div>
+                          {flightOptions.map((f, i) => (
+                            <div key={i} onClick={() => { 
+                              const liveRemaining = f.estimatedArrival - Math.floor(Date.now() / 1000);
+                              setSelectedFlight({...f, initialSeconds: liveRemaining}); 
+                              setFlightTimer(Math.max(0, liveRemaining)); 
+                            }} className="bg-white/10 dark:bg-black/35 border border-black/5 dark:border-white/5 p-3 rounded-xl cursor-pointer hover:bg-white/30 dark:hover:bg-black/50 transition-all duration-200 active:scale-[0.98]">
+                              <div className="flex justify-between items-start mb-1 select-none">
+                                <span className="font-bold text-xs text-black dark:text-white flex items-center gap-1.5 leading-tight">
+                                  {f.airline}
+                                  <span className="text-[9px] bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 px-1.5 py-0.5 rounded text-gray-500 dark:text-white/50">{f.callsign}</span>
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-gray-500 dark:text-white/45 text-xs font-semibold select-none">
+                                <span>{f.origin}</span>
+                                <PlaneTakeoff size={12} className="text-gray-400 dark:text-white/30" />
+                                <span>{f.destination}</span>
+                              </div>
+                            </div>
+                          ))}
+                          {flightOptions.length === 0 && !flightLoading && (
+                            <div className="text-center py-10 flex flex-col items-center gap-3">
+                              <span className="text-xs font-bold text-red-400">{t('couldNotFindFlights')}</span>
+                              <button onClick={() => { setFlightDurationFilter(null); setFlightOptions([]); }} className="px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl text-[10px] font-bold transition-all active:scale-95">
+                                 {lang === 'ar' ? 'اختر مدة أخرى' : 'Try another duration'}
+                              </button>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
