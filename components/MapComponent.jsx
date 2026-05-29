@@ -171,6 +171,12 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
     iconSize: [12, 12],
     iconAnchor: [6, 6]
   });
+  const palestineIcon = L.divIcon({
+    html: `<div style="background-color: #17171a; color: #5f6368; font-weight: 700; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; padding: 4px 12px; border-radius: 4px; white-space: nowrap; box-shadow: 0 0 15px 10px #17171a; text-align: center;">PALESTINE</div>`,
+    className: 'palestine-override-icon',
+    iconSize: [80, 20],
+    iconAnchor: [40, 10]
+  });
 
   return (
     <div style={{ width: '100%', height: '100%', background: '#090a0f' }}>
@@ -187,6 +193,10 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
           subdomains={['a','b','c','d']}
         />
+
+        {/* Override label for Palestine */}
+        <Marker position={[31.0461, 34.8516]} icon={palestineIcon} interactive={false} zIndexOffset={500} />
+
 
         {/* Flight path curve as dotted line */}
         {curvePoints.length > 0 && (
