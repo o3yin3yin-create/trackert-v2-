@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { FlightRadar24API } from 'flightradarapi';
 
-export async function GET() {
+export async function GET(request) {
   try {
     const frapi = new FlightRadar24API();
     const flights = await frapi.getFlights();
@@ -10,7 +10,23 @@ export async function GET() {
       return NextResponse.json({ error: "No flights found" }, { status: 500 });
     }
 
-    const numToFetch = 40; // Reduced to 40 to prevent Vercel 10s timeout
+    const { searchParams } = new URL(request.url);
+    const durationParam = searchParams.get('duration');
+    
+    let minMinutes = 15;
+    let maxMinutes = 240;
+
+    if (durationParam && !isNaN(durationParam) && Number(durationParam) > 0) {
+      const targetMinutes = Number(durationParam) * 60;
+      // Wider ranges to ensure we find a match
+      if (targetMinutes === 60) { minMinutes = 40; maxMinutes = 90; }
+      else if (targetMinutes === 120) { minMinutes = 90; maxMinutes = 150; }
+      else if (targetMinutes === 240) { minMinutes = 180; maxMinutes = 300; }
+      else if (targetMinutes === 480) { minMinutes = 360; maxMinutes = 600; }
+      else if (targetMinutes === 720) { minMinutes = 600; maxMinutes = 1000; }
+    }
+
+    const numToFetch = 60; // Increased to 60 to have a better chance of hitting the specific duration window
     const randomFlights = [];
     for (let i = 0; i < numToFetch; i++) {
       const randomIdx = Math.floor(Math.random() * flights.length);
@@ -39,8 +55,8 @@ export async function GET() {
       const remainingSeconds = estimatedArrival - now;
       const remainingMinutes = Math.floor(remainingSeconds / 60);
 
-      // We want flights landing between 15 and 240 minutes from now
-      if (remainingMinutes >= 15 && remainingMinutes <= 240) {
+      // Filter by the selected duration range
+      if (remainingMinutes >= minMinutes && remainingMinutes <= maxMinutes) {
         validFlights.push({
           id: flight.id,
           airline: details.airline?.name || 'Unknown Airline',

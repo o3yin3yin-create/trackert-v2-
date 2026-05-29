@@ -444,6 +444,7 @@ export default function App() {
   const [isCameraLocked, setIsCameraLocked] = useState(true);
   const [isScreensaverOpen, setIsScreensaverOpen] = useState(false);
   const [showFlightModeAdvice, setShowFlightModeAdvice] = useState(false);
+  const [flightDurationFilter, setFlightDurationFilter] = useState(null);
   const [isCabinHumPlaying, setIsCabinHumPlaying] = useState(false);
   const [isAudioSettingsOpen, setIsAudioSettingsOpen] = useState(false);
   const [audioVolume, setAudioVolume] = useState(0.55);
@@ -689,11 +690,11 @@ export default function App() {
   }, []);
 
   // --- Flight Focus Logic ---
-  const fetchFlights = async () => {
+  const fetchFlights = async (duration = 0) => {
     setFlightLoading(true);
     setFlightOptions([]);
     try {
-      const res = await fetch('/api/flight');
+      const res = await fetch(`/api/flight?duration=${duration}`);
       const data = await res.json();
       if (data.flights) {
         setFlightOptions(data.flights);
@@ -705,17 +706,18 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (isFlightFocusOpen && flightOptions.length === 0 && !selectedFlight) {
-      fetchFlights();
+    // If modal is open, but no filter chosen yet, we don't fetch flights yet
+    if (isFlightFocusOpen && flightOptions.length === 0 && !selectedFlight && flightDurationFilter !== null) {
+      fetchFlights(flightDurationFilter);
     }
     let intervalId;
-    if (isFlightFocusOpen) {
+    if (isFlightFocusOpen && flightDurationFilter !== null) {
       intervalId = setInterval(() => {
-        if (!selectedFlight) fetchFlights();
+        if (!selectedFlight) fetchFlights(flightDurationFilter);
       }, 15 * 60 * 1000); // Poll every 15 minutes if no flight selected
     }
     return () => clearInterval(intervalId);
-  }, [isFlightFocusOpen, flightOptions.length, selectedFlight]);
+  }, [isFlightFocusOpen, flightOptions.length, selectedFlight, flightDurationFilter]);
 
   const flightLastTickRef = useRef(null);
 
@@ -1666,6 +1668,7 @@ export default function App() {
                 setIsFlightFocusOpen(false); 
                 if (!isFlightTimerRunning) {
                   setSelectedFlight(null);
+                  setFlightDurationFilter(null);
                 }
               }} className="absolute top-4 right-4 bg-gray-500/10 hover:bg-gray-500/20 border-none rounded-full w-8 h-8 text-black dark:text-white cursor-pointer flex items-center justify-center transition-colors z-[100]">
                 {isFlightTimerRunning ? <ChevronDown size={18} /> : <X size={16} />}
@@ -1673,7 +1676,34 @@ export default function App() {
 
               <h3 className="text-sm font-bold tracking-widest text-gray-500 dark:text-white/50 uppercase mb-4 select-none text-center">{t('flightFocus')} ✈️</h3>
 
-              {flightLoading ? (
+              {!selectedFlight && flightDurationFilter === null ? (
+                <div className="flex flex-col gap-4 py-6 px-2 animate-in fade-in zoom-in-95 duration-300">
+                  <p className="text-sm text-center text-gray-500 dark:text-white/60 font-bold tracking-widest uppercase mb-4">
+                    {lang === 'ar' ? 'ما هي مدة التركيز المطلوبة؟' : 'How long do you want to focus?'}
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {[
+                      { val: 1, label: lang === 'ar' ? 'ساعة واحدة' : '1 Hour' },
+                      { val: 2, label: lang === 'ar' ? 'ساعتين' : '2 Hours' },
+                      { val: 4, label: lang === 'ar' ? '4 ساعات' : '4 Hours' },
+                      { val: 8, label: lang === 'ar' ? '8 ساعات' : '8 Hours' },
+                      { val: 12, label: lang === 'ar' ? '12 ساعة' : '12 Hours' },
+                      { val: 0, label: lang === 'ar' ? 'عشوائي' : 'Surprise Me' },
+                    ].map(opt => (
+                      <button 
+                        key={opt.val}
+                        onClick={() => {
+                          setFlightDurationFilter(opt.val);
+                          fetchFlights(opt.val);
+                        }}
+                        className="py-4 px-4 rounded-2xl bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 border border-black/5 dark:border-white/10 text-sm font-bold tracking-widest transition-all active:scale-95 text-black dark:text-white"
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : flightLoading ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-4">
                   <Loader2 className="animate-spin text-gray-400 dark:text-white/30" size={32} />
                   <span className="text-xs font-bold tracking-widest text-gray-500 dark:text-white/30 uppercase animate-pulse">{t('findingFlights')}</span>
@@ -2058,31 +2088,55 @@ export default function App() {
 
                 </div>
               ) : (
-                <div className="flex flex-col gap-3 overflow-y-auto max-h-[50vh] pr-2 w-full">
-                  {flightOptions.map((f, i) => (
-                    <div key={i} onClick={() => { 
-                      const liveRemaining = f.estimatedArrival - Math.floor(Date.now() / 1000);
-                      setSelectedFlight({...f, initialSeconds: liveRemaining}); 
-                      setFlightTimer(Math.max(0, liveRemaining)); 
-                    }} className="bg-white/10 dark:bg-black/30 border border-black/5 dark:border-white/5 p-4 rounded-2xl cursor-pointer hover:bg-white/30 dark:hover:bg-black/50 transition-colors active:scale-95 shrink-0">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-bold text-sm flex items-center gap-2 text-black dark:text-white">
-                          {f.airline}
-                          <span className="text-[10px] bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 px-1.5 py-0.5 rounded text-gray-500 dark:text-white/50">{f.callsign}</span>
-                        </span>
+                <div className="flex flex-col gap-3 w-full">
+                  <div className="flex justify-between items-center px-1 mb-2">
+                    <span className="text-xs font-bold text-gray-500 dark:text-white/40 uppercase tracking-widest">{t('flightFocus')}</span>
+                    <button 
+                      onClick={() => {
+                        setFlightDurationFilter(null);
+                        setFlightOptions([]);
+                      }}
+                      className="text-xs font-bold text-black/50 hover:text-black dark:text-white/50 dark:hover:text-white transition-colors"
+                    >
+                      {lang === 'ar' ? 'تغيير المدة' : 'Change Duration'}
+                    </button>
+                  </div>
+                  
+                  <div className="flex flex-col gap-3 overflow-y-auto max-h-[50vh] pr-2 w-full">
+                    {flightOptions.map((f, i) => (
+                      <div key={i} onClick={() => { 
+                        const liveRemaining = f.estimatedArrival - Math.floor(Date.now() / 1000);
+                        setSelectedFlight({...f, initialSeconds: liveRemaining}); 
+                        setFlightTimer(Math.max(0, liveRemaining)); 
+                      }} className="bg-white/10 dark:bg-black/30 border border-black/5 dark:border-white/5 p-4 rounded-2xl cursor-pointer hover:bg-white/30 dark:hover:bg-black/50 transition-colors active:scale-95 shrink-0">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="font-bold text-sm flex items-center gap-2 text-black dark:text-white">
+                            {f.airline}
+                            <span className="text-[10px] bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 px-1.5 py-0.5 rounded text-gray-500 dark:text-white/50">{f.callsign}</span>
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-500 dark:text-white/50 text-sm font-semibold">
+                          <span>{f.origin}</span>
+                          <PlaneTakeoff size={14} className="text-gray-400 dark:text-white/30" />
+                          <span>{f.destination}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-gray-500 dark:text-white/50 text-sm font-semibold">
-                        <span>{f.origin}</span>
-                        <PlaneTakeoff size={14} className="text-gray-400 dark:text-white/30" />
-                        <span>{f.destination}</span>
+                    ))}
+                    {flightOptions.length === 0 && (
+                      <div className="text-center py-10 flex flex-col items-center gap-3">
+                        <span className="text-sm font-bold text-red-500/80 dark:text-red-400/80">{t('couldNotFindFlights')}</span>
+                        <button 
+                          onClick={() => {
+                            setFlightDurationFilter(null);
+                            setFlightOptions([]);
+                          }}
+                          className="px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl text-xs font-bold transition-colors"
+                        >
+                          {lang === 'ar' ? 'اختر مدة أخرى' : 'Try another duration'}
+                        </button>
                       </div>
-                    </div>
-                  ))}
-                  {flightOptions.length === 0 && (
-                    <div className="text-center py-8">
-                      <span className="text-xs font-bold text-red-400">Could not find flights. Try again later.</span>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
             </div>
