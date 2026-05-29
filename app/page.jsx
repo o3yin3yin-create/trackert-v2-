@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize } from 'lucide-react';
+import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Dices } from 'lucide-react';
 import { messaging, getToken } from '../lib/firebase';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -445,6 +445,8 @@ export default function App() {
   const [isScreensaverOpen, setIsScreensaverOpen] = useState(false);
   const [showFlightModeAdvice, setShowFlightModeAdvice] = useState(false);
   const [flightDurationFilter, setFlightDurationFilter] = useState(null);
+  const [tempFlightDuration, setTempFlightDuration] = useState(1);
+  const [tempFlightRandom, setTempFlightRandom] = useState(false);
   const [isCabinHumPlaying, setIsCabinHumPlaying] = useState(false);
   const [isAudioSettingsOpen, setIsAudioSettingsOpen] = useState(false);
   const [audioVolume, setAudioVolume] = useState(0.55);
@@ -1737,30 +1739,69 @@ export default function App() {
               <h3 className="text-sm font-bold tracking-widest text-gray-500 dark:text-white/50 uppercase mb-4 select-none text-center">{t('flightFocus')} ✈️</h3>
 
               {!selectedFlight && flightDurationFilter === null ? (
-                <div className="flex flex-col gap-4 py-6 px-2 animate-in fade-in zoom-in-95 duration-300">
-                  <p className="text-sm text-center text-gray-500 dark:text-white/60 font-bold tracking-widest uppercase mb-4">
+                <div className="flex flex-col gap-6 py-6 px-2 animate-in fade-in zoom-in-95 duration-300">
+                  <p className="text-sm text-center text-gray-500 dark:text-white/60 font-bold tracking-widest uppercase mb-2">
                     {lang === 'ar' ? 'ما هي مدة التركيز المطلوبة؟' : 'How long do you want to focus?'}
                   </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {[
-                      { val: 1, label: lang === 'ar' ? 'ساعة واحدة' : '1 Hour' },
-                      { val: 2, label: lang === 'ar' ? 'ساعتين' : '2 Hours' },
-                      { val: 4, label: lang === 'ar' ? '4 ساعات' : '4 Hours' },
-                      { val: 8, label: lang === 'ar' ? '8 ساعات' : '8 Hours' },
-                      { val: 12, label: lang === 'ar' ? '12 ساعة' : '12 Hours' },
-                      { val: 0, label: lang === 'ar' ? 'عشوائي' : 'Surprise Me' },
-                    ].map(opt => (
-                      <button 
-                        key={opt.val}
-                        onClick={() => {
-                          setFlightDurationFilter(opt.val);
-                          fetchFlights(opt.val);
+                  
+                  <div className="flex flex-col items-center gap-4 bg-black/5 dark:bg-white/5 p-6 rounded-3xl border border-black/5 dark:border-white/10">
+                    <div className="flex items-center justify-center gap-3">
+                      {tempFlightRandom ? (
+                        <div className="flex flex-col items-center gap-1 animate-in fade-in zoom-in duration-300">
+                          <Dices size={48} className="text-black dark:text-white animate-bounce" />
+                          <span className="text-xl font-black text-black dark:text-white">
+                            {lang === 'ar' ? 'عشوائي' : 'Surprise Me'}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1 animate-in fade-in zoom-in duration-300">
+                          <span className="text-4xl font-black text-black dark:text-white tabular-nums tracking-tighter">
+                            {tempFlightDuration}
+                          </span>
+                          <span className="text-xs font-bold text-gray-500 dark:text-white/50 tracking-widest uppercase">
+                            {lang === 'ar' 
+                              ? (tempFlightDuration === 1 ? 'ساعة' : tempFlightDuration === 2 ? 'ساعتين' : tempFlightDuration <= 10 ? 'ساعات' : 'ساعة') 
+                              : (tempFlightDuration === 1 ? 'Hour' : 'Hours')}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="w-full flex items-center gap-3 mt-4">
+                      <span className="text-xs font-bold text-gray-400">1</span>
+                      <input 
+                        type="range" 
+                        min="1" 
+                        max="12" 
+                        value={tempFlightDuration}
+                        onChange={(e) => {
+                          setTempFlightDuration(parseInt(e.target.value));
+                          setTempFlightRandom(false);
                         }}
-                        className="py-4 px-4 rounded-2xl bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 border border-black/5 dark:border-white/10 text-sm font-bold tracking-widest transition-all active:scale-95 text-black dark:text-white"
+                        className="flex-1 h-2 bg-gray-200 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-black dark:accent-white"
+                      />
+                      <span className="text-xs font-bold text-gray-400">12</span>
+                    </div>
+
+                    <div className="flex w-full gap-3 mt-2">
+                      <button
+                        onClick={() => setTempFlightRandom(true)}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl border text-sm font-bold tracking-widest transition-all active:scale-95 ${tempFlightRandom ? 'bg-black text-white dark:bg-white dark:text-black border-transparent' : 'bg-transparent border-black/10 dark:border-white/20 text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5'}`}
                       >
-                        {opt.label}
+                        <Dices size={16} />
+                        {lang === 'ar' ? 'عشوائي' : 'Random'}
                       </button>
-                    ))}
+                      <button
+                        onClick={() => {
+                          const val = tempFlightRandom ? 0 : tempFlightDuration;
+                          setFlightDurationFilter(val);
+                          fetchFlights(val);
+                        }}
+                        className="flex-[2] py-3 rounded-2xl bg-black text-white dark:bg-white dark:text-black text-sm font-bold tracking-widest transition-all active:scale-95 shadow-lg"
+                      >
+                        {lang === 'ar' ? 'بدأ البحث' : 'Search Flights'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : flightLoading ? (
