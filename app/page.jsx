@@ -445,8 +445,7 @@ export default function App() {
   const [isScreensaverOpen, setIsScreensaverOpen] = useState(false);
   const [showFlightModeAdvice, setShowFlightModeAdvice] = useState(false);
   const [flightDurationFilter, setFlightDurationFilter] = useState(null);
-  const [tempFlightDuration, setTempFlightDuration] = useState(1);
-  const [tempFlightRandom, setTempFlightRandom] = useState(false);
+
   const [isCabinHumPlaying, setIsCabinHumPlaying] = useState(false);
   const [isAudioSettingsOpen, setIsAudioSettingsOpen] = useState(false);
   const [audioVolume, setAudioVolume] = useState(0.55);
@@ -1741,68 +1740,20 @@ export default function App() {
               {!selectedFlight && flightDurationFilter === null ? (
                 <div className="flex flex-col gap-6 py-6 px-2 animate-in fade-in zoom-in-95 duration-300">
                   <p className="text-sm text-center text-gray-500 dark:text-white/60 font-bold tracking-widest uppercase mb-2">
-                    {lang === 'ar' ? 'ما هي مدة التركيز المطلوبة؟' : 'How long do you want to focus?'}
+                    {lang === 'ar' ? 'مستعد لرحلة التركيز؟' : 'Ready for a focus flight?'}
                   </p>
                   
                   <div className="flex flex-col items-center gap-4 bg-black/5 dark:bg-white/5 p-6 rounded-3xl border border-black/5 dark:border-white/10">
-                    <div className="flex items-center justify-center gap-3">
-                      {tempFlightRandom ? (
-                        <div className="flex flex-col items-center gap-1 animate-in fade-in zoom-in duration-300">
-                          <Dices size={48} className="text-black dark:text-white animate-bounce" />
-                          <span className="text-xl font-black text-black dark:text-white">
-                            {lang === 'ar' ? 'عشوائي' : 'Surprise Me'}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center gap-1 animate-in fade-in zoom-in duration-300">
-                          <span className="text-4xl font-black text-black dark:text-white tabular-nums tracking-tighter">
-                            {Math.round(tempFlightDuration)}
-                          </span>
-                          <span className="text-xs font-bold text-gray-500 dark:text-white/50 tracking-widest uppercase">
-                            {lang === 'ar' 
-                              ? (Math.round(tempFlightDuration) === 1 ? 'ساعة' : Math.round(tempFlightDuration) === 2 ? 'ساعتين' : Math.round(tempFlightDuration) <= 10 ? 'ساعات' : 'ساعة') 
-                              : (Math.round(tempFlightDuration) === 1 ? 'Hour' : 'Hours')}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="w-full flex items-center gap-3 mt-4">
-                      <span className="text-xs font-bold text-gray-400">1</span>
-                      <input 
-                        type="range" 
-                        min="1" 
-                        max="6" 
-                        step="0.1"
-                        value={tempFlightDuration}
-                        onChange={(e) => {
-                          setTempFlightDuration(parseFloat(e.target.value));
-                          setTempFlightRandom(false);
-                        }}
-                        className="flex-1 h-2 bg-gray-200 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-black dark:accent-white transition-all"
-                      />
-                      <span className="text-xs font-bold text-gray-400">6</span>
-                    </div>
-
-                    <div className="flex w-full gap-3 mt-2">
-                      <button
-                        onClick={() => setTempFlightRandom(true)}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl border text-sm font-bold tracking-widest transition-all active:scale-95 ${tempFlightRandom ? 'bg-black text-white dark:bg-white dark:text-black border-transparent' : 'bg-transparent border-black/10 dark:border-white/20 text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5'}`}
-                      >
-                        <Dices size={16} />
-                        {lang === 'ar' ? 'عشوائي' : 'Random'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          const val = tempFlightRandom ? 0 : Math.round(tempFlightDuration);
-                          setFlightDurationFilter(val);
-                          fetchFlights(val);
-                        }}
-                        className="flex-[2] py-3 rounded-2xl bg-black text-white dark:bg-white dark:text-black text-sm font-bold tracking-widest transition-all active:scale-95 shadow-lg"
-                      >
-                        {lang === 'ar' ? 'بدأ البحث' : 'Search Flights'}
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => {
+                        setFlightDurationFilter(0);
+                        fetchFlights(0);
+                      }}
+                      className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-black text-white dark:bg-white dark:text-black text-lg font-bold tracking-widest transition-all active:scale-95 shadow-lg"
+                    >
+                      <Dices size={24} />
+                      {lang === 'ar' ? 'بحث عن رحلة عشوائية' : 'Find Random Flight'}
+                    </button>
                   </div>
                 </div>
               ) : flightLoading ? (
@@ -3302,71 +3253,22 @@ export default function App() {
 
                     <div className="flex flex-col gap-2.5 overflow-y-auto max-h-[350px] pr-1 w-full flex-1">
                       {flightDurationFilter === null ? (
-                        <div className="flex flex-col gap-4 py-2 animate-in fade-in zoom-in-95 duration-300">
-                          <p className="text-xs text-gray-500 dark:text-white/60 font-bold tracking-widest uppercase mb-1">
-                            {lang === 'ar' ? 'ما هي مدة التركيز المطلوبة؟' : 'How long do you want to focus?'}
+                        <div className="flex flex-col gap-4 py-4 px-2 animate-in fade-in zoom-in-95 duration-300">
+                          <p className="text-[10px] text-center text-gray-500 dark:text-white/60 font-bold tracking-widest uppercase">
+                            {lang === 'ar' ? 'مستعد لرحلة التركيز؟' : 'Ready for a focus flight?'}
                           </p>
                           
-                          <div className="flex flex-col items-center gap-4 bg-black/5 dark:bg-white/5 p-4 rounded-3xl border border-black/5 dark:border-white/10">
-                            <div className="flex items-center justify-center gap-3">
-                              {tempFlightRandom ? (
-                                <div className="flex flex-col items-center gap-1 animate-in fade-in zoom-in duration-300">
-                                  <Dices size={36} className="text-black dark:text-white animate-bounce" />
-                                  <span className="text-lg font-black text-black dark:text-white">
-                                    {lang === 'ar' ? 'عشوائي' : 'Surprise Me'}
-                                  </span>
-                                </div>
-                              ) : (
-                                <div className="flex flex-col items-center gap-1 animate-in fade-in zoom-in duration-300">
-                                  <span className="text-3xl font-black text-black dark:text-white tabular-nums tracking-tighter">
-                                    {Math.round(tempFlightDuration)}
-                                  </span>
-                                  <span className="text-[10px] font-bold text-gray-500 dark:text-white/50 tracking-widest uppercase">
-                                    {lang === 'ar' 
-                                      ? (Math.round(tempFlightDuration) === 1 ? 'ساعة' : Math.round(tempFlightDuration) === 2 ? 'ساعتين' : Math.round(tempFlightDuration) <= 10 ? 'ساعات' : 'ساعة') 
-                                      : (Math.round(tempFlightDuration) === 1 ? 'Hour' : 'Hours')}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="w-full flex items-center gap-3 mt-2">
-                              <span className="text-[10px] font-bold text-gray-400">1</span>
-                              <input 
-                                type="range" 
-                                min="1" 
-                                max="6" 
-                                step="0.1"
-                                value={tempFlightDuration}
-                                onChange={(e) => {
-                                  setTempFlightDuration(parseFloat(e.target.value));
-                                  setTempFlightRandom(false);
-                                }}
-                                className="flex-1 h-1.5 bg-gray-200 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-black dark:accent-white transition-all"
-                              />
-                              <span className="text-[10px] font-bold text-gray-400">6</span>
-                            </div>
-
-                            <div className="flex w-full gap-2 mt-1">
-                              <button
-                                onClick={() => setTempFlightRandom(true)}
-                                className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl border text-[10px] font-bold tracking-widest transition-all active:scale-95 ${tempFlightRandom ? 'bg-black text-white dark:bg-white dark:text-black border-transparent' : 'bg-transparent border-black/10 dark:border-white/20 text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5'}`}
-                              >
-                                <Dices size={14} />
-                                {lang === 'ar' ? 'عشوائي' : 'Random'}
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const val = tempFlightRandom ? 0 : Math.round(tempFlightDuration);
-                                  setFlightDurationFilter(val);
-                                  fetchFlights(val);
-                                }}
-                                className="flex-[2] py-2 rounded-xl text-[10px] font-bold tracking-widest transition-all active:scale-95 shadow-lg"
-                                style={{ backgroundColor: themeColor, color: '#000' }}
-                              >
-                                {lang === 'ar' ? 'بدأ البحث' : 'Search Flights'}
-                              </button>
-                            </div>
+                          <div className="flex flex-col items-center gap-3 bg-black/5 dark:bg-white/5 p-4 rounded-2xl border border-black/5 dark:border-white/10">
+                            <button
+                              onClick={() => {
+                                setFlightDurationFilter(0);
+                                fetchFlights(0);
+                              }}
+                              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-black text-white dark:bg-white dark:text-black text-[12px] font-bold tracking-widest transition-all active:scale-95 shadow-lg"
+                            >
+                              <Dices size={18} />
+                              {lang === 'ar' ? 'بحث عن رحلة عشوائية' : 'Find Random Flight'}
+                            </button>
                           </div>
                         </div>
                       ) : flightLoading ? (
