@@ -2167,6 +2167,9 @@ export default function App() {
                             {f.airline}
                             <span className="text-[10px] bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 px-1.5 py-0.5 rounded text-gray-500 dark:text-white/50">{f.callsign}</span>
                           </span>
+                          <span className="text-[10px] font-bold text-black/70 dark:text-white/70 bg-black/5 dark:bg-white/10 px-2 py-1 rounded-md">
+                            {Math.floor(Math.floor(f.remainingSeconds / 60) / 60) > 0 ? `${Math.floor(Math.floor(f.remainingSeconds / 60) / 60)}h ` : ''}{Math.floor(f.remainingSeconds / 60) % 60}m
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 text-gray-500 dark:text-white/50 text-sm font-semibold">
                           <span>{f.origin}</span>
@@ -3300,6 +3303,9 @@ export default function App() {
                                 <span className="font-bold text-xs text-black dark:text-white flex items-center gap-1.5 leading-tight">
                                   {f.airline}
                                   <span className="text-[9px] bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 px-1.5 py-0.5 rounded text-gray-500 dark:text-white/50">{f.callsign}</span>
+                                </span>
+                                <span className="text-[9px] font-bold text-black/70 dark:text-white/70 bg-black/5 dark:bg-white/10 px-1.5 py-0.5 rounded">
+                                  {Math.floor(Math.floor(f.remainingSeconds / 60) / 60) > 0 ? `${Math.floor(Math.floor(f.remainingSeconds / 60) / 60)}h ` : ''}{Math.floor(f.remainingSeconds / 60) % 60}m
                                 </span>
                               </div>
                               <div className="flex items-center gap-2 text-gray-500 dark:text-white/45 text-xs font-semibold select-none">
