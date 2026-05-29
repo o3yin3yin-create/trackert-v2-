@@ -10,46 +10,53 @@ export async function GET(request) {
       return NextResponse.json({ error: "No flights found" }, { status: 500 });
     }
 
-    const numToFetch = 15; // Safe limit
-    const randomFlights = [];
-    for (let i = 0; i < numToFetch; i++) {
-      randomFlights.push(flights[Math.floor(Math.random() * flights.length)]);
-    }
-
-    const results = await Promise.allSettled(
-      randomFlights.map(flight => frapi.getFlightDetails(flight))
-    );
-
     const validFlights = [];
+    const batches = 6; 
+    const flightsPerBatch = 4; // Safely fetch 4 at a time to prevent rate limits
 
-    for (let i = 0; i < results.length; i++) {
-      const res = results[i];
-      if (res.status !== 'fulfilled' || !res.value) continue;
-      
-      const details = res.value;
-      const flight = randomFlights[i];
+    for (let b = 0; b < batches; b++) {
+      const batchFlights = [];
+      for (let i = 0; i < flightsPerBatch; i++) {
+        batchFlights.push(flights[Math.floor(Math.random() * flights.length)]);
+      }
 
-      if (!details.time || !details.airport) continue;
+      const results = await Promise.allSettled(
+        batchFlights.map(flight => frapi.getFlightDetails(flight))
+      );
 
-      const estimatedArrival = details.time.estimated?.arrival || details.time.scheduled?.arrival;
-      if (!estimatedArrival) continue;
+      for (let i = 0; i < results.length; i++) {
+        const res = results[i];
+        if (res.status !== 'fulfilled' || !res.value) continue;
+        
+        const details = res.value;
+        const flight = batchFlights[i];
 
-      const now = Math.floor(Date.now() / 1000);
-      const remainingSeconds = estimatedArrival - now;
-      
-      // Constraint: Flight must have at least 40 minutes remaining
-      if (remainingSeconds < 40 * 60) continue;
+        if (!details.time || !details.airport) continue;
 
-      validFlights.push({
-        id: flight.id,
-        airline: details.airline?.name || 'Unknown Airline',
-        callsign: details.identification?.callsign || flight.callsign,
-        origin: details.airport.origin?.code?.iata || details.airport.origin?.name || 'Unknown',
-        destination: details.airport.destination?.code?.iata || details.airport.destination?.name || 'Unknown',
-        remainingSeconds,
-        estimatedArrival,
-        model: details.aircraft?.model?.text || 'Unknown Aircraft'
-      });
+        const estimatedArrival = details.time.estimated?.arrival || details.time.scheduled?.arrival;
+        if (!estimatedArrival) continue;
+
+        const now = Math.floor(Date.now() / 1000);
+        const remainingSeconds = estimatedArrival - now;
+        
+        // Constraint: Flight must have at least 40 minutes remaining
+        if (remainingSeconds < 40 * 60) continue;
+
+        validFlights.push({
+          id: flight.id,
+          airline: details.airline?.name || 'Unknown Airline',
+          callsign: details.identification?.callsign || flight.callsign,
+          origin: details.airport.origin?.code?.iata || details.airport.origin?.name || 'Unknown',
+          destination: details.airport.destination?.code?.iata || details.airport.destination?.name || 'Unknown',
+          remainingSeconds,
+          estimatedArrival,
+          model: details.aircraft?.model?.text || 'Unknown Aircraft'
+        });
+      }
+
+      if (validFlights.length >= 5) {
+        break; // Stop fetching once we have enough choices for the user!
+      }
     }
 
     if (validFlights.length === 0) {
