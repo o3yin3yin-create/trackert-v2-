@@ -172,10 +172,10 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
     iconAnchor: [6, 6]
   });
   const palestineIcon = L.divIcon({
-    html: `<div style="background-color: #17171a; color: #5f6368; font-weight: 700; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; padding: 4px 12px; border-radius: 4px; white-space: nowrap; box-shadow: 0 0 15px 10px #17171a; text-align: center;">PALESTINE</div>`,
-    className: 'palestine-override-icon',
-    iconSize: [80, 20],
-    iconAnchor: [40, 10]
+    html: `<span style="color: #8c8c8c; font-size: 11px; font-weight: 600; letter-spacing: 2px; font-family: 'Noto Sans', 'DejaVu Sans', Arial, sans-serif; text-transform: uppercase; pointer-events: none;">Palestine</span>`,
+    className: 'palestine-label',
+    iconSize: [90, 16],
+    iconAnchor: [45, 8]
   });
 
   return (
@@ -239,6 +239,11 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
         .plane-icon-custom {
           background: transparent;
           border: none;
+        }
+        .palestine-label {
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
         }
       `}} />
     </div>

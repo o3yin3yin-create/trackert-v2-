@@ -268,29 +268,28 @@
   /* اللمعة الإضافية زي الصورة */
   background-image: radial-gradient(circle at 50% -20%, rgba(255,255,255,0.15), transparent 60%);
 }
-/* Custom Scrollbar - Auto Hiding */
+/* Custom Scrollbar - Dark & Minimal */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+.dark * {
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-  background: transparent;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.0);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 10px;
-  transition: background 0.3s ease;
-}
-:hover::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-}
-.dark :hover::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.4) !important;
+  background: rgba(255, 255, 255, 0.2);
 }
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3) !important;
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
