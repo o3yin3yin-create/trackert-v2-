@@ -74,21 +74,7 @@ export async function GET(request) {
     }
 
     if (validFlights.length === 0) {
-      // Fallback: If we hit a rate limit or found no matching live flights, 
-      // generate a perfectly timed synthetic flight to guarantee the user can focus!
-      const syntheticArrival = Math.floor(Date.now() / 1000) + targetMinutes * 60;
-      return NextResponse.json({
-        flights: [{
-          id: 'SYNTH-' + Math.floor(Math.random() * 100000),
-          airline: 'Daybase Focus Air',
-          callsign: 'DB' + Math.floor(Math.random() * 1000),
-          origin: 'FOCUS',
-          destination: 'SUCCESS',
-          remainingSeconds: targetMinutes * 60,
-          estimatedArrival: syntheticArrival,
-          model: 'Productivity Cruiser'
-        }]
-      });
+       return NextResponse.json({ error: "Could not fetch active flights. Try again." }, { status: 500 });
     }
 
     // Sort valid flights by how close they are to the desired duration

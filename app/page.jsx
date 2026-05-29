@@ -1756,12 +1756,12 @@ export default function App() {
                       ) : (
                         <div className="flex flex-col items-center gap-1 animate-in fade-in zoom-in duration-300">
                           <span className="text-4xl font-black text-black dark:text-white tabular-nums tracking-tighter">
-                            {tempFlightDuration}
+                            {Math.round(tempFlightDuration)}
                           </span>
                           <span className="text-xs font-bold text-gray-500 dark:text-white/50 tracking-widest uppercase">
                             {lang === 'ar' 
-                              ? (tempFlightDuration === 1 ? 'ساعة' : tempFlightDuration === 2 ? 'ساعتين' : tempFlightDuration <= 10 ? 'ساعات' : 'ساعة') 
-                              : (tempFlightDuration === 1 ? 'Hour' : 'Hours')}
+                              ? (Math.round(tempFlightDuration) === 1 ? 'ساعة' : Math.round(tempFlightDuration) === 2 ? 'ساعتين' : Math.round(tempFlightDuration) <= 10 ? 'ساعات' : 'ساعة') 
+                              : (Math.round(tempFlightDuration) === 1 ? 'Hour' : 'Hours')}
                           </span>
                         </div>
                       )}
@@ -1772,15 +1772,16 @@ export default function App() {
                       <input 
                         type="range" 
                         min="1" 
-                        max="12" 
+                        max="6" 
+                        step="0.1"
                         value={tempFlightDuration}
                         onChange={(e) => {
-                          setTempFlightDuration(parseInt(e.target.value));
+                          setTempFlightDuration(parseFloat(e.target.value));
                           setTempFlightRandom(false);
                         }}
-                        className="flex-1 h-2 bg-gray-200 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-black dark:accent-white"
+                        className="flex-1 h-2 bg-gray-200 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-black dark:accent-white transition-all"
                       />
-                      <span className="text-xs font-bold text-gray-400">12</span>
+                      <span className="text-xs font-bold text-gray-400">6</span>
                     </div>
 
                     <div className="flex w-full gap-3 mt-2">
@@ -1793,7 +1794,7 @@ export default function App() {
                       </button>
                       <button
                         onClick={() => {
-                          const val = tempFlightRandom ? 0 : tempFlightDuration;
+                          const val = tempFlightRandom ? 0 : Math.round(tempFlightDuration);
                           setFlightDurationFilter(val);
                           fetchFlights(val);
                         }}
@@ -3318,12 +3319,12 @@ export default function App() {
                               ) : (
                                 <div className="flex flex-col items-center gap-1 animate-in fade-in zoom-in duration-300">
                                   <span className="text-3xl font-black text-black dark:text-white tabular-nums tracking-tighter">
-                                    {tempFlightDuration}
+                                    {Math.round(tempFlightDuration)}
                                   </span>
                                   <span className="text-[10px] font-bold text-gray-500 dark:text-white/50 tracking-widest uppercase">
                                     {lang === 'ar' 
-                                      ? (tempFlightDuration === 1 ? 'ساعة' : tempFlightDuration === 2 ? 'ساعتين' : tempFlightDuration <= 10 ? 'ساعات' : 'ساعة') 
-                                      : (tempFlightDuration === 1 ? 'Hour' : 'Hours')}
+                                      ? (Math.round(tempFlightDuration) === 1 ? 'ساعة' : Math.round(tempFlightDuration) === 2 ? 'ساعتين' : Math.round(tempFlightDuration) <= 10 ? 'ساعات' : 'ساعة') 
+                                      : (Math.round(tempFlightDuration) === 1 ? 'Hour' : 'Hours')}
                                   </span>
                                 </div>
                               )}
@@ -3334,15 +3335,16 @@ export default function App() {
                               <input 
                                 type="range" 
                                 min="1" 
-                                max="12" 
+                                max="6" 
+                                step="0.1"
                                 value={tempFlightDuration}
                                 onChange={(e) => {
-                                  setTempFlightDuration(parseInt(e.target.value));
+                                  setTempFlightDuration(parseFloat(e.target.value));
                                   setTempFlightRandom(false);
                                 }}
-                                className="flex-1 h-1.5 bg-gray-200 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-black dark:accent-white"
+                                className="flex-1 h-1.5 bg-gray-200 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-black dark:accent-white transition-all"
                               />
-                              <span className="text-[10px] font-bold text-gray-400">12</span>
+                              <span className="text-[10px] font-bold text-gray-400">6</span>
                             </div>
 
                             <div className="flex w-full gap-2 mt-1">
@@ -3355,7 +3357,7 @@ export default function App() {
                               </button>
                               <button
                                 onClick={() => {
-                                  const val = tempFlightRandom ? 0 : tempFlightDuration;
+                                  const val = tempFlightRandom ? 0 : Math.round(tempFlightDuration);
                                   setFlightDurationFilter(val);
                                   fetchFlights(val);
                                 }}
