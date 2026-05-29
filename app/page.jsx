@@ -2147,6 +2147,7 @@ export default function App() {
                               onClick={() => {
                                 setIsFlightTimerRunning(false);
                                 setSelectedFlight(null);
+                                // Go back to flight list, not exit completely
                               }}
                               className="px-6 py-3 bg-red-500/10 border border-red-500/30 text-red-500 dark:text-red-400 rounded-2xl font-bold tracking-widest hover:bg-red-500/20 transition-colors active:scale-95 shadow-xl w-full"
                             >
@@ -2174,7 +2175,7 @@ export default function App() {
                       }}
                       className="text-xs font-bold text-black/50 hover:text-black dark:text-white/50 dark:hover:text-white transition-colors"
                     >
-                      {lang === 'ar' ? 'تغيير المدة' : 'Change Duration'}
+                      {lang === 'ar' ? 'بحث جديد' : 'New Search'}
                     </button>
                   </div>
                   
@@ -2202,18 +2203,17 @@ export default function App() {
                       </div>
                     ))}
                     {flightOptions.length === 0 && (
-                      <div className="text-center py-10 flex flex-col items-center gap-3">
-                        <span className="text-sm font-bold text-red-500/80 dark:text-red-400/80">{t('couldNotFindFlights')}</span>
-                        <button 
-                          onClick={() => {
-                            setFlightDurationFilter(null);
-                            setFlightOptions([]);
-                          }}
-                          className="px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl text-xs font-bold transition-colors"
-                        >
-                          {lang === 'ar' ? 'اختر مدة أخرى' : 'Try another duration'}
-                        </button>
-                      </div>
+                        <div className="text-center py-10 flex flex-col items-center gap-3">
+                          <span className="text-sm font-bold text-red-500/80 dark:text-red-400/80">{lang === 'ar' ? 'لم يتم العثور على رحلات' : 'No flights found'}</span>
+                          <button 
+                            onClick={() => {
+                              fetchFlights(0);
+                            }}
+                            className="px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl text-xs font-bold transition-colors"
+                          >
+                            {lang === 'ar' ? 'حاول مرة أخرى' : 'Try Again'}
+                          </button>
+                        </div>
                     )}
                   </div>
                 </div>
@@ -3262,6 +3262,7 @@ export default function App() {
                             onClick={() => {
                               setIsFlightTimerRunning(false);
                               setSelectedFlight(null);
+                              // Go back to flight list, not exit completely
                             }}
                             className="px-5 py-3 bg-red-500/10 border border-red-500/30 text-red-500 dark:text-red-400 rounded-2xl font-bold text-xs tracking-widest hover:bg-red-500/20 transition-colors active:scale-95 shadow-xl w-full"
                           >
@@ -3322,7 +3323,7 @@ export default function App() {
                               }}
                               className="text-[10px] font-bold text-black/50 hover:text-black dark:text-white/50 dark:hover:text-white transition-colors"
                             >
-                              {lang === 'ar' ? 'تغيير المدة' : 'Change Duration'}
+                              {lang === 'ar' ? 'بحث جديد' : 'New Search'}
                             </button>
                           </div>
                           {flightOptions.map((f, i) => (
@@ -3349,9 +3350,9 @@ export default function App() {
                           ))}
                           {flightOptions.length === 0 && !flightLoading && (
                             <div className="text-center py-10 flex flex-col items-center gap-3">
-                              <span className="text-xs font-bold text-red-400">{t('couldNotFindFlights')}</span>
-                              <button onClick={() => { setFlightDurationFilter(null); setFlightOptions([]); }} className="px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl text-[10px] font-bold transition-all active:scale-95">
-                                 {lang === 'ar' ? 'اختر مدة أخرى' : 'Try another duration'}
+                              <span className="text-xs font-bold text-red-400">{lang === 'ar' ? 'لم يتم العثور على رحلات' : 'No flights found'}</span>
+                              <button onClick={() => { fetchFlights(0); }} className="px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl text-[10px] font-bold transition-all active:scale-95">
+                                 {lang === 'ar' ? 'حاول مرة أخرى' : 'Try Again'}
                               </button>
                             </div>
                           )}

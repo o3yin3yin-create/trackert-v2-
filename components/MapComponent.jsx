@@ -171,12 +171,7 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
     iconSize: [12, 12],
     iconAnchor: [6, 6]
   });
-  const palestineIcon = L.divIcon({
-    html: `<span style="color: #8c8c8c; font-size: 11px; font-weight: 600; letter-spacing: 2px; font-family: 'Noto Sans', 'DejaVu Sans', Arial, sans-serif; text-transform: uppercase; pointer-events: none;">Palestine</span>`,
-    className: 'palestine-label',
-    iconSize: [90, 16],
-    iconAnchor: [45, 8]
-  });
+
 
   return (
     <div style={{ width: '100%', height: '100%', background: '#090a0f' }}>
@@ -190,13 +185,9 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
         {/* Fast CartoDB Dark tiles with grid background */}
         <TileLayer
           className="dark-grid-tiles"
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
           subdomains={['a','b','c','d']}
         />
-
-        {/* Override label for Palestine */}
-        <Marker position={[31.0461, 34.8516]} icon={palestineIcon} interactive={false} zIndexOffset={500} />
-
 
         {/* Flight path curve as dotted line */}
         {curvePoints.length > 0 && (
@@ -239,11 +230,6 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
         .plane-icon-custom {
           background: transparent;
           border: none;
-        }
-        .palestine-label {
-          background: transparent !important;
-          border: none !important;
-          box-shadow: none !important;
         }
       `}} />
     </div>
