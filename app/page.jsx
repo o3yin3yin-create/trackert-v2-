@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Dices } from 'lucide-react';
+import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices } from 'lucide-react';
 import { messaging, getToken } from '../lib/firebase';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -449,6 +449,29 @@ export default function App() {
   const [isCabinHumPlaying, setIsCabinHumPlaying] = useState(false);
   const [isAudioSettingsOpen, setIsAudioSettingsOpen] = useState(false);
   const [audioVolume, setAudioVolume] = useState(0.55);
+
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
+
   const [audioType, setAudioType] = useState('cabin');
   const [isPomodoroOpen, setIsPomodoroOpen] = useState(false);
   const [isEditingPomodoro, setIsEditingPomodoro] = useState(false);
@@ -2464,6 +2487,15 @@ export default function App() {
                   <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${!isOnline ? 'bg-red-500 shadow-[0_0_8px_#ef4444]' : isSyncing ? 'bg-[#FF9F0A] pulse-glow shadow-[0_0_8px_#FF9F0A]' : 'bg-green-500 shadow-[0_0_8px_#22c55e]'}`} />
                   {!isOnline ? 'Offline' : isSyncing ? 'Syncing' : 'Synced'}
                 </span>
+
+              {/* Fullscreen Toggle */}
+              <button
+                onClick={toggleFullscreen}
+                className="p-2 liquid-panel rounded-full text-black dark:text-white/80 hover:text-black dark:hover:text-white transition-all duration-200 active:scale-90"
+                title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+              >
+                {isFullscreen ? <Minimize size={18} strokeWidth={2.2} className="text-black dark:text-white" /> : <Maximize size={18} strokeWidth={2.2} className="text-black dark:text-white" />}
+              </button>
 
               {/* Settings Dropdown */}
               <div className="relative z-50">
