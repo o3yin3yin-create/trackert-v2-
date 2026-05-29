@@ -19,6 +19,8 @@ model User {
   themeColor     String     @default("#007AFF")
   emergencyCards Json?      @default("[]") // Custom emergency cards
   grantedCards   Json?      @default("{}") // The log of opened cards
+  activeSessionType String? // "pomodoro" or "flight"
+  activeSessionData Json?   // Session details
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   

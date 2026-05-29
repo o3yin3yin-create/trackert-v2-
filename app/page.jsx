@@ -630,6 +630,34 @@ export default function App() {
                setGrantedCardsLog(state.grantedCardsLog);
                if (typeof window !== 'undefined') localStorage.setItem('daybase_granted_cards_log_v4', JSON.stringify(state.grantedCardsLog));
             }
+
+            // Restore Active Session
+            if (state.activeSessionType === 'pomodoro' && state.activeSessionData) {
+               const now = Math.floor(Date.now() / 1000);
+               const remaining = state.activeSessionData.endTime - now;
+               if (remaining > 0) {
+                  setPomodoroInitialTime(state.activeSessionData.initialTime);
+                  setPomodoroTime(remaining);
+                  setActivePomodoroTask({ name: state.activeSessionData.taskName || '' });
+                  setIsTimerRunning(true);
+                  setIsPomodoroOpen(true);
+               } else {
+                  // Session expired while offline
+                  fetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
+               }
+            } else if (state.activeSessionType === 'flight' && state.activeSessionData) {
+               const now = Math.floor(Date.now() / 1000);
+               const remaining = state.activeSessionData.flight.estimatedArrival - now;
+               if (remaining > 0) {
+                  setSelectedFlight(state.activeSessionData.flight);
+                  setFlightTimer(remaining);
+                  setIsFlightTimerRunning(true);
+                  setIsFlightFocusOpen(true);
+               } else {
+                  // Flight landed while offline
+                  fetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
+               }
+            }
             
             // Re-apply theme class
             if (state.theme === 'dark') document.documentElement.classList.add('dark');
@@ -1132,6 +1160,38 @@ export default function App() {
       loadCloudData();
     }
   }, [user, isOnline, isMounted, isCloudLoaded]);
+
+  // --- Sync Active Focus Sessions Across Devices ---
+  useEffect(() => {
+    if (!isCloudLoaded || !isMounted) return;
+    if (isTimerRunning) {
+      const endTime = Math.floor(Date.now() / 1000) + pomodoroTime;
+      fetch('/api/session', { 
+        method: 'POST', 
+        body: JSON.stringify({ 
+          type: 'pomodoro', 
+          data: { endTime, initialTime: pomodoroInitialTime, taskName: activePomodoroTask.name } 
+        }) 
+      }).catch(console.error);
+    } else {
+      fetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(console.error);
+    }
+  }, [isTimerRunning, isCloudLoaded, isMounted]);
+
+  useEffect(() => {
+    if (!isCloudLoaded || !isMounted) return;
+    if (isFlightTimerRunning && selectedFlight) {
+      fetch('/api/session', { 
+        method: 'POST', 
+        body: JSON.stringify({ 
+          type: 'flight', 
+          data: { flight: selectedFlight } 
+        }) 
+      }).catch(console.error);
+    } else if (!isFlightTimerRunning) {
+      fetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(console.error);
+    }
+  }, [isFlightTimerRunning, isCloudLoaded, isMounted]);
 
   // --- Date Nav Functions ---
   const handlePrevDay = () => {

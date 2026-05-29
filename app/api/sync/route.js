@@ -39,6 +39,8 @@ export async function GET() {
       sleepData: {},
       focusTimeData: {},
       pomodoroTasksData: {},
+      activeSessionType: user.activeSessionType,
+      activeSessionData: user.activeSessionData,
     };
 
     // Unpack daily logs into their respective maps
@@ -89,6 +91,8 @@ export async function POST(req) {
         themeColor: state.themeColor || '#007AFF',
         emergencyCards: state.emergencyCards || [],
         grantedCards: state.grantedCardsLog || {},
+        activeSessionType: state.activeSessionType || null,
+        activeSessionData: state.activeSessionData || null,
       },
       update: {
         theme: state.theme,
@@ -97,6 +101,8 @@ export async function POST(req) {
         themeColor: state.themeColor,
         emergencyCards: state.emergencyCards || [],
         grantedCards: state.grantedCardsLog || {},
+        ...(state.activeSessionType !== undefined && { activeSessionType: state.activeSessionType }),
+        ...(state.activeSessionData !== undefined && { activeSessionData: state.activeSessionData }),
       }
     });
 
