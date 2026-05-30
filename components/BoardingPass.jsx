@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Plane, Download } from 'lucide-react';
 import html2canvas from 'html2canvas';
@@ -27,6 +27,21 @@ const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart })
     ) * 111 // rough approximation of degrees to km
   );
 
+  const barcodeBars = useMemo(() => {
+    let hash = 0;
+    const str = flight.id || 'abc';
+    for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    const bars = [];
+    let state = Math.abs(hash) || 12345;
+    for (let i = 0; i < 50; i++) {
+      state = (state * 9301 + 49297) % 233280;
+      bars.push((state / 233280) * 4 + 1);
+    }
+    return bars;
+  }, [flight.id]);
+
+  const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
   return (
     <motion.div 
       initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -45,12 +60,14 @@ const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart })
             boxShadow: '0 25px 50px -12px rgba(16, 185, 129, 0.25)' // emerald shadow for brand accent
           }}
         >
-          {/* Subtle World Map Background (SVG data URI for simplicity) */}
-          <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{
-            backgroundImage: `url('data:image/svg+xml;utf8,<svg viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg"><path d="M... (world map path here) ..." fill="%23000"/></svg>')`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center'
-          }} />
+          {/* Subtle Radar/Map Background */}
+          <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{
+            backgroundImage: `radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.2) 2px, transparent 2px)`,
+            backgroundSize: '20px 20px'
+          }}>
+            {/* Added a subtle globe/radar visual effect instead of heavy SVG map for html2canvas compatibility */}
+            <div className="absolute inset-0 border-[40px] border-emerald-900/10 rounded-full scale-[2] blur-3xl mix-blend-multiply" />
+          </div>
 
           {/* Top Section */}
           <div className="p-8 pb-6 relative z-10">
@@ -61,9 +78,12 @@ const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart })
               </div>
               
               <div className="flex flex-col items-center mx-4 flex-1">
-                <Plane size={24} className="text-gray-300 mb-1" />
+                <Plane size={24} className="text-emerald-500 mb-1" />
                 <div className="w-full h-[2px] bg-gray-200 border-t-2 border-dashed border-gray-300"></div>
-                <span className="text-xs font-bold text-gray-400 mt-2">
+                <span className="text-[10px] font-bold text-gray-400 mt-2 uppercase tracking-widest">
+                  {lang === 'ar' ? 'مدة الرحلة' : 'Duration'}
+                </span>
+                <span className="text-sm font-black text-black">
                   {Math.floor(flight.remainingSeconds / 3600)}h {Math.floor((flight.remainingSeconds % 3600) / 60)}m
                 </span>
               </div>
@@ -85,7 +105,7 @@ const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart })
               </div>
               <div className="flex flex-col">
                 <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{lang === 'ar' ? 'الصعود' : 'Boarding'}</span>
-                <span className="text-lg font-black text-emerald-500">NOW</span>
+                <span className="text-lg font-black text-emerald-500">{currentTime}</span>
               </div>
               <div className="flex flex-col items-end">
                 <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{lang === 'ar' ? 'التاريخ' : 'Date'}</span>
@@ -105,15 +125,18 @@ const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart })
             <div className="absolute right-[-16px] w-8 h-8 bg-[#090a0f] rounded-full"></div>
           </div>
 
-          {/* Bottom Section - Barcode */}
-          <div className="p-8 pt-4 pb-10 flex flex-col items-center justify-center relative z-10 bg-white">
+          {/* Bottom Section - Barcode & Link */}
+          <div className="p-8 pt-4 pb-8 flex flex-col items-center justify-center relative z-10 bg-white">
             {/* Fake Barcode using CSS borders */}
-            <div className="w-full flex justify-between h-16">
-               {[...Array(50)].map((_, i) => (
-                 <div key={i} className="bg-black h-full" style={{ width: `${Math.random() * 4 + 1}px`, opacity: 0.8 }} />
+            <div className="w-full flex justify-between h-14">
+               {barcodeBars.map((width, i) => (
+                 <div key={i} className="bg-black h-full" style={{ width: `${width}px`, opacity: 0.85 }} />
                ))}
             </div>
-            <span className="text-[10px] font-mono mt-2 tracking-[0.3em] text-gray-400">{flight.id.toUpperCase()}</span>
+            <div className="flex items-center justify-between w-full mt-3">
+              <span className="text-[10px] font-mono tracking-[0.3em] text-gray-400">{flight.id.toUpperCase()}</span>
+              <span className="text-[9px] font-bold tracking-widest text-emerald-600/40 uppercase">trackert-v2.vercel.app</span>
+            </div>
           </div>
 
           {/* Arrived Overlay */}

@@ -1725,11 +1725,7 @@ export default function App() {
             isArrived={flightTimer === 0 && selectedFlight}
             onStart={() => {
               setIsBoardingPassOpen(false);
-              if (!selectedSeat) {
-                setIsSeatSelectionOpen(true);
-              } else {
-                setIsFlightTimerRunning(true);
-              }
+              setIsFlightTimerRunning(true);
             }}
             onClose={() => {
               setIsBoardingPassOpen(false);
@@ -1793,7 +1789,7 @@ export default function App() {
                           if (data.flight) {
                             setSelectedFlight({ ...data.flight, initialSeconds: data.flight.remainingSeconds });
                             setFlightTimer(data.flight.remainingSeconds);
-                            setIsBoardingPassOpen(true);
+                            setIsSeatSelectionOpen(true);
                           } else {
                             alert(data.error || 'Flight not found');
                           }
@@ -2240,7 +2236,7 @@ export default function App() {
                         const liveRemaining = f.estimatedArrival - Math.floor(Date.now() / 1000);
                         setSelectedFlight({...f, initialSeconds: liveRemaining}); 
                         setFlightTimer(Math.max(0, liveRemaining)); 
-                        setIsBoardingPassOpen(true);
+                        setIsSeatSelectionOpen(true);
                       }} className="bg-white/10 dark:bg-black/30 border border-black/5 dark:border-white/5 p-4 rounded-2xl cursor-pointer hover:bg-white/30 dark:hover:bg-black/50 transition-colors active:scale-95 shrink-0">
                         <div className="flex justify-between items-start mb-2">
                           <span className="font-bold text-sm flex items-center gap-2 text-black dark:text-white">
@@ -3362,7 +3358,7 @@ export default function App() {
                                   if (data.flight) {
                                     setSelectedFlight({ ...data.flight, initialSeconds: data.flight.remainingSeconds });
                                     setFlightTimer(data.flight.remainingSeconds);
-                                    setIsBoardingPassOpen(true);
+                                    setIsSeatSelectionOpen(true);
                                   } else {
                                     alert(data.error || 'Flight not found');
                                   }
@@ -3427,7 +3423,7 @@ export default function App() {
                               const liveRemaining = f.estimatedArrival - Math.floor(Date.now() / 1000);
                               setSelectedFlight({...f, initialSeconds: liveRemaining}); 
                               setFlightTimer(Math.max(0, liveRemaining)); 
-                              setIsBoardingPassOpen(true);
+                              setIsSeatSelectionOpen(true);
                             }} className="bg-white/10 dark:bg-black/35 border border-black/5 dark:border-white/5 p-3 rounded-xl cursor-pointer hover:bg-white/30 dark:hover:bg-black/50 transition-all duration-200 active:scale-[0.98]">
                               <div className="flex justify-between items-start mb-1 select-none">
                                 <span className="font-bold text-xs text-black dark:text-white flex items-center gap-1.5 leading-tight">
