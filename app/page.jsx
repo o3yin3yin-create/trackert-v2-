@@ -472,6 +472,7 @@ export default function App() {
   const [flightLoading, setFlightLoading] = useState(false);
   const [flightTimer, setFlightTimer] = useState(0);
   const [isFlightTimerRunning, setIsFlightTimerRunning] = useState(false);
+  const [liveTelemetry, setLiveTelemetry] = useState(null);
   const [isMapView, setIsMapView] = useState(false);
   const [isCameraLocked, setIsCameraLocked] = useState(true);
   const [isScreensaverOpen, setIsScreensaverOpen] = useState(false);
@@ -1954,6 +1955,7 @@ export default function App() {
                                 originCoords={originCoords} 
                                 destCoords={destCoords} 
                                 progress={progress} 
+                                liveTelemetry={liveTelemetry}
                                 isCameraLocked={isCameraLocked} 
                                 themeColor={themeColor} 
                                 padding={[20, 20]} 
@@ -3136,6 +3138,7 @@ export default function App() {
                               originCoords={originCoords} 
                               destCoords={destCoords} 
                               progress={progress} 
+                              liveTelemetry={liveTelemetry}
                               isCameraLocked={isCameraLocked} 
                               themeColor={themeColor} 
                               padding={[20, 20]} 
@@ -3876,6 +3879,7 @@ export default function App() {
                         originCoords={originCoords} 
                         destCoords={destCoords} 
                         progress={progress} 
+                        liveTelemetry={liveTelemetry}
                         isCameraLocked={isCameraLocked} 
                         themeColor={themeColor} 
                         padding={[50, 50]} 

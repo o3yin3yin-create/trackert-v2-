@@ -44,7 +44,7 @@ const getPlanePositionAndAngle = (p0, p1, p2, t) => {
   return { lat, lng, angle };
 };
 
-const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, themeColor = "#f97316", padding }) => {
+const MapComponent = ({ originCoords, destCoords, progress, liveTelemetry, isCameraLocked, themeColor = "#f97316", padding }) => {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -68,61 +68,59 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
     return generateBezierCurve(p0, p1, p2);
   }, [p0, p1, p2]);
 
-  const SmoothPlaneMarker = ({ p0, p1, p2, targetProgress, isCameraLocked, mapPadding }) => {
+  const SmoothPlaneMarker = ({ p0, p1, p2, targetProgress, isCameraLocked, mapPadding, liveTelemetry }) => {
     const markerRef = useRef(null);
-    const currentProgress = useRef(targetProgress);
     const map = useMap();
+    
+    // Store current exact position
+    const currentPos = useRef(liveTelemetry || getPlanePositionAndAngle(p0, p1, p2, targetProgress));
+    // Store target position to animate towards
+    const targetPos = useRef(liveTelemetry || getPlanePositionAndAngle(p0, p1, p2, targetProgress));
 
-    // Re-fit bounds immediately when camera lock is turned OFF
     useEffect(() => {
+      // Re-fit bounds immediately when camera lock is turned OFF
       if (!isCameraLocked && p0 && p2) {
         const bounds = L.latLngBounds([p0.lat, p0.lng], [p2.lat, p2.lng]);
         map.fitBounds(bounds, { padding: mapPadding, animate: true, duration: 1.5 });
       }
     }, [isCameraLocked, map, p0, p2, mapPadding]);
 
-    // Handle initial camera lock zoom
     useEffect(() => {
-      if (isCameraLocked && p0 && p1 && p2) {
-        const data = getPlanePositionAndAngle(p0, p1, p2, currentProgress.current);
-        map.setView([data.lat, data.lng], 6, { animate: true, duration: 1.0 });
+      // Update target position
+      if (liveTelemetry) {
+        targetPos.current = liveTelemetry;
+      } else {
+        targetPos.current = getPlanePositionAndAngle(p0, p1, p2, targetProgress);
       }
-    }, [isCameraLocked, map, p0, p1, p2]);
+    }, [liveTelemetry, targetProgress, p0, p1, p2]);
 
     useEffect(() => {
       let animationFrame;
       let startTime = performance.now();
-      const startP = currentProgress.current;
-      const distance = targetProgress - startP;
+      const startPos = { ...currentPos.current };
       
-      // Snap if jump is too big or no movement
-      if (Math.abs(distance) > 0.05 || distance === 0) {
-        currentProgress.current = targetProgress;
-        const data = getPlanePositionAndAngle(p0, p1, p2, targetProgress);
-        if (markerRef.current) {
-          markerRef.current.setLatLng([data.lat, data.lng]);
-          const inner = markerRef.current.getElement()?.querySelector('.plane-icon-inner');
-          if (inner) inner.style.transform = `rotate(${data.angle}deg)`;
-        }
-        return;
-      }
-
       const animate = (time) => {
         const elapsed = time - startTime;
-        // Extrapolate slightly to avoid pulsing if React state updates are delayed
-        const t = Math.min(1.2, elapsed / 1000);
-        currentProgress.current = startP + distance * t;
+        // When using liveTelemetry, updates come every ~10s, but we interpolate over 2s to catch up smoothly
+        // When using local progress, updates come every 1s, so we interpolate over 1s
+        const duration = liveTelemetry ? 2000 : 1000;
+        const t = Math.min(1.0, elapsed / duration);
         
-        const data = getPlanePositionAndAngle(p0, p1, p2, currentProgress.current);
+        const lat = (1 - t) * startPos.lat + t * targetPos.current.lat;
+        const lng = (1 - t) * startPos.lng + t * targetPos.current.lng;
+        
+        // Simple angle interpolation or just snap to target angle
+        const angle = targetPos.current.angle;
+        
+        currentPos.current = { lat, lng, angle };
         
         if (markerRef.current) {
-          markerRef.current.setLatLng([data.lat, data.lng]);
+          markerRef.current.setLatLng([lat, lng]);
           const inner = markerRef.current.getElement()?.querySelector('.plane-icon-inner');
-          if (inner) inner.style.transform = `rotate(${data.angle}deg)`;
+          if (inner) inner.style.transform = `rotate(${angle}deg)`;
           
           if (isCameraLocked) {
-            // Perfectly track the plane at 60fps without queued animations
-            map.setView([data.lat, data.lng], map.getZoom(), { animate: false });
+            map.setView([lat, lng], map.getZoom(), { animate: false });
           }
         }
 
@@ -133,7 +131,7 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
       
       animationFrame = requestAnimationFrame(animate);
       return () => cancelAnimationFrame(animationFrame);
-    }, [targetProgress, p0, p1, p2, isCameraLocked, map]);
+    }, [targetPos.current, isCameraLocked, map, liveTelemetry]);
 
     const icon = useMemo(() => L.divIcon({
       html: `<div class="plane-icon-inner" style="transform: rotate(0deg); display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
@@ -153,16 +151,14 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
       iconAnchor: [12, 12],
     }), []);
 
-    const initialData = getPlanePositionAndAngle(p0, p1, p2, currentProgress.current);
-
     useEffect(() => {
       if (markerRef.current) {
         const inner = markerRef.current.getElement()?.querySelector('.plane-icon-inner');
-        if (inner) inner.style.transform = `rotate(${initialData.angle}deg)`;
+        if (inner) inner.style.transform = `rotate(${currentPos.current.angle}deg)`;
       }
-    }, [initialData.angle]);
+    }, []);
 
-    return <Marker ref={markerRef} position={[initialData.lat, initialData.lng]} icon={icon} zIndexOffset={1000} />;
+    return <Marker ref={markerRef} position={[currentPos.current.lat, currentPos.current.lng]} icon={icon} zIndexOffset={1000} />;
   };
 
   const cityIcon = (color) => L.divIcon({
@@ -213,6 +209,7 @@ const MapComponent = ({ originCoords, destCoords, progress, isCameraLocked, them
             p1={p1} 
             p2={p2} 
             targetProgress={progress || 0} 
+            liveTelemetry={liveTelemetry}
             isCameraLocked={isCameraLocked} 
             mapPadding={currentMapPadding}
           />
