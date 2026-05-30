@@ -564,12 +564,12 @@ export default function App() {
     if (typeof window === 'undefined') return;
     haptic('light');
     if (isCabinHumPlaying) {
-      setIsAudioSettingsOpen(true);
+      stopHumSynthesis();
+      setIsCabinHumPlaying(false);
     } else {
       startHumSynthesis(audioType);
       updateHumVolume(audioVolume);
       setIsCabinHumPlaying(true);
-      setIsAudioSettingsOpen(true);
     }
   };
 
