@@ -1739,7 +1739,13 @@ export default function App() {
             isArrived={flightTimer === 0 && selectedFlight}
             onStart={() => {
               setIsBoardingPassOpen(false);
-              getAudioCtx();
+              const ctx = getAudioCtx();
+              if (ctx) {
+                const osc = ctx.createOscillator();
+                osc.connect(ctx.destination);
+                osc.start(0);
+                osc.stop(0.01);
+              }
               setIsFlightTimerRunning(true);
             }}
             onClose={() => {

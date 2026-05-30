@@ -83,6 +83,20 @@ export async function GET(request) {
     // Sort longest first
     validFlights.sort((a, b) => b.remainingSeconds - a.remainingSeconds);
 
+    // Inject a 1-minute test flight
+    validFlights.unshift({
+      id: "TEST-1MIN",
+      airline: "Test Airlines",
+      callsign: "TST001",
+      origin: "TST",
+      destination: "TST",
+      originCoords: { lat: 0, lng: 0 },
+      destCoords: { lat: 1, lng: 1 },
+      remainingSeconds: 60,
+      estimatedArrival: Math.floor(Date.now() / 1000) + 60,
+      model: "Test Aircraft"
+    });
+
     return NextResponse.json({ flights: validFlights.slice(0, 25) });
   } catch (error) {
     console.error("API Error:", error);

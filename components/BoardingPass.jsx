@@ -134,26 +134,29 @@ const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart })
               transition={{ type: 'spring', damping: 12, delay: 0.5 }}
               className="absolute inset-0 flex items-center justify-center pointer-events-none z-50"
             >
-              <svg viewBox="0 0 240 120" className="w-64 h-32 opacity-80 mix-blend-multiply drop-shadow-sm">
+              <svg viewBox="0 0 240 100" className="w-64 h-28 opacity-80 mix-blend-multiply drop-shadow-sm pointer-events-none" style={{ transform: 'rotate(-5deg)' }}>
                 <defs>
                   <filter id="grunge">
-                    <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="4" result="noise" />
-                    <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 4 -1.5" in="noise" result="coloredNoise" />
+                    <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="4" result="noise" />
+                    <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 5 -2" in="noise" result="coloredNoise" />
                     <feComposite operator="in" in="SourceGraphic" in2="coloredNoise" />
                   </filter>
                 </defs>
                 <g filter="url(#grunge)">
-                  <rect x="5" y="5" width="230" height="110" fill="none" stroke="#0f172a" strokeWidth="6" rx="4" />
-                  <rect x="12" y="12" width="216" height="96" fill="none" stroke="#0f172a" strokeWidth="2" rx="2" />
+                  {/* Thick outer border */}
+                  <rect x="5" y="5" width="230" height="90" fill="none" stroke="#1e293b" strokeWidth="6" />
+                  {/* Inner thin border */}
+                  <rect x="12" y="12" width="216" height="76" fill="none" stroke="#1e293b" strokeWidth="2" />
+                  {/* Middle divider */}
+                  <line x1="12" y1="54" x2="228" y2="54" stroke="#1e293b" strokeWidth="3" />
                   
-                  <text x="120" y="50" fill="#0f172a" fontSize="36" fontFamily="Courier New, monospace" fontWeight="900" textAnchor="middle" letterSpacing="4">
-                    {lang === 'ar' ? 'وصلت' : 'ARRIVED'}
-                  </text>
+                  {/* Top Text */}
+                  <text x="120" y="42" fill="#1e293b" fontSize="28" fontFamily="Arial, Helvetica, sans-serif" fontWeight="900" textAnchor="middle" letterSpacing="4">{lang === 'ar' ? 'وصلت' : 'ARRIVED'}</text>
                   
-                  <line x1="20" y1="65" x2="220" y2="65" stroke="#0f172a" strokeWidth="2" strokeDasharray="6 4" />
-                  
-                  <text x="120" y="85" fill="#0f172a" fontSize="16" fontFamily="Courier New, monospace" fontWeight="bold" textAnchor="middle">{date}</text>
-                  <text x="120" y="105" fill="#0f172a" fontSize="14" fontFamily="Courier New, monospace" fontWeight="bold" textAnchor="middle" letterSpacing="2">{flight.destination.slice(0, 15)}</text>
+                  {/* Bottom Texts */}
+                  <text x="25" y="78" fill="#1e293b" fontSize="14" fontFamily="Arial, Helvetica, sans-serif" fontWeight="bold">{lang === 'ar' ? 'رحلة' : 'FLIGHT'}</text>
+                  <text x="120" y="80" fill="#1e293b" fontSize="22" fontFamily="Arial, Helvetica, sans-serif" fontWeight="900" textAnchor="middle">{flight.callsign}</text>
+                  <text x="215" y="78" fill="#1e293b" fontSize="14" fontFamily="Arial, Helvetica, sans-serif" fontWeight="bold" textAnchor="end">{date.split('/')[0]}</text>
                 </g>
               </svg>
             </motion.div>
