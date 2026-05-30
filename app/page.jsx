@@ -1837,8 +1837,8 @@ export default function App() {
                       {/* Curved Aviation Radar or Live Map */}
                       {isMapView ? (
                         (() => {
-                          const originCoords = getAirportCoords(selectedFlight.origin);
-                          const destCoords = getAirportCoords(selectedFlight.destination);
+                          const originCoords = (selectedFlight.originCoords?.lat && selectedFlight.originCoords?.lng) ? selectedFlight.originCoords : getAirportCoords(selectedFlight.origin);
+                          const destCoords = (selectedFlight.destCoords?.lat && selectedFlight.destCoords?.lng) ? selectedFlight.destCoords : getAirportCoords(selectedFlight.destination);
                           const p0 = projectCoords(originCoords.lat, originCoords.lng);
                           const p2 = projectCoords(destCoords.lat, destCoords.lng);
                           
@@ -3018,8 +3018,8 @@ export default function App() {
                     {/* Curved Aviation Radar Track or Live Map */}
                     {isMapView ? (
                       (() => {
-                        const originCoords = getAirportCoords(selectedFlight.origin);
-                        const destCoords = getAirportCoords(selectedFlight.destination);
+                        const originCoords = (selectedFlight.originCoords?.lat && selectedFlight.originCoords?.lng) ? selectedFlight.originCoords : getAirportCoords(selectedFlight.origin);
+                        const destCoords = (selectedFlight.destCoords?.lat && selectedFlight.destCoords?.lng) ? selectedFlight.destCoords : getAirportCoords(selectedFlight.destination);
                         const p0 = projectCoords(originCoords.lat, originCoords.lng);
                         const p2 = projectCoords(destCoords.lat, destCoords.lng);
                         
@@ -3691,8 +3691,8 @@ export default function App() {
             }}>
               {/* Fullscreen scrolling vector map */}
               {(() => {
-                const originCoords = getAirportCoords(selectedFlight.origin);
-                const destCoords = getAirportCoords(selectedFlight.destination);
+                const originCoords = (selectedFlight.originCoords?.lat && selectedFlight.originCoords?.lng) ? selectedFlight.originCoords : getAirportCoords(selectedFlight.origin);
+                const destCoords = (selectedFlight.destCoords?.lat && selectedFlight.destCoords?.lng) ? selectedFlight.destCoords : getAirportCoords(selectedFlight.destination);
                 const p0 = projectCoords(originCoords.lat, originCoords.lng);
                 const p2 = projectCoords(destCoords.lat, destCoords.lng);
                 

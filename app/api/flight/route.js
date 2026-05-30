@@ -58,6 +58,14 @@ export async function GET(request) {
           callsign: details.identification?.callsign || flight.callsign,
           origin: details.airport.origin?.code?.iata || details.airport.origin?.name || 'Unknown',
           destination: details.airport.destination?.code?.iata || details.airport.destination?.name || 'Unknown',
+          originCoords: {
+            lat: details.airport.origin?.position?.latitude || 0,
+            lng: details.airport.origin?.position?.longitude || 0
+          },
+          destCoords: {
+            lat: details.airport.destination?.position?.latitude || 0,
+            lng: details.airport.destination?.position?.longitude || 0
+          },
           remainingSeconds,
           estimatedArrival,
           model: details.aircraft?.model?.text || 'Unknown Aircraft'
