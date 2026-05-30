@@ -60,14 +60,13 @@ const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart })
             boxShadow: '0 25px 50px -12px rgba(16, 185, 129, 0.25)' // emerald shadow for brand accent
           }}
         >
-          {/* Subtle Radar/Map Background */}
+          {/* World Map Background */}
           <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{
-            backgroundImage: `radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.2) 2px, transparent 2px)`,
-            backgroundSize: '20px 20px'
-          }}>
-            {/* Added a subtle globe/radar visual effect instead of heavy SVG map for html2canvas compatibility */}
-            <div className="absolute inset-0 border-[40px] border-emerald-900/10 rounded-full scale-[2] blur-3xl mix-blend-multiply" />
-          </div>
+            backgroundImage: `url('/world-map.svg')`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          }} />
 
           {/* Top Section */}
           <div className="p-8 pb-6 relative z-10">
