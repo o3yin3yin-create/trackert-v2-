@@ -851,20 +851,7 @@ export default function App() {
             return updated;
           });
           
-          setPomodoroTasksData(prev => {
-            const flightLabel = `✈️ ${selectedFlight.origin} → ${selectedFlight.destination}`;
-            const flightColor = '#007AFF';
-            const updated = { ...prev };
-            if (!updated[todayStr]) updated[todayStr] = [];
-            const idx = updated[todayStr].findIndex(tk => tk.name === flightLabel && tk.color === flightColor);
-            if (idx > -1) {
-              updated[todayStr][idx].timeSpent += delta;
-            } else {
-              updated[todayStr].push({ name: flightLabel, color: flightColor, timeSpent: delta });
-            }
-            localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(updated));
-            return updated;
-          });
+          // Flight time is no longer added to pomodoro Tasks Data. It is only kept in finishedTickets.
         }
       } else {
         flightLastTickRef.current = null;
@@ -1809,7 +1796,7 @@ export default function App() {
                           const res = await fetch(`/api/flight/search?q=${encodeURIComponent(searchQuery)}`);
                           const data = await res.json();
                           if (data.flight) {
-                            setSelectedFlight({ ...data.flight, initialSeconds: data.flight.remainingSeconds });
+                            setSelectedFlight({ ...data.flight, initialSeconds: data.flight.totalSeconds || data.flight.remainingSeconds });
                             setFlightTimer(data.flight.remainingSeconds);
                             setIsSeatSelectionOpen(true);
                           } else {
@@ -2257,7 +2244,7 @@ export default function App() {
                     {flightOptions.map((f, i) => (
                       <div key={i} onClick={() => { 
                         const liveRemaining = f.estimatedArrival - Math.floor(Date.now() / 1000);
-                        setSelectedFlight({...f, initialSeconds: liveRemaining}); 
+                        setSelectedFlight({...f, initialSeconds: f.totalSeconds || liveRemaining}); 
                         setFlightTimer(Math.max(0, liveRemaining)); 
                         setIsSeatSelectionOpen(true);
                       }} className="bg-white/10 dark:bg-black/30 border border-black/5 dark:border-white/5 p-4 rounded-2xl cursor-pointer hover:bg-white/30 dark:hover:bg-black/50 transition-colors active:scale-95 shrink-0">
@@ -3380,7 +3367,7 @@ export default function App() {
                                   const res = await fetch(`/api/flight/search?q=${encodeURIComponent(searchQuery)}`);
                                   const data = await res.json();
                                   if (data.flight) {
-                                    setSelectedFlight({ ...data.flight, initialSeconds: data.flight.remainingSeconds });
+                                    setSelectedFlight({ ...data.flight, initialSeconds: data.flight.totalSeconds || data.flight.remainingSeconds });
                                     setFlightTimer(data.flight.remainingSeconds);
                                     setIsSeatSelectionOpen(true);
                                   } else {
@@ -3445,7 +3432,7 @@ export default function App() {
                           {flightOptions.map((f, i) => (
                             <div key={i} onClick={() => { 
                               const liveRemaining = f.estimatedArrival - Math.floor(Date.now() / 1000);
-                              setSelectedFlight({...f, initialSeconds: liveRemaining}); 
+                              setSelectedFlight({...f, initialSeconds: f.totalSeconds || liveRemaining}); 
                               setFlightTimer(Math.max(0, liveRemaining)); 
                               setIsSeatSelectionOpen(true);
                             }} className="bg-white/10 dark:bg-black/35 border border-black/5 dark:border-white/5 p-3 rounded-xl cursor-pointer hover:bg-white/30 dark:hover:bg-black/50 transition-all duration-200 active:scale-[0.98]">
@@ -3583,22 +3570,43 @@ export default function App() {
                 <div className="mt-6 border-t border-black/10 dark:border-white/10 pt-4 w-full">
                   <h4 className="text-[10px] font-bold text-black/50 dark:text-white/50 uppercase tracking-widest mb-3 text-center">{lang === 'ar' ? 'سجل تذاكر الرحلات' : 'Flight Tickets History'}</h4>
                   {finishedTickets.length > 0 ? (
-                    <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
-                      {finishedTickets.map((ticket, idx) => (
-                        <div key={idx} onClick={() => {
-                          setSelectedFlight(ticket);
-                          setSelectedSeat(ticket.seat);
-                          setFlightTimer(0);
-                          setIsBoardingPassOpen(true);
-                          setIsAnalyticsModalOpen(false);
-                        }} className="flex justify-between items-center bg-black/5 dark:bg-white/5 px-3 py-3 rounded-xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
+                    <div className="flex flex-col items-center mt-6 relative pb-10 w-full" style={{ paddingBottom: `${Math.min(finishedTickets.length * 40, 160)}px` }}>
+                      {finishedTickets.map((ticket, idx) => {
+                        const isTopCard = idx === 0;
+                        const zIndex = finishedTickets.length - idx;
+                        const opacity = Math.max(0.3, 1 - (idx * 0.2));
+                        const scale = Math.max(0.8, 1 - (idx * 0.04));
+                        const translateY = isTopCard ? 0 : -30;
+                        const bgColor = theme === 'dark' ? `rgba(255,255,255,${0.1 - idx * 0.01})` : `rgba(0,0,0,${0.1 - idx * 0.01})`;
+                        
+                        return (
+                        <div 
+                          key={idx} 
+                          onClick={() => {
+                            setSelectedFlight(ticket);
+                            setSelectedSeat(ticket.seat);
+                            setFlightTimer(0);
+                            setIsBoardingPassOpen(true);
+                            setIsAnalyticsModalOpen(false);
+                          }} 
+                          style={{
+                             zIndex,
+                             opacity,
+                             transform: `scale(${scale}) translateY(${translateY}px)`,
+                             marginTop: isTopCard ? '0px' : '-55px',
+                             backgroundColor: bgColor,
+                             boxShadow: '0 10px 20px -5px rgba(0,0,0,0.2)',
+                             border: `1px solid ${themeColor}20`
+                          }}
+                          className="w-full flex justify-between items-center px-4 py-4 rounded-3xl cursor-pointer hover:brightness-110 transition-all backdrop-blur-md"
+                        >
                           <div className="flex flex-col gap-1">
                             <span className="text-sm font-bold text-black dark:text-white">{ticket.origin} ✈ {ticket.destination}</span>
-                            <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">{ticket.callsign}</span>
+                            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: themeColor }}>{ticket.callsign}</span>
                           </div>
                           <span className="text-xs font-bold text-black/70 dark:text-white/70">{ticket.date}</span>
                         </div>
-                      ))}
+                      )})}
                     </div>
                   ) : (
                     <div className="text-center text-xs font-bold text-gray-500 py-4 opacity-50">

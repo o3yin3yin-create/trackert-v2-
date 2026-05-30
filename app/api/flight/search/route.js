@@ -40,6 +40,11 @@ export async function GET(request) {
         return NextResponse.json({ error: "Flight has already landed" }, { status: 404 });
     }
 
+    const departureTime = details.time?.real?.departure || details.time?.scheduled?.departure;
+    const totalSeconds = (departureTime && estimatedArrival > departureTime) 
+                         ? estimatedArrival - departureTime 
+                         : remainingSeconds;
+
     const formattedFlight = {
       id: liveMatch.id,
       airline: details.airline?.name || 'Unknown Airline',
@@ -55,6 +60,7 @@ export async function GET(request) {
         lng: details.airport.destination?.position?.longitude || 0
       },
       remainingSeconds,
+      totalSeconds,
       estimatedArrival,
       model: details.aircraft?.model?.text || 'Unknown Aircraft'
     };

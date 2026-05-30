@@ -52,6 +52,11 @@ export async function GET(request) {
         // Must have at least 30 minutes remaining
         if (remainingSeconds < 30 * 60) continue;
 
+        const departureTime = details.time?.real?.departure || details.time?.scheduled?.departure;
+        const totalSeconds = (departureTime && estimatedArrival > departureTime) 
+                             ? estimatedArrival - departureTime 
+                             : remainingSeconds;
+
         validFlights.push({
           id: flight.id,
           airline: details.airline?.name || 'Unknown Airline',
@@ -67,6 +72,7 @@ export async function GET(request) {
             lng: details.airport.destination?.position?.longitude || 0
           },
           remainingSeconds,
+          totalSeconds,
           estimatedArrival,
           model: details.aircraft?.model?.text || 'Unknown Aircraft'
         });
