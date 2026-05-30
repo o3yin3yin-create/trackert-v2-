@@ -3570,44 +3570,59 @@ export default function App() {
                 <div className="mt-6 border-t border-black/10 dark:border-white/10 pt-4 w-full">
                   <h4 className="text-[10px] font-bold text-black/50 dark:text-white/50 uppercase tracking-widest mb-3 text-center">{lang === 'ar' ? 'سجل تذاكر الرحلات' : 'Flight Tickets History'}</h4>
                   {finishedTickets.length > 0 ? (
-                    <div className="flex flex-col items-center mt-6 relative pb-10 w-full" style={{ paddingBottom: `${Math.min(finishedTickets.length * 40, 160)}px` }}>
-                      {finishedTickets.map((ticket, idx) => {
-                        const isTopCard = idx === 0;
-                        const zIndex = finishedTickets.length - idx;
-                        const opacity = Math.max(0.3, 1 - (idx * 0.2));
-                        const scale = Math.max(0.8, 1 - (idx * 0.04));
-                        const translateY = isTopCard ? 0 : -30;
-                        const bgColor = theme === 'dark' ? `rgba(255,255,255,${0.1 - idx * 0.01})` : `rgba(0,0,0,${0.1 - idx * 0.01})`;
-                        
-                        return (
-                        <div 
-                          key={idx} 
-                          onClick={() => {
-                            setSelectedFlight(ticket);
-                            setSelectedSeat(ticket.seat);
-                            setFlightTimer(0);
-                            setIsBoardingPassOpen(true);
-                            setIsAnalyticsModalOpen(false);
-                          }} 
-                          style={{
-                             zIndex,
-                             opacity,
-                             transform: `scale(${scale}) translateY(${translateY}px)`,
-                             marginTop: isTopCard ? '0px' : '-55px',
-                             backgroundColor: bgColor,
-                             boxShadow: '0 10px 20px -5px rgba(0,0,0,0.2)',
-                             border: `1px solid ${themeColor}20`
-                          }}
-                          className="w-full flex justify-between items-center px-4 py-4 rounded-3xl cursor-pointer hover:brightness-110 transition-all backdrop-blur-md"
-                        >
-                          <div className="flex flex-col gap-1">
-                            <span className="text-sm font-bold text-black dark:text-white">{ticket.origin} ✈ {ticket.destination}</span>
-                            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: themeColor }}>{ticket.callsign}</span>
+                    <>
+                      <style dangerouslySetInnerHTML={{__html: `
+                        .ticket-stack-container {
+                          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                        }
+                        .ticket-stack-container:hover {
+                          padding-bottom: 0px !important;
+                        }
+                        .ticket-stack-container:hover .stacked-ticket {
+                          margin-top: 8px !important;
+                          transform: scale(1) translateY(0) !important;
+                          opacity: 1 !important;
+                        }
+                      `}} />
+                      <div className="flex flex-col items-center mt-6 relative w-full ticket-stack-container max-h-[300px] overflow-y-auto pr-2 scrollbar-hide" style={{ paddingBottom: `${Math.min(finishedTickets.length * 40, 160)}px` }}>
+                        {finishedTickets.map((ticket, idx) => {
+                          const isTopCard = idx === 0;
+                          const zIndex = finishedTickets.length - idx;
+                          const opacity = Math.max(0.3, 1 - (idx * 0.2));
+                          const scale = Math.max(0.8, 1 - (idx * 0.04));
+                          const translateY = isTopCard ? 0 : -30;
+                          const bgColor = theme === 'dark' ? `rgba(255,255,255,${0.1 - idx * 0.01})` : `rgba(0,0,0,${0.1 - idx * 0.01})`;
+                          
+                          return (
+                          <div 
+                            key={idx} 
+                            onClick={() => {
+                              setSelectedFlight(ticket);
+                              setSelectedSeat(ticket.seat);
+                              setFlightTimer(0);
+                              setIsBoardingPassOpen(true);
+                              setIsAnalyticsModalOpen(false);
+                            }} 
+                            style={{
+                               zIndex,
+                               opacity,
+                               transform: `scale(${scale}) translateY(${translateY}px)`,
+                               marginTop: isTopCard ? '0px' : '-55px',
+                               backgroundColor: bgColor,
+                               boxShadow: '0 10px 20px -5px rgba(0,0,0,0.2)',
+                               border: `1px solid ${themeColor}20`
+                            }}
+                            className="stacked-ticket w-full flex justify-between items-center px-4 py-4 rounded-3xl cursor-pointer hover:!brightness-150 transition-all duration-300 backdrop-blur-md shrink-0"
+                          >
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm font-bold text-black dark:text-white">{ticket.origin} ✈ {ticket.destination}</span>
+                              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: themeColor }}>{ticket.callsign}</span>
+                            </div>
+                            <span className="text-xs font-bold text-black/70 dark:text-white/70">{ticket.date}</span>
                           </div>
-                          <span className="text-xs font-bold text-black/70 dark:text-white/70">{ticket.date}</span>
-                        </div>
-                      )})}
-                    </div>
+                        )})}
+                      </div>
+                    </>
                   ) : (
                     <div className="text-center text-xs font-bold text-gray-500 py-4 opacity-50">
                       {lang === 'ar' ? 'لا يوجد تذاكر مختومة بعد' : 'No stamped tickets yet'}
