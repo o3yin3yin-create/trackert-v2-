@@ -9,7 +9,7 @@ const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart })
   const handleDownload = async () => {
     if (!ticketRef.current) return;
     try {
-      const canvas = await html2canvas(ticketRef.current, { backgroundColor: null, scale: 2 });
+      const canvas = await html2canvas(ticketRef.current, { backgroundColor: null, scale: 2, useCORS: true, allowTaint: true });
       const image = canvas.toDataURL("image/png", 1.0);
       const link = document.createElement('a');
       link.download = `Flight_${flight.callsign}_BoardingPass.png`;

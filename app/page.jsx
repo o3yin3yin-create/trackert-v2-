@@ -1805,7 +1805,7 @@ export default function App() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder={lang === 'ar' ? 'رقم الرحلة (مثال: EK1)' : 'Flight Number (e.g. EK1)'}
-                        className="flex-1 bg-white dark:bg-black/40 text-black dark:text-white rounded-2xl px-4 py-4 text-sm font-bold border border-black/10 dark:border-white/10 outline-none focus:border-emerald-500 uppercase tracking-widest"
+                        className="flex-1 min-w-0 bg-white dark:bg-black/40 text-black dark:text-white rounded-2xl px-4 py-4 text-sm font-bold border border-black/10 dark:border-white/10 outline-none focus:border-emerald-500 uppercase tracking-widest"
                       />
                       <button 
                         type="submit"
