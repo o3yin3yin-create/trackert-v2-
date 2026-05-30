@@ -3601,17 +3601,9 @@ export default function App() {
                 <div className="mt-6 border-t border-black/10 dark:border-white/10 pt-4 w-full">
                   <h4 className="text-[10px] font-bold text-black/50 dark:text-white/50 uppercase tracking-widest mb-3 text-center">{lang === 'ar' ? 'سجل تذاكر الرحلات' : 'Flight Tickets History'}</h4>
                   {finishedTickets.length > 0 ? (
-                      <div className="flex flex-col items-center mt-6 relative w-full max-h-[80vh] overflow-y-auto pr-2 scrollbar-hide" style={{ paddingBottom: `${Math.min(finishedTickets.length * 50, 200)}px` }}>
+                      <div className="flex flex-col gap-3 mt-6 w-full max-h-[80vh] overflow-y-auto pr-2 scrollbar-hide pb-10">
                         {finishedTickets.map((ticket, idx) => {
                           const isExpanded = expandedTicketIndex === idx;
-                          const zIndex = isExpanded ? 100 : finishedTickets.length - idx;
-                          
-                          const opacity = isExpanded ? 1 : Math.max(0.6, 1 - (idx * 0.1));
-                          const scale = isExpanded ? 1 : Math.max(0.7, 1 - (idx * 0.05));
-                          
-                          let marginTop = '-15px'; // File tabs are close to each other
-                          if (idx === 0) marginTop = '0px';
-                          else if (expandedTicketIndex !== null && idx === expandedTicketIndex + 1) marginTop = '20px';
                           
                           return (
                           <div 
@@ -3628,14 +3620,9 @@ export default function App() {
                               }
                             }} 
                             style={{
-                               zIndex,
-                               opacity,
-                               transform: `scale(${scale})`,
-                               marginTop: marginTop,
-                               boxShadow: '0 -10px 25px -5px rgba(0,0,0,0.5)',
-                               filter: `brightness(${isExpanded ? 1 : (1 - (idx * 0.05))})`,
+                               boxShadow: isExpanded ? '0 10px 30px -10px rgba(0,0,0,0.5)' : '0 4px 12px -4px rgba(0,0,0,0.3)',
                             }}
-                            className="w-full flex flex-col cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] shrink-0 origin-top rounded-[2rem]"
+                            className="w-full flex flex-col cursor-pointer transition-all duration-300 rounded-[2rem]"
                           >
                              <BoardingPassCard 
                                flight={ticket} 
