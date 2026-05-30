@@ -1715,6 +1715,49 @@ export default function App() {
           document.body
         )}
 
+        {/* ---------------- BOARDING PASS MODAL ---------------- */}
+        {isBoardingPassOpen && createPortal(
+          <BoardingPass 
+            flight={selectedFlight} 
+            seat={selectedSeat}
+            date={new Date().toLocaleDateString()}
+            lang={lang}
+            isArrived={flightTimer === 0 && selectedFlight}
+            onStart={() => {
+              setIsBoardingPassOpen(false);
+              if (!selectedSeat) {
+                setIsSeatSelectionOpen(true);
+              } else {
+                setIsFlightTimerRunning(true);
+              }
+            }}
+            onClose={() => {
+              setIsBoardingPassOpen(false);
+              if (flightTimer === 0) {
+                // If they finished, closing the ticket resets the flight
+                setSelectedFlight(null);
+                setSelectedSeat(null);
+              }
+            }}
+          />,
+          document.body
+        )}
+
+        {/* ---------------- SEAT SELECTION MODAL ---------------- */}
+        {isSeatSelectionOpen && createPortal(
+          <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md">
+            <SeatSelection 
+              lang={lang}
+              onSelectSeat={(seat) => {
+                setSelectedSeat(seat);
+                setIsSeatSelectionOpen(false);
+                setIsBoardingPassOpen(true);
+              }}
+            />
+          </div>,
+          document.body
+        )}
+
         {/* ---------------- FLIGHT FOCUS MODAL ---------------- */}
         {isFlightFocusOpen && createPortal(
           <div className="fixed inset-0 z-[99999] overflow-y-auto bg-black/60 backdrop-blur-3xl flex items-center justify-center p-4 sm:p-6 md:p-10">
@@ -2197,6 +2240,7 @@ export default function App() {
                         const liveRemaining = f.estimatedArrival - Math.floor(Date.now() / 1000);
                         setSelectedFlight({...f, initialSeconds: liveRemaining}); 
                         setFlightTimer(Math.max(0, liveRemaining)); 
+                        setIsBoardingPassOpen(true);
                       }} className="bg-white/10 dark:bg-black/30 border border-black/5 dark:border-white/5 p-4 rounded-2xl cursor-pointer hover:bg-white/30 dark:hover:bg-black/50 transition-colors active:scale-95 shrink-0">
                         <div className="flex justify-between items-start mb-2">
                           <span className="font-bold text-sm flex items-center gap-2 text-black dark:text-white">
@@ -3383,6 +3427,7 @@ export default function App() {
                               const liveRemaining = f.estimatedArrival - Math.floor(Date.now() / 1000);
                               setSelectedFlight({...f, initialSeconds: liveRemaining}); 
                               setFlightTimer(Math.max(0, liveRemaining)); 
+                              setIsBoardingPassOpen(true);
                             }} className="bg-white/10 dark:bg-black/35 border border-black/5 dark:border-white/5 p-3 rounded-xl cursor-pointer hover:bg-white/30 dark:hover:bg-black/50 transition-all duration-200 active:scale-[0.98]">
                               <div className="flex justify-between items-start mb-1 select-none">
                                 <span className="font-bold text-xs text-black dark:text-white flex items-center gap-1.5 leading-tight">
