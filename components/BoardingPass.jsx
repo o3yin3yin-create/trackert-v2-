@@ -9,13 +9,42 @@ const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart })
   const handleDownload = async () => {
     if (!ticketRef.current) return;
     try {
-      const canvas = await html2canvas(ticketRef.current, { backgroundColor: null, scale: 2, useCORS: true, allowTaint: true });
+      const canvas = await html2canvas(ticketRef.current, { 
+        backgroundColor: '#ffffff', // avoid transparent background issues
+        scale: 2, 
+        useCORS: true, 
+        allowTaint: true 
+      });
       const image = canvas.toDataURL("image/png", 1.0);
+      const filename = `Flight_${flight.callsign}_BoardingPass.png`;
+
+      // For mobile devices, use the Web Share API if available
+      if (navigator.share) {
+        try {
+          const res = await fetch(image);
+          const blob = await res.blob();
+          const file = new File([blob], filename, { type: 'image/png' });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: 'My Flight Ticket',
+            });
+            return;
+          }
+        } catch (err) {
+          console.log("Share API failed or cancelled", err);
+        }
+      }
+
+      // Fallback to normal download
       const link = document.createElement('a');
-      link.download = `Flight_${flight.callsign}_BoardingPass.png`;
+      link.download = filename;
       link.href = image;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
     } catch (e) {
+      alert("Failed to save ticket! " + e.message);
       console.error("Failed to download ticket", e);
     }
   };
@@ -138,17 +167,36 @@ const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart })
             </div>
           </div>
 
-          {/* Arrived Overlay */}
+          {/* Arrived Ink Stamp Overlay */}
           {isArrived && (
             <motion.div 
-              initial={{ opacity: 0, scale: 2, rotate: -20 }}
+              initial={{ opacity: 0, scale: 2, rotate: -30 }}
               animate={{ opacity: 1, scale: 1, rotate: -15 }}
               transition={{ type: 'spring', damping: 12, delay: 0.5 }}
               className="absolute inset-0 flex items-center justify-center pointer-events-none z-50"
             >
-              <div className="border-4 border-emerald-500 text-emerald-500 px-6 py-2 rounded-xl text-5xl font-black tracking-widest uppercase opacity-90 backdrop-blur-sm" style={{ boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)'}}>
-                {lang === 'ar' ? 'وصلت' : 'ARRIVED'}
-              </div>
+              <svg viewBox="0 0 240 120" className="w-64 h-32 opacity-80 mix-blend-multiply drop-shadow-sm">
+                <defs>
+                  <filter id="grunge">
+                    <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="4" result="noise" />
+                    <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 4 -1.5" in="noise" result="coloredNoise" />
+                    <feComposite operator="in" in="SourceGraphic" in2="coloredNoise" />
+                  </filter>
+                </defs>
+                <g filter="url(#grunge)">
+                  <rect x="5" y="5" width="230" height="110" fill="none" stroke="#0f172a" strokeWidth="6" rx="4" />
+                  <rect x="12" y="12" width="216" height="96" fill="none" stroke="#0f172a" strokeWidth="2" rx="2" />
+                  
+                  <text x="120" y="50" fill="#0f172a" fontSize="36" fontFamily="Courier New, monospace" fontWeight="900" textAnchor="middle" letterSpacing="4">
+                    {lang === 'ar' ? 'وصلت' : 'ARRIVED'}
+                  </text>
+                  
+                  <line x1="20" y1="65" x2="220" y2="65" stroke="#0f172a" strokeWidth="2" strokeDasharray="6 4" />
+                  
+                  <text x="120" y="85" fill="#0f172a" fontSize="16" fontFamily="Courier New, monospace" fontWeight="bold" textAnchor="middle">{date}</text>
+                  <text x="120" y="105" fill="#0f172a" fontSize="14" fontFamily="Courier New, monospace" fontWeight="bold" textAnchor="middle" letterSpacing="2">{flight.destination.slice(0, 15)}</text>
+                </g>
+              </svg>
             </motion.div>
           )}
         </div>
