@@ -39,20 +39,20 @@ const BoardingPassCard = ({ flight, seat, date, isArrived, lang, isExpanded, onT
         backgroundRepeat: 'no-repeat'
       }} />
 
-      <div className={`relative z-10 ${isExpanded ? 'p-8 pb-6' : 'p-5'}`}>
+      <div className={`relative z-10 transition-all duration-300 ${isExpanded ? 'p-8 pb-6' : 'py-3 px-5'}`}>
         <div className={`flex justify-between items-center ${isExpanded ? 'mb-6' : ''}`}>
           <div className="flex flex-col items-start w-1/3">
-            <span className="text-4xl font-black tracking-tighter truncate w-full">{flight.origin}</span>
-            <span className="text-sm font-semibold text-gray-400 capitalize truncate w-full">{flight.origin} City</span>
+            <span className={`${isExpanded ? 'text-4xl' : 'text-2xl'} font-black tracking-tighter truncate w-full transition-all duration-300`}>{flight.origin}</span>
+            <span className={`${isExpanded ? 'text-sm' : 'text-[10px]'} font-semibold text-gray-400 capitalize truncate w-full transition-all duration-300`}>{flight.origin} City</span>
           </div>
           
           <div className="flex flex-col items-center mx-2 flex-1">
-            <Plane size={24} className="text-emerald-500 mb-1" />
+            <Plane size={isExpanded ? 24 : 16} className="text-emerald-500 mb-1 transition-all duration-300" />
             <div className="w-full h-[2px] bg-gray-200 border-t-2 border-dashed border-gray-300"></div>
-            <span className="text-[10px] font-bold text-gray-400 mt-2 uppercase tracking-widest text-center">
+            <span className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest text-center">
               {lang === 'ar' ? 'مدة الرحلة' : 'Duration'}
             </span>
-            <span className="text-sm font-black text-black">
+            <span className={`${isExpanded ? 'text-sm' : 'text-xs'} font-black text-black transition-all duration-300`}>
               {Math.floor((flight.totalSeconds || flight.remainingSeconds) / 3600)}h {Math.floor(((flight.totalSeconds || flight.remainingSeconds) % 3600) / 60)}m
             </span>
           </div>
@@ -61,13 +61,13 @@ const BoardingPassCard = ({ flight, seat, date, isArrived, lang, isExpanded, onT
             {onToggleExpand && (
               <button 
                 onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
-                className="absolute -top-2 -right-2 p-2 bg-black/5 hover:bg-black/10 rounded-full transition-colors z-50"
+                className={`absolute ${isExpanded ? '-top-2 -right-2' : '-top-1 -right-2'} p-1 bg-black/5 hover:bg-black/10 rounded-full transition-colors z-50`}
               >
-                {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={16} />}
               </button>
             )}
-            <span className="text-4xl font-black tracking-tighter truncate w-full text-right mt-2">{flight.destination}</span>
-            <span className="text-sm font-semibold text-gray-400 capitalize truncate w-full text-right">{flight.destination} City</span>
+            <span className={`${isExpanded ? 'text-4xl' : 'text-2xl'} font-black tracking-tighter truncate w-full text-right mt-1 transition-all duration-300`}>{flight.destination}</span>
+            <span className={`${isExpanded ? 'text-sm' : 'text-[10px]'} font-semibold text-gray-400 capitalize truncate w-full text-right transition-all duration-300`}>{flight.destination} City</span>
           </div>
         </div>
 

@@ -3575,9 +3575,10 @@ export default function App() {
                 <div className="mt-6 border-t border-black/10 dark:border-white/10 pt-4 w-full">
                   <h4 className="text-[10px] font-bold text-black/50 dark:text-white/50 uppercase tracking-widest mb-3 text-center">{activeDateStr === realTodayStr ? "Today's Focus Tasks" : "Focus Tasks"}</h4>
                   
-                  {pomodoroTasksData[activeDateStr] && pomodoroTasksData[activeDateStr].length > 0 ? (
+                  {pomodoroTasksData[activeDateStr] && pomodoroTasksData[activeDateStr].filter(t => !t.name?.includes('✈')).length > 0 ? (
                     <div className="flex flex-col gap-2 max-h-32 overflow-y-auto pr-1">
                       {pomodoroTasksData[activeDateStr]
+                        .filter(t => !t.name?.includes('✈'))
                         .sort((a, b) => b.timeSpent - a.timeSpent)
                         .map((task, idx) => (
                         <div key={idx} className="flex justify-between items-center bg-black/5 dark:bg-white/5 px-3 py-2 rounded-xl">
