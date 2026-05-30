@@ -485,6 +485,13 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
 
+  const [finishedTickets, setFinishedTickets] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return JSON.parse(localStorage.getItem('trackert_finished_tickets_v1') || '[]');
+    }
+    return [];
+  });
+
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
@@ -868,10 +875,17 @@ export default function App() {
       flightLastTickRef.current = null;
       // Only trigger sound once when it first hits 0
       if (flightTimer > 0) {
-        if (globalAudioCtx) {
-          playAirportChime();
-        }
+        playAirportChime();
         setIsBoardingPassOpen(true);
+        setFinishedTickets(prev => {
+          if (prev.length > 0 && prev[0].id === selectedFlight.id && Date.now() - prev[0].completedAt < 10000) return prev;
+          const newTicket = { ...selectedFlight, seat: selectedSeat, date: new Date().toLocaleDateString(), completedAt: Date.now() };
+          const updated = [newTicket, ...prev];
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('trackert_finished_tickets_v1', JSON.stringify(updated));
+          }
+          return updated;
+        });
       }
     }
   }, [currentUnixTime, isFlightTimerRunning, selectedFlight]);
@@ -1725,6 +1739,7 @@ export default function App() {
             isArrived={flightTimer === 0 && selectedFlight}
             onStart={() => {
               setIsBoardingPassOpen(false);
+              getAudioCtx();
               setIsFlightTimerRunning(true);
             }}
             onClose={() => {
@@ -3549,11 +3564,41 @@ export default function App() {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-3 border border-dashed border-black/10 dark:border-white/10 rounded-xl bg-black/5 dark:bg-white/5">
-                      <span className="text-[10px] font-medium text-black/40 dark:text-white/40 uppercase tracking-widest">No tasks recorded today</span>
+                    <div className="text-center text-xs font-bold text-gray-500 py-4 opacity-50">
+                      {lang === 'ar' ? 'لا يوجد رحلات مسجلة بعد' : 'No focus tasks yet'}
                     </div>
                   )}
                 </div>
+
+                {/* Boarding Pass History */}
+                <div className="mt-6 border-t border-black/10 dark:border-white/10 pt-4 w-full">
+                  <h4 className="text-[10px] font-bold text-black/50 dark:text-white/50 uppercase tracking-widest mb-3 text-center">{lang === 'ar' ? 'سجل تذاكر الرحلات' : 'Flight Tickets History'}</h4>
+                  {finishedTickets.length > 0 ? (
+                    <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
+                      {finishedTickets.map((ticket, idx) => (
+                        <div key={idx} onClick={() => {
+                          setSelectedFlight(ticket);
+                          setSelectedSeat(ticket.seat);
+                          setFlightTimer(0);
+                          setIsBoardingPassOpen(true);
+                          setIsAnalyticsModalOpen(false);
+                        }} className="flex justify-between items-center bg-black/5 dark:bg-white/5 px-3 py-3 rounded-xl cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-sm font-bold text-black dark:text-white">{ticket.origin} ✈ {ticket.destination}</span>
+                            <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">{ticket.callsign}</span>
+                          </div>
+                          <span className="text-xs font-bold text-black/70 dark:text-white/70">{ticket.date}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-xs font-bold text-gray-500 py-4 opacity-50">
+                      {lang === 'ar' ? 'لا يوجد تذاكر مختومة بعد' : 'No stamped tickets yet'}
+                    </div>
+                  )}
+                </div>
+
+
               </div>
             </div>, document.body
           )}

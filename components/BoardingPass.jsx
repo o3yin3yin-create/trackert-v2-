@@ -6,48 +6,7 @@ import html2canvas from 'html2canvas';
 const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart }) => {
   const ticketRef = useRef(null);
 
-  const handleDownload = async () => {
-    if (!ticketRef.current) return;
-    try {
-      const canvas = await html2canvas(ticketRef.current, { 
-        backgroundColor: '#ffffff', // avoid transparent background issues
-        scale: 2, 
-        useCORS: true, 
-        allowTaint: true 
-      });
-      const image = canvas.toDataURL("image/png", 1.0);
-      const filename = `Flight_${flight.callsign}_BoardingPass.png`;
 
-      // For mobile devices, use the Web Share API if available
-      if (navigator.share) {
-        try {
-          const res = await fetch(image);
-          const blob = await res.blob();
-          const file = new File([blob], filename, { type: 'image/png' });
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: 'My Flight Ticket',
-            });
-            return;
-          }
-        } catch (err) {
-          console.log("Share API failed or cancelled", err);
-        }
-      }
-
-      // Fallback to normal download
-      const link = document.createElement('a');
-      link.download = filename;
-      link.href = image;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (e) {
-      alert("Failed to save ticket! " + e.message);
-      console.error("Failed to download ticket", e);
-    }
-  };
 
   const distance = Math.round(
     Math.sqrt(
@@ -203,18 +162,10 @@ const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart })
 
         {/* Actions */}
         <div className="flex gap-4 w-full mt-6">
-          <button 
-            onClick={handleDownload}
-            className="flex-1 py-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-bold flex items-center justify-center gap-2 transition-colors"
-          >
-            <Download size={18} />
-            {lang === 'ar' ? 'حفظ التذكرة' : 'Save Ticket'}
-          </button>
-          
           {!isArrived && (
             <button 
               onClick={onStart}
-              className="flex-[2] py-4 bg-emerald-500 hover:bg-emerald-400 text-black rounded-2xl font-black tracking-widest uppercase transition-colors shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+              className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black rounded-2xl font-black tracking-widest uppercase transition-colors shadow-[0_0_20px_rgba(16,185,129,0.3)]"
             >
               {lang === 'ar' ? 'بدء الرحلة' : 'Start Focus'}
             </button>
@@ -223,7 +174,7 @@ const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart })
           {isArrived && (
             <button 
               onClick={onClose}
-              className="flex-[2] py-4 bg-emerald-500 hover:bg-emerald-400 text-black rounded-2xl font-black tracking-widest uppercase transition-colors shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+              className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black rounded-2xl font-black tracking-widest uppercase transition-colors shadow-[0_0_20px_rgba(16,185,129,0.3)]"
             >
               {lang === 'ar' ? 'إنهاء' : 'Finish'}
             </button>
