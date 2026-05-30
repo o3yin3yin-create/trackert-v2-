@@ -698,6 +698,10 @@ export default function App() {
                setPomodoroTasksData(state.pomodoroTasksData);
                if (typeof window !== 'undefined') localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(state.pomodoroTasksData));
             }
+            if (state.finishedTickets && state.finishedTickets.length > 0) {
+               setFinishedTickets(state.finishedTickets);
+               if (typeof window !== 'undefined') localStorage.setItem('trackert_finished_tickets_v1', JSON.stringify(state.finishedTickets));
+            }
             if (state.emergencyCards && state.emergencyCards.length > 0) {
                setHabitCards(state.emergencyCards);
                if (typeof window !== 'undefined') localStorage.setItem('daybase_cards_v4', JSON.stringify(state.emergencyCards));
@@ -756,7 +760,8 @@ export default function App() {
 
     const stateSnapshot = {
       habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
-      theme, bgStyle, lang, focusTimeData, pomodoroTasksData, emergencyCards: habitCards
+      theme, bgStyle, lang, focusTimeData, pomodoroTasksData, emergencyCards: habitCards,
+      finishedTickets
     };
 
     setIsSyncing(true);
@@ -777,7 +782,7 @@ export default function App() {
     return () => clearTimeout(timerId);
   }, [
     habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog, 
-    theme, bgStyle, lang, focusTimeData, pomodoroTasksData, 
+    theme, bgStyle, lang, focusTimeData, pomodoroTasksData, finishedTickets,
     user, isCloudLoaded
   ]);
 
@@ -3601,7 +3606,7 @@ export default function App() {
                           const opacity = isExpanded ? 1 : Math.max(0.6, 1 - (idx * 0.1));
                           const scale = isExpanded ? 1 : Math.max(0.7, 1 - (idx * 0.05));
                           
-                          let marginTop = '-350px';
+                          let marginTop = '-15px'; // File tabs are close to each other
                           if (idx === 0) marginTop = '0px';
                           else if (expandedTicketIndex !== null && idx === expandedTicketIndex + 1) marginTop = '20px';
                           
@@ -3609,21 +3614,26 @@ export default function App() {
                           <div 
                             key={idx} 
                             onClick={() => {
-                              setSelectedFlight(ticket);
-                              setSelectedSeat(ticket.seat);
-                              setFlightTimer(0);
-                              setIsBoardingPassOpen(true);
-                              setIsAnalyticsModalOpen(false);
+                              if (isExpanded) {
+                                setSelectedFlight(ticket);
+                                setSelectedSeat(ticket.seat);
+                                setFlightTimer(0);
+                                setIsBoardingPassOpen(true);
+                                setIsAnalyticsModalOpen(false);
+                              } else {
+                                setExpandedTicketIndex(idx);
+                              }
                             }} 
                             style={{
                                zIndex,
                                opacity,
                                transform: `scale(${scale})`,
                                marginTop: marginTop,
+                               height: isExpanded ? '460px' : '90px', // Clip the ticket into a file tab when not expanded!
                                boxShadow: '0 -10px 25px -5px rgba(0,0,0,0.5)',
                                filter: `brightness(${isExpanded ? 1 : (1 - (idx * 0.05))})`,
                             }}
-                            className="w-full flex flex-col cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] shrink-0 origin-top"
+                            className="w-full flex flex-col cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] shrink-0 origin-top overflow-hidden rounded-[2rem]"
                           >
                              <BoardingPassCard 
                                flight={ticket} 

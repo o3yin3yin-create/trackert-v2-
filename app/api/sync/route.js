@@ -34,6 +34,7 @@ export async function GET() {
       themeColor: user.themeColor,
       emergencyCards: user.emergencyCards || [],
       grantedCardsLog: user.grantedCards || {},
+      finishedTickets: user.finishedTickets || [],
       habits: user.habits,
       dailyData: {},
       sleepData: {},
@@ -91,6 +92,7 @@ export async function POST(req) {
         themeColor: state.themeColor || '#007AFF',
         emergencyCards: state.emergencyCards || [],
         grantedCards: state.grantedCardsLog || {},
+        finishedTickets: state.finishedTickets || [],
         activeSessionType: state.activeSessionType || null,
         activeSessionData: state.activeSessionData || null,
       },
@@ -101,6 +103,7 @@ export async function POST(req) {
         themeColor: state.themeColor,
         emergencyCards: state.emergencyCards || [],
         grantedCards: state.grantedCardsLog || {},
+        finishedTickets: state.finishedTickets || [],
         ...(state.activeSessionType !== undefined && { activeSessionType: state.activeSessionType }),
         ...(state.activeSessionData !== undefined && { activeSessionData: state.activeSessionData }),
       }
