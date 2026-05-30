@@ -481,11 +481,13 @@ export default function App() {
   const [flightDurationFilter, setFlightDurationFilter] = useState(null);
 
   const [isCabinHumPlaying, setIsCabinHumPlaying] = useState(false);
+  const [audioVolume, setAudioVolume] = useState(0.55);
   const [isBoardingPassOpen, setIsBoardingPassOpen] = useState(false);
   const [isSeatSelectionOpen, setIsSeatSelectionOpen] = useState(false);
   const [selectedSeat, setSelectedSeat] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [expandedTicketIndex, setExpandedTicketIndex] = useState(null);
 
   const [finishedTickets, setFinishedTickets] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -581,6 +583,12 @@ export default function App() {
       setIsCabinHumPlaying(true);
     }
   };
+
+  useEffect(() => {
+    if (isCabinHumPlaying) {
+      updateHumVolume(audioVolume);
+    }
+  }, [audioVolume, isCabinHumPlaying]);
 
   // --- Focus Time Tracking (seconds per day) ---
   const [focusTimeData, setFocusTimeData] = useState(() => {
@@ -1975,6 +1983,13 @@ export default function App() {
                                     </motion.div>
                                   ) : <VolumeX size={12} />}
                                 </button>
+                                {isCabinHumPlaying && (
+                                  <input 
+                                    type="range" min="0" max="1" step="0.01" 
+                                    value={audioVolume} onChange={(e) => setAudioVolume(parseFloat(e.target.value))} 
+                                    className="w-16 h-1 bg-black/30 rounded-lg appearance-none cursor-pointer accent-[#10B981]"
+                                  />
+                                )}
                               </div>
                               
                               <div className="absolute top-3 right-3 flex flex-col gap-2 z-[1000]">
@@ -3158,6 +3173,13 @@ export default function App() {
                                   </motion.div>
                                 ) : <VolumeX size={12} />}
                               </button>
+                              {isCabinHumPlaying && (
+                                  <input 
+                                    type="range" min="0" max="1" step="0.01" 
+                                    value={audioVolume} onChange={(e) => setAudioVolume(parseFloat(e.target.value))} 
+                                    className="w-16 h-1 bg-black/30 rounded-lg appearance-none cursor-pointer accent-[#10B981]"
+                                  />
+                              )}
                             </div>
                             
                             <div className="absolute top-3 right-3 flex flex-col gap-2 z-[1000]">
@@ -3571,31 +3593,17 @@ export default function App() {
                 <div className="mt-6 border-t border-black/10 dark:border-white/10 pt-4 w-full">
                   <h4 className="text-[10px] font-bold text-black/50 dark:text-white/50 uppercase tracking-widest mb-3 text-center">{lang === 'ar' ? 'سجل تذاكر الرحلات' : 'Flight Tickets History'}</h4>
                   {finishedTickets.length > 0 ? (
-                    <>
-                      <style dangerouslySetInnerHTML={{__html: `
-                        .ticket-stack-container {
-                          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-                        }
-                        .ticket-stack-container:hover {
-                          padding-bottom: 0px !important;
-                        }
-                        .ticket-stack-container:hover .stacked-ticket {
-                          margin-top: 24px !important;
-                          transform: scale(1) translateY(0) rotate(0deg) !important;
-                          opacity: 1 !important;
-                          box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5) !important;
-                        }
-                      `}} />
-                      <div className="flex flex-col items-center mt-6 relative w-full ticket-stack-container max-h-[80vh] overflow-y-auto pr-2 scrollbar-hide" style={{ paddingBottom: `${Math.min(finishedTickets.length * 50, 200)}px` }}>
+                      <div className="flex flex-col items-center mt-6 relative w-full max-h-[80vh] overflow-y-auto pr-2 scrollbar-hide" style={{ paddingBottom: `${Math.min(finishedTickets.length * 50, 200)}px` }}>
                         {finishedTickets.map((ticket, idx) => {
-                          const isTopCard = idx === 0;
-                          const zIndex = finishedTickets.length - idx;
-                          // Less opacity fade so they are visible
-                          const opacity = Math.max(0.6, 1 - (idx * 0.1));
-                          const scale = Math.max(0.7, 1 - (idx * 0.05));
-                          // Rotate slightly to make it look like scattered files? Or just stacked straight. Let's keep it straight but overlapping
-                          // An actual ticket is ~400px tall. A top margin of -340px means only the top 60px (the tab) sticks out!
-                          const marginTop = isTopCard ? '0px' : '-350px';
+                          const isExpanded = expandedTicketIndex === idx;
+                          const zIndex = isExpanded ? 100 : finishedTickets.length - idx;
+                          
+                          const opacity = isExpanded ? 1 : Math.max(0.6, 1 - (idx * 0.1));
+                          const scale = isExpanded ? 1 : Math.max(0.7, 1 - (idx * 0.05));
+                          
+                          let marginTop = '-350px';
+                          if (idx === 0) marginTop = '0px';
+                          else if (expandedTicketIndex !== null && idx === expandedTicketIndex + 1) marginTop = '20px';
                           
                           return (
                           <div 
@@ -3613,22 +3621,22 @@ export default function App() {
                                transform: `scale(${scale})`,
                                marginTop: marginTop,
                                boxShadow: '0 -10px 25px -5px rgba(0,0,0,0.5)',
-                               filter: `brightness(${1 - (idx * 0.05)})`,
+                               filter: `brightness(${isExpanded ? 1 : (1 - (idx * 0.05))})`,
                             }}
-                            className="stacked-ticket w-full flex flex-col cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] shrink-0 origin-top"
+                            className="w-full flex flex-col cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] shrink-0 origin-top"
                           >
-                             {/* The actual ticket design rendered seamlessly inside the container */}
                              <BoardingPassCard 
                                flight={ticket} 
                                seat={ticket.seat} 
                                date={ticket.date} 
                                isArrived={true} 
                                lang={lang} 
+                               isExpanded={isExpanded}
+                               onToggleExpand={() => setExpandedTicketIndex(isExpanded ? null : idx)}
                              />
                           </div>
                         )})}
                       </div>
-                    </>
                   ) : (
                     <div className="text-center text-xs font-bold text-gray-500 py-4 opacity-50">
                       {lang === 'ar' ? 'لا يوجد تذاكر مختومة بعد' : 'No stamped tickets yet'}
@@ -3962,6 +3970,15 @@ export default function App() {
                           </motion.div>
                         ) : <VolumeX size={18} />}
                       </button>
+                      {isCabinHumPlaying && (
+                         <div className="flex flex-col items-center gap-2">
+                           <input 
+                             type="range" min="0" max="1" step="0.01" 
+                             value={audioVolume} onChange={(e) => setAudioVolume(parseFloat(e.target.value))} 
+                             className="w-24 h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-[#10B981]"
+                           />
+                         </div>
+                      )}
                     </div>
                     
                     {/* Bottom Cinematic Telemetry Panel */}

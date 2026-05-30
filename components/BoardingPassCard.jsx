@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
-import { Plane } from 'lucide-react';
+import { Plane, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const BoardingPassCard = ({ flight, seat, date, isArrived, lang }) => {
+const BoardingPassCard = ({ flight, seat, date, isArrived, lang, isExpanded, onToggleExpand }) => {
   const distance = Math.round(
     Math.sqrt(
       ((flight.originCoords?.lat || 0) - (flight.destCoords?.lat || 0)) ** 2 + 
@@ -57,8 +57,16 @@ const BoardingPassCard = ({ flight, seat, date, isArrived, lang }) => {
             </span>
           </div>
 
-          <div className="flex flex-col items-end w-1/3">
-            <span className="text-4xl font-black tracking-tighter truncate w-full text-right">{flight.destination}</span>
+          <div className="flex flex-col items-end w-1/3 relative">
+            {onToggleExpand && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
+                className="absolute -top-4 -right-4 p-2 bg-black/5 hover:bg-black/10 rounded-full transition-colors z-50"
+              >
+                {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+              </button>
+            )}
+            <span className="text-4xl font-black tracking-tighter truncate w-full text-right mt-2">{flight.destination}</span>
             <span className="text-sm font-semibold text-gray-400 capitalize truncate w-full text-right">{flight.destination} City</span>
           </div>
         </div>
