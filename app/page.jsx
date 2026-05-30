@@ -491,8 +491,10 @@ export default function App() {
 
   const [finishedTickets, setFinishedTickets] = useState(() => {
     if (typeof window !== 'undefined') {
-      return JSON.parse(localStorage.getItem('trackert_finished_tickets_v1') || '[]');
+      const saved = localStorage.getItem('trackert_finished_tickets_v1') || localStorage.getItem('daybase_finishedTickets');
+      if (saved) return JSON.parse(saved);
     }
+    return [];
     return [];
   });
 
@@ -3629,11 +3631,10 @@ export default function App() {
                                opacity,
                                transform: `scale(${scale})`,
                                marginTop: marginTop,
-                               height: isExpanded ? '460px' : '90px', // Clip the ticket into a file tab when not expanded!
                                boxShadow: '0 -10px 25px -5px rgba(0,0,0,0.5)',
                                filter: `brightness(${isExpanded ? 1 : (1 - (idx * 0.05))})`,
                             }}
-                            className="w-full flex flex-col cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] shrink-0 origin-top overflow-hidden rounded-[2rem]"
+                            className="w-full flex flex-col cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] shrink-0 origin-top rounded-[2rem]"
                           >
                              <BoardingPassCard 
                                flight={ticket} 
