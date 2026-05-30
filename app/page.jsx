@@ -16,6 +16,7 @@ const MapComponent = dynamic(() => import('../components/MapComponent'), {
 });
 
 import BoardingPass from '../components/BoardingPass';
+import BoardingPassCard from '../components/BoardingPassCard';
 import SeatSelection from '../components/SeatSelection';
 
 let globalAudioCtx = null;
@@ -3579,19 +3580,22 @@ export default function App() {
                           padding-bottom: 0px !important;
                         }
                         .ticket-stack-container:hover .stacked-ticket {
-                          margin-top: 8px !important;
-                          transform: scale(1) translateY(0) !important;
+                          margin-top: 24px !important;
+                          transform: scale(1) translateY(0) rotate(0deg) !important;
                           opacity: 1 !important;
+                          box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5) !important;
                         }
                       `}} />
-                      <div className="flex flex-col items-center mt-6 relative w-full ticket-stack-container max-h-[300px] overflow-y-auto pr-2 scrollbar-hide" style={{ paddingBottom: `${Math.min(finishedTickets.length * 40, 160)}px` }}>
+                      <div className="flex flex-col items-center mt-6 relative w-full ticket-stack-container max-h-[80vh] overflow-y-auto pr-2 scrollbar-hide" style={{ paddingBottom: `${Math.min(finishedTickets.length * 50, 200)}px` }}>
                         {finishedTickets.map((ticket, idx) => {
                           const isTopCard = idx === 0;
                           const zIndex = finishedTickets.length - idx;
-                          const opacity = Math.max(0.3, 1 - (idx * 0.2));
-                          const scale = Math.max(0.8, 1 - (idx * 0.04));
-                          const translateY = isTopCard ? 0 : -30;
-                          const bgColor = theme === 'dark' ? `rgba(255,255,255,${0.1 - idx * 0.01})` : `rgba(0,0,0,${0.1 - idx * 0.01})`;
+                          // Less opacity fade so they are visible
+                          const opacity = Math.max(0.6, 1 - (idx * 0.1));
+                          const scale = Math.max(0.7, 1 - (idx * 0.05));
+                          // Rotate slightly to make it look like scattered files? Or just stacked straight. Let's keep it straight but overlapping
+                          // An actual ticket is ~400px tall. A top margin of -340px means only the top 60px (the tab) sticks out!
+                          const marginTop = isTopCard ? '0px' : '-350px';
                           
                           return (
                           <div 
@@ -3606,19 +3610,21 @@ export default function App() {
                             style={{
                                zIndex,
                                opacity,
-                               transform: `scale(${scale}) translateY(${translateY}px)`,
-                               marginTop: isTopCard ? '0px' : '-55px',
-                               backgroundColor: bgColor,
-                               boxShadow: '0 10px 20px -5px rgba(0,0,0,0.2)',
-                               border: `1px solid ${themeColor}20`
+                               transform: `scale(${scale})`,
+                               marginTop: marginTop,
+                               boxShadow: '0 -10px 25px -5px rgba(0,0,0,0.5)',
+                               filter: `brightness(${1 - (idx * 0.05)})`,
                             }}
-                            className="stacked-ticket w-full flex justify-between items-center px-4 py-4 rounded-3xl cursor-pointer hover:!brightness-150 transition-all duration-300 backdrop-blur-md shrink-0"
+                            className="stacked-ticket w-full flex flex-col cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] shrink-0 origin-top"
                           >
-                            <div className="flex flex-col gap-1">
-                              <span className="text-sm font-bold text-black dark:text-white">{ticket.origin} ✈ {ticket.destination}</span>
-                              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: themeColor }}>{ticket.callsign}</span>
-                            </div>
-                            <span className="text-xs font-bold text-black/70 dark:text-white/70">{ticket.date}</span>
+                             {/* The actual ticket design rendered seamlessly inside the container */}
+                             <BoardingPassCard 
+                               flight={ticket} 
+                               seat={ticket.seat} 
+                               date={ticket.date} 
+                               isArrived={true} 
+                               lang={lang} 
+                             />
                           </div>
                         )})}
                       </div>
