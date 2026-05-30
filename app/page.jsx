@@ -629,6 +629,7 @@ export default function App() {
   const [newTaskInput, setNewTaskInput] = useState("");
 
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
+  const [isTicketsHistoryViewOpen, setIsTicketsHistoryViewOpen] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -3518,7 +3519,7 @@ export default function App() {
                 padding: '36px 24px',
                 position: 'relative',
               }}>
-                <button onClick={() => setIsAnalyticsModalOpen(false)} style={{
+                <button onClick={() => { setIsAnalyticsModalOpen(false); setIsTicketsHistoryViewOpen(false); }} style={{
                   position: 'absolute', top: '16px', right: '16px',
                   background: 'rgba(128,128,128,0.2)', border: 'none',
                   borderRadius: '50%', width: '32px', height: '32px',
@@ -3526,6 +3527,8 @@ export default function App() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}><X size={16} className="text-black dark:text-white" /></button>
 
+                {!isTicketsHistoryViewOpen ? (
+                  <div className="w-full flex flex-col">
                 <h3 className="text-sm font-bold tracking-widest text-gray-500 dark:text-white/50 uppercase mb-6 select-none text-center">{t('analytics')}</h3>
                 
                 <div className="w-full h-48 mb-6 relative">
@@ -3596,12 +3599,39 @@ export default function App() {
                     </div>
                   )}
                 </div>
-
-                {/* Boarding Pass History */}
+                {/* View Tickets History Button */}
                 <div className="mt-6 border-t border-black/10 dark:border-white/10 pt-4 w-full">
-                  <h4 className="text-[10px] font-bold text-black/50 dark:text-white/50 uppercase tracking-widest mb-3 text-center">{lang === 'ar' ? 'سجل تذاكر الرحلات' : 'Flight Tickets History'}</h4>
+                  <button 
+                    onClick={() => setIsTicketsHistoryViewOpen(true)}
+                    className="w-full py-4 px-4 bg-white/5 hover:bg-white/10 transition-colors rounded-2xl flex justify-between items-center"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500">
+                        <Plane size={16} />
+                      </div>
+                      <span className="text-sm font-bold text-white tracking-wide">
+                        {lang === 'ar' ? 'سجل تذاكر الرحلات' : 'Flight Tickets History'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-white/50">{finishedTickets.length}</span>
+                      <ChevronDown size={16} className="-rotate-90 text-white/50" />
+                    </div>
+                  </button>
+                </div>
+                </div>
+                ) : (
+                <div className="flex-1 w-full animate-in fade-in slide-in-from-right-4 duration-300 flex flex-col">
+                  <div className="flex justify-between items-center mb-6">
+                    <button onClick={() => setIsTicketsHistoryViewOpen(false)} className="text-black/50 hover:text-black dark:text-white/50 dark:hover:text-white transition flex items-center gap-2 text-sm font-bold">
+                      <ChevronDown size={20} className="rotate-90" />
+                      {lang === 'ar' ? 'رجوع' : 'Back'}
+                    </button>
+                    <h4 className="text-[10px] font-bold text-black/50 dark:text-white/50 uppercase tracking-widest text-center pr-8">{lang === 'ar' ? 'سجل التذاكر' : 'Tickets'}</h4>
+                  </div>
+                  
                   {finishedTickets.length > 0 ? (
-                      <div className="flex flex-col gap-3 mt-6 w-full max-h-[80vh] overflow-y-auto pr-2 scrollbar-hide pb-10">
+                      <div className="flex flex-col gap-3 w-full max-h-[60vh] overflow-y-auto pr-2 scrollbar-hide pb-10">
                         {finishedTickets.map((ticket, idx) => {
                           const isExpanded = expandedTicketIndex === idx;
                           
@@ -3615,6 +3645,7 @@ export default function App() {
                                 setFlightTimer(0);
                                 setIsBoardingPassOpen(true);
                                 setIsAnalyticsModalOpen(false);
+                                setIsTicketsHistoryViewOpen(false);
                               } else {
                                 setExpandedTicketIndex(idx);
                               }
@@ -3637,11 +3668,13 @@ export default function App() {
                         )})}
                       </div>
                   ) : (
-                    <div className="text-center text-xs font-bold text-gray-500 py-4 opacity-50">
+                    <div className="text-center text-xs font-bold text-gray-500 py-10 opacity-50 flex flex-col items-center justify-center gap-3 h-48">
+                      <Plane size={32} className="opacity-50" />
                       {lang === 'ar' ? 'لا يوجد تذاكر مختومة بعد' : 'No stamped tickets yet'}
                     </div>
                   )}
                 </div>
+                )}
 
 
               </div>
