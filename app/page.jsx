@@ -15,6 +15,9 @@ const MapComponent = dynamic(() => import('../components/MapComponent'), {
   loading: () => <div className="w-full h-full bg-[#051610] flex items-center justify-center text-emerald-500/50 text-xs font-bold tracking-widest uppercase animate-pulse">Initializing Global Radar...</div>
 });
 
+import BoardingPass from '../components/BoardingPass';
+import SeatSelection from '../components/SeatSelection';
+
 let globalAudioCtx = null;
 const getAudioCtx = () => {
   if (typeof window === 'undefined') return null;
@@ -27,6 +30,35 @@ const getAudioCtx = () => {
     globalAudioCtx.resume();
   }
   return globalAudioCtx;
+};
+
+const playAirportChime = () => {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  
+  const playNote = (freq, startTime, duration) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, startTime);
+    
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(0.5, startTime + 0.05); // Attack
+    gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration); // Decay
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start(startTime);
+    osc.stop(startTime + duration);
+  };
+  
+  // Classic E5, C5, G4 chime (تن تن تن)
+  playNote(659.25, t, 1.5);
+  playNote(523.25, t + 0.6, 1.5);
+  playNote(392.00, t + 1.2, 2.0);
 };
 
 // --- Aviation Coordinate Projection and Bezier calculations ---
@@ -447,8 +479,11 @@ export default function App() {
   const [flightDurationFilter, setFlightDurationFilter] = useState(null);
 
   const [isCabinHumPlaying, setIsCabinHumPlaying] = useState(false);
-  const [isAudioSettingsOpen, setIsAudioSettingsOpen] = useState(false);
-  const [audioVolume, setAudioVolume] = useState(0.55);
+  const [isBoardingPassOpen, setIsBoardingPassOpen] = useState(false);
+  const [isSeatSelectionOpen, setIsSeatSelectionOpen] = useState(false);
+  const [selectedSeat, setSelectedSeat] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -834,21 +869,10 @@ export default function App() {
       // Only trigger sound once when it first hits 0
       if (flightTimer > 0) {
         if (globalAudioCtx) {
-          const osc = globalAudioCtx.createOscillator();
-          const gain = globalAudioCtx.createGain();
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(523.25, globalAudioCtx.currentTime); // C5
-          osc.frequency.setValueAtTime(659.25, globalAudioCtx.currentTime + 0.2); // E5
-          osc.frequency.setValueAtTime(783.99, globalAudioCtx.currentTime + 0.4); // G5
-          gain.gain.setValueAtTime(0.5, globalAudioCtx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.01, globalAudioCtx.currentTime + 1.5);
-          osc.connect(gain);
-          gain.connect(globalAudioCtx.destination);
-          osc.start();
-          osc.stop(globalAudioCtx.currentTime + 1.5);
+          playAirportChime();
         }
+        setIsBoardingPassOpen(true);
       }
-      setSelectedFlight(null);
     }
   }, [currentUnixTime, isFlightTimerRunning, selectedFlight]);
 
@@ -1691,58 +1715,6 @@ export default function App() {
           document.body
         )}
 
-        {/* ---------------- AUDIO SETTINGS MODAL ---------------- */}
-        {isAudioSettingsOpen && createPortal(
-          <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 sm:p-6" onClick={() => setIsAudioSettingsOpen(false)}>
-            <div 
-              className="w-full max-w-xs relative bg-black/80 backdrop-blur-3xl rounded-[24px] p-5 shadow-2xl border border-white/10 flex flex-col gap-4 text-white font-[Outfit]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-lg font-bold text-center m-0">{lang === 'ar' ? 'إعدادات الصوت' : 'Audio Settings'}</h3>
-              
-              <div className="flex flex-col gap-2">
-                <label className="text-xs text-white/70 font-semibold flex justify-between">
-                  <span>{lang === 'ar' ? 'مستوى الصوت' : 'Volume'}</span>
-                  <span>{Math.round(audioVolume * 100)}%</span>
-                </label>
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="1" 
-                  step="0.05" 
-                  value={audioVolume}
-                  onChange={(e) => {
-                    const vol = parseFloat(e.target.value);
-                    setAudioVolume(vol);
-                    if (isCabinHumPlaying) updateHumVolume(vol);
-                  }}
-                  className="w-full accent-[#10B981] h-1.5 bg-white/10 rounded-full appearance-none outline-none cursor-pointer"
-                />
-              </div>
-
-              <div className="flex gap-2 mt-2">
-                <button 
-                  onClick={() => {
-                    stopHumSynthesis();
-                    setIsCabinHumPlaying(false);
-                    setIsAudioSettingsOpen(false);
-                  }}
-                  className="flex-1 py-2.5 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 text-sm font-bold transition-all border border-red-500/20 active:scale-95"
-                >
-                  {lang === 'ar' ? 'إيقاف الصوت' : 'Stop Audio'}
-                </button>
-                <button 
-                  onClick={() => setIsAudioSettingsOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-bold transition-all border border-white/5 active:scale-95"
-                >
-                  {lang === 'ar' ? 'تم' : 'Done'}
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
-
         {/* ---------------- FLIGHT FOCUS MODAL ---------------- */}
         {isFlightFocusOpen && createPortal(
           <div className="fixed inset-0 z-[99999] overflow-y-auto bg-black/60 backdrop-blur-3xl flex items-center justify-center p-4 sm:p-6 md:p-10">
@@ -1767,15 +1739,55 @@ export default function App() {
                   </p>
                   
                   <div className="flex flex-col items-center gap-4 bg-black/5 dark:bg-white/5 p-6 rounded-3xl border border-black/5 dark:border-white/10">
+                    <form 
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (!searchQuery.trim()) return;
+                        setIsSearching(true);
+                        try {
+                          const res = await fetch(`/api/flight/search?q=${encodeURIComponent(searchQuery)}`);
+                          const data = await res.json();
+                          if (data.flight) {
+                            setSelectedFlight({ ...data.flight, initialSeconds: data.flight.remainingSeconds });
+                            setFlightTimer(data.flight.remainingSeconds);
+                            setIsBoardingPassOpen(true);
+                          } else {
+                            alert(data.error || 'Flight not found');
+                          }
+                        } catch (err) {
+                          alert('Search failed');
+                        }
+                        setIsSearching(false);
+                      }}
+                      className="w-full flex gap-2"
+                    >
+                      <input 
+                        type="text" 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder={lang === 'ar' ? 'رقم الرحلة (مثال: EK1)' : 'Flight Number (e.g. EK1)'}
+                        className="flex-1 bg-white dark:bg-black/40 text-black dark:text-white rounded-2xl px-4 py-4 text-sm font-bold border border-black/10 dark:border-white/10 outline-none focus:border-emerald-500 uppercase tracking-widest"
+                      />
+                      <button 
+                        type="submit"
+                        disabled={isSearching}
+                        className="bg-emerald-500 hover:bg-emerald-400 text-black px-6 rounded-2xl font-black tracking-widest disabled:opacity-50 transition-colors"
+                      >
+                        {isSearching ? <Loader2 size={20} className="animate-spin" /> : <PlaneTakeoff size={20} />}
+                      </button>
+                    </form>
+
+                    <div className="w-full h-[1px] bg-black/10 dark:bg-white/10 my-2" />
+
                     <button
                       onClick={() => {
                         setFlightDurationFilter(0);
                         fetchFlights(0);
                       }}
-                      className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-black text-white dark:bg-white dark:text-black text-lg font-bold tracking-widest transition-all active:scale-95 shadow-lg"
+                      className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-white dark:bg-white/5 text-black dark:text-white text-sm font-bold tracking-widest transition-all active:scale-95 shadow-sm border border-black/5 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10"
                     >
-                      <Dices size={24} />
-                      {lang === 'ar' ? 'بحث عن رحلة عشوائية' : 'Find Random Flight'}
+                      <Globe size={18} />
+                      {lang === 'ar' ? 'تصفح الرحلات الحالية' : 'Browse Live Flights'}
                     </button>
                   </div>
                 </div>
@@ -3295,15 +3307,55 @@ export default function App() {
                           </p>
                           
                           <div className="flex flex-col items-center gap-3 bg-black/5 dark:bg-white/5 p-4 rounded-2xl border border-black/5 dark:border-white/10">
+                            <form 
+                              onSubmit={async (e) => {
+                                e.preventDefault();
+                                if (!searchQuery.trim()) return;
+                                setIsSearching(true);
+                                try {
+                                  const res = await fetch(`/api/flight/search?q=${encodeURIComponent(searchQuery)}`);
+                                  const data = await res.json();
+                                  if (data.flight) {
+                                    setSelectedFlight({ ...data.flight, initialSeconds: data.flight.remainingSeconds });
+                                    setFlightTimer(data.flight.remainingSeconds);
+                                    setIsBoardingPassOpen(true);
+                                  } else {
+                                    alert(data.error || 'Flight not found');
+                                  }
+                                } catch (err) {
+                                  alert('Search failed');
+                                }
+                                setIsSearching(false);
+                              }}
+                              className="w-full flex gap-2"
+                            >
+                              <input 
+                                type="text" 
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder={lang === 'ar' ? 'رقم الرحلة (EK1)' : 'Flight No. (EK1)'}
+                                className="flex-1 bg-white dark:bg-black/40 text-black dark:text-white rounded-xl px-3 py-3 text-xs font-bold border border-black/10 dark:border-white/10 outline-none focus:border-emerald-500 uppercase tracking-widest"
+                              />
+                              <button 
+                                type="submit"
+                                disabled={isSearching}
+                                className="bg-emerald-500 hover:bg-emerald-400 text-black px-4 rounded-xl font-black tracking-widest disabled:opacity-50 transition-colors"
+                              >
+                                {isSearching ? <Loader2 size={16} className="animate-spin" /> : <PlaneTakeoff size={16} />}
+                              </button>
+                            </form>
+
+                            <div className="w-full h-[1px] bg-black/10 dark:bg-white/10 my-1" />
+
                             <button
                               onClick={() => {
                                 setFlightDurationFilter(0);
                                 fetchFlights(0);
                               }}
-                              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-black text-white dark:bg-white dark:text-black text-[12px] font-bold tracking-widest transition-all active:scale-95 shadow-lg"
+                              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white dark:bg-white/5 text-black dark:text-white text-[12px] font-bold tracking-widest transition-all active:scale-95 shadow-sm border border-black/5 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10"
                             >
-                              <Dices size={18} />
-                              {lang === 'ar' ? 'بحث عن رحلة عشوائية' : 'Find Random Flight'}
+                              <Globe size={16} />
+                              {lang === 'ar' ? 'تصفح الرحلات' : 'Browse Live Flights'}
                             </button>
                           </div>
                         </div>
