@@ -4074,14 +4074,15 @@ export default function App() {
             <button onClick={handleOpenManage} className="w-13 h-13 rounded-full bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-[#2C2C2E] transition-all duration-200 active:scale-90 shadow-2xl dark:shadow-black/60"><Edit2 size={18} className="text-black dark:text-white/90" /></button>
           </div>
           {/* Window Seat Screensaver */}
-          {isWindowSeatOpen && (
+          {isWindowSeatOpen && createPortal(
             <WindowSeat 
               onClose={() => setIsWindowSeatOpen(false)} 
               flight={selectedFlight} 
               flightTimer={flightTimer} 
               originCoords={(selectedFlight?.originCoords?.lat) ? selectedFlight.originCoords : null}
               destCoords={(selectedFlight?.destCoords?.lat) ? selectedFlight.destCoords : null}
-            />
+            />,
+            document.body
           )}
 
         </div>
