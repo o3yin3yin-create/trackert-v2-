@@ -161,29 +161,77 @@ export default function WindowSeat({ onClose, flight, flightTimer, originCoords,
             </div>
           )}
           
-          {/* Airplane Wing (SVG) */}
+          {/* Realistic Airplane Wing (SVG) */}
           {showWing && (
             <div
               className="absolute pointer-events-none" 
               style={{
-                bottom: '-5%', 
+                bottom: '10%', 
                 left: isRightWindow ? '-20px' : 'auto', 
                 right: isLeftWindow ? '-20px' : 'auto',
-                width: '180px',
-                height: '180px',
+                width: '320px',
+                height: '240px',
                 transform: isLeftWindow ? 'scaleX(-1)' : 'none',
-                opacity: isNight ? 0.3 : 0.8,
-                filter: isSunset || isSunrise ? 'drop-shadow(0 0 20px rgba(255,100,50,0.3))' : 'none'
+                opacity: isNight ? 0.35 : 0.95,
+                filter: isSunset || isSunrise ? 'drop-shadow(0 0 30px rgba(255,120,60,0.3)) hue-rotate(-15deg) saturate(1.5) brightness(0.9)' : isNight ? 'brightness(0.3) contrast(1.2)' : 'drop-shadow(0 20px 30px rgba(0,0,0,0.3))'
               }} 
             >
-              <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                {/* Wing Body */}
-                <path d="M-50,200 L180,120 L160,110 L-50,150 Z" fill={isSunset || isSunrise ? "#8c5b52" : isNight ? "#1a1c23" : "#d1d5db"} />
-                {/* Wing Highlight */}
-                <path d="M-50,150 L160,110 L160,112 L-50,152 Z" fill="rgba(255,255,255,0.4)" />
-                {/* Engine */}
-                <ellipse cx="60" cy="165" rx="30" ry="12" fill={isSunset || isSunrise ? "#593630" : isNight ? "#111" : "#9ca3af"} />
-                <path d="M30,165 Q60,175 90,165" stroke="rgba(0,0,0,0.3)" strokeWidth="2" fill="none" />
+              <svg viewBox="0 0 800 600" preserveAspectRatio="xMinYMax slice" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="wingBase" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#e2e8f0"/>
+                    <stop offset="50%" stop-color="#cbd5e1"/>
+                    <stop offset="100%" stop-color="#94a3b8"/>
+                  </linearGradient>
+                  <linearGradient id="wingShadow" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="rgba(255,255,255,0.9)"/>
+                    <stop offset="15%" stop-color="rgba(255,255,255,0.1)"/>
+                    <stop offset="100%" stop-color="rgba(0,0,0,0.5)"/>
+                  </linearGradient>
+                  <linearGradient id="engineGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#f1f5f9"/>
+                    <stop offset="40%" stop-color="#cbd5e1"/>
+                    <stop offset="100%" stop-color="#334155"/>
+                  </linearGradient>
+                </defs>
+
+                <g id="full-wing">
+                  {/* Engine Pylon */}
+                  <path d="M 250 450 L 320 480 L 300 520 L 220 500 Z" fill="#64748b"/>
+                  
+                  {/* Engine Nacelle */}
+                  <ellipse cx="280" cy="520" rx="90" ry="35" fill="url(#engineGlow)"/>
+                  {/* Engine Intake Lip */}
+                  <path d="M 190 520 C 190 495, 205 480, 215 485 C 220 488, 208 500, 208 520 C 208 540, 220 552, 215 555 C 205 560, 190 545, 190 520 Z" fill="#475569"/>
+                  {/* Engine Intake Inner Dark */}
+                  <ellipse cx="205" cy="520" rx="6" ry="30" fill="#0f172a"/>
+                  {/* Engine exhaust */}
+                  <path d="M 370 520 C 370 505, 385 500, 395 510 L 405 520 L 395 530 C 385 540, 370 535, 370 520 Z" fill="#334155"/>
+
+                  {/* Main Wing Body */}
+                  <path d="M -50 650 L -50 400 Q 200 350 700 250 Q 730 240 750 220 L 760 230 Q 720 300 -50 650 Z" fill="url(#wingBase)"/>
+                  <path d="M -50 650 L -50 400 Q 200 350 700 250 Q 730 240 750 220 L 760 230 Q 720 300 -50 650 Z" fill="url(#wingShadow)"/>
+                  
+                  {/* Winglet (Upward curved tip) */}
+                  <path d="M 700 250 Q 730 240 750 220 L 765 100 Q 775 80 780 100 L 760 230 Z" fill="#0ea5e9"/> 
+                  <path d="M 750 220 L 765 100 Q 770 90 772 100 L 755 220 Z" fill="rgba(255,255,255,0.4)"/> 
+
+                  {/* Flap track fairings (pods under wing) */}
+                  <ellipse cx="150" cy="530" rx="35" ry="9" fill="#94a3b8" transform="rotate(-15 150 530)"/>
+                  <ellipse cx="350" cy="460" rx="30" ry="8" fill="#94a3b8" transform="rotate(-20 350 460)"/>
+                  <ellipse cx="500" cy="395" rx="25" ry="7" fill="#94a3b8" transform="rotate(-25 500 395)"/>
+                  <ellipse cx="620" cy="335" rx="20" ry="6" fill="#94a3b8" transform="rotate(-30 620 335)"/>
+
+                  {/* Aileron / Flap cut lines */}
+                  <path d="M -50 480 L 700 250" stroke="rgba(0,0,0,0.15)" strokeWidth="2.5" fill="none"/>
+                  <path d="M 150 520 L 200 445" stroke="rgba(0,0,0,0.2)" strokeWidth="2" fill="none"/>
+                  <path d="M 350 450 L 380 400" stroke="rgba(0,0,0,0.2)" strokeWidth="2" fill="none"/>
+                  <path d="M 500 385 L 520 345" stroke="rgba(0,0,0,0.2)" strokeWidth="2" fill="none"/>
+
+                  {/* Leading edge highlight */}
+                  <path d="M -50 400 Q 200 350 700 250" stroke="rgba(255,255,255,0.9)" strokeWidth="8" fill="none" filter="blur(2px)"/>
+                  <path d="M -50 400 Q 200 350 700 250" stroke="#ffffff" strokeWidth="3" fill="none"/>
+                </g>
               </svg>
             </div>
           )}
