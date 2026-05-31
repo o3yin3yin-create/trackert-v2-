@@ -1,253 +1,307 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { X, MapPin, Clock, Cloud } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 
-export default function WindowSeat({ onClose, flight, flightTimer, originCoords, destCoords, seat }) {
-  const [weather, setWeather] = useState(null);
-  const [localH, setLocalH] = useState(12);
+const vertexShaderSource = `
+  attribute vec2 position;
+  void main() {
+    gl_Position = vec4(position, 0.0, 1.0);
+  }
+`;
 
-  // Flight progress & coords logic
-  const progress = flight?.initialSeconds
-    ? Math.max(0, Math.min(1, (flight.initialSeconds - flightTimer) / flight.initialSeconds))
-    : 0;
-  const lat = originCoords && destCoords ? originCoords.lat + (destCoords.lat - originCoords.lat) * progress : null;
-  const lng = originCoords && destCoords ? originCoords.lng + (destCoords.lng - originCoords.lng) * progress : null;
-
-  // Wing visibility logic
-  const seatStr = seat ? seat.toString().toLowerCase() : '';
-  const isLeftWindow = seatStr.includes('a');
-  const isRightWindow = seatStr.includes('f');
-  const showWing = isLeftWindow || isRightWindow;
-
-  // Realtime
-  useEffect(() => {
-    const tick = () => {
-      const d = new Date();
-      const utc = d.getUTCHours() + d.getUTCMinutes() / 60;
-      let loc = (utc + (lng != null ? lng / 15 : 0)) % 24;
-      if (loc < 0) loc += 24;
-      setLocalH(loc);
-    };
-    tick();
-    const id = setInterval(tick, 30000);
-    return () => clearInterval(id);
-  }, [lng]);
-
-  useEffect(() => {
-    if (lat == null) return;
-    const ac = new AbortController();
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(2)}&longitude=${lng.toFixed(2)}&current=cloud_cover`, { signal: ac.signal })
-      .then(r => r.json())
-      .then(d => { if (d?.current) setWeather({ cc: d.current.cloud_cover }); })
-      .catch(() => {});
-    return () => ac.abort();
-  }, [lat != null ? Math.round(lat * 2) : null]);
-
-  // Determine dynamic gradient based on solar time
-  const isNight = localH < 5 || localH >= 19.5;
-  const isSunset = localH >= 17 && localH < 19.5;
-  const isDay = localH >= 7 && localH < 17;
-  const isSunrise = localH >= 5 && localH < 7;
-
-  let skyGradient = '';
-  let shadowReflectColor = 'rgba(255,255,255,0.1)';
-
-  if (isNight) {
-    skyGradient = `linear-gradient(to bottom, #020205 0%, #050510 30%, #0a0a1a 50%, #111125 65%, #15152a 72%, #0a0a1a 85%, #050510 100%)`;
-    shadowReflectColor = 'rgba(100,120,255,0.1)';
-  } else if (isSunset) {
-    // User's requested Sunset CSS
-    skyGradient = `linear-gradient(to bottom, #2a2c3f 0%, #3b4055 30%, #6e6a7d 50%, #ff9d76 65%, #9c6f7d 72%, #493946 85%, #302632 100%)`;
-    shadowReflectColor = 'rgba(255, 172, 132, 0.45)';
-  } else if (isDay) {
-    skyGradient = `linear-gradient(to bottom, #1042a6 0%, #2062d6 30%, #3d88e8 50%, #7dbef5 65%, #a6d6fa 72%, #e0f2ff 85%, #ffffff 100%)`;
-    shadowReflectColor = 'rgba(255, 255, 255, 0.45)';
-  } else if (isSunrise) {
-    skyGradient = `linear-gradient(to bottom, #1a2a4f 0%, #3a4a75 30%, #6a6a8f 50%, #ff8c66 65%, #a87884 72%, #5a4a58 85%, #3a2a38 100%)`;
-    shadowReflectColor = 'rgba(255, 140, 102, 0.45)';
+const fragmentShaderSource = `
+  precision highp float;
+  uniform vec2 u_resolution;
+  uniform float u_time;
+  uniform float u_dayState; // 1.0 = Day, 0.0 = Night
+  
+  // Hash & Noise
+  float hash(vec2 p) {
+      p = 50.0 * fract(p * 0.3183099 + vec2(0.71, 0.11));
+      return -1.0 + 2.0 * fract(p.x * p.y * (p.x + p.y));
+  }
+  
+  float noise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      vec2 u = f * f * (3.0 - 2.0 * f);
+      return mix(mix(hash(i + vec2(0.0,0.0)), hash(i + vec2(1.0,0.0)), u.x),
+                 mix(hash(i + vec2(0.0,1.0)), hash(i + vec2(1.0,1.0)), u.x), u.y);
+  }
+  
+  // Fractional Brownian Motion for cloud texture
+  float fbm(vec2 p) {
+      float f = 0.0;
+      float amp = 0.55;
+      for(int i = 0; i < 6; i++) {
+          f += amp * noise(p);
+          p *= 2.0;
+          amp *= 0.5;
+      }
+      return f;
+  }
+  
+  // Domain Warping for procedural volumetric feel
+  float warp(vec2 p, out vec2 q, out vec2 r) {
+      q = vec2(fbm(p + vec2(0.0, 0.0)), fbm(p + vec2(5.2, 1.3)));
+      r = vec2(fbm(p + 4.0 * q + vec2(1.7, 9.2)), fbm(p + 4.0 * q + vec2(8.3, 2.8)));
+      return fbm(p + 4.0 * r);
   }
 
-  // Realistic clouds from the public folder
-  const cloudOpacity = weather ? Math.max(0.1, weather.cc / 100) : 0.6;
-  const cloudBlend = isNight ? 'lighten' : (isSunset || isSunrise) ? 'overlay' : 'normal';
+  void main() {
+      vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+      vec2 p = (uv - 0.5) * 2.0;
+      p.x *= u_resolution.x / u_resolution.y;
+      
+      float t = u_time * 0.015; // Slow, constant forward drift (Cinematic)
+      
+      // ── EXTERIOR SKY ──
+      // Day: Deep Cobalt Blue
+      vec3 skyDay = mix(vec3(0.05, 0.25, 0.6), vec3(0.01, 0.1, 0.35), uv.y);
+      // Night: Deep Ink-Black
+      vec3 skyNight = mix(vec3(0.01, 0.01, 0.02), vec3(0.0, 0.0, 0.0), uv.y);
+      vec3 sky = mix(skyNight, skyDay, u_dayState);
+      
+      // ── CITY LIGHTS (Giza Sprawl at Night) ──
+      float cityDensity = fbm(p * 5.0 - vec2(0.0, t * 0.1));
+      float cityGrid = smoothstep(0.5, 1.0, noise(p * 200.0)) * smoothstep(0.3, 0.7, cityDensity);
+      // Fade out city towards horizon
+      cityGrid *= smoothstep(0.2, -0.6, p.y); 
+      vec3 cityGlow = vec3(1.0, 0.65, 0.2) * cityGrid * (1.0 - u_dayState) * 2.0;
+      
+      // ── VOLUMETRIC CUMULUS CLOUDS ──
+      vec2 cloudPos = p * 1.2 - vec2(t * 1.5, t * 0.4);
+      vec2 q, r;
+      float n = warp(cloudPos, q, r);
+      
+      // Cloud shaping (flatter bottoms, billowy tops)
+      float shape = smoothstep(-0.8, -0.1, p.y) * smoothstep(1.0, 0.2, p.y);
+      n *= shape * 1.2;
+      
+      // Cloud mask for density
+      float cloudMask = smoothstep(0.15, 0.65, n);
+      
+      // Directional Lighting (Sun angle high and right during day)
+      vec2 lightDir = normalize(vec2(0.6, 0.8));
+      float nLight = warp(cloudPos + lightDir * 0.08, q, r) * shape * 1.2;
+      float shadow = smoothstep(0.0, 0.4, n - nLight); // Self-shadowing
+      
+      // Day Cloud Lighting: Crisp detail, deep shadows
+      vec3 cDayLight = vec3(1.0, 1.0, 1.0);
+      vec3 cDayShadow = vec3(0.3, 0.4, 0.55);
+      vec3 cDay = mix(cDayLight, cDayShadow, shadow);
+      
+      // Night Cloud Lighting: Dark masses
+      vec3 cNightDark = vec3(0.02, 0.02, 0.03);
+      vec3 cNightShadow = vec3(0.0, 0.0, 0.0);
+      vec3 cNight = mix(cNightDark, cNightShadow, shadow);
+      
+      // City light reflection catching cloud edges at night
+      float cityGlowMask = smoothstep(0.3, 0.8, -lightDir.y * shadow) * smoothstep(-0.1, 0.4, -p.y);
+      cNight += vec3(1.0, 0.5, 0.1) * 0.25 * cityGlowMask * (1.0 - u_dayState);
+      
+      vec3 clouds = mix(cNight, cDay, u_dayState);
+      
+      // ── WING NAVIGATION LIGHT (Red Strobe) ──
+      // Visible at night. Flashes sharply.
+      float strobe = pow(sin(u_time * 3.0), 100.0) * (1.0 - u_dayState);
+      clouds += vec3(1.0, 0.0, 0.0) * strobe * 0.6 * cloudMask;
+      
+      // ── FINAL BLEND ──
+      // Atmospheric perspective
+      float distFade = smoothstep(0.0, 0.8, uv.y + 0.3);
+      vec3 color = mix(sky + cityGlow, clouds, cloudMask * distFade);
+      
+      // Subtle Grain (Macro-photography detail)
+      float grain = hash(p * u_time) * 0.025;
+      color += grain;
+      
+      gl_FragColor = vec4(color, 1.0);
+  }
+`;
+
+function initWebGL(canvas) {
+  const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true });
+  if (!gl) return null;
+
+  const compileShader = (type, source) => {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.error('Shader compilation error:', gl.getShaderInfoLog(shader));
+      gl.deleteShader(shader);
+      return null;
+    }
+    return shader;
+  };
+
+  const vertexShader = compileShader(gl.VERTEX_SHADER, vertexShaderSource);
+  const fragmentShader = compileShader(gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+  if (!vertexShader || !fragmentShader) return null;
+
+  const program = gl.createProgram();
+  gl.attachShader(program, vertexShader);
+  gl.attachShader(program, fragmentShader);
+  gl.linkProgram(program);
+
+  const positionLocation = gl.getAttribLocation(program, 'position');
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+    -1.0, -1.0,
+     1.0, -1.0,
+    -1.0,  1.0,
+    -1.0,  1.0,
+     1.0, -1.0,
+     1.0,  1.0
+  ]), gl.STATIC_DRAW);
+
+  return { gl, program, positionLocation, buffer };
+}
+
+export default function WindowSeat({ onClose }) {
+  const canvasRef = useRef(null);
+  const [glReady, setGlReady] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const webglParams = initWebGL(canvas);
+    if (!webglParams) return;
+    
+    setGlReady(true);
+    const { gl, program, positionLocation, buffer } = webglParams;
+
+    const uResolution = gl.getUniformLocation(program, 'u_resolution');
+    const uTime = gl.getUniformLocation(program, 'u_time');
+    const uDayState = gl.getUniformLocation(program, 'u_dayState');
+
+    let animationFrameId;
+    const startTime = performance.now();
+
+    const render = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const width = canvas.clientWidth * dpr;
+      const height = canvas.clientHeight * dpr;
+      
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+        gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+      }
+
+      gl.useProgram(program);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.enableVertexAttribArray(positionLocation);
+      gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+      gl.uniform2f(uResolution, canvas.width, canvas.height);
+      gl.uniform1f(uTime, (performance.now() - startTime) / 1000);
+
+      // System Time Synchronization (Seamless Cross-fade)
+      const now = new Date();
+      const hour = now.getHours();
+      const minutes = now.getMinutes();
+      const totalMinutes = hour * 60 + minutes;
+      
+      const sunrise = 6 * 60;   // 6:00 AM
+      const sunset = 18 * 60;   // 6:00 PM
+      const transitionDuration = 120; // 120 mins for full fade
+      
+      let dayState = 0.0;
+      
+      if (totalMinutes >= sunrise && totalMinutes < sunset) {
+        // Daytime transition logic
+        if (totalMinutes < sunrise + transitionDuration) {
+          dayState = (totalMinutes - sunrise) / transitionDuration; // Fading in day
+        } else if (totalMinutes > sunset - transitionDuration) {
+          dayState = (sunset - totalMinutes) / transitionDuration; // Fading out day
+        } else {
+          dayState = 1.0; // Full day
+        }
+      }
+
+      gl.uniform1f(uDayState, dayState);
+
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, []);
 
   return (
     <div 
-      className="fixed inset-0 z-[9999999] flex items-center justify-center overflow-hidden font-sans select-none"
-      style={{ backgroundColor: '#050505', fontFamily: "'Inter', sans-serif" }}
+      className="fixed inset-0 z-[9999999] flex items-center justify-center select-none"
+      style={{ backgroundColor: '#000000' }}
     >
       <button 
         onClick={(e) => { e.stopPropagation(); onClose(); }}
-        className="absolute top-10 right-8 z-[9999999] w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all active:scale-90 pointer-events-auto"
-        style={{ cursor: 'pointer' }}
+        className="absolute top-10 right-8 z-[9999999] w-12 h-12 rounded-full bg-white/5 hover:bg-white/10 backdrop-blur-md flex items-center justify-center transition-all active:scale-90 pointer-events-auto border border-white/5"
       >
-        <X size={24} className="text-white/80" />
+        <X size={24} className="text-white/40" />
       </button>
 
-      {/* HUD info */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[100010] flex gap-4 px-5 py-2.5 rounded-2xl bg-black/50 backdrop-blur-xl border border-white/5 text-white/40 text-xs font-mono tracking-widest uppercase pointer-events-none">
-        {lat != null && <span className="flex items-center gap-1.5"><MapPin size={12} />{Math.abs(lat).toFixed(1)}°{lat >= 0 ? 'N' : 'S'} {Math.abs(lng).toFixed(1)}°{lng >= 0 ? 'E' : 'W'}</span>}
-        <span className="flex items-center gap-1.5"><Clock size={12} />{Math.floor(localH).toString().padStart(2, '0')}:{Math.floor((localH % 1) * 60).toString().padStart(2, '0')} local</span>
-        {weather && <span className="flex items-center gap-1.5"><Cloud size={12} />{weather.cc}%</span>}
-      </div>
-
-      {/* The Frame exactly as user requested */}
+      {/* The precise oval window geometry and internal bezel structure */}
       <div 
         style={{
-          width: '340px',
-          height: '540px',
-          borderRadius: '140px',
-          background: '#111',
+          width: '420px',
+          height: '660px',
+          borderRadius: '210px',
+          background: '#0a0a0a',
+          // Specific directional shadow casting on the right bezel (as per image_0.png)
           boxShadow: `
-            inset 18px 0 25px -5px ${shadowReflectColor},
-            inset -20px 0 30px rgba(0, 0, 0, 0.95),
-            inset 0 20px 30px rgba(0, 0, 0, 0.9),
-            inset 0 -20px 30px rgba(0, 0, 0, 0.9),
-            0 0 30px rgba(0, 0, 0, 0.8)
+            inset -45px 0 60px rgba(0, 0, 0, 1),      /* Deep right shadow */
+            inset 15px 0 40px rgba(255, 255, 255, 0.03), /* Faint left rim light */
+            inset 0 45px 60px rgba(0, 0, 0, 0.95),    /* Top occlusion */
+            inset 0 -45px 60px rgba(0, 0, 0, 0.95),   /* Bottom occlusion */
+            0 0 80px rgba(0, 0, 0, 1)                 /* Total darkness blend */
           `,
-          padding: '35px',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
+          padding: '50px',
           position: 'relative'
         }}
       >
-        {/* The Glass */}
+        {/* The Glass and Procedural Environment */}
         <div 
           style={{
             width: '100%',
             height: '100%',
-            borderRadius: '110px',
-            background: skyGradient,
-            boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.7)',
+            borderRadius: '160px',
+            overflow: 'hidden',
             position: 'relative',
-            overflow: 'hidden'
+            background: '#020205', // Base dark for pre-load
+            boxShadow: `
+              inset 0 0 50px rgba(0, 0, 0, 1), /* Glass edge shadow */
+              inset 8px 8px 20px rgba(255, 255, 255, 0.04) /* Glass macro reflection */
+            `
           }}
         >
-          {/* Stars */}
-          {(isNight || isSunset) && (
-            <>
-              <div style={{ position: 'absolute', backgroundColor: '#fff', borderRadius: '50%', boxShadow: '0 0 5px rgba(255,255,255,0.8)', width: '2.5px', height: '2.5px', top: '15%', right: '25%' }} />
-              <div style={{ position: 'absolute', backgroundColor: '#fff', borderRadius: '50%', boxShadow: '0 0 5px rgba(255,255,255,0.8)', width: '1.5px', height: '1.5px', top: '45%', right: '35%', opacity: 0.6 }} />
-              <div style={{ position: 'absolute', backgroundColor: '#fff', borderRadius: '50%', boxShadow: '0 0 5px rgba(255,255,255,0.8)', width: '2px', height: '2px', top: '25%', left: '20%', opacity: 0.8 }} />
-              <div style={{ position: 'absolute', backgroundColor: '#fff', borderRadius: '50%', boxShadow: '0 0 5px rgba(255,255,255,0.8)', width: '1px', height: '1px', top: '65%', left: '40%', opacity: 0.4 }} />
-            </>
-          )}
-
-          {/* Real Parallax Image Clouds */}
-          {!isNight && (
-            <div className="absolute inset-0 pointer-events-none transition-opacity duration-1000" style={{ opacity: cloudOpacity }}>
-               <div className="absolute inset-0 w-[400%] h-full animate-[pan-clouds_180s_linear_infinite]"
-                    style={{
-                      backgroundImage: `url('/realistic_clouds.png')`,
-                      backgroundSize: 'auto 100%',
-                      backgroundPosition: '0 0',
-                      backgroundRepeat: 'repeat-x',
-                      mixBlendMode: cloudBlend,
-                      filter: 'contrast(1.1) brightness(1.2)'
-                    }}
-               />
-               {/* Layer 2 Fast Clouds */}
-               <div className="absolute inset-0 w-[400%] h-full animate-[pan-clouds_90s_linear_infinite] opacity-60"
-                    style={{
-                      backgroundImage: `url('/realistic_clouds.png')`,
-                      backgroundSize: 'auto 130%',
-                      backgroundPosition: '50% 50%',
-                      backgroundRepeat: 'repeat-x',
-                      mixBlendMode: cloudBlend,
-                      filter: 'contrast(1.3) brightness(1.4) blur(1px)'
-                    }}
-               />
-            </div>
-          )}
+          <canvas 
+            ref={canvasRef} 
+            style={{ 
+              width: '100%', 
+              height: '100%', 
+              display: 'block',
+              opacity: glReady ? 1 : 0,
+              transition: 'opacity 1s ease-in'
+            }} 
+          />
           
-          {/* Realistic Airplane Wing (SVG) */}
-          {showWing && (
-            <div
-              className="absolute pointer-events-none" 
-              style={{
-                bottom: '10%', 
-                left: isRightWindow ? '-20px' : 'auto', 
-                right: isLeftWindow ? '-20px' : 'auto',
-                width: '320px',
-                height: '240px',
-                transform: isLeftWindow ? 'scaleX(-1)' : 'none',
-                opacity: isNight ? 0.35 : 0.95,
-                filter: isSunset || isSunrise ? 'drop-shadow(0 0 30px rgba(255,120,60,0.3)) hue-rotate(-15deg) saturate(1.5) brightness(0.9)' : isNight ? 'brightness(0.3) contrast(1.2)' : 'drop-shadow(0 20px 30px rgba(0,0,0,0.3))'
-              }} 
-            >
-              <svg viewBox="0 0 800 600" preserveAspectRatio="xMinYMax slice" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <linearGradient id="wingBase" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stop-color="#e2e8f0"/>
-                    <stop offset="50%" stop-color="#cbd5e1"/>
-                    <stop offset="100%" stop-color="#94a3b8"/>
-                  </linearGradient>
-                  <linearGradient id="wingShadow" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stop-color="rgba(255,255,255,0.9)"/>
-                    <stop offset="15%" stop-color="rgba(255,255,255,0.1)"/>
-                    <stop offset="100%" stop-color="rgba(0,0,0,0.5)"/>
-                  </linearGradient>
-                  <linearGradient id="engineGlow" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stop-color="#f1f5f9"/>
-                    <stop offset="40%" stop-color="#cbd5e1"/>
-                    <stop offset="100%" stop-color="#334155"/>
-                  </linearGradient>
-                </defs>
-
-                <g id="full-wing">
-                  {/* Engine Pylon */}
-                  <path d="M 250 450 L 320 480 L 300 520 L 220 500 Z" fill="#64748b"/>
-                  
-                  {/* Engine Nacelle */}
-                  <ellipse cx="280" cy="520" rx="90" ry="35" fill="url(#engineGlow)"/>
-                  {/* Engine Intake Lip */}
-                  <path d="M 190 520 C 190 495, 205 480, 215 485 C 220 488, 208 500, 208 520 C 208 540, 220 552, 215 555 C 205 560, 190 545, 190 520 Z" fill="#475569"/>
-                  {/* Engine Intake Inner Dark */}
-                  <ellipse cx="205" cy="520" rx="6" ry="30" fill="#0f172a"/>
-                  {/* Engine exhaust */}
-                  <path d="M 370 520 C 370 505, 385 500, 395 510 L 405 520 L 395 530 C 385 540, 370 535, 370 520 Z" fill="#334155"/>
-
-                  {/* Main Wing Body */}
-                  <path d="M -50 650 L -50 400 Q 200 350 700 250 Q 730 240 750 220 L 760 230 Q 720 300 -50 650 Z" fill="url(#wingBase)"/>
-                  <path d="M -50 650 L -50 400 Q 200 350 700 250 Q 730 240 750 220 L 760 230 Q 720 300 -50 650 Z" fill="url(#wingShadow)"/>
-                  
-                  {/* Winglet (Upward curved tip) */}
-                  <path d="M 700 250 Q 730 240 750 220 L 765 100 Q 775 80 780 100 L 760 230 Z" fill="#0ea5e9"/> 
-                  <path d="M 750 220 L 765 100 Q 770 90 772 100 L 755 220 Z" fill="rgba(255,255,255,0.4)"/> 
-
-                  {/* Flap track fairings (pods under wing) */}
-                  <ellipse cx="150" cy="530" rx="35" ry="9" fill="#94a3b8" transform="rotate(-15 150 530)"/>
-                  <ellipse cx="350" cy="460" rx="30" ry="8" fill="#94a3b8" transform="rotate(-20 350 460)"/>
-                  <ellipse cx="500" cy="395" rx="25" ry="7" fill="#94a3b8" transform="rotate(-25 500 395)"/>
-                  <ellipse cx="620" cy="335" rx="20" ry="6" fill="#94a3b8" transform="rotate(-30 620 335)"/>
-
-                  {/* Aileron / Flap cut lines */}
-                  <path d="M -50 480 L 700 250" stroke="rgba(0,0,0,0.15)" strokeWidth="2.5" fill="none"/>
-                  <path d="M 150 520 L 200 445" stroke="rgba(0,0,0,0.2)" strokeWidth="2" fill="none"/>
-                  <path d="M 350 450 L 380 400" stroke="rgba(0,0,0,0.2)" strokeWidth="2" fill="none"/>
-                  <path d="M 500 385 L 520 345" stroke="rgba(0,0,0,0.2)" strokeWidth="2" fill="none"/>
-
-                  {/* Leading edge highlight */}
-                  <path d="M -50 400 Q 200 350 700 250" stroke="rgba(255,255,255,0.9)" strokeWidth="8" fill="none" filter="blur(2px)"/>
-                  <path d="M -50 400 Q 200 350 700 250" stroke="#ffffff" strokeWidth="3" fill="none"/>
-                </g>
-              </svg>
-            </div>
-          )}
-
-          {/* Inner Glass Glare */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none mix-blend-overlay"></div>
-          <div className="absolute top-[10%] left-[10%] w-1/3 h-1/4 rounded-full bg-white/5 filter blur-xl pointer-events-none"></div>
+          {/* Faint, cool cabin LED reflections on internal window glass (Night) */}
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse at 70% 30%, rgba(200, 220, 255, 0.02) 0%, transparent 60%)',
+              mixBlendMode: 'screen'
+            }}
+          />
         </div>
       </div>
-      
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes pan-clouds {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-      `}} />
     </div>
   );
 }
