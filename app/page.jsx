@@ -14,9 +14,9 @@ const MapComponent = dynamic(() => import('../components/MapComponent'), {
   ssr: false,
   loading: () => <div className="w-full h-full bg-[#051610] flex items-center justify-center text-emerald-500/50 text-xs font-bold tracking-widest uppercase animate-pulse">Initializing Global Radar...</div>
 });
-
 import BoardingPass from '../components/BoardingPass';
 import BoardingPassCard from '../components/BoardingPassCard';
+import WindowSeat from '../components/WindowSeat';
 import SeatSelection from '../components/SeatSelection';
 
 let globalAudioCtx = null;
@@ -484,6 +484,7 @@ export default function App() {
   const [audioVolume, setAudioVolume] = useState(0.55);
   const [isBoardingPassOpen, setIsBoardingPassOpen] = useState(false);
   const [isSeatSelectionOpen, setIsSeatSelectionOpen] = useState(false);
+  const [isWindowSeatOpen, setIsWindowSeatOpen] = useState(false);
   const [selectedSeat, setSelectedSeat] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -2458,6 +2459,24 @@ export default function App() {
                         style={{ transition: 'stroke-dashoffset 0.9s linear', filter: `drop-shadow(0 0 3px ${neon}88)` }}
                       />
                     </svg>
+                    
+                    {/* Window Seat Button */}
+                    <button 
+                      onClick={() => setIsWindowSeatOpen(true)}
+                      className="absolute -right-16 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl flex items-center justify-center transition-all bg-[#1C1C1E] shadow-2xl active:scale-95 z-[55] overflow-hidden"
+                      style={{
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.5), inset 0 2px 10px rgba(255,255,255,0.05)'
+                      }}
+                    >
+                      <div className="relative w-full h-full flex items-center justify-center">
+                        <div className="absolute inset-0 bg-gradient-to-tr from-sky-900/40 to-transparent"></div>
+                        <div className="w-5 h-7 rounded-[10px] border-2 border-white/40 bg-sky-400/20 relative flex items-start justify-center pt-[2px] shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]">
+                           <div className="w-3 h-[2px] bg-white/40 rounded-full"></div>
+                        </div>
+                      </div>
+                    </button>
+
                     {/* Center button */}
                     <button
                       onClick={() => setIsTimerRunning(r => !r)}
@@ -4063,6 +4082,11 @@ export default function App() {
             </div>
             <button onClick={handleOpenManage} className="w-13 h-13 rounded-full bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-[#2C2C2E] transition-all duration-200 active:scale-90 shadow-2xl dark:shadow-black/60"><Edit2 size={18} className="text-black dark:text-white/90" /></button>
           </div>
+          {/* Window Seat Screensaver */}
+          {isWindowSeatOpen && (
+            <WindowSeat onClose={() => setIsWindowSeatOpen(false)} />
+          )}
+
         </div>
       </div>
     </div>
