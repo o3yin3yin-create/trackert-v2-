@@ -2459,23 +2459,6 @@ export default function App() {
                         style={{ transition: 'stroke-dashoffset 0.9s linear', filter: `drop-shadow(0 0 3px ${neon}88)` }}
                       />
                     </svg>
-                    
-                    {/* Window Seat Button */}
-                    <button 
-                      onClick={() => setIsWindowSeatOpen(true)}
-                      className="absolute -right-16 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl flex items-center justify-center transition-all bg-[#1C1C1E] shadow-2xl active:scale-95 z-[55] overflow-hidden"
-                      style={{
-                        border: '1px solid rgba(255,255,255,0.05)',
-                        boxShadow: '0 10px 30px rgba(0,0,0,0.5), inset 0 2px 10px rgba(255,255,255,0.05)'
-                      }}
-                    >
-                      <div className="relative w-full h-full flex items-center justify-center">
-                        <div className="absolute inset-0 bg-gradient-to-tr from-sky-900/40 to-transparent"></div>
-                        <div className="w-5 h-7 rounded-[10px] border-2 border-white/40 bg-sky-400/20 relative flex items-start justify-center pt-[2px] shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]">
-                           <div className="w-3 h-[2px] bg-white/40 rounded-full"></div>
-                        </div>
-                      </div>
-                    </button>
 
                     {/* Center button */}
                     <button
@@ -2592,15 +2575,6 @@ export default function App() {
                   <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${!isOnline ? 'bg-red-500 shadow-[0_0_8px_#ef4444]' : isSyncing ? 'bg-[#FF9F0A] pulse-glow shadow-[0_0_8px_#FF9F0A]' : 'bg-green-500 shadow-[0_0_8px_#22c55e]'}`} />
                   {!isOnline ? 'Offline' : isSyncing ? 'Syncing' : 'Synced'}
                 </span>
-
-              {/* Window Seat Screensaver Toggle */}
-              <button
-                onClick={() => setIsWindowSeatOpen(true)}
-                className="p-2 liquid-panel rounded-full text-black dark:text-white/80 hover:text-black dark:hover:text-white transition-all duration-200 active:scale-90"
-                title="Window Seat Screensaver"
-              >
-                <Plane size={18} strokeWidth={2.2} className="text-black dark:text-white" />
-              </button>
 
               {/* Fullscreen Toggle */}
               <button
@@ -4039,6 +4013,14 @@ export default function App() {
                            />
                          </div>
                       )}
+                      
+                      <button 
+                        onClick={() => { setIsWindowSeatOpen(true); }}
+                        className="w-12 h-12 rounded-2xl flex items-center justify-center border shadow-2xl backdrop-blur-xl active:scale-95 transition-all select-none duration-300 bg-black/50 text-white border-white/10 hover:bg-black/75"
+                        title={lang === 'ar' ? 'شباك الطائرة' : 'Window Seat'}
+                      >
+                        <Compass size={18} />
+                      </button>
                     </div>
                     
                     {/* Bottom Cinematic Telemetry Panel */}
