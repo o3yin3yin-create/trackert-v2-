@@ -2593,6 +2593,15 @@ export default function App() {
                   {!isOnline ? 'Offline' : isSyncing ? 'Syncing' : 'Synced'}
                 </span>
 
+              {/* Window Seat Screensaver Toggle */}
+              <button
+                onClick={() => setIsWindowSeatOpen(true)}
+                className="p-2 liquid-panel rounded-full text-black dark:text-white/80 hover:text-black dark:hover:text-white transition-all duration-200 active:scale-90"
+                title="Window Seat Screensaver"
+              >
+                <Plane size={18} strokeWidth={2.2} className="text-black dark:text-white" />
+              </button>
+
               {/* Fullscreen Toggle */}
               <button
                 onClick={toggleFullscreen}
@@ -4084,7 +4093,13 @@ export default function App() {
           </div>
           {/* Window Seat Screensaver */}
           {isWindowSeatOpen && (
-            <WindowSeat onClose={() => setIsWindowSeatOpen(false)} />
+            <WindowSeat 
+              onClose={() => setIsWindowSeatOpen(false)} 
+              flight={selectedFlight} 
+              flightTimer={flightTimer} 
+              originCoords={(selectedFlight?.originCoords?.lat) ? selectedFlight.originCoords : null}
+              destCoords={(selectedFlight?.destCoords?.lat) ? selectedFlight.destCoords : null}
+            />
           )}
 
         </div>
