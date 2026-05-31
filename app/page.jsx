@@ -4015,7 +4015,7 @@ export default function App() {
                       )}
                       
                       <button 
-                        onClick={() => { setIsWindowSeatOpen(true); }}
+                        onClick={(e) => { e.stopPropagation(); setIsWindowSeatOpen(true); }}
                         className="w-12 h-12 rounded-2xl flex items-center justify-center border shadow-2xl backdrop-blur-xl active:scale-95 transition-all select-none duration-300 bg-black/50 text-white border-white/10 hover:bg-black/75"
                         title={lang === 'ar' ? 'شباك الطائرة' : 'Window Seat'}
                       >
