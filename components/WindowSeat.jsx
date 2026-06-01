@@ -66,13 +66,13 @@ const fragmentShaderSource = `
     vec2 p = -1.0 + 2.0 * gl_FragCoord.xy / u_resolution.xy;
     p.x *= u_resolution.x / u_resolution.y;
 
-    // Camera setup - looking slightly down and backward
+    // Camera setup - looking almost horizontal to put the horizon exactly in the middle (50% sky, 50% clouds)
     float side = u_seatSide > 0.5 ? 1.0 : -1.0;
     
     // Slow camera translation forward
-    vec3 ro = vec3(0.0, 1.5, -u_time * 0.05);
-    // Target is slightly to the side (based on window) and backward
-    vec3 ta = vec3(side * 1.6, 0.45, -u_time * 0.05 - 2.0);
+    vec3 ro = vec3(0.0, 1.2, -u_time * 0.05);
+    // Target is almost horizontal, slightly looking down
+    vec3 ta = vec3(side * 1.6, 1.0, -u_time * 0.05 - 2.0);
     
     vec3 cw = normalize(ta - ro);
     vec3 cp = vec3(0.0, 1.0, 0.0);
@@ -128,21 +128,18 @@ const fragmentShaderSource = `
         float heightFactor = smoothstep(-1.4, -0.2, pos.y) * smoothstep(1.0, 0.2, pos.y) * horizonFade;
         
         if (heightFactor > 0.0) {
-          // Wind translation + morphing term
+          // Wind translation + morphing term (slightly faster clouds)
           vec3 wind = vec3(u_time * 0.22, 0.0, -u_time * 0.09);
-          // Scale up coordinates to make clouds smaller and less clumped
+          // Scale up coordinates (from 1.3 to 1.65) to make clouds smaller and less clumped
           vec3 samplePos = pos * 1.65 + wind;
           
           // Morph the noise based on time
           samplePos.y += sin(u_time * 0.04 + samplePos.x * 0.25) * 0.08;
           
           // Low frequency noise to modulate cloud presence (creates large clear sky regions)
-          float presence = noise(samplePos * 0.18);
-          float threshold = 0.68 + (1.0 - presence) * 0.42;
-          float density = fbm(samplePos) * 2.2 - threshold;
-          
-          // Sharpen edges to make clouds highly discrete/separated
-          density = smoothstep(0.0, 0.4, density) * 1.5;
+          float presence = noise(samplePos * 0.22);
+          float threshold = 0.58 + (1.0 - presence) * 0.45;
+          float density = fbm(samplePos) * 1.7 - threshold;
           
           // Add realistic high-frequency micro-wisps at the cloud edges
           if (density > 0.0) {
@@ -153,28 +150,24 @@ const fragmentShaderSource = `
           density = max(0.0, density) * heightFactor;
           
           if (density > 0.01) {
-            // High-fidelity multi-step shadowing to render deep shadows of clouds on themselves and each other
-            float shadowDensity = 0.0;
-            for (int j = 1; j <= 3; j++) {
-              float stepL = float(j) * 0.28;
-              vec3 shadowPos = pos + u_sunDir * stepL;
-              vec3 shadowSamplePos = shadowPos * 1.65 + wind;
-              shadowSamplePos.y += sin(u_time * 0.04 + shadowSamplePos.x * 0.25) * 0.08;
-              
-              float sp = noise(shadowSamplePos * 0.18);
-              float st = 0.68 + (1.0 - sp) * 0.42;
-              float sd = fbm(shadowSamplePos) * 2.2 - st;
-              sd = smoothstep(0.0, 0.4, sd) * 1.5;
-              shadowDensity += max(0.0, sd);
+            // Self-shadowing towards sun/moon (Beer's Law)
+            float shadowT = 0.12;
+            vec3 shadowPos = pos + u_sunDir * shadowT;
+            float shadowPresence = noise((shadowPos * 1.65 + wind) * 0.22);
+            float shadowThreshold = 0.58 + (1.0 - shadowPresence) * 0.45;
+            float shadowDensity = fbm(shadowPos * 1.65 + wind) * 1.7 - shadowThreshold;
+            if (shadowDensity > 0.0) {
+              shadowDensity += noise(shadowPos * 6.5 + wind) * 0.16 * (1.0 - shadowDensity);
             }
+            shadowDensity = max(0.0, shadowDensity);
             
-            float transmission = exp(-shadowDensity * 8.0);
+            float transmission = exp(-shadowDensity * 4.5);
             
             // Interpolate cloud base and lit tops
             vec3 cloudCol = mix(u_cloudBase, u_cloudLight, transmission);
             
             // Edge scattering (soft highlight around sun)
-            float scatter = pow(max(0.0, dot(rd, u_sunDir)), 6.0) * 0.45;
+            float scatter = pow(max(0.0, dot(rd, u_sunDir)), 4.0) * 0.35;
             cloudCol += u_sunColor * scatter * transmission;
             
             // Warm scattering from twinkling city lights below
@@ -184,8 +177,8 @@ const fragmentShaderSource = `
               cloudCol = mix(cloudCol, cityGlowCol, bottomScatter * (1.0 - transmission));
             }
             
-            // Alpha compositing - brilliant opaque clouds!
-            float alpha = smoothstep(0.01, 0.15, density) * 0.95;
+            // Alpha compositing (make clouds stand out as bright white and solid!)
+            float alpha = density * 0.85;
             vec4 val = vec4(cloudCol * alpha, alpha);
             
             // Front-to-back blend
@@ -230,7 +223,7 @@ const fragmentShaderSource = `
             // Twinkling
             float twinkle = sin(u_time * (2.2 + cellHash * 2.5) + cellHash * 90.0) * 0.5 + 0.5;
             
-            // Sodium vs Mercury vapor vapor mix
+            // Sodium vs Mercury vapor mix
             vec3 lightCol = vec3(1.0, 0.56, 0.18); // Sodium Amber
             if (cellHash > 0.95) lightCol = vec3(0.9, 0.35, 0.15); // Neon orange
             else if (cellHash > 0.91) lightCol = vec3(1.0, 0.82, 0.5); // Warm white
@@ -396,8 +389,8 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       skyColorBottom: [0.52, 0.74, 0.96], // Horizon light blue
       sunColor: [1.0, 1.0, 0.95],
       sunDir: [-0.6, 0.75, -0.4],
-      cloudBase: [0.72, 0.76, 0.82], // Deep, realistic cool shadow base
-      cloudLight: [1.5, 1.5, 1.5], // Blindingly white cloud tops (non-transparent)
+      cloudBase: [0.85, 0.88, 0.94], // Whiter, brighter cloud base
+      cloudLight: [1.3, 1.3, 1.3], // High-contrast brilliant white cloud tops
       bezelHighlight: 'rgba(255, 255, 255, 0.45)',
       cabinReflection: 0.06,
       nightMode: 0.0,
@@ -412,15 +405,15 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
     };
 
     const SunsetPalette = {
-      skyColorTop: [0.10, 0.06, 0.22], // Breathtaking deep sunset twilight
-      skyColorBottom: [1.0, 0.42, 0.15], // Rich flaming orange horizon
+      skyColorTop: [0.15, 0.11, 0.28], // Twilight deep violet
+      skyColorBottom: [0.98, 0.45, 0.24], // Flaming orange/crimson horizon
       sunColor: [1.0, 0.65, 0.38],
       sunDir: [-1.0, 0.16, -0.2],
-      cloudBase: [0.35, 0.26, 0.38], // Rich purple sunset shadow
-      cloudLight: [1.6, 1.05, 0.82], // Glowing peach-pink highlight tops
+      cloudBase: [0.45, 0.38, 0.48], // Lighter cloud base
+      cloudLight: [1.25, 0.95, 0.85], // Brighter cloud tops
       bezelHighlight: 'rgba(255, 120, 60, 0.5)',
       cabinReflection: 0.10,
-      nightMode: 0.15,
+      nightMode: 0.15, // Blending starting for ground/stars
 
       // Wing colors
       wingBase: '#3c2e42',
@@ -432,12 +425,12 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
     };
 
     const NightPalette = {
-      skyColorTop: [0.004, 0.004, 0.010], // Absolute OLED space black
-      skyColorBottom: [0.015, 0.020, 0.040], // Deep cosmic navy horizon
+      skyColorTop: [0.008, 0.008, 0.018], // Absolute space black
+      skyColorBottom: [0.03, 0.04, 0.08], // Cool horizon navy-blue
       sunColor: [0.52, 0.63, 0.85], // Silvery moonlight
       sunDir: [-0.3, 0.88, -0.5],
-      cloudBase: [0.01, 0.02, 0.03], // Pitch black cloud bases
-      cloudLight: [0.45, 0.55, 0.75], // Silvery moonlit cloud tops
+      cloudBase: [0.05, 0.06, 0.09], // Slightly lighter base
+      cloudLight: [0.28, 0.35, 0.52], // Much brighter silvery cloud tops
       bezelHighlight: 'rgba(100, 130, 255, 0.12)',
       cabinReflection: 0.16,
       nightMode: 1.0,
@@ -452,12 +445,12 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
     };
 
     const SunrisePalette = {
-      skyColorTop: [0.08, 0.12, 0.28], // Indigo morning dawn
-      skyColorBottom: [0.98, 0.55, 0.32], // Soft golden morning peach
+      skyColorTop: [0.12, 0.16, 0.34], // Cool morning navy
+      skyColorBottom: [0.98, 0.58, 0.38], // Bright salmon-orange sunrise
       sunColor: [1.0, 0.78, 0.55],
       sunDir: [-0.98, 0.18, -0.22],
-      cloudBase: [0.32, 0.34, 0.44], // Crisp blue-grey morning shadow
-      cloudLight: [1.6, 1.15, 0.82], // Golden morning sunlight tops
+      cloudBase: [0.42, 0.42, 0.52], // Lighter cloud base
+      cloudLight: [1.25, 1.0, 0.85], // Brighter cloud tops
       bezelHighlight: 'rgba(255, 140, 80, 0.45)',
       cabinReflection: 0.08,
       nightMode: 0.1,
