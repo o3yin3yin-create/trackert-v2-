@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Sun, Moon, Clock, Sliders, Volume2, VolumeX, Cloud, CloudLightning } from 'lucide-react';
+import { Sun, Moon, Clock, Volume2, VolumeX } from 'lucide-react';
 
 // Vertex shader (simple pass-through)
 const vertexShaderSource = `
@@ -28,7 +28,6 @@ const fragmentShaderSource = `
   uniform vec3 u_sunDir;
   uniform vec3 u_cloudBase;
   uniform vec3 u_cloudLight;
-  uniform float u_weather; // 0.0 = normal, 1.0 = stormy, 2.0 = clear
 
   float hash(vec3 p) {
     p = fract(p * vec3(443.8975, 397.2973, 491.1871));
@@ -111,7 +110,7 @@ const fragmentShaderSource = `
     }
 
     // === CITY LIGHTS (UNDER CLOUDS) ===
-    if (u_nightMode > 0.5 && u_weather < 1.5 && rd.y < -0.05) {
+    if (u_nightMode > 0.5 && rd.y < -0.05) {
       // Ground plane at y = -3.0
       float gDist = (-3.0 - ro.y) / rd.y; 
       vec3 gP = ro + rd * gDist;
@@ -136,50 +135,13 @@ const fragmentShaderSource = `
     float maxT = 65.0; 
     float dt = 0.25;
 
-    // Distant Sea for Clear mode
-    if (u_weather > 1.5 && rd.y < 0.0) {
-      float dist = -ro.y / rd.y;
-      vec3 p = ro + rd * dist;
-      
-      // Procedural waves
-      vec2 uv = p.xz * 0.8 + vec2(u_time * 0.2, u_time * 0.1);
-      float h = fbm(vec3(uv, u_time * 0.1));
-      
-      // Approximate Normal from bump map
-      vec2 eps = vec2(0.1, 0.0);
-      vec3 n = normalize(vec3(
-        fbm(vec3(uv + eps.xy, u_time * 0.1)) - h,
-        0.1,
-        fbm(vec3(uv + eps.yx, u_time * 0.1)) - h
-      ));
-      
-      // Reflections
-      vec3 ref = reflect(rd, n);
-      float refSkyT = clamp(ref.y * 2.0, 0.0, 1.0);
-      vec3 seaRef = mix(u_skyColorBottom, u_skyColorTop, refSkyT);
-      
-      vec3 seaBase = mix(vec3(0.01, 0.03, 0.08), vec3(0.05, 0.15, 0.25), smoothstep(200.0, 0.0, dist));
-      vec3 seaCol = mix(seaBase, seaRef, 0.4); // 40% reflective
-      
-      // Add specular sun glint
-      float spec = pow(max(0.0, dot(ref, u_sunDir)), 64.0);
-      seaCol += u_sunColor * spec * 0.8 * (1.0 - u_nightMode);
-      
-      seaCol = mix(seaCol, u_skyColorBottom, smoothstep(15.0, 150.0, dist));
-      finalSky = mix(finalSky, seaCol, smoothstep(-0.01, -0.04, rd.y));
+    float nightGlow = 0.0;
+    if (u_nightMode > 0.5) {
+       // Constant subtle glow under clouds at night
+       nightGlow = u_nightMode * 0.6;
     }
 
-    float lightning = 0.0;
-    if (u_weather > 0.5 && u_weather < 1.5 && u_nightMode > 0.5) {
-      float fTime = floor(u_time * 4.0);
-      float flashPhase = hash(vec3(fTime, 1.0, 1.0));
-      if (flashPhase > 0.92) {
-        lightning = hash(vec3(u_time * 20.0, 2.0, 2.0));
-      }
-    }
-
-    if (u_weather < 1.5) {
-      for (int i = 0; i < 90; i++) { 
+    for (int i = 0; i < 90; i++) { 
         if (t > maxT || sumCol.a > 0.98) break;
         
         vec3 pos = ro + t * rd;
@@ -228,8 +190,8 @@ const fragmentShaderSource = `
           float alpha = smoothstep(0.0, 0.2, density) * 0.85;
           alpha *= smoothstep(maxT, maxT - 15.0, t); 
           
-          if (lightning > 0.0) {
-            cloudCol += vec3(0.6, 0.8, 1.0) * lightning * (1.0 - smoothstep(0.0, 1.0, pos.y)) * 0.6;
+          if (nightGlow > 0.0) {
+            cloudCol += vec3(0.6, 0.8, 1.0) * nightGlow * (1.0 - smoothstep(0.0, 1.0, pos.y)) * 0.4;
           }
 
           vec4 val = vec4(cloudCol * alpha, alpha);
@@ -238,7 +200,6 @@ const fragmentShaderSource = `
       }
       t += dt * (1.0 + t * 0.05);
     }
-  }
 
     vec3 finalColor = sumCol.rgb + finalSky * (1.0 - sumCol.a);
 
@@ -736,7 +697,6 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       sunDir: gl.getUniformLocation(program, "u_sunDir"),
       cloudBase: gl.getUniformLocation(program, "u_cloudBase"),
       cloudLight: gl.getUniformLocation(program, "u_cloudLight"),
-      weather: gl.getUniformLocation(program, "u_weather"),
     };
 
     let startTime = Date.now();
@@ -765,7 +725,6 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       gl.uniform1f(uniforms.time, timeSec);
       gl.uniform1f(uniforms.seatSide, isRightWindow ? 1.0 : 0.0);
       gl.uniform1f(uniforms.nightMode, currentParams.nightMode);
-      gl.uniform1f(uniforms.weather, weatherRef.current);
       
       // Pass vector values
       gl.uniform3fv(uniforms.skyColorTop, new Float32Array(currentParams.skyColorTop));
