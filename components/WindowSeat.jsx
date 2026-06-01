@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { Sun, Moon, Clock, Volume2, VolumeX } from 'lucide-react';
+import { X, Sun, Moon, Clock, Volume2, VolumeX } from 'lucide-react';
 
 // Vertex shader (simple pass-through)
 const vertexShaderSource = `
