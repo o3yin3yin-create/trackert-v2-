@@ -131,60 +131,48 @@ const fragmentShaderSource = `
         float heightFactor = smoothstep(1.5, 0.0, pos.y);
         
         if (heightFactor > 0.0) {
-          vec3 wind = vec3(u_time * 0.08, 0.0, -u_time * 0.03);
-          vec3 p = pos + wind;
+          vec3 wind = vec3(u_time * 0.12, 0.0, -u_time * 0.05);
+          vec3 samplePos = pos * 1.5 + wind;
+          vec3 largeSamplePos = pos * 0.5 + wind * 0.5;
           
-          // 1. HUGE landscape variation (Mountains and valleys)
-          vec3 pMap = vec3(p.x * 0.2, p.y, p.z * 0.2);
-          float heightMap = fbm(pMap) * 3.5 - 1.0; // Range -1.0 to +2.5
+          // Base density makes it a solid unbroken sea of clouds at the bottom
+          // (RAISED to y=1.2 to -0.2)
+          float baseDensity = smoothstep(1.2, -0.2, pos.y) * 1.5;
           
-          // Base density anchored to the height map
-          // This creates distinct high clouds and low clouds
-          float baseDensity = smoothstep(heightMap + 0.5, heightMap - 1.5, pos.y) * 2.5;
+          // Large scale variation for bigger differences in cloud sizes/heights
+          float largeVariation = noise(largeSamplePos) * 1.2;
           
-          // 2. Medium puffy details
-          float detail = fbm(p * 1.2) * 1.5;
+          // Puffy details
+          float detail = fbm(samplePos) * 1.8;
           
-          // 3. Fine crisp edges
-          float crisp = noise(p * 3.5) * 0.5;
-          
-          // Combine for extreme variety in size and shape
-          float density = baseDensity + detail + crisp - 2.4; 
+          // Combine: density > 0 means cloud exists
+          float density = baseDensity + largeVariation + detail - 2.4; // Adjusted threshold
           
           density = max(0.0, density) * heightFactor;
           
           if (density > 0.01) {
-            // Strong self-shadowing to get dark grays
-            float shadowT = 0.25;
-            vec3 sp = p + u_sunDir * shadowT;
-            vec3 spMap = vec3(sp.x * 0.2, sp.y, sp.z * 0.2);
+            // Self-shadowing (volumetric depth)
+            float shadowT = 0.15;
+            vec3 shadowPos = samplePos + u_sunDir * shadowT;
+            vec3 shadowLargePos = largeSamplePos + u_sunDir * shadowT * 0.5;
             
-            float sHeightMap = fbm(spMap) * 3.5 - 1.0;
-            float sBaseDensity = smoothstep(sHeightMap + 0.5, sHeightMap - 1.5, sp.y) * 2.5;
-            float sDetail = fbm(sp * 1.2) * 1.5;
-            float sDensity = max(0.0, sBaseDensity + sDetail - 2.4);
+            float shadowBase = smoothstep(1.2, -0.2, pos.y + u_sunDir.y * shadowT) * 1.5;
+            float shadowLarge = noise(shadowLargePos) * 1.2;
+            float shadowDensity = shadowBase + shadowLarge + fbm(shadowPos) * 1.8 - 2.4;
+            shadowDensity = max(0.0, shadowDensity);
             
-            // High transmission curve for sharp contrast between white and dark gray
-            float transmission = exp(-sDensity * 4.5);
+            float transmission = exp(-shadowDensity * 3.5);
             
-            // Extreme color variation (White to Dark Gray)
-            // localBase drops significantly based on depth to create very dark grays
-            vec3 localBase = u_cloudBase * mix(0.2, 0.7, noise(p * 0.4)); 
-            vec3 localLight = u_cloudLight * 1.15; // Very bright white peaks
+            // Color: mix shadow color (cloudBase) with lit color (cloudLight)
+            vec3 cloudCol = mix(u_cloudBase, u_cloudLight, transmission * 0.8 + 0.2);
             
-            vec3 localColor = mix(localBase, localLight, transmission);
+            // Soft highlight facing sun
+            float scatter = pow(max(0.0, dot(rd, u_sunDir)), 4.0) * 0.3;
+            cloudCol += u_sunColor * scatter * transmission;
             
-            // Add subtle hue variation to make them look realistic
-            localColor *= 1.0 + (noise(p * 0.5) - 0.5) * 0.2;
-            
-            float scatter = pow(max(0.0, dot(rd, u_sunDir)), 4.0) * 0.4;
-            localColor += u_sunColor * scatter * transmission;
-            
-            // Highly varied transparency
-            // Edges are wispy, deep parts are solid, overall modulated by noise
-            float alphaMod = mix(0.3, 1.0, fbm(p * 1.5));
-            float alpha = smoothstep(0.0, 0.4, density) * alphaMod * 0.9;
-            vec4 val = vec4(localColor * alpha, alpha);
+            // Alpha builds up nicely
+            float alpha = smoothstep(0.0, 0.2, density) * 0.85;
+            vec4 val = vec4(cloudCol * alpha, alpha);
             
             sumCol += val * (1.0 - sumCol.a);
           }
