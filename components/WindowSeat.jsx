@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Sun, Moon, Clock, Sliders, Volume2, VolumeX } from 'lucide-react';
+import { X, Sun, Moon, Clock, Sliders, Volume2, VolumeX, Cloud, CloudLightning } from 'lucide-react';
 
 // Vertex shader (simple pass-through)
 const vertexShaderSource = `
@@ -28,6 +28,7 @@ const fragmentShaderSource = `
   uniform vec3 u_sunDir;
   uniform vec3 u_cloudBase;
   uniform vec3 u_cloudLight;
+  uniform float u_weather; // 0.0 = normal, 1.0 = stormy, 2.0 = clear
 
   float hash(vec3 p) {
     p = fract(p * vec3(443.8975, 397.2973, 491.1871));
@@ -115,10 +116,28 @@ const fragmentShaderSource = `
     float maxT = 65.0; 
     float dt = 0.25;
 
-    for (int i = 0; i < 90; i++) { 
-      if (t > maxT || sumCol.a > 0.98) break;
-      
-      vec3 pos = ro + t * rd;
+    // Distant Sea for Clear mode
+    if (u_weather > 1.5 && rd.y < 0.0) {
+      float dist = -ro.y / rd.y;
+      vec3 seaCol = mix(vec3(0.0, 0.05, 0.1), vec3(0.05, 0.15, 0.25), smoothstep(200.0, 0.0, dist));
+      seaCol = mix(seaCol, u_skyColorBottom, smoothstep(10.0, 200.0, dist));
+      finalSky = mix(finalSky, seaCol, smoothstep(-0.01, -0.05, rd.y));
+    }
+
+    float lightning = 0.0;
+    if (u_weather > 0.5 && u_weather < 1.5 && u_nightMode > 0.5) {
+      float fTime = floor(u_time * 4.0);
+      float flashPhase = hash(vec3(fTime, 1.0, 1.0));
+      if (flashPhase > 0.92) {
+        lightning = hash(vec3(u_time * 20.0, 2.0, 2.0));
+      }
+    }
+
+    if (u_weather < 1.5) {
+      for (int i = 0; i < 90; i++) { 
+        if (t > maxT || sumCol.a > 0.98) break;
+        
+        vec3 pos = ro + t * rd;
       
       if (pos.y < 1.8) {
         
@@ -164,12 +183,17 @@ const fragmentShaderSource = `
           float alpha = smoothstep(0.0, 0.2, density) * 0.85;
           alpha *= smoothstep(maxT, maxT - 15.0, t); 
           
+          if (lightning > 0.0) {
+            cloudCol += vec3(0.6, 0.8, 1.0) * lightning * (1.0 - smoothstep(0.0, 1.0, pos.y)) * 0.6;
+          }
+
           vec4 val = vec4(cloudCol * alpha, alpha);
           sumCol += val * (1.0 - sumCol.a);
         }
       }
       t += dt * (1.0 + t * 0.05);
     }
+  }
 
     vec3 finalColor = sumCol.rgb + finalSky * (1.0 - sumCol.a);
 
@@ -199,6 +223,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
   const [localTime, setLocalTime] = useState(12); // float representation: 0 to 24
   const [isManualTime, setIsManualTime] = useState(false);
   const [showControls, setShowControls] = useState(true);
+  const [weather, setWeather] = useState(0); // 0: Normal, 1: Stormy, 2: Clear
 
   // Keep a ref of localTime to avoid WebGL component teardown & pulsing once a second
   const localTimeRef = useRef(localTime);
@@ -237,6 +262,11 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
   const [isAudioOn, setIsAudioOn] = useState(false);
   const audioCtxRef = useRef(null);
   const gainNodeRef = useRef(null);
+  
+  // Weather-specific audio nodes
+  const rainGainRef = useRef(null);
+  const birdsGainRef = useRef(null);
+  const thunderFilterRef = useRef(null);
 
   useEffect(() => {
     if (isAudioOn) {
@@ -245,50 +275,131 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
         const ctx = new AudioContext();
         audioCtxRef.current = ctx;
 
-        // Generate Brown Noise for deep airplane cabin rumble
         const bufferSize = 2 * ctx.sampleRate;
         const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const output = noiseBuffer.getChannelData(0);
         let lastOut = 0;
+        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+
         for (let i = 0; i < bufferSize; i++) {
           let white = Math.random() * 2 - 1;
+          // Brown noise for cabin rumble
           output[i] = (lastOut + (0.02 * white)) / 1.02;
           lastOut = output[i];
-          output[i] *= 3.5; // Compensate gain
+          output[i] *= 3.5; 
         }
 
+        const pinkNoiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const pinkOutput = pinkNoiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          let white = Math.random() * 2 - 1;
+          b0 = 0.99886 * b0 + white * 0.0555179;
+          b1 = 0.99332 * b1 + white * 0.0750759;
+          b2 = 0.96900 * b2 + white * 0.1538520;
+          b3 = 0.86650 * b3 + white * 0.3104856;
+          b4 = 0.55000 * b4 + white * 0.5329522;
+          b5 = -0.7616 * b5 - white * 0.0168980;
+          pinkOutput[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+          pinkOutput[i] *= 0.11;
+          b6 = white * 0.115926;
+        }
+
+        // 1. Cabin Rumble
         const noiseSource = ctx.createBufferSource();
         noiseSource.buffer = noiseBuffer;
         noiseSource.loop = true;
-
-        // Lowpass filter to muffle it like a cabin
-        const filter = ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.value = 400; // Deep rumble
-
+        const rumbleFilter = ctx.createBiquadFilter();
+        rumbleFilter.type = 'lowpass';
+        rumbleFilter.frequency.value = 400; 
         const gainNode = ctx.createGain();
-        gainNode.gain.value = 0.001; // Start muted for fade-in
+        gainNode.gain.value = 0.001; 
         gainNodeRef.current = gainNode;
-
-        noiseSource.connect(filter);
-        filter.connect(gainNode);
+        noiseSource.connect(rumbleFilter);
+        rumbleFilter.connect(gainNode);
         gainNode.connect(ctx.destination);
-
         noiseSource.start();
+
+        // 2. Rain & Thunder (Pink Noise)
+        const rainSource = ctx.createBufferSource();
+        rainSource.buffer = pinkNoiseBuffer;
+        rainSource.loop = true;
+        const thunderFilter = ctx.createBiquadFilter();
+        thunderFilter.type = 'lowpass';
+        thunderFilter.frequency.value = 2000;
+        thunderFilterRef.current = thunderFilter;
+        const rainGain = ctx.createGain();
+        rainGain.gain.value = 0.001;
+        rainGainRef.current = rainGain;
+        rainSource.connect(thunderFilter);
+        thunderFilter.connect(rainGain);
+        rainGain.connect(ctx.destination);
+        rainSource.start();
+
+        // 3. Birds (Chirping Oscillators)
+        const birdsGain = ctx.createGain();
+        birdsGain.gain.value = 0.001;
+        birdsGainRef.current = birdsGain;
+        birdsGain.connect(ctx.destination);
+
+        // Simple bird chirp loop
+        setInterval(() => {
+          if (birdsGain.gain.value > 0.01 && ctx.state === 'running') {
+            const osc = ctx.createOscillator();
+            const oscGain = ctx.createGain();
+            osc.connect(oscGain);
+            oscGain.connect(birdsGain);
+            
+            const now = ctx.currentTime;
+            osc.frequency.setValueAtTime(4000 + Math.random() * 1000, now);
+            osc.frequency.exponentialRampToValueAtTime(6000 + Math.random() * 2000, now + 0.1);
+            
+            oscGain.gain.setValueAtTime(0, now);
+            oscGain.gain.linearRampToValueAtTime(0.2, now + 0.02);
+            oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+            
+            osc.start(now);
+            osc.stop(now + 0.15);
+          }
+        }, 1500);
+        
+        // Simple thunder rumble loop
+        setInterval(() => {
+           if (rainGain.gain.value > 0.01 && ctx.state === 'running' && Math.random() > 0.7) {
+             const now = ctx.currentTime;
+             thunderFilter.frequency.setValueAtTime(400, now);
+             thunderFilter.frequency.exponentialRampToValueAtTime(3000, now + 0.5);
+             thunderFilter.frequency.exponentialRampToValueAtTime(400, now + 2.0);
+             
+             rainGain.gain.setValueAtTime(0.5, now);
+             rainGain.gain.linearRampToValueAtTime(1.0, now + 0.5);
+             rainGain.gain.linearRampToValueAtTime(0.5, now + 2.0);
+           }
+        }, 4000);
       }
       
       if (audioCtxRef.current.state === 'suspended') {
         audioCtxRef.current.resume();
       }
       
-      // Fade in smoothly
-      if (gainNodeRef.current) {
-        gainNodeRef.current.gain.setTargetAtTime(0.5, audioCtxRef.current.currentTime, 0.5);
+      const ctx = audioCtxRef.current;
+      const now = ctx.currentTime;
+
+      if (gainNodeRef.current) gainNodeRef.current.gain.setTargetAtTime(0.5, now, 0.5);
+      
+      if (rainGainRef.current) {
+        rainGainRef.current.gain.setTargetAtTime(weather === 1 ? 0.5 : 0.001, now, 1.0);
       }
+      if (birdsGainRef.current) {
+        birdsGainRef.current.gain.setTargetAtTime(weather === 2 ? 0.3 : 0.001, now, 1.0);
+      }
+
     } else {
-      // Fade out smoothly
       if (audioCtxRef.current && gainNodeRef.current) {
-        gainNodeRef.current.gain.setTargetAtTime(0.001, audioCtxRef.current.currentTime, 0.5);
+        const now = audioCtxRef.current.currentTime;
+        gainNodeRef.current.gain.setTargetAtTime(0.001, now, 0.5);
+        if (rainGainRef.current) rainGainRef.current.gain.setTargetAtTime(0.001, now, 0.5);
+        if (birdsGainRef.current) birdsGainRef.current.gain.setTargetAtTime(0.001, now, 0.5);
+        
         setTimeout(() => {
            if (!isAudioOn && audioCtxRef.current && audioCtxRef.current.state !== 'suspended') {
              audioCtxRef.current.suspend();
@@ -296,7 +407,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
         }, 1000);
       }
     }
-  }, [isAudioOn]);
+  }, [isAudioOn, weather]);
 
   // Synchronize local time
   useEffect(() => {
@@ -340,27 +451,27 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
   // Dynamic values calculation based on localTime (0.0 to 24.0)
   // We establish 4 solar phases: Day, Sunset, Night, Sunrise
   const getSkyParameters = (hour) => {
-    // Sunset window: 17.5 to 19.5, Peak: 18.5
-    // Sunrise window: 5.0 to 7.0, Peak: 6.0
-    // Night window: 19.5 to 5.0
-    // Day window: 7.0 to 17.5
-
     let phase = 'day';
-    let t = 0.0; // Interpolation factor inside phase
+    let t = 0.0;
 
-    if (hour >= 17.5 && hour < 19.5) {
-      phase = 'sunset';
-      t = (hour - 17.5) / 2.0;
-    } else if (hour >= 19.5 || hour < 5.0) {
-      phase = 'night';
-      if (hour >= 19.5) t = (hour - 19.5) / 9.5; // till 24:00 (4.5 hours) + 5.0 hours = 9.5 total
-      else t = (hour + 4.5) / 9.5;
-    } else if (hour >= 5.0 && hour < 7.0) {
-      phase = 'sunrise';
-      t = (hour - 5.0) / 2.0;
-    } else {
+    if (hour >= 6.0 && hour < 7.5) {
+      phase = 'dawn';
+      t = (hour - 6.0) / 1.5;
+    } else if (hour >= 7.5 && hour < 9.0) {
+      phase = 'morning';
+      t = (hour - 7.5) / 1.5;
+    } else if (hour >= 9.0 && hour < 17.5) {
       phase = 'day';
-      t = (hour - 7.0) / 10.5;
+      t = 0.0;
+    } else if (hour >= 17.5 && hour < 19.0) {
+      phase = 'afternoon';
+      t = (hour - 17.5) / 1.5;
+    } else if (hour >= 19.0 && hour < 20.5) {
+      phase = 'dusk';
+      t = (hour - 19.0) / 1.5;
+    } else {
+      phase = 'night';
+      t = 0.0;
     }
 
     // Define palettes
@@ -445,18 +556,20 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
     };
 
     // Smooth sinusoidal interpolations
-    if (phase === 'sunset') {
-      const weight = 0.5 - 0.5 * Math.cos(t * Math.PI);
-      return interpolatePalettes(DayPalette, SunsetPalette, weight);
-    } else if (phase === 'night') {
-      const weight = 0.5 - 0.5 * Math.cos(t * Math.PI);
-      return interpolatePalettes(SunsetPalette, NightPalette, weight);
-    } else if (phase === 'sunrise') {
-      const weight = 0.5 - 0.5 * Math.cos(t * Math.PI);
+    const weight = 0.5 - 0.5 * Math.cos(t * Math.PI);
+    
+    if (phase === 'dawn') {
       return interpolatePalettes(NightPalette, SunrisePalette, weight);
-    } else {
-      const weight = 0.5 - 0.5 * Math.cos(t * Math.PI);
+    } else if (phase === 'morning') {
       return interpolatePalettes(SunrisePalette, DayPalette, weight);
+    } else if (phase === 'afternoon') {
+      return interpolatePalettes(DayPalette, SunsetPalette, weight);
+    } else if (phase === 'dusk') {
+      return interpolatePalettes(SunsetPalette, NightPalette, weight);
+    } else if (phase === 'night') {
+      return NightPalette;
+    } else {
+      return DayPalette;
     }
   };
 
@@ -555,6 +668,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       sunDir: gl.getUniformLocation(program, "u_sunDir"),
       cloudBase: gl.getUniformLocation(program, "u_cloudBase"),
       cloudLight: gl.getUniformLocation(program, "u_cloudLight"),
+      weather: gl.getUniformLocation(program, "u_weather"),
     };
 
     let startTime = Date.now();
@@ -583,6 +697,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       gl.uniform1f(uniforms.time, timeSec);
       gl.uniform1f(uniforms.seatSide, isRightWindow ? 1.0 : 0.0);
       gl.uniform1f(uniforms.nightMode, currentParams.nightMode);
+      gl.uniform1f(uniforms.weather, weather);
       
       // Pass vector values
       gl.uniform3fv(uniforms.skyColorTop, new Float32Array(currentParams.skyColorTop));
@@ -1013,11 +1128,25 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
           >
             {isAudioOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
           </button>
+          
+          <div className="w-[1px] h-6 bg-white/20 mx-1"></div>
 
-          {/* Separation */}
-          <div className="w-[1px] h-6 bg-white/10" />
+          {/* Weather controls */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setWeather((w) => (w + 1) % 3)}
+              className="flex items-center justify-center w-9 h-9 rounded-xl transition-all bg-white/5 hover:bg-white/10 text-white"
+              title={weather === 0 ? "Normal" : weather === 1 ? "Stormy" : "Clear"}
+            >
+              {weather === 0 && <Cloud size={18} />}
+              {weather === 1 && <CloudLightning size={18} className="text-blue-300" />}
+              {weather === 2 && <Sun size={18} className="text-yellow-400" />}
+            </button>
+          </div>
 
-          {/* Time slider */}
+          <div className="w-[1px] h-6 bg-white/20 mx-1"></div>
+
+          {/* Time Scrubber (only visible in manual mode) */}
           <div className="flex items-center gap-3">
             {isManualTime ? (
               <>
