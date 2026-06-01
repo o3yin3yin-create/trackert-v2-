@@ -131,28 +131,22 @@ const fragmentShaderSource = `
         float heightFactor = smoothstep(1.5, 0.0, pos.y);
         
         if (heightFactor > 0.0) {
-          // Wind is slower as requested
+          // 1. رجعنا الـ Wind والسرعة الأصلية الناعمة بتاعتك
           vec3 wind = vec3(u_time * 0.06, 0.0, -u_time * 0.02);
-          vec3 samplePos = pos * 1.5 + wind;
-          vec3 largeSamplePos = pos * 0.5 + wind * 0.5;
           
-          // Base density makes it a solid unbroken sea of clouds at the bottom
-          // (RAISED to y=1.2 to -0.2)
+          // 2. كبرنا حجم السحب شوية (ضربنا في 0.9 بدل 1.5 عشان الـ Scale يوسع والسحب تبان أضخم)
+          vec3 samplePos = pos * 0.9 + wind;
+          vec3 largeSamplePos = pos * 0.3 + wind * 0.5;
+          
           float baseDensity = smoothstep(1.2, -0.2, pos.y) * 1.5;
-          
-          // Large scale variation for bigger differences in cloud sizes/heights
           float largeVariation = noise(largeSamplePos) * 1.2;
-          
-          // Puffy details
           float detail = fbm(samplePos) * 1.8;
           
-          // Combine: density > 0 means cloud exists
-          float density = baseDensity + largeVariation + detail - 2.4; // Adjusted threshold
-          
+          float density = baseDensity + largeVariation + detail - 2.4;
           density = max(0.0, density) * heightFactor;
           
           if (density > 0.01) {
-            // Self-shadowing (volumetric depth)
+            // Self-shadowing
             float shadowT = 0.15;
             vec3 shadowPos = samplePos + u_sunDir * shadowT;
             vec3 shadowLargePos = largeSamplePos + u_sunDir * shadowT * 0.5;
@@ -164,27 +158,29 @@ const fragmentShaderSource = `
             
             float transmission = exp(-shadowDensity * 3.5);
             
-            // Remove dark shadows from distant clouds to prevent the dark line at the horizon
-            transmission = mix(transmission, 1.0, smoothstep(15.0, maxT, t));
+            // === السحر هنا ===
+            // عملنا تدرج ناعم (Fade) للـ Transmission بناءً على المسافة t
+            // كل ما السحاب يبعد (يقرب من الأفق)، الظل بيختفي تماماً والـ transmission بتبقى 1.0 (نور خالص)
+            float distFade = smoothstep(10.0, 25.0, t);
+            transmission = mix(transmission, 1.0, distFade);
             
-            // Color: mix shadow color (cloudBase) with lit color (cloudLight)
+            // الميكس الأصلي بتاعك
             vec3 cloudCol = mix(u_cloudBase, u_cloudLight, transmission * 0.8 + 0.2);
             
-            // Soft highlight facing sun
+            // دمج لون السحاب البعيد "تماما" مع لون الأفق عشان يدوب فيه وميعملش خط فاصل
+            cloudCol = mix(cloudCol, u_skyColorBottom, distFade * 0.6);
+            
             float scatter = pow(max(0.0, dot(rd, u_sunDir)), 4.0) * 0.3;
             cloudCol += u_sunColor * scatter * transmission;
             
-            // Alpha builds up nicely
             float alpha = smoothstep(0.0, 0.2, density) * 0.85;
             
-            // Enforce a perfectly straight horizon line (flattens bumps at rd.y = 0)
-            alpha *= smoothstep(0.002, -0.015, rd.y);
+            // قفلنا خط الأفق بـ smoothstep أوسع عشان القطع ميبقاش حاد ويعمل خط أسود
+            alpha *= smoothstep(0.04, -0.01, rd.y);
             
-            // Fade out distant clouds softly
             alpha *= smoothstep(maxT, maxT - 15.0, t);
             
             vec4 val = vec4(cloudCol * alpha, alpha);
-            
             sumCol += val * (1.0 - sumCol.a);
           }
         }
