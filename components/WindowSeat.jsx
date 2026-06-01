@@ -51,7 +51,7 @@ const fragmentShaderSource = `
     );
   }
 
-  // Fractional Brownian Motion (fBm) - 4 octaves for high detail / performance
+  // Fractional Brownian Motion (fBm) - 4 octaves
   float fbm(vec3 p) {
     float f = 0.0;
     f += 0.5000 * noise(p); p = p * 2.02;
@@ -66,12 +66,9 @@ const fragmentShaderSource = `
     vec2 p = -1.0 + 2.0 * gl_FragCoord.xy / u_resolution.xy;
     p.x *= u_resolution.x / u_resolution.y;
 
-    // Camera setup - looking completely horizontal to put the horizon exactly in the middle (50% sky, 50% clouds)
+    // Camera setup - horizontal looking
     float side = u_seatSide > 0.5 ? 1.0 : -1.0;
-    
-    // Camera translation forward
     vec3 ro = vec3(0.0, 1.5, -u_time * 0.05);
-    // Target is exactly horizontal (y=1.5 matches ro.y)
     vec3 ta = vec3(side * 1.5, 1.5, -u_time * 0.05 - 2.0);
     
     vec3 cw = normalize(ta - ro);
@@ -80,63 +77,49 @@ const fragmentShaderSource = `
     vec3 cv = normalize(cross(cu, cw));
     vec3 rd = normalize(p.x * cu + p.y * cv + 2.2 * cw);
 
-    // === PERFECT SKY GRADIENT (renders EVERYWHERE) ===
-    // This creates a clear, prominent gradient starting exactly at the horizon
-    float skyT = clamp(rd.y * 2.5, 0.0, 1.0);
-    vec3 skyColor = mix(u_skyColorBottom, u_skyColorTop, skyT);
-
-    // Warm horizon glow matching the sunset photo (fade it out entirely in night mode to prevent orange line)
-    float horizonGlow = exp(-abs(rd.y) * 8.0);
-    vec3 glowColor = mix(u_skyColorBottom * 1.1, vec3(0.0), u_nightMode);
-    skyColor = mix(skyColor, glowColor, horizonGlow * 0.6);
+    // === 1. CLEAN SKY GRADIENT (تم حذف الـ Horizon Glow المسبب للخط الفاصل) ===
+    float skyT = clamp(rd.y * 2.0, 0.0, 1.0);
+    vec3 finalSky = mix(u_skyColorBottom, u_skyColorTop, skyT);
 
     // Sun/Moon glow
     float sunGlow = max(0.0, dot(rd, u_sunDir));
-    vec3 finalSky = skyColor + u_sunColor * pow(sunGlow, 8.0) * 0.2 + u_sunColor * pow(sunGlow, 64.0) * 0.4;
+    finalSky += u_sunColor * pow(sunGlow, 8.0) * 0.2 + u_sunColor * pow(sunGlow, 64.0) * 0.4;
 
-    // Add starfield at night
+    // Starfield at night
     if (u_nightMode > 0.02 && rd.y > 0.0) {
       float nebula = noise(rd * 3.5 + vec3(5.0, 12.0, 2.0)) * 0.16 * u_nightMode;
       finalSky += vec3(0.12, 0.08, 0.22) * nebula * smoothstep(0.0, 0.1, rd.y);
 
-      // Stars: smaller, denser, with size/brightness/color variation
       vec3 starCoord = rd * 600.0;
       vec3 starIpos = floor(starCoord);
       float starHash = hash(starIpos);
       if (starHash > 0.985) { 
-        float brightness = (starHash - 0.985) * 66.0; // 0.0 to 1.0 variation
-        // Color variation based on hash (some bluish, some yellowish)
+        float brightness = (starHash - 0.985) * 66.0; 
         vec3 colorTint = mix(vec3(0.8, 0.9, 1.0), vec3(1.0, 0.9, 0.8), hash(starIpos + 1.0));
-        vec3 starCol = colorTint * brightness * u_nightMode; 
-        finalSky += starCol * smoothstep(0.0, 0.12, rd.y);
+        finalSky += colorTint * brightness * u_nightMode * smoothstep(0.0, 0.12, rd.y);
       }
     }
 
-    // === CONTINUOUS CLOUD SEA (bottom half) ===
-    // Clean horizon fade to make clouds blend smoothly into the sky
-    float horizonFade = smoothstep(0.0, -0.005, rd.y);
-
+    // === 2. CLOUD SEA RENDERING ===
     vec4 sumCol = vec4(0.0);
     float t = 1.0;
-    float maxT = 45.0; // Pushed horizon further
+    float maxT = 45.0; 
     float dt = 0.25;
 
-    if (horizonFade > 0.001) {
-      for (int i = 0; i < 90; i++) { // Increased loop count for further horizon
+    // تشغيل الرندر للسحب فقط لو العين بتبص تحت أو قريبة جداً من الأفق
+    if (rd.y < 0.05) {
+      for (int i = 0; i < 90; i++) { 
         if (t > maxT || sumCol.a > 0.98) break;
         
         vec3 pos = ro + t * rd;
-        
-        // Solid layer of clouds below y=0.8, puffy tops up to y=1.5 (RAISED)
         float heightFactor = smoothstep(1.5, 0.0, pos.y);
         
         if (heightFactor > 0.0) {
-          // 1. رجعنا الـ Wind والسرعة الأصلية الناعمة بتاعتك
           vec3 wind = vec3(u_time * 0.06, 0.0, -u_time * 0.02);
           
-          // 2. كبرنا حجم السحب شوية (ضربنا في 0.9 بدل 1.5 عشان الـ Scale يوسع والسحب تبان أضخم)
-          vec3 samplePos = pos * 0.9 + wind;
-          vec3 largeSamplePos = pos * 0.3 + wind * 0.5;
+          // حجم السحب الأصلي الناعم والمريح للعين
+          vec3 samplePos = pos * 1.2 + wind;
+          vec3 largeSamplePos = pos * 0.4 + wind * 0.5;
           
           float baseDensity = smoothstep(1.2, -0.2, pos.y) * 1.5;
           float largeVariation = noise(largeSamplePos) * 1.2;
@@ -158,41 +141,35 @@ const fragmentShaderSource = `
             
             float transmission = exp(-shadowDensity * 3.5);
             
-            // === السحر هنا ===
-            // عملنا تدرج ناعم (Fade) للـ Transmission بناءً على المسافة t
-            // كل ما السحاب يبعد (يقرب من الأفق)، الظل بيختفي تماماً والـ transmission بتبقى 1.0 (نور خالص)
-            float distFade = smoothstep(10.0, 25.0, t);
+            // إخفاء الظلال تماماً عند الأفق لمنع الكتمة الرمادية
+            float distFade = smoothstep(12.0, 30.0, t);
             transmission = mix(transmission, 1.0, distFade);
             
-            // الميكس الأصلي بتاعك
             vec3 cloudCol = mix(u_cloudBase, u_cloudLight, transmission * 0.8 + 0.2);
             
-            // دمج لون السحاب البعيد "تماما" مع لون الأفق عشان يدوب فيه وميعملش خط فاصل
-            cloudCol = mix(cloudCol, u_skyColorBottom, distFade * 0.6);
+            // إذابة لون السحب البعيدة في لون الأفق الأصلي النضيف
+            cloudCol = mix(cloudCol, u_skyColorBottom, distFade * 0.8);
             
             float scatter = pow(max(0.0, dot(rd, u_sunDir)), 4.0) * 0.3;
             cloudCol += u_sunColor * scatter * transmission;
             
+            // الـ Alpha الأساسي للسحابة
             float alpha = smoothstep(0.0, 0.2, density) * 0.85;
             
-            // قفلنا خط الأفق بـ smoothstep أوسع عشان القطع ميبقاش حاد ويعمل خط أسود
-            alpha *= smoothstep(0.04, -0.01, rd.y);
-            
+            // تنعيم تلاشي السحاب عند خط الأفق (يدوب تماماً في الجو دون حواف حادة)
+            alpha *= smoothstep(0.02, -0.01, rd.y);
             alpha *= smoothstep(maxT, maxT - 15.0, t);
             
             vec4 val = vec4(cloudCol * alpha, alpha);
             sumCol += val * (1.0 - sumCol.a);
           }
         }
-        
         t += dt * (1.0 + t * 0.06);
       }
     }
 
-    // Blend the beautiful clouds perfectly over the sky
+    // دمج السحاب النضيف مع السما
     vec3 finalColor = mix(finalSky, sumCol.rgb, sumCol.a);
-
-    // Removed the "Night city lights" glow entirely to eliminate the orange line completely
 
     // Cinematic vignette
     vec2 d = abs(v_texCoord - 0.5) * 2.0;
