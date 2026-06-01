@@ -84,12 +84,21 @@ const fragmentShaderSource = `
     float skyT = clamp(rd.y * 1.5 + 0.3, 0.0, 1.0);
     vec3 skyColor = mix(u_skyColorBottom, u_skyColorTop, skyT);
 
+    // Add soft horizontal haze glow for photorealism
+    float horizonHaze = exp(-max(0.0, rd.y) * 8.0);
+    vec3 hazeColor = mix(vec3(0.95, 0.88, 0.82), vec3(0.12, 0.14, 0.22), u_nightMode);
+    skyColor = mix(skyColor, hazeColor, horizonHaze * 0.35);
+
     // Sun/Moon glow
     float sunGlow = max(0.0, dot(rd, u_sunDir));
     vec3 finalSky = skyColor + u_sunColor * pow(sunGlow, 8.0) * 0.25 + u_sunColor * pow(sunGlow, 64.0) * 0.45;
 
-    // Add starfield at night
+    // Add starfield and soft Milky Way nebula band at night
     if (u_nightMode > 0.02 && rd.y > 0.0) {
+      // Render soft galaxy nebula band using noise
+      float nebula = noise(rd * 3.5 + vec3(5.0, 12.0, 2.0)) * 0.16 * u_nightMode;
+      finalSky += vec3(0.12, 0.08, 0.22) * nebula * smoothstep(0.0, 0.1, rd.y);
+
       vec3 starCoord = rd * 260.0;
       vec3 starIpos = floor(starCoord);
       float starHash = hash(starIpos);
@@ -115,8 +124,8 @@ const fragmentShaderSource = `
       float heightFactor = smoothstep(-1.4, -0.2, pos.y) * smoothstep(1.0, 0.2, pos.y);
       
       if (heightFactor > 0.0) {
-        // Wind translation + morphing term
-        vec3 wind = vec3(u_time * 0.14, 0.0, -u_time * 0.06);
+        // Wind translation + morphing term (slightly faster clouds)
+        vec3 wind = vec3(u_time * 0.22, 0.0, -u_time * 0.09);
         // Scale up coordinates (from 0.75 to 1.3) to make clouds smaller and less clumped
         vec3 samplePos = pos * 1.3 + wind;
         
@@ -125,6 +134,13 @@ const fragmentShaderSource = `
         
         // Subtract more (0.64 instead of 0.46) to separate clouds into distinct elements
         float density = fbm(samplePos) * 1.5 - 0.64;
+        
+        // Add realistic high-frequency micro-wisps at the cloud edges
+        if (density > 0.0) {
+          float microWisps = noise(samplePos * 4.5) * 0.14 * (1.0 - density);
+          density += microWisps;
+        }
+        
         density = max(0.0, density) * heightFactor;
         
         if (density > 0.01) {
@@ -132,6 +148,9 @@ const fragmentShaderSource = `
           float shadowT = 0.14;
           vec3 shadowPos = pos + u_sunDir * shadowT;
           float shadowDensity = fbm(shadowPos * 1.3 + wind) * 1.5 - 0.64;
+          if (shadowDensity > 0.0) {
+            shadowDensity += noise(shadowPos * 5.85 + wind) * 0.14 * (1.0 - shadowDensity);
+          }
           shadowDensity = max(0.0, shadowDensity);
           
           float transmission = exp(-shadowDensity * 4.5);
@@ -255,6 +274,12 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
   const [localTime, setLocalTime] = useState(12); // float representation: 0 to 24
   const [isManualTime, setIsManualTime] = useState(false);
   const [showControls, setShowControls] = useState(true);
+
+  // Keep a ref of localTime to avoid WebGL component teardown & pulsing once a second
+  const localTimeRef = useRef(localTime);
+  useEffect(() => {
+    localTimeRef.current = localTime;
+  }, [localTime]);
 
   // Aviation wing lights animation states
   const [strobeOpacity, setStrobeOpacity] = useState(0);
@@ -559,8 +584,8 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       const timeMs = Date.now() - startTime;
       const timeSec = timeMs / 1000.0;
 
-      // Sync active parameters
-      const currentParams = getSkyParameters(localTime);
+      // Sync active parameters using ref to avoid WebGL context tear-downs
+      const currentParams = getSkyParameters(localTimeRef.current);
 
       // Bind uniforms
       gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
@@ -597,7 +622,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       gl.deleteShader(fs);
       gl.deleteProgram(program);
     };
-  }, [isRightWindow, localTime]);
+  }, [isRightWindow]);
 
   return (
     <div 
