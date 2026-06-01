@@ -84,9 +84,9 @@ const fragmentShaderSource = `
     float skyT = clamp(rd.y * 1.5 + 0.3, 0.0, 1.0);
     vec3 skyColor = mix(u_skyColorBottom, u_skyColorTop, skyT);
 
-    // Add soft horizontal haze glow for photorealism and a clear horizon divider
+    // Add soft horizontal haze glow for photorealism and a clear horizon divider (completely eliminating any dark lines!)
     float horizonHaze = exp(-abs(rd.y + 0.01) * 20.0);
-    vec3 hazeColor = mix(vec3(0.98, 0.82, 0.72), vec3(0.08, 0.12, 0.24), u_nightMode);
+    vec3 hazeColor = mix(u_skyColorBottom * 1.15, vec3(0.03, 0.04, 0.08), u_nightMode);
     skyColor = mix(skyColor, hazeColor, horizonHaze * 0.45);
 
     // Sun/Moon glow
@@ -109,8 +109,9 @@ const fragmentShaderSource = `
       }
     }
 
-    // Horizon fade to divide the window: top half clear sky, bottom half clouds
-    float horizonFade = smoothstep(0.02, -0.05, rd.y);
+    // Wavy, irregular horizon line so tall clouds can realistically pop up above it
+    float horizonNoise = noise(rd * 15.0 + vec3(u_time * 0.04, 0.0, 0.0)) * 0.024 - 0.012;
+    float horizonFade = smoothstep(0.03 + horizonNoise, -0.04 + horizonNoise, rd.y);
 
     // Volumetric cloud marching setup
     vec4 sumCol = vec4(0.0);
@@ -130,15 +131,16 @@ const fragmentShaderSource = `
         if (heightFactor > 0.0) {
           // Wind translation + morphing term (slightly faster clouds)
           vec3 wind = vec3(u_time * 0.22, 0.0, -u_time * 0.09);
-          // Scale up coordinates (from 1.3 to 1.65) to make clouds smaller and less clumped
-          vec3 samplePos = pos * 1.65 + wind;
+          // Scale down coordinates to 1.25 to make the clouds larger and more magnificent
+          vec3 samplePos = pos * 1.25 + wind;
           
           // Morph the noise based on time
           samplePos.y += sin(u_time * 0.04 + samplePos.x * 0.25) * 0.08;
           
           // Low frequency noise to modulate cloud presence (creates large clear sky regions)
           float presence = noise(samplePos * 0.22);
-          float threshold = 0.58 + (1.0 - presence) * 0.45;
+          // Slightly higher threshold (0.62) to make clouds highly discrete and separate
+          float threshold = 0.62 + (1.0 - presence) * 0.45;
           float density = fbm(samplePos) * 1.7 - threshold;
           
           // Add realistic high-frequency micro-wisps at the cloud edges
@@ -165,6 +167,15 @@ const fragmentShaderSource = `
             
             // Interpolate cloud base and lit tops
             vec3 cloudCol = mix(u_cloudBase, u_cloudLight, transmission);
+            
+            // Subtle variation in cloud colors for extreme photorealism
+            float varNoise = noise(samplePos * 0.12);
+            vec3 colorVariation = vec3(
+              sin(varNoise * 6.28) * 0.04, 
+              cos(varNoise * 6.28) * 0.02, 
+              sin(varNoise * 3.14) * 0.01
+            );
+            cloudCol += colorVariation;
             
             // Edge scattering (soft highlight around sun)
             float scatter = pow(max(0.0, dot(rd, u_sunDir)), 4.0) * 0.35;
