@@ -138,8 +138,8 @@ const fragmentShaderSource = `
 
     float nightGlow = 0.0;
     if (u_nightMode > 0.5) {
-       // Warm, slightly softer glow simulating city lights
-       nightGlow = u_nightMode * 0.9;
+       // Warm, softer glow simulating city lights
+       nightGlow = u_nightMode * 0.5;
     }
 
     for (int i = 0; i < 90; i++) { 
