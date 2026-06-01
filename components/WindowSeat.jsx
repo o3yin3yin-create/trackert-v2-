@@ -138,7 +138,7 @@ const fragmentShaderSource = `
     float nightGlow = 0.0;
     if (u_nightMode > 0.5) {
        // Constant bright glow under clouds at night
-       nightGlow = u_nightMode * 2.5;
+       nightGlow = u_nightMode * 1.6;
     }
 
     for (int i = 0; i < 90; i++) { 
@@ -509,7 +509,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       skyColorBottom: [0.65, 0.82, 0.98], // Soft hazy horizon blue
       sunColor: [1.0, 1.0, 0.98],
       sunDir: [-0.6, 0.75, -0.4],
-      cloudBase: [0.35, 0.45, 0.60], // Darker slate-gray for deep cloud shadows
+      cloudBase: [0.25, 0.32, 0.48], // Darker slate-gray for deep cloud shadows (more details)
       cloudLight: [0.98, 0.99, 1.0], // Brilliant pure white for cloud tops
       bezelHighlight: 'rgba(255, 255, 255, 0.45)',
       cabinReflection: 0.06,
