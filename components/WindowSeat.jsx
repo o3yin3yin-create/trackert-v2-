@@ -81,19 +81,19 @@ const fragmentShaderSource = `
     finalSky += u_sunColor * pow(sunGlow, 8.0) * 0.2 + u_sunColor * pow(sunGlow, 64.0) * 0.4;
 
     // --- تحديث السحاب الهوائي (أكثر كثافة وتوزيع حاجة بسيطة) ---
-    if (rd.y > 0.02 && u_nightMode < 0.5) {
+    if (rd.y > 0.02) {
       vec2 highUV = rd.xz / (rd.y + 0.05);
       // وسعنا الـ scale سنة عشان يفرش
       float highNoise = fbm(vec3(highUV * 0.25, u_time * 0.005));
       
       // قللنا العتبة عشان مساحة السحاب تزيد
-      float cirrus = smoothstep(0.38, 0.8, highNoise);
+      float cirrus = smoothstep(0.30, 0.75, highNoise);
       
       vec3 hcCol = mix(u_cloudBase, u_cloudLight, cirrus);
       hcCol += u_sunColor * pow(sunGlow, 4.0) * 0.8;
       
       // رفعنا الشفافية عشان يبان أوضح
-      float hcAlpha = cirrus * 0.8 * smoothstep(0.02, 0.15, rd.y) * (1.0 - u_nightMode);
+      float hcAlpha = cirrus * smoothstep(0.02, 0.15, rd.y);
       finalSky = mix(finalSky, hcCol, hcAlpha);
     }
 
@@ -225,11 +225,13 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
   const [showControls, setShowControls] = useState(true);
   const [weather, setWeather] = useState(0); // 0: Normal, 1: Stormy, 2: Clear
 
-  // Keep a ref of localTime to avoid WebGL component teardown & pulsing once a second
+  // Keep a ref of localTime and weather to avoid WebGL component teardown & pulsing once a second
   const localTimeRef = useRef(localTime);
+  const weatherRef = useRef(weather);
   useEffect(() => {
     localTimeRef.current = localTime;
-  }, [localTime]);
+    weatherRef.current = weather;
+  }, [localTime, weather]);
 
   // Aviation wing lights animation states
   const [strobeOpacity, setStrobeOpacity] = useState(0);
@@ -518,10 +520,10 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
     const NightPalette = {
       skyColorTop: [0.008, 0.008, 0.018], // Absolute space black
       skyColorBottom: [0.03, 0.04, 0.08], // Cool horizon navy-blue
-      sunColor: [0.52, 0.63, 0.85], // Silvery moonlight
+      sunColor: [0.85, 0.92, 1.0], // Bright silvery moonlight
       sunDir: [-0.3, 0.88, -0.5],
-      cloudBase: [0.05, 0.06, 0.09], // Slightly lighter base
-      cloudLight: [0.28, 0.35, 0.52], // Much brighter silvery cloud tops
+      cloudBase: [0.08, 0.10, 0.15], // More visible base
+      cloudLight: [0.45, 0.55, 0.75], // Much brighter silvery cloud tops
       bezelHighlight: 'rgba(100, 130, 255, 0.12)',
       cabinReflection: 0.16,
       nightMode: 1.0,
@@ -697,7 +699,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       gl.uniform1f(uniforms.time, timeSec);
       gl.uniform1f(uniforms.seatSide, isRightWindow ? 1.0 : 0.0);
       gl.uniform1f(uniforms.nightMode, currentParams.nightMode);
-      gl.uniform1f(uniforms.weather, weather);
+      gl.uniform1f(uniforms.weather, weatherRef.current);
       
       // Pass vector values
       gl.uniform3fv(uniforms.skyColorTop, new Float32Array(currentParams.skyColorTop));
