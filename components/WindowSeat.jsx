@@ -77,7 +77,7 @@ const fragmentShaderSource = `
     vec3 cv = normalize(cross(cu, cw));
     vec3 rd = normalize(p.x * cu + p.y * cv + 2.2 * cw);
 
-    // === 1. CLEAN SKY GRADIENT (تم حذف الـ Horizon Glow المسبب للخط الفاصل) ===
+    // === CLEAN SKY GRADIENT ===
     float skyT = clamp(rd.y * 2.0, 0.0, 1.0);
     vec3 finalSky = mix(u_skyColorBottom, u_skyColorTop, skyT);
 
@@ -100,72 +100,71 @@ const fragmentShaderSource = `
       }
     }
 
-    // === 2. CLOUD SEA RENDERING ===
+    // === CLOUD SEA RENDERING (تم حذف الـ IF الحادة المسببة للقطع المتعرج) ===
     vec4 sumCol = vec4(0.0);
     float t = 1.0;
     float maxT = 45.0; 
     float dt = 0.25;
 
-    // تشغيل الرندر للسحب فقط لو العين بتبص تحت أو قريبة جداً من الأفق
-    if (rd.y < 0.05) {
-      for (int i = 0; i < 90; i++) { 
-        if (t > maxT || sumCol.a > 0.98) break;
+    for (int i = 0; i < 90; i++) { 
+      if (t > maxT || sumCol.a > 0.98) break;
+      
+      vec3 pos = ro + t * rd;
+      
+      // الـ heightFactor هو اللي بيضمن إن السحاب ميرندرش في السماء فوق يـ 1.5
+      float heightFactor = smoothstep(1.5, 0.0, pos.y);
+      
+      if (heightFactor > 0.0) {
+        vec3 wind = vec3(u_time * 0.06, 0.0, -u_time * 0.02);
         
-        vec3 pos = ro + t * rd;
-        float heightFactor = smoothstep(1.5, 0.0, pos.y);
+        // حجم السحب الأصلي الناعم المريح للعين
+        vec3 samplePos = pos * 1.2 + wind;
+        vec3 largeSamplePos = pos * 0.4 + wind * 0.5;
         
-        if (heightFactor > 0.0) {
-          vec3 wind = vec3(u_time * 0.06, 0.0, -u_time * 0.02);
+        float baseDensity = smoothstep(1.2, -0.2, pos.y) * 1.5;
+        float largeVariation = noise(largeSamplePos) * 1.2;
+        float detail = fbm(samplePos) * 1.8;
+        
+        float density = baseDensity + largeVariation + detail - 2.4;
+        density = max(0.0, density) * heightFactor;
+        
+        if (density > 0.01) {
+          // Self-shadowing
+          float shadowT = 0.15;
+          vec3 shadowPos = samplePos + u_sunDir * shadowT;
+          vec3 shadowLargePos = largeSamplePos + u_sunDir * shadowT * 0.5;
           
-          // حجم السحب الأصلي الناعم والمريح للعين
-          vec3 samplePos = pos * 1.2 + wind;
-          vec3 largeSamplePos = pos * 0.4 + wind * 0.5;
+          float shadowBase = smoothstep(1.2, -0.2, pos.y + u_sunDir.y * shadowT) * 1.5;
+          float shadowLarge = noise(shadowLargePos) * 1.2;
+          float shadowDensity = shadowBase + shadowLarge + fbm(shadowPos) * 1.8 - 2.4;
+          shadowDensity = max(0.0, shadowDensity);
           
-          float baseDensity = smoothstep(1.2, -0.2, pos.y) * 1.5;
-          float largeVariation = noise(largeSamplePos) * 1.2;
-          float detail = fbm(samplePos) * 1.8;
+          float transmission = exp(-shadowDensity * 3.5);
           
-          float density = baseDensity + largeVariation + detail - 2.4;
-          density = max(0.0, density) * heightFactor;
+          // إخفاء الظلال تماماً عند المسافات البعيدة
+          float distFade = smoothstep(12.0, 30.0, t);
+          transmission = mix(transmission, 1.0, distFade);
           
-          if (density > 0.01) {
-            // Self-shadowing
-            float shadowT = 0.15;
-            vec3 shadowPos = samplePos + u_sunDir * shadowT;
-            vec3 shadowLargePos = largeSamplePos + u_sunDir * shadowT * 0.5;
-            
-            float shadowBase = smoothstep(1.2, -0.2, pos.y + u_sunDir.y * shadowT) * 1.5;
-            float shadowLarge = noise(shadowLargePos) * 1.2;
-            float shadowDensity = shadowBase + shadowLarge + fbm(shadowPos) * 1.8 - 2.4;
-            shadowDensity = max(0.0, shadowDensity);
-            
-            float transmission = exp(-shadowDensity * 3.5);
-            
-            // إخفاء الظلال تماماً عند الأفق لمنع الكتمة الرمادية
-            float distFade = smoothstep(12.0, 30.0, t);
-            transmission = mix(transmission, 1.0, distFade);
-            
-            vec3 cloudCol = mix(u_cloudBase, u_cloudLight, transmission * 0.8 + 0.2);
-            
-            // إذابة لون السحب البعيدة في لون الأفق الأصلي النضيف
-            cloudCol = mix(cloudCol, u_skyColorBottom, distFade * 0.8);
-            
-            float scatter = pow(max(0.0, dot(rd, u_sunDir)), 4.0) * 0.3;
-            cloudCol += u_sunColor * scatter * transmission;
-            
-            // الـ Alpha الأساسي للسحابة
-            float alpha = smoothstep(0.0, 0.2, density) * 0.85;
-            
-            // تنعيم تلاشي السحاب عند خط الأفق (يدوب تماماً في الجو دون حواف حادة)
-            alpha *= smoothstep(0.02, -0.01, rd.y);
-            alpha *= smoothstep(maxT, maxT - 15.0, t);
-            
-            vec4 val = vec4(cloudCol * alpha, alpha);
-            sumCol += val * (1.0 - sumCol.a);
-          }
+          vec3 cloudCol = mix(u_cloudBase, u_cloudLight, transmission * 0.8 + 0.2);
+          
+          // إذابة لون السحب البعيدة في لون الأفق الأصلي
+          cloudCol = mix(cloudCol, u_skyColorBottom, distFade * 0.8);
+          
+          float scatter = pow(max(0.0, dot(rd, u_sunDir)), 4.0) * 0.3;
+          cloudCol += u_sunColor * scatter * transmission;
+          
+          // الـ Alpha الأساسي للسحابة
+          float alpha = smoothstep(0.0, 0.2, density) * 0.85;
+          
+          // تلاشي فائق النعومة ممتد من فوق الأفق لتحته بيقضي على أي خط وهمي
+          alpha *= smoothstep(0.08, -0.04, rd.y);
+          alpha *= smoothstep(maxT, maxT - 15.0, t);
+          
+          vec4 val = vec4(cloudCol * alpha, alpha);
+          sumCol += val * (1.0 - sumCol.a);
         }
-        t += dt * (1.0 + t * 0.06);
       }
+      t += dt * (1.0 + t * 0.06);
     }
 
     // دمج السحاب النضيف مع السما
