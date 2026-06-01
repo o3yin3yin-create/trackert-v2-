@@ -62,8 +62,8 @@ const fragmentShaderSource = `
     p.x *= u_resolution.x / u_resolution.y;
 
     float side = u_seatSide > 0.5 ? 1.0 : -1.0;
-    vec3 ro = vec3(0.0, 1.5, -u_time * 0.05);
-    vec3 ta = vec3(side * 1.5, 1.5, -u_time * 0.05 - 2.0);
+    vec3 ro = vec3(0.0, 2.2, -u_time * 0.05);
+    vec3 ta = vec3(side * 1.5, 2.2, -u_time * 0.05 - 2.0);
     
     vec3 cw = normalize(ta - ro);
     vec3 cp = vec3(0.0, 1.0, 0.0);
@@ -113,8 +113,8 @@ const fragmentShaderSource = `
         // سرعة ديناميكية: القريب بيتحرك أسرع بكتير من البعيد
         vec3 dynamicWind = vec3(u_time * mix(0.18, 0.02, t / maxT), 0.0, -u_time * 0.02);
 
-        vec3 samplePos = pos * 1.2 * depthScale + dynamicWind;
-        vec3 largeSamplePos = pos * 0.4 * depthScale + dynamicWind * 0.5;
+        vec3 samplePos = pos * 0.8 * depthScale + dynamicWind;
+        vec3 largeSamplePos = pos * 0.25 * depthScale + dynamicWind * 0.5;
         
         // 2. الوديان والقمم (Macro Variation)
         float macro = noise(largeSamplePos);
@@ -132,8 +132,8 @@ const fragmentShaderSource = `
           vec3 shadowPos = pos + u_sunDir * shadowT;
           
           float sDepthScale = mix(0.4, 2.8, (t + shadowT) / maxT);
-          vec3 sSamplePos = shadowPos * 1.2 * sDepthScale + dynamicWind;
-          vec3 sLargeSamplePos = shadowPos * 0.4 * sDepthScale + dynamicWind * 0.5;
+          vec3 sSamplePos = shadowPos * 0.8 * sDepthScale + dynamicWind;
+          vec3 sLargeSamplePos = shadowPos * 0.25 * sDepthScale + dynamicWind * 0.5;
           
           float sMacro = noise(sLargeSamplePos);
           float shadowBase = smoothstep(1.2 + sMacro * 3.0, -0.8, shadowPos.y) * 1.5;
