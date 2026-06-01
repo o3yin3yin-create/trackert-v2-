@@ -81,7 +81,8 @@ const fragmentShaderSource = `
     vec3 rd = normalize(p.x * cu + p.y * cv + 2.2 * cw);
 
     // === PERFECT SKY GRADIENT (renders EVERYWHERE) ===
-    float skyT = clamp(rd.y * 2.5 + 0.5, 0.0, 1.0);
+    // This creates a clear, prominent gradient starting exactly at the horizon
+    float skyT = clamp(rd.y * 2.5, 0.0, 1.0);
     vec3 skyColor = mix(u_skyColorBottom, u_skyColorTop, skyT);
 
     // Warm horizon glow matching the sunset photo (fade it out entirely in night mode to prevent orange line)
@@ -109,8 +110,8 @@ const fragmentShaderSource = `
     }
 
     // === CONTINUOUS CLOUD SEA (bottom half) ===
-    // Clean, straight horizon fade without jagged noise
-    float horizonFade = smoothstep(0.0, -0.02, rd.y);
+    // Completely straight and sharp horizon line
+    float horizonFade = smoothstep(0.0, -0.005, rd.y);
 
     vec4 sumCol = vec4(0.0);
     float t = 1.0;
