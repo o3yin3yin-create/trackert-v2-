@@ -153,21 +153,9 @@ const fragmentShaderSource = `
           density = max(0.0, density) * heightFactor;
           
           if (density > 0.01) {
-            // Self-shadowing towards sun/moon (Beer's Law)
-            float shadowT = 0.12;
-            vec3 shadowPos = pos + u_sunDir * shadowT;
-            float shadowPresence = noise((shadowPos * 1.65 + wind) * 0.22);
-            float shadowThreshold = 0.58 + (1.0 - shadowPresence) * 0.45;
-            float shadowDensity = fbm(shadowPos * 1.65 + wind) * 1.7 - shadowThreshold;
-            if (shadowDensity > 0.0) {
-              shadowDensity += noise(shadowPos * 6.5 + wind) * 0.16 * (1.0 - shadowDensity);
-            }
-            shadowDensity = max(0.0, shadowDensity);
-            
-            float transmission = exp(-shadowDensity * 4.5);
-            
-            // Interpolate cloud base and lit tops
-            vec3 cloudCol = mix(u_cloudBase, u_cloudLight, transmission);
+            // Smooth position-based blending between cloudBase and cloudLight (no dark/black shadows!)
+            float blendFactor = noise(samplePos * 0.18) * 0.5 + 0.5;
+            vec3 cloudCol = mix(u_cloudBase, u_cloudLight, blendFactor);
             
             // Subtle variation in cloud colors for extreme photorealism
             float varNoise = noise(samplePos * 0.12);
@@ -180,13 +168,13 @@ const fragmentShaderSource = `
             
             // Edge scattering (soft highlight around sun)
             float scatter = pow(max(0.0, dot(rd, u_sunDir)), 4.0) * 0.35;
-            cloudCol += u_sunColor * scatter * transmission;
+            cloudCol += u_sunColor * scatter;
             
             // Warm scattering from twinkling city lights below
             if (u_nightMode > 0.01) {
               float bottomScatter = smoothstep(0.4, -1.2, pos.y) * u_nightMode;
               vec3 cityGlowCol = vec3(1.0, 0.48, 0.15) * 0.65;
-              cloudCol = mix(cloudCol, cityGlowCol, bottomScatter * (1.0 - transmission));
+              cloudCol = mix(cloudCol, cityGlowCol, bottomScatter * 0.55);
             }
             
             // Alpha compositing (make clouds stand out as bright white and solid!)
