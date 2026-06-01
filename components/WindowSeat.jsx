@@ -114,15 +114,15 @@ const fragmentShaderSource = `
 
     // === CONTINUOUS CLOUD SEA (bottom half) ===
     // Clean horizon fade to make clouds blend smoothly into the sky
-    float horizonFade = smoothstep(0.0, -0.03, rd.y);
+    float horizonFade = smoothstep(0.0, -0.005, rd.y);
 
     vec4 sumCol = vec4(0.0);
     float t = 1.0;
-    float maxT = 24.0;
+    float maxT = 45.0; // Pushed horizon further
     float dt = 0.25;
 
     if (horizonFade > 0.001) {
-      for (int i = 0; i < 70; i++) {
+      for (int i = 0; i < 90; i++) { // Increased loop count for further horizon
         if (t > maxT || sumCol.a > 0.98) break;
         
         vec3 pos = ro + t * rd;
@@ -131,7 +131,8 @@ const fragmentShaderSource = `
         float heightFactor = smoothstep(1.5, 0.0, pos.y);
         
         if (heightFactor > 0.0) {
-          vec3 wind = vec3(u_time * 0.12, 0.0, -u_time * 0.05);
+          // Wind is slower as requested
+          vec3 wind = vec3(u_time * 0.06, 0.0, -u_time * 0.02);
           vec3 samplePos = pos * 1.5 + wind;
           vec3 largeSamplePos = pos * 0.5 + wind * 0.5;
           
@@ -163,6 +164,9 @@ const fragmentShaderSource = `
             
             float transmission = exp(-shadowDensity * 3.5);
             
+            // Remove dark shadows from distant clouds to prevent the dark line at the horizon
+            transmission = mix(transmission, 1.0, smoothstep(15.0, maxT, t));
+            
             // Color: mix shadow color (cloudBase) with lit color (cloudLight)
             vec3 cloudCol = mix(u_cloudBase, u_cloudLight, transmission * 0.8 + 0.2);
             
@@ -172,6 +176,13 @@ const fragmentShaderSource = `
             
             // Alpha builds up nicely
             float alpha = smoothstep(0.0, 0.2, density) * 0.85;
+            
+            // Enforce a perfectly straight horizon line (flattens bumps at rd.y = 0)
+            alpha *= smoothstep(0.002, -0.015, rd.y);
+            
+            // Fade out distant clouds softly
+            alpha *= smoothstep(maxT, maxT - 15.0, t);
+            
             vec4 val = vec4(cloudCol * alpha, alpha);
             
             sumCol += val * (1.0 - sumCol.a);
