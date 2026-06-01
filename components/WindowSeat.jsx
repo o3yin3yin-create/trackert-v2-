@@ -137,8 +137,8 @@ const fragmentShaderSource = `
 
     float nightGlow = 0.0;
     if (u_nightMode > 0.5) {
-       // Constant subtle glow under clouds at night
-       nightGlow = u_nightMode * 0.6;
+       // Constant bright glow under clouds at night
+       nightGlow = u_nightMode * 2.5;
     }
 
     for (int i = 0; i < 90; i++) { 
@@ -191,7 +191,7 @@ const fragmentShaderSource = `
           alpha *= smoothstep(maxT, maxT - 15.0, t); 
           
           if (nightGlow > 0.0) {
-            cloudCol += vec3(0.6, 0.8, 1.0) * nightGlow * (1.0 - smoothstep(0.0, 1.0, pos.y)) * 0.4;
+            cloudCol += vec3(0.6, 0.8, 1.0) * nightGlow * (1.0 - smoothstep(-0.5, 1.0, pos.y));
           }
 
           vec4 val = vec4(cloudCol * alpha, alpha);
