@@ -139,8 +139,9 @@ const fragmentShaderSource = `
           
           // Low frequency noise to modulate cloud presence (creates large clear sky regions)
           float presence = noise(samplePos * 0.22);
-          // Slightly higher threshold (0.62) to make clouds highly discrete and separate
-          float threshold = 0.62 + (1.0 - presence) * 0.45;
+          // Slightly higher threshold (0.62) to make clouds highly discrete and separate,
+          // and dynamically shrink the clouds to zero near the horizon to eliminate any dark lines!
+          float threshold = 0.62 + (1.0 - presence) * 0.45 + (1.0 - horizonFade) * 0.25;
           float density = fbm(samplePos) * 1.7 - threshold;
           
           // Add realistic high-frequency micro-wisps at the cloud edges
@@ -214,8 +215,8 @@ const fragmentShaderSource = `
         // Base ground color
         vec3 groundColor = vec3(0.008, 0.012, 0.018) * u_nightMode;
         
-        // Smoothly fade the ground out as it approaches the horizon to completely remove any sharp lines!
-        float horizonFadeVal = smoothstep(-0.01, -0.15, rd.y);
+        // Smoothly fade the ground out far below the horizon to completely remove any sharp lines!
+        float horizonFadeVal = smoothstep(-0.06, -0.18, rd.y);
         
         // Ground grid coordinates
         vec2 cityUV = groundPos.xz * 1.25 + vec2(u_time * 0.04, 0.0);
