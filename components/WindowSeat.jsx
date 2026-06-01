@@ -139,7 +139,7 @@ const fragmentShaderSource = `
     float nightGlow = 0.0;
     if (u_nightMode > 0.5) {
        // Warm, softer glow simulating city lights
-       nightGlow = u_nightMode * 0.7;
+       nightGlow = u_nightMode * 1.0; // Boosted back slightly since it's localized now
     }
 
     for (int i = 0; i < 90; i++) { 
@@ -195,7 +195,9 @@ const fragmentShaderSource = `
           if (nightGlow > 0.0) {
             // Saturated warm amber simulating streetlights, fading at horizon
             float glowFade = 1.0 - smoothstep(25.0, 55.0, t);
-            cloudCol += vec3(1.0, 0.55, 0.1) * nightGlow * (1.0 - smoothstep(-0.2, 1.2, pos.y)) * glowFade;
+            // Break up the light into patches simulating cities below
+            float citySpots = smoothstep(0.3, 0.8, noise(pos * 0.3));
+            cloudCol += vec3(1.0, 0.55, 0.1) * nightGlow * (1.0 - smoothstep(-0.2, 0.6, pos.y)) * glowFade * citySpots;
           }
 
           vec4 val = vec4(cloudCol * alpha, alpha);
