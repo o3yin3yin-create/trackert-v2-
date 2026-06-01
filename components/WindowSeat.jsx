@@ -193,8 +193,9 @@ const fragmentShaderSource = `
           alpha *= smoothstep(maxT, maxT - 15.0, t); 
           
           if (nightGlow > 0.0) {
-            // Warm orange/yellow color instead of blue
-            cloudCol += vec3(1.0, 0.75, 0.35) * nightGlow * (1.0 - smoothstep(-0.5, 1.0, pos.y));
+            // Saturated warm amber simulating streetlights, fading at horizon
+            float glowFade = 1.0 - smoothstep(15.0, 45.0, t);
+            cloudCol += vec3(1.0, 0.55, 0.1) * nightGlow * (1.0 - smoothstep(-0.5, 0.2, pos.y)) * glowFade;
           }
 
           vec4 val = vec4(cloudCol * alpha, alpha);
