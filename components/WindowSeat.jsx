@@ -99,12 +99,15 @@ const fragmentShaderSource = `
       float nebula = noise(rd * 3.5 + vec3(5.0, 12.0, 2.0)) * 0.16 * u_nightMode;
       finalSky += vec3(0.12, 0.08, 0.22) * nebula * smoothstep(0.0, 0.1, rd.y);
 
-      // Stars: smaller, denser, and static
+      // Stars: smaller, denser, with size/brightness/color variation
       vec3 starCoord = rd * 600.0;
       vec3 starIpos = floor(starCoord);
       float starHash = hash(starIpos);
-      if (starHash > 0.990) { // Slightly more stars since they are smaller
-        vec3 starCol = vec3(1.0) * u_nightMode; // Static, no twinkle
+      if (starHash > 0.985) { 
+        float brightness = (starHash - 0.985) * 66.0; // 0.0 to 1.0 variation
+        // Color variation based on hash (some bluish, some yellowish)
+        vec3 colorTint = mix(vec3(0.8, 0.9, 1.0), vec3(1.0, 0.9, 0.8), hash(starIpos + 1.0));
+        vec3 starCol = colorTint * brightness * u_nightMode; 
         finalSky += starCol * smoothstep(0.0, 0.12, rd.y);
       }
     }
@@ -128,49 +131,52 @@ const fragmentShaderSource = `
         float heightFactor = smoothstep(1.5, 0.0, pos.y);
         
         if (heightFactor > 0.0) {
-          // Wind is slower, and clouds are scaled larger (pos * 0.8) to enhance perspective
           vec3 wind = vec3(u_time * 0.08, 0.0, -u_time * 0.03);
-          vec3 samplePos = pos * 0.8 + wind;
-          vec3 largeSamplePos = pos * 0.3 + wind * 0.5;
+          
+          // Layer 1: Large structural shapes
+          vec3 pLarge = pos * 0.4 + wind * 0.4;
+          float nLarge = noise(pLarge) * 2.5;
+          
+          // Layer 2: Medium puffy details
+          vec3 pMed = pos * 1.2 + wind;
+          float nMed = fbm(pMed) * 1.5;
+          
+          // Layer 3: High frequency crisps
+          vec3 pSmall = pos * 2.8 + wind * 1.5;
+          float nSmall = noise(pSmall) * 0.5;
           
           // Base density makes it a solid unbroken sea of clouds at the bottom
-          // (RAISED to y=1.2 to -0.2)
           float baseDensity = smoothstep(1.2, -0.2, pos.y) * 1.5;
           
-          // Large scale variation for bigger differences in cloud sizes/heights
-          float largeVariation = noise(largeSamplePos) * 1.2;
-          
-          // Puffy details
-          float detail = fbm(samplePos) * 1.8;
-          
-          // Combine: density > 0 means cloud exists
-          float density = baseDensity + largeVariation + detail - 2.4; // Adjusted threshold
+          // Combine carefully to create immense variety and prevent "melting"
+          float density = baseDensity + nLarge + nMed + nSmall - 3.2;
           
           density = max(0.0, density) * heightFactor;
           
           if (density > 0.01) {
-            // Self-shadowing (volumetric depth)
+            // Self-shadowing
             float shadowT = 0.15;
-            vec3 shadowPos = samplePos + u_sunDir * shadowT;
-            vec3 shadowLargePos = largeSamplePos + u_sunDir * shadowT * 0.5;
+            vec3 sPosLarge = pLarge + u_sunDir * shadowT * 0.4;
+            vec3 sPosMed = pMed + u_sunDir * shadowT;
             
-            float shadowBase = smoothstep(1.2, -0.2, pos.y + u_sunDir.y * shadowT) * 1.5;
-            float shadowLarge = noise(shadowLargePos) * 1.2;
-            float shadowDensity = shadowBase + shadowLarge + fbm(shadowPos) * 1.8 - 2.4;
-            shadowDensity = max(0.0, shadowDensity);
+            float sBase = smoothstep(1.2, -0.2, pos.y + u_sunDir.y * shadowT) * 1.5;
+            float sDensity = sBase + noise(sPosLarge) * 2.5 + fbm(sPosMed) * 1.5 - 3.2;
+            sDensity = max(0.0, sDensity);
             
-            float transmission = exp(-shadowDensity * 3.5);
+            float transmission = exp(-sDensity * 3.0);
             
-            // Color: mix shadow color (cloudBase) with lit color (cloudLight)
-            vec3 cloudCol = mix(u_cloudBase, u_cloudLight, transmission * 0.8 + 0.2);
+            // Add subtle color variation based on position to avoid repeating looks
+            vec3 localColor = mix(u_cloudBase, u_cloudLight, transmission * 0.8 + 0.2);
+            // Introduce slight hue shifts based on large noise
+            localColor *= 1.0 + (noise(pLarge * 0.5) - 0.5) * 0.15;
             
             // Soft highlight facing sun
             float scatter = pow(max(0.0, dot(rd, u_sunDir)), 4.0) * 0.3;
-            cloudCol += u_sunColor * scatter * transmission;
+            localColor += u_sunColor * scatter * transmission;
             
-            // Alpha builds up nicely
-            float alpha = smoothstep(0.0, 0.2, density) * 0.85;
-            vec4 val = vec4(cloudCol * alpha, alpha);
+            // Varied opacity: make edges softer and centers denser based on medium noise
+            float alpha = smoothstep(0.0, 0.3, density) * (0.6 + 0.3 * noise(pMed));
+            vec4 val = vec4(localColor * alpha, alpha);
             
             sumCol += val * (1.0 - sumCol.a);
           }
@@ -222,6 +228,40 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
   // Aviation wing lights animation states
   const [strobeOpacity, setStrobeOpacity] = useState(0);
   const [navLightOpacity, setNavLightOpacity] = useState(0.4);
+
+  // Window Blind State & Logic
+  const [blindY, setBlindY] = useState(0); // 0 = fully open, 100 = fully closed
+  const isDraggingBlind = useRef(false);
+
+  const handleBlindDrag = (e) => {
+    if (!isDraggingBlind.current) return;
+    const bezelEl = document.getElementById('window-bezel');
+    if (!bezelEl) return;
+    const bezelRect = bezelEl.getBoundingClientRect();
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    if (!clientY) return;
+    const percent = ((clientY - bezelRect.top) / bezelRect.height) * 100;
+    setBlindY(Math.max(0, Math.min(100, percent)));
+  };
+
+  const startBlindDrag = (e) => {
+    e.stopPropagation(); // prevent window dragging
+    isDraggingBlind.current = true;
+  };
+  const endBlindDrag = () => { isDraggingBlind.current = false; };
+
+  useEffect(() => {
+    window.addEventListener('mousemove', handleBlindDrag);
+    window.addEventListener('mouseup', endBlindDrag);
+    window.addEventListener('touchmove', handleBlindDrag, { passive: false });
+    window.addEventListener('touchend', endBlindDrag);
+    return () => {
+      window.removeEventListener('mousemove', handleBlindDrag);
+      window.removeEventListener('mouseup', endBlindDrag);
+      window.removeEventListener('touchmove', handleBlindDrag);
+      window.removeEventListener('touchend', endBlindDrag);
+    };
+  }, []);
 
   // Auto-hide controls timer
   useEffect(() => {
@@ -704,6 +744,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
         >
           {/* RUBBER GLASS GASKET (Black sealer ring) */}
           <div 
+            id="window-bezel"
             style={{
               width: '100%',
               height: '100%',
@@ -728,6 +769,43 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
                 backgroundColor: '#0a0d16'
               }}
             />
+
+            {/* WINDOW BLIND (الستارة) */}
+            <div 
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: '-2px', // covers the gasket completely
+                right: '-2px',
+                height: `${blindY}%`,
+                minHeight: '34px', // Always show handle at top
+                backgroundColor: '#e6e4df', // Off-white plastic color
+                borderBottomLeftRadius: blindY > 95 ? '96px' : '4px',
+                borderBottomRightRadius: blindY > 95 ? '96px' : '4px',
+                boxShadow: 'inset 0 -10px 20px rgba(0,0,0,0.15), 0 10px 20px rgba(0,0,0,0.6)',
+                zIndex: 100, // Above canvas
+                backgroundImage: 'repeating-linear-gradient(to bottom, transparent, transparent 4px, rgba(0,0,0,0.025) 4px, rgba(0,0,0,0.025) 6px)',
+                transition: isDraggingBlind.current ? 'none' : 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
+              }}
+            >
+              {/* Blind Handle for dragging */}
+              <div 
+                onMouseDown={startBlindDrag}
+                onTouchStart={startBlindDrag}
+                style={{
+                  position: 'absolute',
+                  bottom: '8px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '80px',
+                  height: '16px',
+                  backgroundColor: '#d0cec7',
+                  borderRadius: '10px',
+                  boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.7), inset 0 -2px 4px rgba(0,0,0,0.15), 0 2px 5px rgba(0,0,0,0.2)',
+                  cursor: isDraggingBlind.current ? 'grabbing' : 'grab',
+                }}
+              />
+            </div>
 
             {/* REALISTIC HIGH-FIDELITY AIRPLANE WING LAYER */}
             {showWing && (
