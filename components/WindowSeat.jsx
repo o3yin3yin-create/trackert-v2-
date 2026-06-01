@@ -173,8 +173,8 @@ const fragmentShaderSource = `
             cloudCol = mix(cloudCol, cityGlowCol, bottomScatter * (1.0 - transmission));
           }
           
-          // Alpha compositing
-          float alpha = density * 0.4;
+          // Alpha compositing (make clouds stand out as bright white and solid!)
+          float alpha = density * 0.85;
           vec4 val = vec4(cloudCol * alpha, alpha);
           
           // Front-to-back blend
@@ -189,14 +189,17 @@ const fragmentShaderSource = `
     vec3 finalColor = mix(finalSky, sumCol.rgb, sumCol.a);
 
     // Twinling city lights on the ground far below (Night Mode only)
-    if (u_nightMode > 0.02 && rd.y < 0.0) {
+    if (u_nightMode > 0.02 && rd.y < -0.01) {
       float groundY = -1.6;
       float groundT = (groundY - ro.y) / rd.y;
-      if (groundT > 0.0 && groundT < 24.0) {
+      if (groundT > 0.0 && groundT < 60.0) {
         vec3 groundPos = ro + groundT * rd;
         
         // Base ground color (continuous across all ground pixels, completely eliminating the dithered gray noise pattern!)
         vec3 groundColor = vec3(0.008, 0.012, 0.018) * u_nightMode;
+        
+        // Smoothly fade the ground out as it approaches the horizon to completely remove any sharp lines!
+        float horizonFade = smoothstep(-0.01, -0.15, rd.y);
         
         // Ground grid coordinates
         vec2 cityUV = groundPos.xz * 1.25 + vec2(u_time * 0.04, 0.0);
@@ -240,12 +243,12 @@ const fragmentShaderSource = `
           }
         }
         
-        // Fog based on distance
-        float fog = exp(-groundT * 0.08);
+        // Fog based on distance + smooth horizon blend
+        float fog = exp(-groundT * 0.08) * horizonFade;
         groundColor = mix(finalSky, groundColor, fog);
         
         // Blend ground visible through clouds
-        float groundVisibility = (1.0 - sumCol.a);
+        float groundVisibility = (1.0 - sumCol.a) * horizonFade;
         finalColor = mix(finalColor, groundColor, groundVisibility);
       }
     }
@@ -383,8 +386,8 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       skyColorBottom: [0.52, 0.74, 0.96], // Horizon light blue
       sunColor: [1.0, 1.0, 0.95],
       sunDir: [-0.6, 0.75, -0.4],
-      cloudBase: [0.72, 0.77, 0.85],
-      cloudLight: [1.0, 1.0, 1.0],
+      cloudBase: [0.85, 0.88, 0.94], // Whiter, brighter cloud base
+      cloudLight: [1.3, 1.3, 1.3], // High-contrast brilliant white cloud tops
       bezelHighlight: 'rgba(255, 255, 255, 0.45)',
       cabinReflection: 0.06,
       nightMode: 0.0,
@@ -403,8 +406,8 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       skyColorBottom: [0.98, 0.45, 0.24], // Flaming orange/crimson horizon
       sunColor: [1.0, 0.65, 0.38],
       sunDir: [-1.0, 0.16, -0.2],
-      cloudBase: [0.25, 0.21, 0.32], // Deep dusty violet
-      cloudLight: [0.98, 0.62, 0.4], // Golden glowing cloud tops
+      cloudBase: [0.45, 0.38, 0.48], // Lighter cloud base
+      cloudLight: [1.25, 0.95, 0.85], // Brighter cloud tops
       bezelHighlight: 'rgba(255, 120, 60, 0.5)',
       cabinReflection: 0.10,
       nightMode: 0.15, // Blending starting for ground/stars
@@ -423,8 +426,8 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       skyColorBottom: [0.03, 0.04, 0.08], // Cool horizon navy-blue
       sunColor: [0.52, 0.63, 0.85], // Silvery moonlight
       sunDir: [-0.3, 0.88, -0.5],
-      cloudBase: [0.035, 0.045, 0.07], // Dark cloud body
-      cloudLight: [0.14, 0.18, 0.3], // Soft silvery lit tops
+      cloudBase: [0.05, 0.06, 0.09], // Slightly lighter base
+      cloudLight: [0.28, 0.35, 0.52], // Much brighter silvery cloud tops
       bezelHighlight: 'rgba(100, 130, 255, 0.12)',
       cabinReflection: 0.16,
       nightMode: 1.0,
@@ -443,8 +446,8 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       skyColorBottom: [0.98, 0.58, 0.38], // Bright salmon-orange sunrise
       sunColor: [1.0, 0.78, 0.55],
       sunDir: [-0.98, 0.18, -0.22],
-      cloudBase: [0.22, 0.22, 0.34],
-      cloudLight: [0.98, 0.72, 0.52],
+      cloudBase: [0.42, 0.42, 0.52], // Lighter cloud base
+      cloudLight: [1.25, 1.0, 0.85], // Brighter cloud tops
       bezelHighlight: 'rgba(255, 140, 80, 0.45)',
       cabinReflection: 0.08,
       nightMode: 0.1,
