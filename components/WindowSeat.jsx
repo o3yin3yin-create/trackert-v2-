@@ -195,6 +195,9 @@ const fragmentShaderSource = `
       if (groundT > 0.0 && groundT < 24.0) {
         vec3 groundPos = ro + groundT * rd;
         
+        // Base ground color (continuous across all ground pixels, completely eliminating the dithered gray noise pattern!)
+        vec3 groundColor = vec3(0.008, 0.012, 0.018) * u_nightMode;
+        
         // Ground grid coordinates
         vec2 cityUV = groundPos.xz * 1.25 + vec2(u_time * 0.04, 0.0);
         
@@ -232,18 +235,18 @@ const fragmentShaderSource = `
             float dist = length(grid - 0.5);
             float halo = smoothstep(0.45, 0.0, dist);
             
-            vec3 groundBase = vec3(0.008, 0.012, 0.018) * u_nightMode;
-            vec3 groundColor = groundBase + finalLights * halo;
-            
-            // Fog based on distance
-            float fog = exp(-groundT * 0.08);
-            groundColor = mix(finalSky, groundColor, fog);
-            
-            // Blend ground visible through clouds
-            float groundVisibility = (1.0 - sumCol.a);
-            finalColor = mix(finalColor, groundColor, groundVisibility);
+            // Add the twinkling city lights to the continuous ground color
+            groundColor += finalLights * halo;
           }
         }
+        
+        // Fog based on distance
+        float fog = exp(-groundT * 0.08);
+        groundColor = mix(finalSky, groundColor, fog);
+        
+        // Blend ground visible through clouds
+        float groundVisibility = (1.0 - sumCol.a);
+        finalColor = mix(finalColor, groundColor, groundVisibility);
       }
     }
 
