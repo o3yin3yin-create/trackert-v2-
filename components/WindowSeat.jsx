@@ -85,14 +85,15 @@ const fragmentShaderSource = `
       // وسعنا الـ scale سنة عشان يفرش
       float highNoise = fbm(vec3(highUV * 0.25, u_time * 0.005));
       
-      // قللنا العتبة عشان مساحة السحاب تزيد
-      float cirrus = smoothstep(0.30, 0.75, highNoise);
+      // قللنا العتبة وقربناها عشان السحاب يبقى حاد أكتر
+      float cirrus = smoothstep(0.35, 0.60, highNoise);
       
       vec3 hcCol = mix(u_cloudBase, u_cloudLight, cirrus);
       hcCol += u_sunColor * pow(sunGlow, 4.0) * 0.8;
       
-      // رفعنا الشفافية عشان يبان أوضح
-      float hcAlpha = cirrus * smoothstep(0.02, 0.15, rd.y);
+      // رفعنا الشفافية في النهار بالذات عشان يبان واضح على السما الزرقا
+      float hcAlpha = cirrus * smoothstep(0.02, 0.15, rd.y) * mix(2.0, 1.0, u_nightMode);
+      hcAlpha = clamp(hcAlpha, 0.0, 1.0);
       finalSky = mix(finalSky, hcCol, hcAlpha);
     }
 
@@ -137,8 +138,8 @@ const fragmentShaderSource = `
 
     float nightGlow = 0.0;
     if (u_nightMode > 0.5) {
-       // Constant bright glow under clouds at night
-       nightGlow = u_nightMode * 1.6;
+       // Warm, slightly softer glow simulating city lights
+       nightGlow = u_nightMode * 0.9;
     }
 
     for (int i = 0; i < 90; i++) { 
@@ -155,7 +156,8 @@ const fragmentShaderSource = `
         float n2 = fbm(q * 2.0);
         float macro = n1 + n2 * 0.5; 
         
-        float coverage = smoothstep(0.5, 1.3, macro);
+        // Increase contrast to carve out deeper valleys
+        float coverage = smoothstep(0.55, 1.4, macro);
         float detail = fbm(pos * 2.0 + wind);
         
         float density = coverage + (detail * 0.4) - (pos.y * 0.7) + smoothstep(0.4, -0.2, pos.y) * 0.8;
@@ -191,7 +193,8 @@ const fragmentShaderSource = `
           alpha *= smoothstep(maxT, maxT - 15.0, t); 
           
           if (nightGlow > 0.0) {
-            cloudCol += vec3(0.6, 0.8, 1.0) * nightGlow * (1.0 - smoothstep(-0.5, 1.0, pos.y));
+            // Warm orange/yellow color instead of blue
+            cloudCol += vec3(1.0, 0.75, 0.35) * nightGlow * (1.0 - smoothstep(-0.5, 1.0, pos.y));
           }
 
           vec4 val = vec4(cloudCol * alpha, alpha);
@@ -509,7 +512,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       skyColorBottom: [0.65, 0.82, 0.98], // Soft hazy horizon blue
       sunColor: [1.0, 1.0, 0.98],
       sunDir: [-0.6, 0.75, -0.4],
-      cloudBase: [0.25, 0.32, 0.48], // Darker slate-gray for deep cloud shadows (more details)
+      cloudBase: [0.18, 0.28, 0.42], // Deepened slate-gray for very stark valley contrast
       cloudLight: [0.98, 0.99, 1.0], // Brilliant pure white for cloud tops
       bezelHighlight: 'rgba(255, 255, 255, 0.45)',
       cabinReflection: 0.06,
