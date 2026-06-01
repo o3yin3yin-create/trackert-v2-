@@ -63,9 +63,9 @@ const fragmentShaderSource = `
 
     float side = u_seatSide > 0.5 ? 1.0 : -1.0;
     
-    // رفعنا الطيارة لارتفاع 2.0 عشان نكون كاشفين الكتل بوضوح من فوق
-    vec3 ro = vec3(0.0, 2.0, -u_time * 0.05);
-    vec3 ta = vec3(side * 1.5, 2.0, -u_time * 0.05 - 2.0);
+    // رفعنا الطيارة عشان نشوف الكتل بوضوح من فوق
+    vec3 ro = vec3(0.0, 2.0, -u_time * 0.08);
+    vec3 ta = vec3(side * 1.5, 2.0, -u_time * 0.08 - 2.0);
     
     vec3 cw = normalize(ta - ro);
     vec3 cp = vec3(0.0, 1.0, 0.0);
@@ -73,12 +73,28 @@ const fragmentShaderSource = `
     vec3 cv = normalize(cross(cu, cw));
     vec3 rd = normalize(p.x * cu + p.y * cv + 2.2 * cw);
 
-    // --- SKY ---
+    // === SKY & HIGH CIRRUS CLOUDS ===
     float skyT = clamp(rd.y * 2.0, 0.0, 1.0);
     vec3 finalSky = mix(u_skyColorBottom, u_skyColorTop, skyT);
 
     float sunGlow = max(0.0, dot(rd, u_sunDir));
     finalSky += u_sunColor * pow(sunGlow, 8.0) * 0.2 + u_sunColor * pow(sunGlow, 64.0) * 0.4;
+
+    // إضافة طبقة السحاب العالي الخفيف (زي الصورة الحقيقية)
+    if (rd.y > 0.02 && u_nightMode < 0.5) {
+      // بنعمل إسقاط 2D على السما من فوق
+      vec2 highUV = rd.xz / (rd.y + 0.05);
+      float highNoise = fbm(vec3(highUV * 0.3, u_time * 0.005));
+      
+      // بنعزل السحاب عشان يبان متقطع وخفيف
+      float cirrus = smoothstep(0.45, 0.8, highNoise);
+      
+      vec3 hcCol = mix(u_cloudBase, u_cloudLight, cirrus);
+      hcCol += u_sunColor * pow(sunGlow, 4.0) * 0.8;
+      
+      float hcAlpha = cirrus * 0.6 * smoothstep(0.02, 0.15, rd.y) * (1.0 - u_nightMode);
+      finalSky = mix(finalSky, hcCol, hcAlpha);
+    }
 
     if (u_nightMode > 0.02 && rd.y > 0.0) {
       float nebula = noise(rd * 3.5 + vec3(5.0, 12.0, 2.0)) * 0.16 * u_nightMode;
@@ -93,7 +109,7 @@ const fragmentShaderSource = `
       }
     }
 
-    // --- REALISTIC CLOUD MASSES ---
+    // === MAIN VOLUMETRIC CUMULUS CLOUDS ===
     vec4 sumCol = vec4(0.0);
     float t = 1.0;
     float maxT = 65.0; 
@@ -104,39 +120,50 @@ const fragmentShaderSource = `
       
       vec3 pos = ro + t * rd;
       
-      // السحاب مش هيتجاوز ارتفاع 1.4 أبداً (الكاميرا عند 2.0)
-      if (pos.y < 1.4) {
+      if (pos.y < 1.8) {
         
-        vec3 wind = vec3(u_time * 0.05, 0.0, -u_time * 0.01);
+        vec3 wind = vec3(u_time * 0.1, 0.0, -u_time * 0.02);
         
-        // --- 3 طبقات لبناء كتل سحاب واقعية ومتباعدة ---
-        // 1. Coverage: بيوزع السحاب فين، وفين الفراغات (مقياس ضخم جداً)
-        float cov = fbm(pos * 0.2 + wind * 0.5); 
-        // 2. Main: الهيكل الخارجي للقباب السحابية
-        float nMain = fbm(pos * 0.8 + wind); 
-        // 3. Detail: التفاصيل والكعبلة اللي على الحواف
-        float nDetail = fbm(pos * 2.5 + wind * 1.2); 
+        // 1. القواعد والهياكل الضخمة للسحاب (Huge distinct clumps)
+        // ضربنا في 0.35 عشان نكبر حجم الكتل جداً، وبلاها مط في المسافات
+        vec3 q = pos * 0.35 + wind * 0.5;
+        float n1 = fbm(q);
+        float n2 = fbm(q * 2.0);
+        float macro = n1 + n2 * 0.5; 
         
-        // المعادلة الحقيقية للكثافة (بدون أي مط أو أمواج)
-        // pos.y * 2.0 بيقص السحاب من فوق عشان يعمل قمم مدورة
-        float density = (nMain * 1.5) + (nDetail * 0.6) + (cov * 1.5) - (pos.y * 2.0) - 1.2;
+        // رفعنا التباين جداً عشان نفصل السحاب عن بعضه ونعمل وديان عميقة
+        float coverage = smoothstep(0.5, 1.3, macro);
+        
+        // 2. التفاصيل المكعبلة اللي على وش السحابة (Fluffy details)
+        float detail = fbm(pos * 2.0 + wind);
+        
+        // 3. النحت المعماري للسحابة
+        // coverage: الكتل الأساسية
+        // detail * 0.4: الكعبلة
+        // pos.y * 0.7: بيخلي السحابة تدور من فوق (Domes) ومتبقاش حادة
+        // smoothstep(0.4, -0.2, pos.y): بيعمل أرضية متصلة من تحت السحاب
+        float density = coverage + (detail * 0.4) - (pos.y * 0.7) + smoothstep(0.4, -0.2, pos.y) * 0.8;
         
         density = max(0.0, density);
         
         if (density > 0.01) {
-          float shadowT = 0.2;
+          // تظليل عميق عشان يبين تجسيم السحابة
+          float shadowT = 0.3;
           vec3 sPos = pos + u_sunDir * shadowT;
           
-          float sCov = fbm(sPos * 0.2 + wind * 0.5);
-          float snMain = fbm(sPos * 0.8 + wind);
-          float snDetail = fbm(sPos * 2.5 + wind * 1.2);
+          vec3 sq = sPos * 0.35 + wind * 0.5;
+          float sn1 = fbm(sq);
+          float sn2 = fbm(sq * 2.0);
+          float sMacro = sn1 + sn2 * 0.5;
           
-          float shadowDensity = (snMain * 1.5) + (snDetail * 0.6) + (sCov * 1.5) - (sPos.y * 2.0) - 1.2;
+          float sCoverage = smoothstep(0.5, 1.3, sMacro);
+          float sDetail = fbm(sPos * 2.0 + wind);
+          
+          float shadowDensity = sCoverage + (sDetail * 0.4) - (sPos.y * 0.7) + smoothstep(0.4, -0.2, sPos.y) * 0.8;
           shadowDensity = max(0.0, shadowDensity);
           
-          float transmission = exp(-shadowDensity * 3.5);
+          float transmission = exp(-shadowDensity * 4.0); // تظليل أتقل وأكثر واقعية
           
-          // دمج الظلال مع الأفق عشان تفضل نضيفة
           float distFade = smoothstep(25.0, maxT, t);
           transmission = mix(transmission, 1.0, distFade);
           
@@ -146,7 +173,6 @@ const fragmentShaderSource = `
           float scatter = pow(max(0.0, dot(rd, u_sunDir)), 4.0) * 0.3;
           cloudCol += u_sunColor * scatter * transmission;
           
-          // الـ Alpha
           float alpha = smoothstep(0.0, 0.2, density) * 0.85;
           alpha *= smoothstep(maxT, maxT - 15.0, t); 
           
