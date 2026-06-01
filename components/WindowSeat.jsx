@@ -132,50 +132,58 @@ const fragmentShaderSource = `
         
         if (heightFactor > 0.0) {
           vec3 wind = vec3(u_time * 0.08, 0.0, -u_time * 0.03);
+          vec3 p = pos + wind;
           
-          // Layer 1: Large structural shapes
-          vec3 pLarge = pos * 0.4 + wind * 0.4;
-          float nLarge = noise(pLarge) * 2.5;
+          // 1. HUGE landscape variation (Mountains and valleys)
+          vec3 pMap = vec3(p.x * 0.2, p.y, p.z * 0.2);
+          float heightMap = fbm(pMap) * 3.5 - 1.0; // Range -1.0 to +2.5
           
-          // Layer 2: Medium puffy details
-          vec3 pMed = pos * 1.2 + wind;
-          float nMed = fbm(pMed) * 1.5;
+          // Base density anchored to the height map
+          // This creates distinct high clouds and low clouds
+          float baseDensity = smoothstep(heightMap + 0.5, heightMap - 1.5, pos.y) * 2.5;
           
-          // Layer 3: High frequency crisps
-          vec3 pSmall = pos * 2.8 + wind * 1.5;
-          float nSmall = noise(pSmall) * 0.5;
+          // 2. Medium puffy details
+          float detail = fbm(p * 1.2) * 1.5;
           
-          // Base density makes it a solid unbroken sea of clouds at the bottom
-          float baseDensity = smoothstep(1.2, -0.2, pos.y) * 1.5;
+          // 3. Fine crisp edges
+          float crisp = noise(p * 3.5) * 0.5;
           
-          // Combine carefully to create immense variety and prevent "melting"
-          float density = baseDensity + nLarge + nMed + nSmall - 3.2;
+          // Combine for extreme variety in size and shape
+          float density = baseDensity + detail + crisp - 2.4; 
           
           density = max(0.0, density) * heightFactor;
           
           if (density > 0.01) {
-            // Self-shadowing
-            float shadowT = 0.15;
-            vec3 sPosLarge = pLarge + u_sunDir * shadowT * 0.4;
-            vec3 sPosMed = pMed + u_sunDir * shadowT;
+            // Strong self-shadowing to get dark grays
+            float shadowT = 0.25;
+            vec3 sp = p + u_sunDir * shadowT;
+            vec3 spMap = vec3(sp.x * 0.2, sp.y, sp.z * 0.2);
             
-            float sBase = smoothstep(1.2, -0.2, pos.y + u_sunDir.y * shadowT) * 1.5;
-            float sDensity = sBase + noise(sPosLarge) * 2.5 + fbm(sPosMed) * 1.5 - 3.2;
-            sDensity = max(0.0, sDensity);
+            float sHeightMap = fbm(spMap) * 3.5 - 1.0;
+            float sBaseDensity = smoothstep(sHeightMap + 0.5, sHeightMap - 1.5, sp.y) * 2.5;
+            float sDetail = fbm(sp * 1.2) * 1.5;
+            float sDensity = max(0.0, sBaseDensity + sDetail - 2.4);
             
-            float transmission = exp(-sDensity * 3.0);
+            // High transmission curve for sharp contrast between white and dark gray
+            float transmission = exp(-sDensity * 4.5);
             
-            // Add subtle color variation based on position to avoid repeating looks
-            vec3 localColor = mix(u_cloudBase, u_cloudLight, transmission * 0.8 + 0.2);
-            // Introduce slight hue shifts based on large noise
-            localColor *= 1.0 + (noise(pLarge * 0.5) - 0.5) * 0.15;
+            // Extreme color variation (White to Dark Gray)
+            // localBase drops significantly based on depth to create very dark grays
+            vec3 localBase = u_cloudBase * mix(0.2, 0.7, noise(p * 0.4)); 
+            vec3 localLight = u_cloudLight * 1.15; // Very bright white peaks
             
-            // Soft highlight facing sun
-            float scatter = pow(max(0.0, dot(rd, u_sunDir)), 4.0) * 0.3;
+            vec3 localColor = mix(localBase, localLight, transmission);
+            
+            // Add subtle hue variation to make them look realistic
+            localColor *= 1.0 + (noise(p * 0.5) - 0.5) * 0.2;
+            
+            float scatter = pow(max(0.0, dot(rd, u_sunDir)), 4.0) * 0.4;
             localColor += u_sunColor * scatter * transmission;
             
-            // Varied opacity: make edges softer and centers denser based on medium noise
-            float alpha = smoothstep(0.0, 0.3, density) * (0.6 + 0.3 * noise(pMed));
+            // Highly varied transparency
+            // Edges are wispy, deep parts are solid, overall modulated by noise
+            float alphaMod = mix(0.3, 1.0, fbm(p * 1.5));
+            float alpha = smoothstep(0.0, 0.4, density) * alphaMod * 0.9;
             vec4 val = vec4(localColor * alpha, alpha);
             
             sumCol += val * (1.0 - sumCol.a);
@@ -229,39 +237,6 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
   const [strobeOpacity, setStrobeOpacity] = useState(0);
   const [navLightOpacity, setNavLightOpacity] = useState(0.4);
 
-  // Window Blind State & Logic
-  const [blindY, setBlindY] = useState(0); // 0 = fully open, 100 = fully closed
-  const isDraggingBlind = useRef(false);
-
-  const handleBlindDrag = (e) => {
-    if (!isDraggingBlind.current) return;
-    const bezelEl = document.getElementById('window-bezel');
-    if (!bezelEl) return;
-    const bezelRect = bezelEl.getBoundingClientRect();
-    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-    if (!clientY) return;
-    const percent = ((clientY - bezelRect.top) / bezelRect.height) * 100;
-    setBlindY(Math.max(0, Math.min(100, percent)));
-  };
-
-  const startBlindDrag = (e) => {
-    e.stopPropagation(); // prevent window dragging
-    isDraggingBlind.current = true;
-  };
-  const endBlindDrag = () => { isDraggingBlind.current = false; };
-
-  useEffect(() => {
-    window.addEventListener('mousemove', handleBlindDrag);
-    window.addEventListener('mouseup', endBlindDrag);
-    window.addEventListener('touchmove', handleBlindDrag, { passive: false });
-    window.addEventListener('touchend', endBlindDrag);
-    return () => {
-      window.removeEventListener('mousemove', handleBlindDrag);
-      window.removeEventListener('mouseup', endBlindDrag);
-      window.removeEventListener('touchmove', handleBlindDrag);
-      window.removeEventListener('touchend', endBlindDrag);
-    };
-  }, []);
 
   // Auto-hide controls timer
   useEffect(() => {
@@ -770,42 +745,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
               }}
             />
 
-            {/* WINDOW BLIND (الستارة) */}
-            <div 
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: '-2px', // covers the gasket completely
-                right: '-2px',
-                height: `${blindY}%`,
-                minHeight: '34px', // Always show handle at top
-                backgroundColor: '#e6e4df', // Off-white plastic color
-                borderBottomLeftRadius: blindY > 95 ? '96px' : '4px',
-                borderBottomRightRadius: blindY > 95 ? '96px' : '4px',
-                boxShadow: 'inset 0 -10px 20px rgba(0,0,0,0.15), 0 10px 20px rgba(0,0,0,0.6)',
-                zIndex: 100, // Above canvas
-                backgroundImage: 'repeating-linear-gradient(to bottom, transparent, transparent 4px, rgba(0,0,0,0.025) 4px, rgba(0,0,0,0.025) 6px)',
-                transition: isDraggingBlind.current ? 'none' : 'height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'
-              }}
-            >
-              {/* Blind Handle for dragging */}
-              <div 
-                onMouseDown={startBlindDrag}
-                onTouchStart={startBlindDrag}
-                style={{
-                  position: 'absolute',
-                  bottom: '8px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: '80px',
-                  height: '16px',
-                  backgroundColor: '#d0cec7',
-                  borderRadius: '10px',
-                  boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.7), inset 0 -2px 4px rgba(0,0,0,0.15), 0 2px 5px rgba(0,0,0,0.2)',
-                  cursor: isDraggingBlind.current ? 'grabbing' : 'grab',
-                }}
-              />
-            </div>
+
 
             {/* REALISTIC HIGH-FIDELITY AIRPLANE WING LAYER */}
             {showWing && (
