@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Sun, Moon, Clock, Sliders } from 'lucide-react';
+import { X, Sun, Moon, Clock, Sliders, Volume2, VolumeX } from 'lucide-react';
 
 // Vertex shader (simple pass-through)
 const vertexShaderSource = `
@@ -110,8 +110,8 @@ const fragmentShaderSource = `
     }
 
     // === CONTINUOUS CLOUD SEA (bottom half) ===
-    // Completely straight and sharp horizon line
-    float horizonFade = smoothstep(0.0, -0.005, rd.y);
+    // Clean horizon fade to make clouds blend smoothly into the sky
+    float horizonFade = smoothstep(0.0, -0.03, rd.y);
 
     vec4 sumCol = vec4(0.0);
     float t = 1.0;
@@ -128,9 +128,10 @@ const fragmentShaderSource = `
         float heightFactor = smoothstep(1.5, 0.0, pos.y);
         
         if (heightFactor > 0.0) {
-          vec3 wind = vec3(u_time * 0.12, 0.0, -u_time * 0.05);
-          vec3 samplePos = pos * 1.5 + wind;
-          vec3 largeSamplePos = pos * 0.5 + wind * 0.5;
+          // Wind is slower, and clouds are scaled larger (pos * 0.8) to enhance perspective
+          vec3 wind = vec3(u_time * 0.08, 0.0, -u_time * 0.03);
+          vec3 samplePos = pos * 0.8 + wind;
+          vec3 largeSamplePos = pos * 0.3 + wind * 0.5;
           
           // Base density makes it a solid unbroken sea of clouds at the bottom
           // (RAISED to y=1.2 to -0.2)
@@ -229,7 +230,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       setShowControls(true);
       clearTimeout(hideTimeout);
       hideTimeout = setTimeout(() => {
-        if (!isManualTime) setShowControls(false);
+        setShowControls(false); // Always auto-hide after 3.5s of inactivity
       }, 3500);
     };
 
@@ -242,7 +243,72 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       if (container) container.removeEventListener('mousemove', resetTimer);
       clearTimeout(hideTimeout);
     };
-  }, [isManualTime]);
+  }, []);
+
+  // Cabin Audio Synthesizer (Web Audio API)
+  const [isAudioOn, setIsAudioOn] = useState(false);
+  const audioCtxRef = useRef(null);
+  const gainNodeRef = useRef(null);
+
+  useEffect(() => {
+    if (isAudioOn) {
+      if (!audioCtxRef.current) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioContext();
+        audioCtxRef.current = ctx;
+
+        // Generate Brown Noise for deep airplane cabin rumble
+        const bufferSize = 2 * ctx.sampleRate;
+        const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        let lastOut = 0;
+        for (let i = 0; i < bufferSize; i++) {
+          let white = Math.random() * 2 - 1;
+          output[i] = (lastOut + (0.02 * white)) / 1.02;
+          lastOut = output[i];
+          output[i] *= 3.5; // Compensate gain
+        }
+
+        const noiseSource = ctx.createBufferSource();
+        noiseSource.buffer = noiseBuffer;
+        noiseSource.loop = true;
+
+        // Lowpass filter to muffle it like a cabin
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 400; // Deep rumble
+
+        const gainNode = ctx.createGain();
+        gainNode.gain.value = 0.001; // Start muted for fade-in
+        gainNodeRef.current = gainNode;
+
+        noiseSource.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(ctx.destination);
+
+        noiseSource.start();
+      }
+      
+      if (audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume();
+      }
+      
+      // Fade in smoothly
+      if (gainNodeRef.current) {
+        gainNodeRef.current.gain.setTargetAtTime(0.5, audioCtxRef.current.currentTime, 0.5);
+      }
+    } else {
+      // Fade out smoothly
+      if (audioCtxRef.current && gainNodeRef.current) {
+        gainNodeRef.current.gain.setTargetAtTime(0.001, audioCtxRef.current.currentTime, 0.5);
+        setTimeout(() => {
+           if (!isAudioOn && audioCtxRef.current && audioCtxRef.current.state !== 'suspended') {
+             audioCtxRef.current.suspend();
+           }
+        }, 1000);
+      }
+    }
+  }, [isAudioOn]);
 
   // Synchronize local time
   useEffect(() => {
@@ -580,11 +646,17 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
       }}
     >
-      {/* Absolute Close button */}
+      {/* Absolute Close button with auto-hide */}
       <button 
         onClick={(e) => { e.stopPropagation(); onClose(); }}
         className="absolute top-10 right-8 z-[10000000] w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all active:scale-90 pointer-events-auto border border-white/5"
-        style={{ cursor: 'pointer' }}
+        style={{ 
+          cursor: 'pointer',
+          opacity: showControls ? 1 : 0,
+          transform: `translateY(${showControls ? 0 : '-15px'})`,
+          transition: 'opacity 0.4s ease, transform 0.4s ease',
+          pointerEvents: showControls ? 'auto' : 'none'
+        }}
       >
         <X size={24} className="text-white/80" />
       </button>
@@ -936,6 +1008,19 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
             title={!isManualTime ? "Syncing with Local Clock" : "Using Manual Time"}
           >
             <Clock size={18} />
+          </button>
+
+          {/* Cabin Audio Toggle */}
+          <button
+            onClick={() => setIsAudioOn(!isAudioOn)}
+            className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all ${
+              isAudioOn 
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' 
+                : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'
+            }`}
+            title={isAudioOn ? "Mute Cabin Audio" : "Play Cabin Audio"}
+          >
+            {isAudioOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
           </button>
 
           {/* Separation */}
