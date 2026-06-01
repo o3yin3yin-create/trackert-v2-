@@ -1158,21 +1158,6 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
           
           <div className="w-[1px] h-6 bg-white/20 mx-1"></div>
 
-          {/* Weather controls */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setWeather((w) => (w + 1) % 3)}
-              className="flex items-center justify-center w-9 h-9 rounded-xl transition-all bg-white/5 hover:bg-white/10 text-white"
-              title={weather === 0 ? "Normal" : weather === 1 ? "Stormy" : "Clear"}
-            >
-              {weather === 0 && <Cloud size={18} />}
-              {weather === 1 && <CloudLightning size={18} className="text-blue-300" />}
-              {weather === 2 && <Sun size={18} className="text-yellow-400" />}
-            </button>
-          </div>
-
-          <div className="w-[1px] h-6 bg-white/20 mx-1"></div>
-
           {/* Time Scrubber (only visible in manual mode) */}
           <div className="flex items-center gap-3">
             {isManualTime ? (
