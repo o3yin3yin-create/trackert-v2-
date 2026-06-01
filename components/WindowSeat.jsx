@@ -117,20 +117,21 @@ const fragmentShaderSource = `
       if (heightFactor > 0.0) {
         // Wind translation + morphing term
         vec3 wind = vec3(u_time * 0.14, 0.0, -u_time * 0.06);
-        vec3 samplePos = pos * 0.75 + wind;
+        // Scale up coordinates (from 0.75 to 1.3) to make clouds smaller and less clumped
+        vec3 samplePos = pos * 1.3 + wind;
         
         // Morph the noise based on time
         samplePos.y += sin(u_time * 0.04 + samplePos.x * 0.25) * 0.08;
         
-        // Compute density
-        float density = fbm(samplePos) * 1.35 - 0.46;
+        // Subtract more (0.64 instead of 0.46) to separate clouds into distinct elements
+        float density = fbm(samplePos) * 1.5 - 0.64;
         density = max(0.0, density) * heightFactor;
         
         if (density > 0.01) {
           // Self-shadowing towards sun/moon (Beer's Law)
           float shadowT = 0.14;
           vec3 shadowPos = pos + u_sunDir * shadowT;
-          float shadowDensity = fbm(shadowPos * 0.75 + wind) * 1.35 - 0.46;
+          float shadowDensity = fbm(shadowPos * 1.3 + wind) * 1.5 - 0.64;
           shadowDensity = max(0.0, shadowDensity);
           
           float transmission = exp(-shadowDensity * 4.5);
@@ -318,7 +319,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
   // Parse seat choice to figure out side
   const seatString = String(seat || '5A').toUpperCase();
   const isRightWindow = seatString.includes('F') || seatString.includes('E') || seatString.includes('D');
-  const showWing = seatString.includes('5'); // True wing row is 5! Show for 5A or 5F. Default show is true anyway
+  const showWing = false; // Airplane wing completely removed as requested
 
   // Dynamic values calculation based on localTime (0.0 to 24.0)
   // We establish 4 solar phases: Day, Sunset, Night, Sunrise
