@@ -102,75 +102,89 @@ const fragmentShaderSource = `
       }
     }
 
-    // === CLOUD LAYER (bottom half of the window) ===
-    // Wavy horizon boundary so clouds pop up irregularly
-    float horizonNoise = noise(rd * 12.0 + vec3(u_time * 0.03, 0.0, 0.0)) * 0.03 - 0.015;
-    float horizonFade = smoothstep(0.04 + horizonNoise, -0.06 + horizonNoise, rd.y);
+    // === CLOUD LAYER (bottom half) ===
+    float horizonNoise = noise(rd * 10.0 + vec3(u_time * 0.025, 0.0, 0.0)) * 0.035 - 0.017;
+    float horizonFade = smoothstep(0.05 + horizonNoise, -0.08 + horizonNoise, rd.y);
 
     vec4 sumCol = vec4(0.0);
-    float t = 0.8;
-    float maxT = 18.0;
-    float dt = 0.2;
+    float t = 0.6;
+    float maxT = 22.0;
+    float dt = 0.18;
 
     if (horizonFade > 0.001) {
-      for (int i = 0; i < 72; i++) {
-        if (t > maxT || sumCol.a > 0.98) break;
+      for (int i = 0; i < 80; i++) {
+        if (t > maxT || sumCol.a > 0.97) break;
         
         vec3 pos = ro + t * rd;
         
-        // Cloud altitude slab
-        float heightFactor = smoothstep(-1.6, -0.3, pos.y) * smoothstep(1.2, 0.1, pos.y) * horizonFade;
+        // Cloud altitude slab - thicker range for puffy cumulus
+        float heightFactor = smoothstep(-1.8, -0.4, pos.y) * smoothstep(1.4, 0.0, pos.y) * horizonFade;
         
         if (heightFactor > 0.0) {
-          vec3 wind = vec3(u_time * 0.18, 0.0, -u_time * 0.07);
-          vec3 samplePos = pos * 1.1 + wind;
-          samplePos.y += sin(u_time * 0.03 + samplePos.x * 0.2) * 0.06;
+          vec3 wind = vec3(u_time * 0.15, 0.0, -u_time * 0.06);
+          vec3 samplePos = pos * 0.85 + wind;
+          samplePos.y += sin(u_time * 0.025 + samplePos.x * 0.15) * 0.05;
           
-          // Cloud presence noise - creates separated cloud masses
-          float presence = noise(samplePos * 0.2);
-          // Near horizon, raise threshold so clouds shrink and fade to nothing
-          float horizonShrink = (1.0 - horizonFade) * 0.3;
-          float threshold = 0.55 + (1.0 - presence) * 0.38 + horizonShrink;
-          float density = fbm(samplePos) * 1.9 - threshold;
+          // Large-scale presence field - controls WHERE clouds exist
+          // Uses very low frequency noise to create large cloud masses separated by sky gaps
+          float presence = noise(samplePos * 0.14);
+          float presence2 = noise(samplePos * 0.08 + vec3(50.0));
+          float combinedPresence = presence * 0.6 + presence2 * 0.4;
           
-          // Micro detail at edges
+          // High threshold = more gaps, distinct individual cloud masses
+          float horizonShrink = (1.0 - horizonFade) * 0.35;
+          float threshold = 0.72 + (1.0 - combinedPresence) * 0.28 + horizonShrink;
+          float density = fbm(samplePos) * 1.65 - threshold;
+          
+          // Wispy edges with high-frequency detail
           if (density > 0.0) {
-            density += noise(samplePos * 4.5) * 0.12 * (1.0 - min(density, 1.0));
+            float edgeDetail = noise(samplePos * 3.8) * 0.08 * smoothstep(0.0, 0.15, density);
+            density += edgeDetail;
           }
           
           density = max(0.0, density) * heightFactor;
           
-          if (density > 0.005) {
-            // === CLOUD COLOR: Bright base + subtle warm/cool variation ===
-            // Blend between cloudBase and cloudLight using smooth 3D noise
-            float blendNoise = noise(samplePos * 0.15) * 0.6 + 0.4;
-            vec3 cloudCol = mix(u_cloudBase, u_cloudLight, blendNoise);
+          if (density > 0.008) {
+            // === SELF-SHADOWING: sample density toward sun for depth ===
+            vec3 lightStep = u_sunDir * 0.6;
+            vec3 lightPos = samplePos + lightStep;
+            float lightDensity = fbm(lightPos) * 1.65 - threshold * 0.9;
+            lightDensity = max(0.0, lightDensity);
+            // More shadow = darker cloud underside, less = bright sun-facing top
+            float shadowFactor = exp(-lightDensity * 2.8);
             
-            // Subtle per-cloud color variation (warm/cool shifts)
-            float varN = noise(samplePos * 0.09);
+            // Blend between shadowed base and bright lit top
+            vec3 cloudCol = mix(u_cloudBase, u_cloudLight, shadowFactor * 0.7 + 0.3);
+            
+            // Height-based brightness: tops of clouds are brighter
+            float heightBright = smoothstep(-0.8, 0.6, pos.y) * 0.15;
+            cloudCol += vec3(heightBright);
+            
+            // Subtle per-cloud color variation
+            float varN = noise(samplePos * 0.07);
             cloudCol += vec3(
-              sin(varN * 6.28) * 0.035,
-              cos(varN * 6.28) * 0.02,
-              sin(varN * 3.14) * 0.015
+              sin(varN * 6.28) * 0.025,
+              cos(varN * 6.28) * 0.015,
+              sin(varN * 3.14) * 0.01
             );
             
-            // Gentle sun tinting on cloud surfaces
-            float sunTint = pow(max(0.0, dot(rd, u_sunDir)), 3.0) * 0.2;
-            cloudCol += u_sunColor * sunTint;
+            // Sun forward-scattering on cloud edges (silver lining effect)
+            float scatter = pow(max(0.0, dot(rd, u_sunDir)), 5.0) * 0.25;
+            cloudCol += u_sunColor * scatter * shadowFactor;
             
-            // Night city glow (only in night mode)
+            // Night: warm city glow from below
             if (u_nightMode > 0.3) {
-              float bottomGlow = smoothstep(0.4, -1.2, pos.y) * u_nightMode;
-              cloudCol = mix(cloudCol, vec3(1.0, 0.48, 0.15) * 0.4, bottomGlow * 0.4);
+              float bottomGlow = smoothstep(0.3, -1.0, pos.y) * u_nightMode;
+              cloudCol = mix(cloudCol, vec3(1.0, 0.48, 0.15) * 0.35, bottomGlow * 0.35);
             }
             
-            // Dense, opaque alpha
-            float alpha = smoothstep(0.005, 0.12, density) * 0.92;
+            // Natural alpha: builds up gradually, not instant solid
+            float alpha = smoothstep(0.008, 0.18, density) * 0.72;
             sumCol += vec4(cloudCol * alpha, alpha) * (1.0 - sumCol.a);
           }
         }
         
-        t += dt * (1.0 + t * 0.06);
+        t += dt * (1.0 + t * 0.055);
       }
     }
 
@@ -347,8 +361,8 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       skyColorBottom: [0.58, 0.78, 0.98], // Bright horizon blue
       sunColor: [1.0, 1.0, 0.95],
       sunDir: [-0.6, 0.75, -0.4],
-      cloudBase: [0.92, 0.93, 0.97], // Near-white cloud body
-      cloudLight: [1.35, 1.35, 1.35], // Brilliant white cloud tops
+      cloudBase: [0.72, 0.74, 0.82], // Soft grey-blue cloud underside
+      cloudLight: [1.3, 1.28, 1.25], // Bright warm-white sun-lit tops
       bezelHighlight: 'rgba(255, 255, 255, 0.45)',
       cabinReflection: 0.06,
       nightMode: 0.0,
@@ -367,8 +381,8 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       skyColorBottom: [0.98, 0.50, 0.28], // Warm orange/crimson horizon
       sunColor: [1.0, 0.65, 0.38],
       sunDir: [-1.0, 0.16, -0.2],
-      cloudBase: [0.78, 0.68, 0.65], // Warm peach-tinted cloud body
-      cloudLight: [1.3, 1.0, 0.88], // Bright warm cloud tops
+      cloudBase: [0.55, 0.45, 0.42], // Warm shadow underside
+      cloudLight: [1.25, 0.92, 0.78], // Bright warm orange-lit tops
       bezelHighlight: 'rgba(255, 120, 60, 0.5)',
       cabinReflection: 0.10,
       nightMode: 0.15,
@@ -407,8 +421,8 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       skyColorBottom: [0.98, 0.62, 0.42], // Bright salmon-orange sunrise
       sunColor: [1.0, 0.78, 0.55],
       sunDir: [-0.98, 0.18, -0.22],
-      cloudBase: [0.75, 0.68, 0.65], // Warm peach-tinted cloud body
-      cloudLight: [1.3, 1.05, 0.88], // Bright warm cloud tops
+      cloudBase: [0.52, 0.45, 0.42], // Warm shadow underside
+      cloudLight: [1.25, 0.95, 0.80], // Bright warm sun-lit tops
       bezelHighlight: 'rgba(255, 140, 80, 0.45)',
       cabinReflection: 0.08,
       nightMode: 0.1,
