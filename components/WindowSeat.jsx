@@ -82,7 +82,7 @@ const fragmentShaderSource = `
 
     // --- تحديث السحاب الهوائي (أكثر كثافة وتوزيع حاجة بسيطة) ---
     if (rd.y > 0.02) {
-      vec2 highUV = rd.xz / (rd.y + 0.05);
+      vec2 highUV = rd.xz / (rd.y + 0.15); // lowered altitude
       // وسعنا الـ scale سنة عشان يفرش
       float highNoise = fbm(vec3(highUV * 0.25, u_time * 0.005));
       
@@ -110,6 +110,26 @@ const fragmentShaderSource = `
       }
     }
 
+    // === CITY LIGHTS (UNDER CLOUDS) ===
+    if (u_nightMode > 0.5 && u_weather < 1.5 && rd.y < -0.05) {
+      // Ground plane at y = -3.0
+      float gDist = (-3.0 - ro.y) / rd.y; 
+      vec3 gP = ro + rd * gDist;
+      
+      vec2 cityUV = floor(gP.xz * 1.5);
+      float cityHash = hash(vec3(cityUV, 1.0));
+      
+      if (cityHash > 0.92) { // Dense cities
+        vec2 fractUV = fract(gP.xz * 1.5);
+        float dotShape = smoothstep(0.5, 0.1, length(fractUV - 0.5));
+        vec3 lightCol = mix(vec3(1.0, 0.6, 0.2), vec3(0.9, 0.9, 1.0), hash(vec3(cityUV, 2.0)));
+        float brightness = (cityHash - 0.92) * 20.0 * dotShape;
+        
+        float lightFade = 1.0 - smoothstep(10.0, 150.0, gDist);
+        finalSky += lightCol * brightness * lightFade * u_nightMode;
+      }
+    }
+
     // === MAIN VOLUMETRIC CUMULUS CLOUDS ===
     vec4 sumCol = vec4(0.0);
     float t = 1.0;
@@ -119,9 +139,34 @@ const fragmentShaderSource = `
     // Distant Sea for Clear mode
     if (u_weather > 1.5 && rd.y < 0.0) {
       float dist = -ro.y / rd.y;
-      vec3 seaCol = mix(vec3(0.0, 0.05, 0.1), vec3(0.05, 0.15, 0.25), smoothstep(200.0, 0.0, dist));
-      seaCol = mix(seaCol, u_skyColorBottom, smoothstep(10.0, 200.0, dist));
-      finalSky = mix(finalSky, seaCol, smoothstep(-0.01, -0.05, rd.y));
+      vec3 p = ro + rd * dist;
+      
+      // Procedural waves
+      vec2 uv = p.xz * 0.8 + vec2(u_time * 0.2, u_time * 0.1);
+      float h = fbm(vec3(uv, u_time * 0.1));
+      
+      // Approximate Normal from bump map
+      vec2 eps = vec2(0.1, 0.0);
+      vec3 n = normalize(vec3(
+        fbm(vec3(uv + eps.xy, u_time * 0.1)) - h,
+        0.1,
+        fbm(vec3(uv + eps.yx, u_time * 0.1)) - h
+      ));
+      
+      // Reflections
+      vec3 ref = reflect(rd, n);
+      float refSkyT = clamp(ref.y * 2.0, 0.0, 1.0);
+      vec3 seaRef = mix(u_skyColorBottom, u_skyColorTop, refSkyT);
+      
+      vec3 seaBase = mix(vec3(0.01, 0.03, 0.08), vec3(0.05, 0.15, 0.25), smoothstep(200.0, 0.0, dist));
+      vec3 seaCol = mix(seaBase, seaRef, 0.4); // 40% reflective
+      
+      // Add specular sun glint
+      float spec = pow(max(0.0, dot(ref, u_sunDir)), 64.0);
+      seaCol += u_sunColor * spec * 0.8 * (1.0 - u_nightMode);
+      
+      seaCol = mix(seaCol, u_skyColorBottom, smoothstep(15.0, 150.0, dist));
+      finalSky = mix(finalSky, seaCol, smoothstep(-0.01, -0.04, rd.y));
     }
 
     float lightning = 0.0;
@@ -169,7 +214,7 @@ const fragmentShaderSource = `
           float shadowDensity = sCoverage + (sDetail * 0.4) - (sPos.y * 0.7) + smoothstep(0.4, -0.2, sPos.y) * 0.8;
           shadowDensity = max(0.0, shadowDensity);
           
-          float transmission = exp(-shadowDensity * 4.0);
+          float transmission = exp(-shadowDensity * 8.0); // Deeper shadows!
           
           float distFade = smoothstep(25.0, maxT, t);
           transmission = mix(transmission, 1.0, distFade);
@@ -321,13 +366,13 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
         gainNode.connect(ctx.destination);
         noiseSource.start();
 
-        // 2. Rain & Thunder (Pink Noise)
+        // 2. Rain & Thunder
         const rainSource = ctx.createBufferSource();
         rainSource.buffer = pinkNoiseBuffer;
         rainSource.loop = true;
         const thunderFilter = ctx.createBiquadFilter();
-        thunderFilter.type = 'lowpass';
-        thunderFilter.frequency.value = 2000;
+        thunderFilter.type = 'highpass';
+        thunderFilter.frequency.value = 1200; // Rain is a hiss, not a rumble
         thunderFilterRef.current = thunderFilter;
         const rainGain = ctx.createGain();
         rainGain.gain.value = 0.001;
@@ -364,19 +409,40 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
           }
         }, 1500);
         
-        // Simple thunder rumble loop
+        // Advanced Thunder Synth Loop
         setInterval(() => {
-           if (rainGain.gain.value > 0.01 && ctx.state === 'running' && Math.random() > 0.7) {
-             const now = ctx.currentTime;
-             thunderFilter.frequency.setValueAtTime(400, now);
-             thunderFilter.frequency.exponentialRampToValueAtTime(3000, now + 0.5);
-             thunderFilter.frequency.exponentialRampToValueAtTime(400, now + 2.0);
+           if (rainGain.gain.value > 0.01 && ctx.state === 'running' && Math.random() > 0.6) {
+             const osc = ctx.createOscillator();
+             const oscGain = ctx.createGain();
+             const filter = ctx.createBiquadFilter();
              
-             rainGain.gain.setValueAtTime(0.5, now);
-             rainGain.gain.linearRampToValueAtTime(1.0, now + 0.5);
-             rainGain.gain.linearRampToValueAtTime(0.5, now + 2.0);
+             osc.type = 'square';
+             osc.frequency.value = 40 + Math.random() * 20; // Deep low frequency
+             
+             filter.type = 'lowpass';
+             filter.frequency.value = 250; // Muffle it
+             
+             osc.connect(oscGain);
+             oscGain.connect(filter);
+             filter.connect(ctx.destination);
+             
+             const now = ctx.currentTime;
+             
+             // Thunder Envelope (Crack -> Rumble -> Fade)
+             oscGain.gain.setValueAtTime(0, now);
+             oscGain.gain.linearRampToValueAtTime(2.0, now + 0.1); // Crack!
+             oscGain.gain.exponentialRampToValueAtTime(0.6, now + 0.4); // Drop
+             oscGain.gain.linearRampToValueAtTime(0.4, now + 1.5); // Rumble
+             oscGain.gain.exponentialRampToValueAtTime(0.001, now + 4.0); // Fade away
+             
+             osc.start(now);
+             osc.stop(now + 4.5);
+             
+             // Modulate rain volume with "wind gust"
+             rainGain.gain.linearRampToValueAtTime(1.2, now + 0.5);
+             rainGain.gain.linearRampToValueAtTime(0.5, now + 3.0);
            }
-        }, 4000);
+        }, 4500);
       }
       
       if (audioCtxRef.current.state === 'suspended') {
@@ -482,7 +548,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       skyColorBottom: [0.65, 0.82, 0.98], // Soft hazy horizon blue
       sunColor: [1.0, 1.0, 0.98],
       sunDir: [-0.6, 0.75, -0.4],
-      cloudBase: [0.65, 0.72, 0.85], // Cool grey-blue for cloud shadows
+      cloudBase: [0.35, 0.45, 0.60], // Darker slate-gray for deep cloud shadows
       cloudLight: [0.98, 0.99, 1.0], // Brilliant pure white for cloud tops
       bezelHighlight: 'rgba(255, 255, 255, 0.45)',
       cabinReflection: 0.06,
@@ -542,7 +608,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       skyColorBottom: [0.98, 0.58, 0.38], // Bright salmon-orange sunrise
       sunColor: [1.0, 0.78, 0.55],
       sunDir: [-0.98, 0.18, -0.22],
-      cloudBase: [0.42, 0.42, 0.52], // Lighter cloud base
+      cloudBase: [0.25, 0.25, 0.35], // Darker cloud base for morning contrast
       cloudLight: [1.25, 1.0, 0.85], // Brighter cloud tops
       bezelHighlight: 'rgba(255, 140, 80, 0.45)',
       cabinReflection: 0.08,
