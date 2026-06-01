@@ -81,13 +81,12 @@ const fragmentShaderSource = `
     vec3 rd = normalize(p.x * cu + p.y * cv + 2.2 * cw);
 
     // === PERFECT SKY GRADIENT (renders EVERYWHERE) ===
-    // This ensures no black gaps ever appear
-    float skyT = clamp(rd.y * 2.5 + 0.5, 0.0, 1.0); // Soft, broad gradient
+    float skyT = clamp(rd.y * 2.5 + 0.5, 0.0, 1.0);
     vec3 skyColor = mix(u_skyColorBottom, u_skyColorTop, skyT);
 
-    // Warm horizon glow matching the sunset photo
+    // Warm horizon glow matching the sunset photo (fade it out entirely in night mode to prevent orange line)
     float horizonGlow = exp(-abs(rd.y) * 8.0);
-    vec3 glowColor = mix(u_skyColorBottom * 1.1, vec3(0.12, 0.14, 0.22), u_nightMode);
+    vec3 glowColor = mix(u_skyColorBottom * 1.1, vec3(0.0), u_nightMode);
     skyColor = mix(skyColor, glowColor, horizonGlow * 0.6);
 
     // Sun/Moon glow
@@ -99,19 +98,19 @@ const fragmentShaderSource = `
       float nebula = noise(rd * 3.5 + vec3(5.0, 12.0, 2.0)) * 0.16 * u_nightMode;
       finalSky += vec3(0.12, 0.08, 0.22) * nebula * smoothstep(0.0, 0.1, rd.y);
 
-      vec3 starCoord = rd * 260.0;
+      // Stars: smaller, denser, and static
+      vec3 starCoord = rd * 600.0;
       vec3 starIpos = floor(starCoord);
       float starHash = hash(starIpos);
-      if (starHash > 0.994) {
-        float twinkle = sin(u_time * 2.5 + starHash * 120.0) * 0.5 + 0.5;
-        vec3 starCol = vec3(1.0) * twinkle * u_nightMode;
+      if (starHash > 0.990) { // Slightly more stars since they are smaller
+        vec3 starCol = vec3(1.0) * u_nightMode; // Static, no twinkle
         finalSky += starCol * smoothstep(0.0, 0.12, rd.y);
       }
     }
 
     // === CONTINUOUS CLOUD SEA (bottom half) ===
     // Clean, straight horizon fade without jagged noise
-    float horizonFade = smoothstep(0.0, -0.04, rd.y);
+    float horizonFade = smoothstep(0.0, -0.02, rd.y);
 
     vec4 sumCol = vec4(0.0);
     float t = 1.0;
@@ -124,22 +123,26 @@ const fragmentShaderSource = `
         
         vec3 pos = ro + t * rd;
         
-        // Solid layer of clouds below y=0.5, puffy tops up to y=1.2
-        float heightFactor = smoothstep(1.2, 0.0, pos.y);
+        // Solid layer of clouds below y=0.8, puffy tops up to y=1.5 (RAISED)
+        float heightFactor = smoothstep(1.5, 0.0, pos.y);
         
         if (heightFactor > 0.0) {
           vec3 wind = vec3(u_time * 0.12, 0.0, -u_time * 0.05);
           vec3 samplePos = pos * 1.5 + wind;
+          vec3 largeSamplePos = pos * 0.5 + wind * 0.5;
           
           // Base density makes it a solid unbroken sea of clouds at the bottom
-          // as we go lower (pos.y < 0.2), baseDensity becomes very high
-          float baseDensity = smoothstep(0.8, -0.4, pos.y) * 1.5;
+          // (RAISED to y=1.2 to -0.2)
+          float baseDensity = smoothstep(1.2, -0.2, pos.y) * 1.5;
+          
+          // Large scale variation for bigger differences in cloud sizes/heights
+          float largeVariation = noise(largeSamplePos) * 1.2;
           
           // Puffy details
           float detail = fbm(samplePos) * 1.8;
           
           // Combine: density > 0 means cloud exists
-          float density = baseDensity + detail - 1.8; // threshold
+          float density = baseDensity + largeVariation + detail - 2.4; // Adjusted threshold
           
           density = max(0.0, density) * heightFactor;
           
@@ -147,7 +150,11 @@ const fragmentShaderSource = `
             // Self-shadowing (volumetric depth)
             float shadowT = 0.15;
             vec3 shadowPos = samplePos + u_sunDir * shadowT;
-            float shadowDensity = smoothstep(0.8, -0.4, pos.y + u_sunDir.y * shadowT) * 1.5 + fbm(shadowPos) * 1.8 - 1.8;
+            vec3 shadowLargePos = largeSamplePos + u_sunDir * shadowT * 0.5;
+            
+            float shadowBase = smoothstep(1.2, -0.2, pos.y + u_sunDir.y * shadowT) * 1.5;
+            float shadowLarge = noise(shadowLargePos) * 1.2;
+            float shadowDensity = shadowBase + shadowLarge + fbm(shadowPos) * 1.8 - 2.4;
             shadowDensity = max(0.0, shadowDensity);
             
             float transmission = exp(-shadowDensity * 3.5);
@@ -174,12 +181,7 @@ const fragmentShaderSource = `
     // Blend the beautiful clouds perfectly over the sky
     vec3 finalColor = mix(finalSky, sumCol.rgb, sumCol.a);
 
-    // Night city lights (only below clouds and ONLY at night)
-    if (u_nightMode > 0.05 && rd.y < -0.05) {
-        // Just a subtle glow under the clouds
-        float groundGlow = exp(rd.y * 10.0) * u_nightMode * 0.2;
-        finalColor += vec3(1.0, 0.5, 0.2) * groundGlow * (1.0 - sumCol.a);
-    }
+    // Removed the "Night city lights" glow entirely to eliminate the orange line completely
 
     // Cinematic vignette
     vec2 d = abs(v_texCoord - 0.5) * 2.0;
