@@ -115,7 +115,7 @@ const fragmentShaderSource = `
     float maxT = 16.0;
     float dt = 0.22;
 
-    for (int i = 0; i < 52; i++) {
+    for (int i = 0; i < 72; i++) {
       if (t > maxT || sumCol.a > 0.97) break;
       
       vec3 pos = ro + t * rd;
@@ -126,18 +126,20 @@ const fragmentShaderSource = `
       if (heightFactor > 0.0) {
         // Wind translation + morphing term (slightly faster clouds)
         vec3 wind = vec3(u_time * 0.22, 0.0, -u_time * 0.09);
-        // Scale up coordinates (from 0.75 to 1.3) to make clouds smaller and less clumped
-        vec3 samplePos = pos * 1.3 + wind;
+        // Scale up coordinates (from 1.3 to 1.65) to make clouds smaller and less clumped
+        vec3 samplePos = pos * 1.65 + wind;
         
         // Morph the noise based on time
         samplePos.y += sin(u_time * 0.04 + samplePos.x * 0.25) * 0.08;
         
-        // Subtract more (0.64 instead of 0.46) to separate clouds into distinct elements
-        float density = fbm(samplePos) * 1.5 - 0.64;
+        // Low frequency noise to modulate cloud presence (creates large clear sky regions)
+        float presence = noise(samplePos * 0.22);
+        float threshold = 0.58 + (1.0 - presence) * 0.45;
+        float density = fbm(samplePos) * 1.7 - threshold;
         
         // Add realistic high-frequency micro-wisps at the cloud edges
         if (density > 0.0) {
-          float microWisps = noise(samplePos * 4.5) * 0.14 * (1.0 - density);
+          float microWisps = noise(samplePos * 5.0) * 0.16 * (1.0 - density);
           density += microWisps;
         }
         
@@ -145,11 +147,13 @@ const fragmentShaderSource = `
         
         if (density > 0.01) {
           // Self-shadowing towards sun/moon (Beer's Law)
-          float shadowT = 0.14;
+          float shadowT = 0.12;
           vec3 shadowPos = pos + u_sunDir * shadowT;
-          float shadowDensity = fbm(shadowPos * 1.3 + wind) * 1.5 - 0.64;
+          float shadowPresence = noise((shadowPos * 1.65 + wind) * 0.22);
+          float shadowThreshold = 0.58 + (1.0 - shadowPresence) * 0.45;
+          float shadowDensity = fbm(shadowPos * 1.65 + wind) * 1.7 - shadowThreshold;
           if (shadowDensity > 0.0) {
-            shadowDensity += noise(shadowPos * 5.85 + wind) * 0.14 * (1.0 - shadowDensity);
+            shadowDensity += noise(shadowPos * 6.5 + wind) * 0.16 * (1.0 - shadowDensity);
           }
           shadowDensity = max(0.0, shadowDensity);
           
@@ -247,9 +251,7 @@ const fragmentShaderSource = `
     vec2 d = abs(v_texCoord - 0.5) * 2.0;
     finalColor *= 1.0 - dot(d, d) * 0.22;
 
-    // Real analog camera grain
-    float grain = hash(vec3(gl_FragCoord.xy, u_time));
-    finalColor += vec3(grain - 0.5) * 0.014;
+    // Real analog camera grain completely removed to ensure buttery smooth crystal sky
 
     gl_FragColor = vec4(finalColor, 1.0);
   }
@@ -315,7 +317,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       setLocalTime(d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600);
     };
     tick();
-    const interval = setInterval(tick, 1000);
+    const interval = setInterval(tick, 15000); // 15-second sync check to avoid performance-draining stutters
     return () => clearInterval(interval);
   }, [isManualTime]);
 
@@ -628,7 +630,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
     <div 
       ref={containerRef}
       style={{
-        backgroundColor: '#030303',
+        backgroundColor: '#000000', // Absolute OLED pure pitch black
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
