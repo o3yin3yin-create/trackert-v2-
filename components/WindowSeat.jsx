@@ -32,7 +32,7 @@ const fragmentShaderSource = `
   // Stable 3D Hash without sine
   float hash(vec3 p) {
     p = fract(p * vec3(443.8975, 397.2973, 491.1871));
-    p += dot(p.xyz, p.yzx + 19.19);
+    p += dot(p.xyz, p.yzx + vec3(19.19));
     return fract(p.x * p.y * p.z);
   }
 
