@@ -19,8 +19,8 @@ const fragmentShaderSource = `
 
   uniform vec2 u_resolution;
   uniform float u_time;
-  uniform float u_seatSide; // 0.0 = Left (5A), 1.0 = Right (5F)
-  uniform float u_nightMode; // 0.0 = Day, 1.0 = Night, smooth in-between
+  uniform float u_seatSide; 
+  uniform float u_nightMode; 
 
   uniform vec3 u_skyColorTop;
   uniform vec3 u_skyColorBottom;
@@ -29,19 +29,16 @@ const fragmentShaderSource = `
   uniform vec3 u_cloudBase;
   uniform vec3 u_cloudLight;
 
-  // Stable 3D Hash without sine
   float hash(vec3 p) {
     p = fract(p * vec3(443.8975, 397.2973, 491.1871));
     p += dot(p.xyz, p.yzx + vec3(19.19));
     return fract(p.x * p.y * p.z);
   }
 
-  // 3D Noise function
   float noise(in vec3 x) {
     vec3 p = floor(x);
     vec3 f = fract(x);
     f = f * f * (3.0 - 2.0 * f);
-    
     return mix(
       mix(mix(hash(p + vec3(0.0, 0.0, 0.0)), hash(p + vec3(1.0, 0.0, 0.0)), f.x),
           mix(hash(p + vec3(0.0, 1.0, 0.0)), hash(p + vec3(1.0, 1.0, 0.0)), f.x), f.y),
@@ -51,7 +48,6 @@ const fragmentShaderSource = `
     );
   }
 
-  // Fractional Brownian Motion (fBm) - 4 octaves
   float fbm(vec3 p) {
     float f = 0.0;
     f += 0.5000 * noise(p); p = p * 2.02;
@@ -62,11 +58,9 @@ const fragmentShaderSource = `
   }
 
   void main() {
-    // Correct aspect ratio
     vec2 p = -1.0 + 2.0 * gl_FragCoord.xy / u_resolution.xy;
     p.x *= u_resolution.x / u_resolution.y;
 
-    // Camera setup - horizontal looking
     float side = u_seatSide > 0.5 ? 1.0 : -1.0;
     vec3 ro = vec3(0.0, 1.5, -u_time * 0.05);
     vec3 ta = vec3(side * 1.5, 1.5, -u_time * 0.05 - 2.0);
@@ -77,19 +71,16 @@ const fragmentShaderSource = `
     vec3 cv = normalize(cross(cu, cw));
     vec3 rd = normalize(p.x * cu + p.y * cv + 2.2 * cw);
 
-    // === CLEAN SKY GRADIENT ===
+    // --- SKY ---
     float skyT = clamp(rd.y * 2.0, 0.0, 1.0);
     vec3 finalSky = mix(u_skyColorBottom, u_skyColorTop, skyT);
 
-    // Sun/Moon glow
     float sunGlow = max(0.0, dot(rd, u_sunDir));
     finalSky += u_sunColor * pow(sunGlow, 8.0) * 0.2 + u_sunColor * pow(sunGlow, 64.0) * 0.4;
 
-    // Starfield at night
     if (u_nightMode > 0.02 && rd.y > 0.0) {
       float nebula = noise(rd * 3.5 + vec3(5.0, 12.0, 2.0)) * 0.16 * u_nightMode;
       finalSky += vec3(0.12, 0.08, 0.22) * nebula * smoothstep(0.0, 0.1, rd.y);
-
       vec3 starCoord = rd * 600.0;
       vec3 starIpos = floor(starCoord);
       float starHash = hash(starIpos);
@@ -100,24 +91,20 @@ const fragmentShaderSource = `
       }
     }
 
-    // === CLOUD SEA RENDERING (تم حذف الـ IF الحادة المسببة للقطع المتعرج) ===
+    // --- CLOUDS ---
     vec4 sumCol = vec4(0.0);
     float t = 1.0;
-    float maxT = 45.0; 
+    float maxT = 50.0; 
     float dt = 0.25;
 
     for (int i = 0; i < 90; i++) { 
       if (t > maxT || sumCol.a > 0.98) break;
       
       vec3 pos = ro + t * rd;
-      
-      // الـ heightFactor هو اللي بيضمن إن السحاب ميرندرش في السماء فوق يـ 1.5
       float heightFactor = smoothstep(1.5, 0.0, pos.y);
       
       if (heightFactor > 0.0) {
-        vec3 wind = vec3(u_time * 0.06, 0.0, -u_time * 0.02);
-        
-        // حجم السحب الأصلي الناعم المريح للعين
+        vec3 wind = vec3(u_time * 0.04, 0.0, -u_time * 0.015);
         vec3 samplePos = pos * 1.2 + wind;
         vec3 largeSamplePos = pos * 0.4 + wind * 0.5;
         
@@ -129,7 +116,6 @@ const fragmentShaderSource = `
         density = max(0.0, density) * heightFactor;
         
         if (density > 0.01) {
-          // Self-shadowing
           float shadowT = 0.15;
           vec3 shadowPos = samplePos + u_sunDir * shadowT;
           vec3 shadowLargePos = largeSamplePos + u_sunDir * shadowT * 0.5;
@@ -140,37 +126,33 @@ const fragmentShaderSource = `
           shadowDensity = max(0.0, shadowDensity);
           
           float transmission = exp(-shadowDensity * 3.5);
-          
-          // إخفاء الظلال تماماً عند المسافات البعيدة
-          float distFade = smoothstep(12.0, 30.0, t);
+          float distFade = smoothstep(15.0, 35.0, t);
           transmission = mix(transmission, 1.0, distFade);
           
           vec3 cloudCol = mix(u_cloudBase, u_cloudLight, transmission * 0.8 + 0.2);
-          
-          // إذابة لون السحب البعيدة في لون الأفق الأصلي
-          cloudCol = mix(cloudCol, u_skyColorBottom, distFade * 0.8);
+          cloudCol = mix(cloudCol, u_skyColorBottom, distFade);
           
           float scatter = pow(max(0.0, dot(rd, u_sunDir)), 4.0) * 0.3;
           cloudCol += u_sunColor * scatter * transmission;
           
-          // الـ Alpha الأساسي للسحابة
           float alpha = smoothstep(0.0, 0.2, density) * 0.85;
           
-          // تلاشي فائق النعومة ممتد من فوق الأفق لتحته بيقضي على أي خط وهمي
-          alpha *= smoothstep(0.08, -0.04, rd.y);
-          alpha *= smoothstep(maxT, maxT - 15.0, t);
+          // قطع ألفا هندسي دقيق لمنع أي أطراف صلبة عند خط الأفق
+          alpha *= smoothstep(0.005, -0.02, rd.y); 
+          alpha *= smoothstep(maxT, maxT - 10.0, t); 
           
           vec4 val = vec4(cloudCol * alpha, alpha);
           sumCol += val * (1.0 - sumCol.a);
         }
       }
-      t += dt * (1.0 + t * 0.06);
+      t += dt * (1.0 + t * 0.05);
     }
 
-    // دمج السحاب النضيف مع السما
-    vec3 finalColor = mix(finalSky, sumCol.rgb, sumCol.a);
+    // === الحــل الرياضــي الجــذري هــنا ===
+    // بدلنا دالة mix بمعادلة الـ Premultiplied الصحيحة
+    vec3 finalColor = sumCol.rgb + finalSky * (1.0 - sumCol.a);
 
-    // Cinematic vignette
+    // Vignette
     vec2 d = abs(v_texCoord - 0.5) * 2.0;
     finalColor *= 1.0 - dot(d, d) * 0.15;
 
