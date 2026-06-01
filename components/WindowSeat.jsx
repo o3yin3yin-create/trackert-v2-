@@ -94,7 +94,8 @@ const fragmentShaderSource = `
     // --- CLOUDS ---
     vec4 sumCol = vec4(0.0);
     float t = 1.0;
-    float maxT = 50.0; 
+    // زودنا مسافة الرؤية شوية عشان الأفق يبان أعمق
+    float maxT = 60.0; 
     float dt = 0.25;
 
     for (int i = 0; i < 90; i++) { 
@@ -104,29 +105,43 @@ const fragmentShaderSource = `
       float heightFactor = smoothstep(1.5, 0.0, pos.y);
       
       if (heightFactor > 0.0) {
-        vec3 wind = vec3(u_time * 0.04, 0.0, -u_time * 0.015);
-        vec3 samplePos = pos * 1.2 + wind;
-        vec3 largeSamplePos = pos * 0.4 + wind * 0.5;
         
-        float baseDensity = smoothstep(1.2, -0.2, pos.y) * 1.5;
-        float largeVariation = noise(largeSamplePos) * 1.2;
-        float detail = fbm(samplePos) * 1.8;
+        // 1. حجم وسرعة ديناميكية بناءً على المسافة (t)
+        // القريب بياخد scale صغير (يعني تفاصيل أكبر) والبعيد بياخد scale كبير (يعني تفاصيل أصغر وملمومة)
+        float depthScale = mix(0.4, 2.8, t / maxT);
         
-        float density = baseDensity + largeVariation + detail - 2.4;
+        // سرعة ديناميكية: القريب بيتحرك أسرع بكتير من البعيد
+        vec3 dynamicWind = vec3(u_time * mix(0.18, 0.02, t / maxT), 0.0, -u_time * 0.02);
+
+        vec3 samplePos = pos * 1.2 * depthScale + dynamicWind;
+        vec3 largeSamplePos = pos * 0.4 * depthScale + dynamicWind * 0.5;
+        
+        // 2. الوديان والقمم (Macro Variation)
+        float macro = noise(largeSamplePos);
+        
+        // ربطنا ارتفاع السحاب الأساسي بالماكرو عشان يعمل جبال ووديان واضحة
+        float baseDensity = smoothstep(1.2 + macro * 3.0, -0.8, pos.y) * 1.5;
+        float detail = fbm(samplePos) * 1.5;
+        
+        // طرحنا قيمة كبيرة جداً (-4.2) عشان نحفر الفراغات ونزود التفاوت
+        float density = baseDensity + (macro * 2.8) + detail - 4.2; 
         density = max(0.0, density) * heightFactor;
         
         if (density > 0.01) {
           float shadowT = 0.15;
-          vec3 shadowPos = samplePos + u_sunDir * shadowT;
-          vec3 shadowLargePos = largeSamplePos + u_sunDir * shadowT * 0.5;
+          vec3 shadowPos = pos + u_sunDir * shadowT;
           
-          float shadowBase = smoothstep(1.2, -0.2, pos.y + u_sunDir.y * shadowT) * 1.5;
-          float shadowLarge = noise(shadowLargePos) * 1.2;
-          float shadowDensity = shadowBase + shadowLarge + fbm(shadowPos) * 1.8 - 2.4;
+          float sDepthScale = mix(0.4, 2.8, (t + shadowT) / maxT);
+          vec3 sSamplePos = shadowPos * 1.2 * sDepthScale + dynamicWind;
+          vec3 sLargeSamplePos = shadowPos * 0.4 * sDepthScale + dynamicWind * 0.5;
+          
+          float sMacro = noise(sLargeSamplePos);
+          float shadowBase = smoothstep(1.2 + sMacro * 3.0, -0.8, shadowPos.y) * 1.5;
+          float shadowDensity = shadowBase + (sMacro * 2.8) + fbm(sSamplePos) * 1.5 - 4.2;
           shadowDensity = max(0.0, shadowDensity);
           
           float transmission = exp(-shadowDensity * 3.5);
-          float distFade = smoothstep(15.0, 35.0, t);
+          float distFade = smoothstep(20.0, maxT, t);
           transmission = mix(transmission, 1.0, distFade);
           
           vec3 cloudCol = mix(u_cloudBase, u_cloudLight, transmission * 0.8 + 0.2);
@@ -137,9 +152,9 @@ const fragmentShaderSource = `
           
           float alpha = smoothstep(0.0, 0.2, density) * 0.85;
           
-          // قطع ألفا هندسي دقيق لمنع أي أطراف صلبة عند خط الأفق
-          alpha *= smoothstep(0.005, -0.02, rd.y); 
-          alpha *= smoothstep(maxT, maxT - 10.0, t); 
+          // --- إلغاء التلاشي المصطنع للأفق ---
+          // خلينا التلاشي مقتصر بس على نهاية مسافة الكاميرا (maxT) عشان السحاب ميتكسرش فجأة كـ 3D Geometry
+          alpha *= smoothstep(maxT, maxT - 15.0, t); 
           
           vec4 val = vec4(cloudCol * alpha, alpha);
           sumCol += val * (1.0 - sumCol.a);
@@ -148,11 +163,8 @@ const fragmentShaderSource = `
       t += dt * (1.0 + t * 0.05);
     }
 
-    // === الحــل الرياضــي الجــذري هــنا ===
-    // بدلنا دالة mix بمعادلة الـ Premultiplied الصحيحة
     vec3 finalColor = sumCol.rgb + finalSky * (1.0 - sumCol.a);
 
-    // Vignette
     vec2 d = abs(v_texCoord - 0.5) * 2.0;
     finalColor *= 1.0 - dot(d, d) * 0.15;
 
