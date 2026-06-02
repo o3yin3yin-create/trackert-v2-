@@ -806,8 +806,35 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
           transition: 'opacity 0.6s ease',
         }}
       >
-        <div className="text-6xl md:text-8xl font-extralight tracking-widest font-mono mb-2 md:mb-4">
-          {displayH}:{displayM} <span className="text-2xl md:text-4xl text-white/50 font-sans">{ampm}</span>
+        <div className="flex items-center gap-2 md:gap-4 mb-4 md:mb-6" dir="ltr">
+          <div className="relative flex justify-center items-center bg-gradient-to-b from-[#252528] to-[#121214] rounded-2xl border border-white/5 shadow-2xl px-4 md:px-6 py-3 md:py-4 min-w-[80px] md:min-w-[130px] overflow-hidden">
+            <div className="absolute top-1/2 left-0 w-full h-[3px] bg-black/90 shadow-[0_1px_0_rgba(255,255,255,0.1)] z-20 -translate-y-1/2"></div>
+            <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/10 to-transparent z-10"></div>
+            <div className="absolute inset-0 shadow-[inset_0_10px_20px_rgba(0,0,0,0.6)] pointer-events-none rounded-2xl"></div>
+            <span className="relative z-0 text-6xl md:text-8xl text-gray-100 font-mono font-bold tracking-tighter drop-shadow-lg">
+              {displayH}
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white/40 shadow-[0_0_8px_rgba(255,255,255,0.4)] animate-pulse"></div>
+            <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white/40 shadow-[0_0_8px_rgba(255,255,255,0.4)] animate-pulse"></div>
+          </div>
+
+          <div className="relative flex justify-center items-center bg-gradient-to-b from-[#252528] to-[#121214] rounded-2xl border border-white/5 shadow-2xl px-4 md:px-6 py-3 md:py-4 min-w-[80px] md:min-w-[130px] overflow-hidden">
+            <div className="absolute top-1/2 left-0 w-full h-[3px] bg-black/90 shadow-[0_1px_0_rgba(255,255,255,0.1)] z-20 -translate-y-1/2"></div>
+            <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/10 to-transparent z-10"></div>
+            <div className="absolute inset-0 shadow-[inset_0_10px_20px_rgba(0,0,0,0.6)] pointer-events-none rounded-2xl"></div>
+            <span className="relative z-0 text-6xl md:text-8xl text-gray-100 font-mono font-bold tracking-tighter drop-shadow-lg">
+              {displayM}
+            </span>
+          </div>
+
+          <div className="flex flex-col ml-1 md:ml-3 h-full justify-end pb-3 md:pb-4">
+            <span className="text-xl md:text-3xl font-bold tracking-widest text-white/50 uppercase font-sans">
+              {ampm}
+            </span>
+          </div>
         </div>
         <div className="text-2xl md:text-4xl font-medium tracking-wide drop-shadow-lg mb-1 md:mb-2 text-white/80">
           {dayName}

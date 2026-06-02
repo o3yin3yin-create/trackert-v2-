@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { FlightRadar24API } from 'flightradarapi';
 
 
-export const runtime = 'edge';
+
 
 export async function GET(request) {
   try {
