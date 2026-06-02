@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import prisma from "../../../lib/prisma";
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
