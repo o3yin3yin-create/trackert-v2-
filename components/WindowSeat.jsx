@@ -763,22 +763,23 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
     };
   }, [isRightWindow]);
 
+  // Calculate formatted time based on localTime float
+  const timeH = Math.floor(localTime);
+  const timeM = Math.floor((localTime - timeH) * 60);
+  const displayH = timeH % 12 || 12;
+  const displayM = timeM < 10 ? `0${timeM}` : timeM;
+  const ampm = timeH >= 12 ? 'PM' : 'AM';
+  
+  const now = new Date();
+  const dayName = now.toLocaleDateString('ar-EG', { weekday: 'long' });
+  const dateString = now.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' });
+
   return (
     <div 
       ref={containerRef}
+      className="fixed inset-0 bg-[#000000] flex flex-col md:flex-row items-center justify-center gap-12 md:gap-32 p-6 md:p-12 z-[9999999] overflow-hidden select-none"
+      dir="rtl"
       style={{
-        backgroundColor: '#000000', // Absolute OLED pure pitch black
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        width: '100vw',
-        margin: 0,
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999999,
-        userSelect: 'none',
-        overflow: 'hidden',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
       }}
     >
@@ -797,12 +798,32 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
         <X size={24} className="text-white/80" />
       </button>
 
+      {/* INFO PANEL (Time, Date, Day) */}
+      <div 
+        className="flex flex-col items-center md:items-start text-white/90 z-[10000000] drop-shadow-2xl"
+        style={{
+          opacity: showControls ? 1 : 0.35,
+          transition: 'opacity 0.6s ease',
+        }}
+      >
+        <div className="text-6xl md:text-8xl font-extralight tracking-widest font-mono mb-2 md:mb-4">
+          {displayH}:{displayM} <span className="text-2xl md:text-4xl text-white/50 font-sans">{ampm}</span>
+        </div>
+        <div className="text-2xl md:text-4xl font-medium tracking-wide drop-shadow-lg mb-1 md:mb-2 text-white/80">
+          {dayName}
+        </div>
+        <div className="text-lg md:text-2xl text-white/50 drop-shadow-md font-light tracking-wide">
+          {dateString}
+        </div>
+      </div>
+
       {/* OUTER CABIN BEZEL - Multi-layer extrusion for 3D depth */}
       <div 
+        className="relative flex items-center justify-center shrink-0"
         style={{
-          width: '350px',
-          height: '550px',
-          borderRadius: '145px',
+          width: 'min(85vw, 450px)',
+          height: 'min(60vh, 720px)',
+          borderRadius: 'min(20vw, 155px)',
           background: 'linear-gradient(135deg, #18191c 0%, #0d0e10 100%)',
           boxShadow: `
             inset 3px 3px 6px rgba(255, 255, 255, 0.08),
@@ -810,11 +831,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
             0 15px 45px rgba(0, 0, 0, 0.95),
             0 0 80px rgba(0, 0, 0, 0.8)
           `,
-          padding: '24px', // Depth spacer
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          position: 'relative'
+          padding: 'min(3vw, 24px)', // Depth spacer
         }}
       >
         {/* INNER PLASTIC ACCENT BEZEL (Realistic stepped frame) */}
@@ -822,7 +839,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
           style={{
             width: '100%',
             height: '100%',
-            borderRadius: '120px',
+            borderRadius: 'min(18vw, 130px)',
             background: 'linear-gradient(145deg, #101113 0%, #08090a 100%)',
             boxShadow: `
               inset 16px 0 25px -5px ${params.bezelHighlight},
@@ -831,7 +848,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
               inset 0 -20px 30px rgba(0, 0, 0, 0.95),
               0 3px 10px rgba(0,0,0,0.6)
             `,
-            padding: '26px', // Thickness of secondary bezel
+            padding: 'min(3vw, 26px)', // Thickness of secondary bezel
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
@@ -844,7 +861,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
             style={{
               width: '100%',
               height: '100%',
-              borderRadius: '96px',
+              borderRadius: 'min(16vw, 105px)',
               border: '2.5px solid #030303',
               boxShadow: 'inset 0 0 10px rgba(0, 0, 0, 0.9), 0 1px 2px rgba(255,255,255,0.05)',
               position: 'relative',
@@ -860,7 +877,7 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
               style={{
                 width: '100%',
                 height: '100%',
-                borderRadius: '94px',
+                borderRadius: 'min(15.5vw, 102px)',
                 display: 'block',
                 backgroundColor: '#0a0d16'
               }}
