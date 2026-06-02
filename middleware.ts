@@ -1,5 +1,7 @@
-export const runtime = 'edge';
 import { clerkMiddleware } from '@clerk/nextjs/server';
+
+
+export const runtime = 'edge';
 
 export default clerkMiddleware();
 

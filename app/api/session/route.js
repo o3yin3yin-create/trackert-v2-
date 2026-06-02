@@ -1,7 +1,9 @@
-export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { PrismaClient } from '@prisma/client';
+
+
+export const runtime = 'edge';
 
 const prisma = new PrismaClient();
 
