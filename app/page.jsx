@@ -4084,6 +4084,7 @@ export default function App() {
           {isWindowSeatOpen && createPortal(
             <WindowSeat 
               onClose={() => setIsWindowSeatOpen(false)} 
+              lang={lang}
               flight={selectedFlight} 
               flightTimer={flightTimer} 
               originCoords={(selectedFlight?.originCoords?.lat) ? selectedFlight.originCoords : null}

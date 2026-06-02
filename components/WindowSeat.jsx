@@ -226,7 +226,7 @@ const lerpColor = (c1, c2, t) => [
   lerp(c1[2], c2[2], t),
 ];
 
-export default function WindowSeat({ onClose, seat = '5A' }) {
+export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
   const canvasRef = useRef(null);
   const animationFrameRef = useRef(null);
   const containerRef = useRef(null);
@@ -770,15 +770,16 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
   const displayM = timeM < 10 ? `0${timeM}` : timeM;
   const ampm = timeH >= 12 ? 'PM' : 'AM';
   
+  const locale = lang === 'ar' ? 'ar-EG' : 'en-US';
   const now = new Date();
-  const dayName = now.toLocaleDateString('ar-EG', { weekday: 'long' });
-  const dateString = now.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' });
+  const dayName = now.toLocaleDateString(locale, { weekday: 'long' });
+  const dateString = now.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
     <div 
       ref={containerRef}
       className="fixed inset-0 bg-[#000000] flex flex-col md:flex-row items-center justify-center gap-12 md:gap-32 p-6 md:p-12 z-[9999999] overflow-hidden select-none"
-      dir="rtl"
+      dir={lang === 'ar' ? 'rtl' : 'ltr'}
       style={{
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
       }}
@@ -801,10 +802,6 @@ export default function WindowSeat({ onClose, seat = '5A' }) {
       {/* INFO PANEL (Time, Date, Day) */}
       <div 
         className="flex flex-col items-center md:items-start text-white/90 z-[10000000] drop-shadow-2xl"
-        style={{
-          opacity: showControls ? 1 : 0.35,
-          transition: 'opacity 0.6s ease',
-        }}
       >
         <div className="flex items-center gap-2 md:gap-4 mb-4 md:mb-6" dir="ltr">
           <div className="relative flex justify-center items-center bg-gradient-to-b from-[#252528] to-[#121214] rounded-2xl border border-white/5 shadow-2xl px-4 md:px-6 py-3 md:py-4 min-w-[80px] md:min-w-[130px] overflow-hidden">
