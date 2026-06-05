@@ -845,12 +845,12 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
       <div 
         className="relative flex items-center justify-center shrink-0 w-[340px] h-[530px] md:w-[440px] md:h-[680px] rounded-[140px] md:rounded-[180px] p-[24px] md:p-[32px]"
         style={{
-          background: 'linear-gradient(135deg, #18191c 0%, #0d0e10 100%)',
+          background: 'linear-gradient(135deg, #eef0f3 0%, #d5d9de 100%)',
           boxShadow: `
-            inset 3px 3px 6px rgba(255, 255, 255, 0.08),
-            inset -3px -3px 6px rgba(0, 0, 0, 0.8),
-            0 15px 45px rgba(0, 0, 0, 0.95),
-            0 0 80px rgba(0, 0, 0, 0.8)
+            inset 3px 3px 8px rgba(255, 255, 255, 1),
+            inset -3px -3px 6px rgba(0, 0, 0, 0.05),
+            0 15px 45px rgba(0, 0, 0, 0.3),
+            0 0 80px rgba(0, 0, 0, 0.2)
           `,
         }}
       >
@@ -858,23 +858,23 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
         <div 
           className="relative flex items-center justify-center w-full h-full rounded-[115px] md:rounded-[150px] p-[26px] md:p-[32px]"
           style={{
-            background: 'linear-gradient(145deg, #101113 0%, #08090a 100%)',
+            background: 'linear-gradient(145deg, #ffffff 0%, #f4f6f8 100%)',
             boxShadow: `
               inset 16px 0 25px -5px ${params.bezelHighlight},
-              inset -20px 0 30px rgba(0, 0, 0, 0.95),
-              inset 0 20px 30px rgba(0, 0, 0, 0.95),
-              inset 0 -20px 30px rgba(0, 0, 0, 0.95),
-              0 3px 10px rgba(0,0,0,0.6)
+              inset -20px 0 30px rgba(0, 0, 0, 0.12),
+              inset 0 20px 30px rgba(0, 0, 0, 0.08),
+              inset 0 -20px 30px rgba(0, 0, 0, 0.08),
+              0 4px 15px rgba(0,0,0,0.15)
             `,
           }}
         >
           {/* RUBBER GLASS GASKET (Black sealer ring) */}
           <div 
             id="window-bezel"
-            className="relative overflow-hidden flex items-center justify-center w-full h-full rounded-[92px] md:rounded-[120px] bg-[#030303]"
+            className="relative overflow-hidden flex items-center justify-center w-full h-full rounded-[92px] md:rounded-[120px] bg-[#1a1c1e]"
             style={{
-              border: '2.5px solid #030303',
-              boxShadow: 'inset 0 0 10px rgba(0, 0, 0, 0.9)',
+              border: '2.5px solid #1a1c1e',
+              boxShadow: 'inset 0 0 10px rgba(0, 0, 0, 0.6)',
             }}
           >
             {/* PROCEDURAL WEBGL SKY & VOLUMETRIC CLOUDS CANVAS */}
