@@ -685,6 +685,9 @@ export default function App() {
                setThemeColor(state.themeColor);
                if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', state.themeColor);
             }
+            if (state.friendCode) {
+               setFriendCode(state.friendCode);
+            }
             
             if (state.habits && state.habits.length > 0) {
                setHabits(state.habits);
