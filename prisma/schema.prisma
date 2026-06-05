@@ -30,6 +30,7 @@ model User {
   dailyLogs      DailyLog[]
   friendships    Friendship[] @relation("UserFriendships")
   friendRequests Friendship[] @relation("FriendRequests")
+  groupMembers   GroupMember[]
 }
 
 // 2. جدول العادات ببيانات الإشعارات المخصصة بنظام 12 ساعة
@@ -76,4 +77,26 @@ model Friendship {
   friend    User     @relation("FriendRequests", fields: [friendId], references: [id], onDelete: Cascade)
 
   @@unique([userId, friendId])
+}
+
+// 5. مجموعات المذاكرة (Study Groups)
+model StudyGroup {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  
+  members   GroupMember[]
+}
+
+model GroupMember {
+  id        String   @id @default(cuid())
+  groupId   String
+  userId    String
+  joinedAt  DateTime @default(now())
+
+  group     StudyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
 }
