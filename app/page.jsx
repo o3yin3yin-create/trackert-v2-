@@ -4113,14 +4113,13 @@ export default function App() {
           )}
 
           {/* ---------------- FRIENDS PANEL ---------------- */}
-          {isFriendsPanelOpen && createPortal(
+          {isFriendsPanelOpen && (
             <FriendsPanel 
               onClose={() => setIsFriendsPanelOpen(false)} 
               lang={lang} 
               themeColor={themeColor} 
               friendCode={state?.friendCode || ''} 
-            />,
-            document.body
+            />
           )}
 
         </div>

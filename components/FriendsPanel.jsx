@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { X, Users, UserPlus, Check, Trash2, Loader2, Trophy, Clock, CheckCircle2, Copy } from 'lucide-react';
+import { X, Users, UserPlus, Check, Trash2, Loader2, Trophy, Clock, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B981', friendCode = '' }) {
@@ -37,7 +37,7 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
 
   const fetchFriends = async () => {
     try {
-      const dateStr = new Date().toLocaleDateString('en-CA');
+      const dateStr = new Date().toISOString().split('T')[0];
       const res = await fetch(`/api/friends?date=${dateStr}`);
       const data = await res.json();
       if (data.friends) {
@@ -152,20 +152,20 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
         <div className="flex px-6 pt-4 gap-4 shrink-0">
           <button 
             onClick={() => setActiveTab('leaderboard')}
-            className={`pb-3 text-sm font-bold tracking-wide uppercase transition-colors relative ${activeTab === 'leaderboard' ? 'text-black dark:text-white' : 'text-gray-400 dark:text-white/40'}`}
+            className={`pb-3 text-sm font-bold tracking-wide uppercase transition-colors relative ${activeTab === 'leaderboard' ? 'text-black dark:text-white border-b-2' : 'text-gray-400 dark:text-white/40 border-b-2 border-transparent'}`}
+            style={{ borderColor: activeTab === 'leaderboard' ? themeColor : 'transparent' }}
           >
             {t.leaderboard}
-            {activeTab === 'leaderboard' && <motion.div layoutId="friendsTab" className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style={{ backgroundColor: themeColor }} />}
           </button>
           <button 
             onClick={() => setActiveTab('add')}
-            className={`pb-3 text-sm font-bold tracking-wide uppercase transition-colors relative flex items-center gap-2 ${activeTab === 'add' ? 'text-black dark:text-white' : 'text-gray-400 dark:text-white/40'}`}
+            className={`pb-3 text-sm font-bold tracking-wide uppercase transition-colors relative flex items-center gap-2 ${activeTab === 'add' ? 'text-black dark:text-white border-b-2' : 'text-gray-400 dark:text-white/40 border-b-2 border-transparent'}`}
+            style={{ borderColor: activeTab === 'add' ? themeColor : 'transparent' }}
           >
             {t.addFriend}
             {requests.length > 0 && (
               <span className="w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center">{requests.length}</span>
             )}
-            {activeTab === 'add' && <motion.div layoutId="friendsTab" className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style={{ backgroundColor: themeColor }} />}
           </button>
         </div>
 
@@ -198,7 +198,7 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
                           {formatTime(f.focusTime)}
                         </div>
                         <div className="flex items-center gap-1 text-[11px] font-bold tracking-wide">
-                          <CheckCircle2 size={10} />
+                          <Check size={10} />
                           {f.habitsCompleted} {t.habits}
                         </div>
                       </div>
