@@ -19,6 +19,7 @@ import BoardingPassCard from '../components/BoardingPassCard';
 import WindowSeat from '../components/WindowSeat';
 import SeatSelection from '../components/SeatSelection';
 import FriendsPanel from '../components/FriendsPanel';
+import FriendsBoundary from '../components/FriendsBoundary';
 
 let globalAudioCtx = null;
 const getAudioCtx = () => {
@@ -4114,12 +4115,14 @@ export default function App() {
 
           {/* ---------------- FRIENDS PANEL ---------------- */}
           {isFriendsPanelOpen && (
-            <FriendsPanel 
-              onClose={() => setIsFriendsPanelOpen(false)} 
-              lang={lang} 
-              themeColor={themeColor} 
-              friendCode={state?.friendCode || ''} 
-            />
+            <FriendsBoundary onClose={() => setIsFriendsPanelOpen(false)}>
+              <FriendsPanel 
+                onClose={() => setIsFriendsPanelOpen(false)} 
+                lang={lang} 
+                themeColor={themeColor} 
+                friendCode={state?.friendCode || ''} 
+              />
+            </FriendsBoundary>
           )}
 
         </div>
