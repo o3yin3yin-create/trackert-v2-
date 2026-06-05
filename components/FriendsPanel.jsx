@@ -1,3 +1,4 @@
+"use client";
 import { useState, useEffect } from 'react';
 import { X, Users, UserPlus, Check, Trash2, Loader2, Trophy, Clock, CheckCircle2, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
