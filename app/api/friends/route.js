@@ -29,8 +29,8 @@ export async function GET(req) {
         ]
       },
       include: {
-        user: { select: { id: true, name: true, friendCode: true } },
-        friend: { select: { id: true, name: true, friendCode: true } }
+        user: { select: { id: true, name: true, friendCode: true, _count: { select: { habits: true } } } },
+        friend: { select: { id: true, name: true, friendCode: true, _count: { select: { habits: true } } } }
       }
     });
 
@@ -58,7 +58,29 @@ export async function GET(req) {
         friendCode: friendProfile.friendCode,
         focusTime: dailyLog?.focusTime || 0,
         habitsCompleted: calculateHabitsCompleted(dailyLog?.logs),
+        habitsTotal: friendProfile._count?.habits || 0,
       });
+    }
+
+    // 4. Always include the current user in the leaderboard (if not already added via self-friendship)
+    if (!friendsList.some(f => f.id === userId)) {
+      const currentUserProfile = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, name: true, friendCode: true, _count: { select: { habits: true } } }
+      });
+      const currentUserDailyLog = await prisma.dailyLog.findUnique({
+        where: { userId_date: { userId, date } }
+      });
+      if (currentUserProfile) {
+        friendsList.push({
+          id: currentUserProfile.id,
+          name: currentUserProfile.name,
+          friendCode: currentUserProfile.friendCode,
+          focusTime: currentUserDailyLog?.focusTime || 0,
+          habitsCompleted: calculateHabitsCompleted(currentUserDailyLog?.logs),
+          habitsTotal: currentUserProfile._count?.habits || 0,
+        });
+      }
     }
 
     return NextResponse.json({

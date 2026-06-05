@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { X, Users, UserPlus, Check, Trash2, Loader2, Trophy, Clock, Copy } from 'lucide-react';
+import { X, Users, UserPlus, Check, Trash2, Loader2, Trophy, Clock, Copy, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B981', friendCode = '' }) {
@@ -124,6 +124,15 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
     return `${Math.floor(m / 60)}${t.h} ${m % 60}${t.min}`;
   };
 
+  const getScore = (f) => f.habitsTotal > 0 ? (f.habitsCompleted / f.habitsTotal) : 0;
+
+  const sortedFriends = [...friends].sort((a, b) => {
+    const scoreA = getScore(a);
+    const scoreB = getScore(b);
+    if (scoreB !== scoreA) return scoreB - scoreA;
+    return b.focusTime - a.focusTime;
+  });
+
   return (
     <div className={`fixed inset-0 z-[99999] overflow-hidden bg-black/60 backdrop-blur-md flex justify-end ${isRtl ? 'flex-row-reverse' : ''}`}>
       {/* Background Dimmer */}
@@ -182,42 +191,92 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
             </div>
           ) : activeTab === 'leaderboard' ? (
             <div className="flex flex-col gap-4">
-              {friends.length === 0 ? (
+              {sortedFriends.length === 0 ? (
                 <div className="text-center py-10 opacity-50">
                   <Users size={40} className="mx-auto mb-4 opacity-50" />
                   <p className="text-sm font-bold">{t.noFriends}</p>
                 </div>
               ) : (
-                friends.map((f, i) => (
-                  <div key={f.id} className="relative overflow-hidden bg-white dark:bg-[#1a1b1e] border border-black/5 dark:border-white/5 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
-                    {/* Rank Badge */}
-                    <div className="w-8 h-8 shrink-0 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center font-black text-sm">
-                      {i === 0 ? '👑' : i + 1}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-black dark:text-white truncate">{f.name}</h4>
-                      <div className="flex items-center gap-3 mt-1.5 opacity-60">
-                        <div className="flex items-center gap-1 text-[11px] font-bold tracking-wide">
-                          <Clock size={10} />
-                          {formatTime(f.focusTime)}
+                <>
+                  {sortedFriends.length > 1 && (
+                    <div className="flex items-end justify-center gap-4 mb-6 pt-6">
+                      {/* 2nd Place */}
+                      {sortedFriends.length > 1 && (
+                        <div className="flex flex-col items-center">
+                          <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-white/10 flex items-center justify-center font-black text-lg mb-2 shadow-inner border border-white/20">
+                            {sortedFriends[1].name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="text-[10px] font-black tracking-wider opacity-50 mb-1">2ND</div>
+                          <div className="w-16 h-20 bg-gradient-to-t from-gray-300 to-gray-200 dark:from-white/10 dark:to-white/5 rounded-t-xl flex flex-col items-center justify-center font-black border-t border-l border-r border-white/20 dark:border-white/5">
+                            <span className="text-sm">{Math.round(getScore(sortedFriends[1]) * 100)}%</span>
+                          </div>
+                          <div className="text-[10px] font-bold mt-2 truncate max-w-[60px] opacity-70">{sortedFriends[1].name}</div>
                         </div>
-                        <div className="flex items-center gap-1 text-[11px] font-bold tracking-wide">
-                          <Check size={10} />
-                          {f.habitsCompleted} {t.habits}
+                      )}
+                      
+                      {/* 1st Place */}
+                      {sortedFriends.length > 0 && (
+                        <div className="flex flex-col items-center relative">
+                          <Crown size={32} className="text-yellow-500 rotate-12 absolute -top-8 drop-shadow-md" strokeWidth={2.5} />
+                          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-500 border-2 border-yellow-200 flex items-center justify-center font-black text-xl mb-2 text-white shadow-lg">
+                            {sortedFriends[0].name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="text-[10px] font-black tracking-wider text-yellow-600 dark:text-yellow-500 mb-1">1ST</div>
+                          <div className="w-20 h-28 bg-gradient-to-t from-yellow-200 to-yellow-100 dark:from-yellow-500/20 dark:to-yellow-500/10 rounded-t-xl flex flex-col items-center justify-center font-black text-yellow-700 dark:text-yellow-400 text-xl border-t border-l border-r border-yellow-300/50 dark:border-yellow-500/20 shadow-[0_0_20px_rgba(234,179,8,0.15)] relative overflow-hidden">
+                            <div className="absolute inset-0 bg-white/20 dark:bg-white/5 skew-y-12 translate-y-1/2"></div>
+                            <span className="relative z-10">{Math.round(getScore(sortedFriends[0]) * 100)}%</span>
+                          </div>
+                          <div className="text-[11px] font-black mt-2 truncate max-w-[80px]">{sortedFriends[0].name}</div>
+                        </div>
+                      )}
+                      
+                      {/* 3rd Place */}
+                      {sortedFriends.length > 2 && (
+                        <div className="flex flex-col items-center">
+                          <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center font-black text-lg mb-2 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-500/30">
+                            {sortedFriends[2].name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="text-[10px] font-black tracking-wider opacity-50 mb-1 text-orange-600 dark:text-orange-400">3RD</div>
+                          <div className="w-16 h-16 bg-gradient-to-t from-orange-200/50 to-orange-100/50 dark:from-orange-500/10 dark:to-orange-500/5 rounded-t-xl flex flex-col items-center justify-center font-black text-orange-700 dark:text-orange-400 border-t border-l border-r border-orange-200/50 dark:border-orange-500/20">
+                            <span className="text-sm">{Math.round(getScore(sortedFriends[2]) * 100)}%</span>
+                          </div>
+                          <div className="text-[10px] font-bold mt-2 truncate max-w-[60px] opacity-70">{sortedFriends[2].name}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {sortedFriends.map((f, i) => (
+                    <div key={f.id} className="relative overflow-hidden bg-white dark:bg-[#1a1b1e] border border-black/5 dark:border-white/5 rounded-2xl p-4 flex items-center gap-4 shadow-sm group">
+                      {/* Rank Badge */}
+                      <div className="w-10 h-10 shrink-0 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center font-black text-sm relative">
+                        {i === 0 ? <Crown size={18} className="text-yellow-500" /> : i + 1}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-black dark:text-white truncate">{f.name}</h4>
+                        <div className="flex items-center gap-3 mt-1.5 opacity-60">
+                          <div className="flex items-center gap-1 text-[11px] font-bold tracking-wide">
+                            <Clock size={10} />
+                            {formatTime(f.focusTime)}
+                          </div>
+                          <div className="flex items-center gap-1 text-[11px] font-bold tracking-wide">
+                            <Check size={10} />
+                            {Math.round(getScore(f) * 100)}% ({f.habitsCompleted}/{f.habitsTotal})
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <button 
-                      onClick={() => handleDeclineOrRemove(null, f.id)}
-                      className="w-8 h-8 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 focus:opacity-100 hover:bg-red-500/10 text-red-500 transition-all"
-                      title={t.remove}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))
+                      <button 
+                        onClick={() => handleDeclineOrRemove(null, f.id)}
+                        className="w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-red-500/10 text-red-500 transition-all absolute right-4"
+                        title={t.remove}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </>
               )}
             </div>
           ) : (
