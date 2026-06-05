@@ -871,7 +871,7 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
           {/* RUBBER GLASS GASKET (Black sealer ring) */}
           <div 
             id="window-bezel"
-            className="relative overflow-hidden flex items-center justify-center w-full h-full rounded-[92px] md:rounded-[120px]"
+            className="relative overflow-hidden flex items-center justify-center w-full h-full rounded-[92px] md:rounded-[120px] bg-[#030303]"
             style={{
               border: '2.5px solid #030303',
               boxShadow: 'inset 0 0 10px rgba(0, 0, 0, 0.9)',
@@ -880,7 +880,7 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
             {/* PROCEDURAL WEBGL SKY & VOLUMETRIC CLOUDS CANVAS */}
             <canvas 
               ref={canvasRef}
-              className="block w-full h-full rounded-[90px] md:rounded-[118px]"
+              className="absolute inset-0 block w-full h-full rounded-[90px] md:rounded-[118px]"
               style={{
                 backgroundColor: '#0a0d16'
               }}
