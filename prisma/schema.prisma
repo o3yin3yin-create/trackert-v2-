@@ -22,11 +22,14 @@ model User {
   finishedTickets Json?     @default("[]") // History of finished flight tickets
   activeSessionType String? // "pomodoro" or "flight"
   activeSessionData Json?   // Session details
+  friendCode     String?    @unique // كود الصداقة المميز
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   
   habits         Habit[]
   dailyLogs      DailyLog[]
+  friendships    Friendship[] @relation("UserFriendships")
+  friendRequests Friendship[] @relation("FriendRequests")
 }
 
 // 2. جدول العادات ببيانات الإشعارات المخصصة بنظام 12 ساعة
@@ -59,4 +62,18 @@ model DailyLog {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, date]) // بيمنع تكرار نفس اليوم لنفس اليوزر
+}
+
+// 4. جدول الأصدقاء
+model Friendship {
+  id        String   @id @default(cuid())
+  userId    String
+  friendId  String
+  status    String   @default("PENDING") // PENDING أو ACCEPTED
+  createdAt DateTime @default(now())
+
+  user      User     @relation("UserFriendships", fields: [userId], references: [id], onDelete: Cascade)
+  friend    User     @relation("FriendRequests", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendId])
 }

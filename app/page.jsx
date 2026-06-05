@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices } from 'lucide-react';
+import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users } from 'lucide-react';
 import { messaging, getToken } from '../lib/firebase';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -18,6 +18,7 @@ import BoardingPass from '../components/BoardingPass';
 import BoardingPassCard from '../components/BoardingPassCard';
 import WindowSeat from '../components/WindowSeat';
 import SeatSelection from '../components/SeatSelection';
+import FriendsPanel from '../components/FriendsPanel';
 
 let globalAudioCtx = null;
 const getAudioCtx = () => {
@@ -485,6 +486,7 @@ export default function App() {
   const [isBoardingPassOpen, setIsBoardingPassOpen] = useState(false);
   const [isSeatSelectionOpen, setIsSeatSelectionOpen] = useState(false);
   const [isWindowSeatOpen, setIsWindowSeatOpen] = useState(false);
+  const [isFriendsPanelOpen, setIsFriendsPanelOpen] = useState(false);
   const [selectedSeat, setSelectedSeat] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -2024,6 +2026,13 @@ export default function App() {
                                   <Map size={12} />
                                 </button>
                                 <button 
+                                  onClick={() => { haptic('light'); setIsWindowSeatOpen(true); }} 
+                                  className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
+                                  title={lang === 'ar' ? 'شباك الطائرة' : 'Window Seat'}
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="3" width="14" height="18" rx="5" /><line x1="5" y1="15" x2="19" y2="15" opacity="0.4" /></svg>
+                                </button>
+                                <button 
                                   onClick={() => {
                                     haptic('medium');
                                     setIsScreensaverOpen(true);
@@ -2051,15 +2060,24 @@ export default function App() {
                         })()
                       ) : (
                         <div className="w-full relative py-2 mb-4 bg-black/5 dark:bg-black/40 border border-black/5 dark:border-white/5 rounded-2xl p-3 flex flex-col justify-center">
-                          {/* Floating Map Toggle Button */}
-                          <button
-                            onClick={() => setIsMapView(true)}
-                            className="absolute top-2.5 right-2.5 z-10 px-2.5 py-1.5 rounded-xl bg-black/50 hover:bg-black/75 dark:bg-white/10 dark:hover:bg-white/20 border border-white/5 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 active:scale-95 select-none"
-                            title={lang === 'ar' ? 'عرض خريطة لايف' : 'Live Map'}
-                          >
-                            <Map size={11} className="text-[#10B981]" />
-                            <span>{lang === 'ar' ? 'خريطة لايف' : 'Live Map'}</span>
-                          </button>
+                          <div className="absolute top-2.5 right-2.5 z-10 flex gap-2">
+                            <button
+                              onClick={() => { haptic('light'); setIsWindowSeatOpen(true); }}
+                              className="px-2.5 py-1.5 rounded-xl bg-black/50 hover:bg-black/75 dark:bg-white/10 dark:hover:bg-white/20 border border-white/5 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 active:scale-95 select-none"
+                              title={lang === 'ar' ? 'شباك الطائرة' : 'Window Seat'}
+                            >
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="3" width="14" height="18" rx="5" /><line x1="5" y1="15" x2="19" y2="15" opacity="0.4" /></svg>
+                              <span className="hidden sm:inline">{lang === 'ar' ? 'الشباك' : 'Window'}</span>
+                            </button>
+                            <button
+                              onClick={() => setIsMapView(true)}
+                              className="px-2.5 py-1.5 rounded-xl bg-black/50 hover:bg-black/75 dark:bg-white/10 dark:hover:bg-white/20 border border-white/5 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 active:scale-95 select-none"
+                              title={lang === 'ar' ? 'عرض خريطة لايف' : 'Live Map'}
+                            >
+                              <Map size={11} className="text-[#10B981]" />
+                              <span>{lang === 'ar' ? 'خريطة لايف' : 'Live Map'}</span>
+                            </button>
+                          </div>
                           
                           {/* Bezier Radar Map */}
                           {(() => {
@@ -4071,11 +4089,11 @@ export default function App() {
               <button onClick={() => navTo('pomodoro')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><Timer size={18} /></button>
               <button onClick={() => navTo('flight')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><PlaneTakeoff size={18} /></button>
               <button 
-                onClick={() => { haptic('light'); setIsWindowSeatOpen(true); }} 
+                onClick={() => { haptic('light'); setIsFriendsPanelOpen(true); }} 
                 className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"
-                title={lang === 'ar' ? 'شباك الطائرة' : 'Window Seat'}
+                title={lang === 'ar' ? 'الأصدقاء' : 'Friends'}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="3" width="14" height="18" rx="5" /><line x1="5" y1="15" x2="19" y2="15" opacity="0.4" /></svg>
+                <Users size={18} />
               </button>
             </div>
             <button onClick={handleOpenManage} className="w-13 h-13 rounded-full bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-[#2C2C2E] transition-all duration-200 active:scale-90 shadow-2xl dark:shadow-black/60"><Edit2 size={18} className="text-black dark:text-white/90" /></button>
@@ -4090,6 +4108,17 @@ export default function App() {
               originCoords={(selectedFlight?.originCoords?.lat) ? selectedFlight.originCoords : null}
               destCoords={(selectedFlight?.destCoords?.lat) ? selectedFlight.destCoords : null}
               seat={selectedSeat}
+            />,
+            document.body
+          )}
+
+          {/* ---------------- FRIENDS PANEL ---------------- */}
+          {isFriendsPanelOpen && createPortal(
+            <FriendsPanel 
+              onClose={() => setIsFriendsPanelOpen(false)} 
+              lang={lang} 
+              themeColor={themeColor} 
+              friendCode={state.friendCode} 
             />,
             document.body
           )}

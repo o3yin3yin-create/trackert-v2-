@@ -23,14 +23,24 @@ export async function GET() {
 
     if (!user) {
       // First time user, create default record
+      const friendCode = Math.random().toString(36).substring(2, 8).toUpperCase();
       user = await prisma.user.create({
-        data: { id: userId, email: userId }, // clerk usually provides email, but ID is what matters for foreign keys
+        data: { id: userId, email: userId, friendCode }, // clerk usually provides email, but ID is what matters for foreign keys
+        include: { habits: true, dailyLogs: true }
+      });
+    } else if (!user.friendCode) {
+      // Backfill friendCode for existing users
+      const friendCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      user = await prisma.user.update({
+        where: { id: userId },
+        data: { friendCode },
         include: { habits: true, dailyLogs: true }
       });
     }
 
     // Reconstruct the flat state object expected by the frontend
     const state = {
+      friendCode: user.friendCode,
       theme: user.theme,
       bgStyle: user.bgStyle,
       lang: user.lang,
@@ -89,6 +99,7 @@ export async function POST(req) {
       create: {
         id: userId,
         email: userId, // Placeholder if email isn't available from token
+        friendCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
         theme: state.theme || 'dark',
         bgStyle: state.bgStyle || 'aurora',
         lang: state.lang || 'en',
