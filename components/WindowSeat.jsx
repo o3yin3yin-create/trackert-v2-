@@ -849,12 +849,12 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
         <div 
           className="absolute inset-0 rounded-[140px] md:rounded-[180px]"
           style={{
-            background: 'linear-gradient(135deg, #eef0f3 0%, #d5d9de 100%)',
+            background: 'linear-gradient(135deg, #44474d 0%, #2b2d31 100%)',
             boxShadow: `
-              inset 3px 3px 8px rgba(255, 255, 255, 1),
-              inset -3px -3px 6px rgba(0, 0, 0, 0.05),
-              0 15px 45px rgba(0, 0, 0, 0.3),
-              0 0 80px rgba(0, 0, 0, 0.2)
+              inset 3px 3px 8px rgba(255, 255, 255, 0.15),
+              inset -3px -3px 6px rgba(0, 0, 0, 0.5),
+              0 15px 45px rgba(0, 0, 0, 0.6),
+              0 0 80px rgba(0, 0, 0, 0.5)
             `,
           }}
         />
@@ -871,6 +871,7 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
               0 15px 45px rgba(0, 0, 0, 0.95),
               0 0 80px rgba(0, 0, 0, 0.8)
             `,
+            transition: 'opacity 0.5s ease',
           }}
         />
 
@@ -881,13 +882,13 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
           <div 
             className="absolute inset-0 rounded-[115px] md:rounded-[150px]"
             style={{
-              background: 'linear-gradient(145deg, #ffffff 0%, #f4f6f8 100%)',
+              background: 'linear-gradient(145deg, #6c727d 0%, #464a52 100%)',
               boxShadow: `
                 inset 16px 0 25px -5px ${params.bezelHighlight},
-                inset -20px 0 30px rgba(0, 0, 0, 0.12),
-                inset 0 20px 30px rgba(0, 0, 0, 0.08),
-                inset 0 -20px 30px rgba(0, 0, 0, 0.08),
-                0 4px 15px rgba(0,0,0,0.15)
+                inset -20px 0 30px rgba(0, 0, 0, 0.6),
+                inset 0 20px 30px rgba(0, 0, 0, 0.4),
+                inset 0 -20px 30px rgba(0, 0, 0, 0.4),
+                0 4px 15px rgba(0,0,0,0.4)
               `,
             }}
           />
@@ -905,6 +906,7 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
                 inset 0 -20px 30px rgba(0, 0, 0, 0.95),
                 0 3px 10px rgba(0,0,0,0.6)
               `,
+              transition: 'opacity 0.5s ease',
             }}
           />
           {/* RUBBER GLASS GASKET (Black sealer ring) */}
