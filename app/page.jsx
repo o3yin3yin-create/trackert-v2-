@@ -4118,7 +4118,7 @@ export default function App() {
               onClose={() => setIsFriendsPanelOpen(false)} 
               lang={lang} 
               themeColor={themeColor} 
-              friendCode={state.friendCode} 
+              friendCode={state?.friendCode || ''} 
             />,
             document.body
           )}
