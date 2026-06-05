@@ -400,6 +400,7 @@ export default function App() {
   }, []);
 
   // --- States (v4) ---
+  const [friendCode, setFriendCode] = useState('');
   const [habits, setHabits] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('daybase_habits_v4');
@@ -1209,10 +1210,11 @@ export default function App() {
       try {
         const res = await fetch(`/api/sync?clerkId=${user.id}`);
         const data = await res.json();
-        if (data.success && (data.habits.length > 0 || Object.keys(data.dailyData).length > 0 || Object.keys(data.sleepData).length > 0 || Object.keys(data.dailyTasksData || {}).length > 0)) {
-          setHabits(data.habits);
-          setDailyData(data.dailyData);
-          setSleepData(data.sleepData);
+        if (data.success) {
+          if (data.habits) setHabits(data.habits);
+          if (data.friendCode) setFriendCode(data.friendCode);
+          if (data.dailyData) setDailyData(data.dailyData);
+          if (data.sleepData) setSleepData(data.sleepData);
           
           const todayStr = getFormatDateStr(new Date());
           if (data.dailyTasksData && data.dailyTasksData[todayStr]) {
@@ -4120,7 +4122,7 @@ export default function App() {
                 onClose={() => setIsFriendsPanelOpen(false)} 
                 lang={lang} 
                 themeColor={themeColor} 
-                friendCode={state?.friendCode || ''} 
+                friendCode={friendCode}
               />
             </FriendsBoundary>
           )}
