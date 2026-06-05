@@ -4116,7 +4116,7 @@ export default function App() {
           )}
 
           {/* ---------------- FRIENDS PANEL ---------------- */}
-          {isFriendsPanelOpen && (
+          {isFriendsPanelOpen && createPortal(
             <FriendsBoundary onClose={() => setIsFriendsPanelOpen(false)}>
               <FriendsPanel 
                 onClose={() => setIsFriendsPanelOpen(false)} 
@@ -4124,7 +4124,8 @@ export default function App() {
                 themeColor={themeColor} 
                 friendCode={friendCode}
               />
-            </FriendsBoundary>
+            </FriendsBoundary>,
+            document.body
           )}
 
         </div>
