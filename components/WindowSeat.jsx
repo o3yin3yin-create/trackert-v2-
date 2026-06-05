@@ -843,11 +843,8 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
 
       {/* OUTER CABIN BEZEL - Multi-layer extrusion for 3D depth */}
       <div 
-        className="relative flex items-center justify-center shrink-0"
+        className="relative flex items-center justify-center shrink-0 w-[340px] h-[530px] md:w-[440px] md:h-[680px] rounded-[140px] md:rounded-[180px] p-[24px] md:p-[32px]"
         style={{
-          width: 'min(85vw, 450px)',
-          height: 'min(60vh, 720px)',
-          borderRadius: 'min(20vw, 155px)',
           background: 'linear-gradient(135deg, #18191c 0%, #0d0e10 100%)',
           boxShadow: `
             inset 3px 3px 6px rgba(255, 255, 255, 0.08),
@@ -855,15 +852,12 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
             0 15px 45px rgba(0, 0, 0, 0.95),
             0 0 80px rgba(0, 0, 0, 0.8)
           `,
-          padding: 'min(3vw, 24px)', // Depth spacer
         }}
       >
         {/* INNER PLASTIC ACCENT BEZEL (Realistic stepped frame) */}
         <div 
+          className="relative flex items-center justify-center w-full h-full rounded-[115px] md:rounded-[150px] p-[26px] md:p-[32px]"
           style={{
-            width: '100%',
-            height: '100%',
-            borderRadius: 'min(18vw, 130px)',
             background: 'linear-gradient(145deg, #101113 0%, #08090a 100%)',
             boxShadow: `
               inset 16px 0 25px -5px ${params.bezelHighlight},
@@ -872,37 +866,22 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
               inset 0 -20px 30px rgba(0, 0, 0, 0.95),
               0 3px 10px rgba(0,0,0,0.6)
             `,
-            padding: 'min(3vw, 26px)', // Thickness of secondary bezel
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            position: 'relative'
           }}
         >
           {/* RUBBER GLASS GASKET (Black sealer ring) */}
           <div 
             id="window-bezel"
+            className="relative overflow-hidden flex items-center justify-center w-full h-full rounded-[92px] md:rounded-[120px]"
             style={{
-              width: '100%',
-              height: '100%',
-              borderRadius: 'min(16vw, 105px)',
               border: '2.5px solid #030303',
               boxShadow: 'inset 0 0 10px rgba(0, 0, 0, 0.9), 0 1px 2px rgba(255,255,255,0.05)',
-              position: 'relative',
-              overflow: 'hidden',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center'
             }}
           >
             {/* PROCEDURAL WEBGL SKY & VOLUMETRIC CLOUDS CANVAS */}
             <canvas 
               ref={canvasRef}
+              className="block w-full h-full rounded-[90px] md:rounded-[118px]"
               style={{
-                width: '100%',
-                height: '100%',
-                borderRadius: 'min(15.5vw, 102px)',
-                display: 'block',
                 backgroundColor: '#0a0d16'
               }}
             />
