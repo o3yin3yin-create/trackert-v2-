@@ -874,7 +874,7 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
             className="relative overflow-hidden flex items-center justify-center w-full h-full rounded-[92px] md:rounded-[120px]"
             style={{
               border: '2.5px solid #030303',
-              boxShadow: 'inset 0 0 10px rgba(0, 0, 0, 0.9), 0 1px 2px rgba(255,255,255,0.05)',
+              boxShadow: 'inset 0 0 10px rgba(0, 0, 0, 0.9)',
             }}
           >
             {/* PROCEDURAL WEBGL SKY & VOLUMETRIC CLOUDS CANVAS */}
