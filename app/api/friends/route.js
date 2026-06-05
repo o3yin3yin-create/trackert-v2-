@@ -97,7 +97,15 @@ export async function POST(req) {
     }
 
     if (friend.id === userId) {
-      return NextResponse.json({ error: 'You cannot add yourself' }, { status: 400 });
+      const existingSelf = await prisma.friendship.findFirst({
+        where: { userId: userId, friendId: userId }
+      });
+      if (!existingSelf) {
+        await prisma.friendship.create({
+          data: { userId: userId, friendId: userId, status: 'ACCEPTED' }
+        });
+      }
+      return NextResponse.json({ success: true, message: 'LONELY_ADD_SELF' });
     }
 
     // Check if friendship already exists in either direction

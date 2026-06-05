@@ -75,8 +75,13 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
       });
       const data = await res.json();
       if (data.success) {
-        setAddMessage(isRtl ? 'تم إرسال الطلب بنجاح!' : 'Request sent successfully!');
+        if (data.message === 'LONELY_ADD_SELF') {
+          setAddMessage(lang === 'ar' ? 'انت وحيد لدرجة انك مش هتنافس حد ؟ مش مشكلة ،، خصمك دلوقتي هو نفسك' : "Are you so lonely you won't compete with anyone? No problem, your opponent is now yourself");
+        } else {
+          setAddMessage(lang === 'ar' ? 'تم إرسال الطلب بنجاح!' : 'Request sent successfully!');
+        }
         setAddCode('');
+        fetchFriends();
       } else {
         setAddMessage(data.error || 'Error sending request');
       }
