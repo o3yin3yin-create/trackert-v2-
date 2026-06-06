@@ -29,8 +29,8 @@ export async function GET(req) {
         ]
       },
       include: {
-        user: { select: { id: true, name: true, friendCode: true, habits: { select: { id: true, type: true, subItems: true } } } },
-        friend: { select: { id: true, name: true, friendCode: true, habits: { select: { id: true, type: true, subItems: true } } } }
+        user: { select: { id: true, name: true, friendCode: true, avatar: true, habits: { select: { id: true, type: true, subItems: true } } } },
+        friend: { select: { id: true, name: true, friendCode: true, avatar: true, habits: { select: { id: true, type: true, subItems: true } } } }
       }
     });
 
@@ -56,6 +56,7 @@ export async function GET(req) {
         id: friendProfile.id,
         name: friendProfile.name,
         friendCode: friendProfile.friendCode,
+        avatar: friendProfile.avatar || 'boy1',
         focusTime: dailyLog?.focusTime || 0,
         habitsCompleted: calculateHabitsCompleted(dailyLog?.logs, friendProfile.habits, date),
         habitsTotal: calculateHabitsTotal(friendProfile.habits),
@@ -65,7 +66,7 @@ export async function GET(req) {
     // 4. Fetch the current user separately for 1-on-1 comparisons
     const currentUserProfile = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, friendCode: true, habits: { select: { id: true, type: true, subItems: true } } }
+      select: { id: true, name: true, friendCode: true, avatar: true, habits: { select: { id: true, type: true, subItems: true } } }
     });
     const currentUserDailyLog = await prisma.dailyLog.findUnique({
       where: { userId_date: { userId, date } }
@@ -77,6 +78,7 @@ export async function GET(req) {
         id: currentUserProfile.id,
         name: currentUserProfile.name,
         friendCode: currentUserProfile.friendCode,
+        avatar: currentUserProfile.avatar || 'boy1',
         focusTime: currentUserDailyLog?.focusTime || 0,
         habitsCompleted: calculateHabitsCompleted(currentUserDailyLog?.logs, currentUserProfile.habits, date),
         habitsTotal: calculateHabitsTotal(currentUserProfile.habits),

@@ -22,6 +22,8 @@ model User {
   finishedTickets Json?     @default("[]") // History of finished flight tickets
   activeSessionType String? // "pomodoro" or "flight"
   activeSessionData Json?   // Session details
+  avatar         String?    @default("boy1") // boy1, boy2, boy3, girl1, girl2, girl3
+  widgetPreferences Json?   @default("{\"mode\":\"default\",\"friends\":[],\"groups\":[]}")
   friendCode     String?    @unique // كود الصداقة المميز
   isAdmin        Boolean    @default(false)
   isBlocked      Boolean    @default(false)
@@ -33,6 +35,7 @@ model User {
   friendships    Friendship[] @relation("UserFriendships")
   friendRequests Friendship[] @relation("FriendRequests")
   groupMembers   GroupMember[]
+  challengeParticipants ChallengeParticipant[]
 }
 
 // 2. جدول العادات ببيانات الإشعارات المخصصة بنظام 12 ساعة
@@ -101,4 +104,28 @@ model GroupMember {
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, userId])
+}
+
+// 6. Shared Challenges (تحديات مشتركة)
+model SharedChallenge {
+  id          String   @id @default(cuid())
+  name        String
+  tasks       Json     // array of strings: ["Read 10 pages", "Workout"]
+  createdAt   DateTime @default(now())
+  deadline    DateTime?
+  
+  participants ChallengeParticipant[]
+}
+
+model ChallengeParticipant {
+  id          String   @id @default(cuid())
+  challengeId String
+  userId      String
+  progress    Json     @default("{}") // e.g. {"date-subitem": true}
+  joinedAt    DateTime @default(now())
+
+  challenge   SharedChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, userId])
 }

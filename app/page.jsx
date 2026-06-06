@@ -444,6 +444,23 @@ export default function App() {
     return '#FF9F0A';
   });
 
+  const [avatar, setAvatar] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('daybase_avatar_v1') || 'boy1';
+    }
+    return 'boy1';
+  });
+
+  const [widgetPreferences, setWidgetPreferences] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('daybase_widget_prefs_v1');
+      return saved ? JSON.parse(saved) : { mode: 'default', friends: [], groups: [] };
+    }
+    return { mode: 'default', friends: [], groups: [] };
+  });
+
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+
   const [expandedHabits, setExpandedHabits] = useState([]);
 
   // --- States for Streak & Notes ---
@@ -693,6 +710,14 @@ export default function App() {
             if (state.themeColor) {
                setThemeColor(state.themeColor);
                if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', state.themeColor);
+            }
+            if (state.avatar) {
+               setAvatar(state.avatar);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_avatar_v1', state.avatar);
+            }
+            if (state.widgetPreferences) {
+               setWidgetPreferences(state.widgetPreferences);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_widget_prefs_v1', JSON.stringify(state.widgetPreferences));
             }
             if (state.friendCode) {
                setFriendCode(state.friendCode);
@@ -1016,6 +1041,8 @@ export default function App() {
   useEffect(() => { if (isMounted) localStorage.setItem('daybase_sleepData_v4', JSON.stringify(sleepData)); }, [sleepData, isMounted]);
   useEffect(() => { if (isMounted) localStorage.setItem('daybase_mission_v4', mission); }, [mission, isMounted]);
   useEffect(() => { if (isMounted) localStorage.setItem('daybase_themeColor_v4', themeColor); }, [themeColor, isMounted]);
+  useEffect(() => { if (isMounted) localStorage.setItem('daybase_avatar_v1', avatar); }, [avatar, isMounted]);
+  useEffect(() => { if (isMounted) localStorage.setItem('daybase_widget_prefs_v1', JSON.stringify(widgetPreferences)); }, [widgetPreferences, isMounted]);
   useEffect(() => { if (isMounted) localStorage.setItem('daybase_habitNotes_v4', JSON.stringify(habitNotes)); }, [habitNotes, isMounted]);
   useEffect(() => { if (isMounted) localStorage.setItem('daybase_cards_v4', JSON.stringify(habitCards)); }, [habitCards, isMounted]);
   useEffect(() => { if (isMounted) localStorage.setItem('daybase_daily_tasks_v4', JSON.stringify(dailyTasks)); }, [dailyTasks, isMounted]);
@@ -2673,6 +2700,9 @@ export default function App() {
                           if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', e.target.value);
                         }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                       </label>
+                      <button onClick={() => { setIsAvatarModalOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-black dark:text-white border-t border-black/5 dark:border-white/5 mt-1 pt-3">
+                        <img src={`/avatars/${avatar}.png`} alt="Avatar" className="w-5 h-5 rounded-full border border-white/20" /> Change Avatar
+                      </button>
                       {isAdmin && (
                         <button onClick={() => { setIsAdminPanelOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-purple-500 dark:text-purple-400 border-t border-black/5 dark:border-white/5 mt-1 pt-3">
                           <Users size={16} /> Admin Dashboard
@@ -2689,7 +2719,7 @@ export default function App() {
           {/* Preserves the original clean vertical mobile stack that the user loves */}
           <div className="flex flex-col w-full md:hidden gap-6">
             <Show when="signed-in">
-              <FriendsWidget themeColor={themeColor} lang={lang} activeDateStr={activeDateStr} />
+              <FriendsWidget themeColor={themeColor} lang={lang} activeDateStr={activeDateStr} preferences={widgetPreferences} setPreferences={setWidgetPreferences} />
             </Show>
             
             {/* Mobile Mission Card */}
@@ -2849,7 +2879,7 @@ export default function App() {
             {/* COLUMN 1: Personal Routine (التركيز والعادات اليومية) */}
             <div className="flex flex-col gap-6 w-full">
               <Show when="signed-in">
-                <FriendsWidget themeColor={themeColor} lang={lang} activeDateStr={activeDateStr} />
+                <FriendsWidget themeColor={themeColor} lang={lang} activeDateStr={activeDateStr} preferences={widgetPreferences} setPreferences={setWidgetPreferences} />
               </Show>
               
               {/* Mission & Score Card */}
@@ -4133,6 +4163,50 @@ export default function App() {
               <button onClick={() => navTo('tasks')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
               <button onClick={() => navTo('pomodoro')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><Timer size={18} /></button>
               <button onClick={() => navTo('flight')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><PlaneTakeoff size={18} /></button>
+              
+              {isEmergencyMode && <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-1 rounded-full bg-red-500/20 border border-red-500/50 animate-pulse text-red-500 font-bold text-xs"><ShieldAlert size={14} /> EMERGENCY MODE ACTIVE</div>}
+
+              {/* Avatar Picker Modal */}
+              {isAvatarModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                  <div className="liquid-panel rounded-[32px] p-8 w-full max-w-md animate-in fade-in zoom-in duration-300 relative border border-white/10">
+                    <button onClick={() => setIsAvatarModalOpen(false)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-black dark:text-white transition-colors">
+                      <X size={20} />
+                    </button>
+                    
+                    <div className="flex flex-col items-center gap-2 mb-8">
+                      <div className="w-16 h-16 rounded-full bg-indigo-500/20 flex items-center justify-center mb-2">
+                        <img src={`/avatars/${avatar}.png`} alt="Current Avatar" className="w-14 h-14 rounded-full border-2 border-indigo-500 shadow-xl" />
+                      </div>
+                      <h2 className="text-2xl font-black text-black dark:text-white text-center">Choose Your Avatar</h2>
+                      <p className="text-sm font-semibold text-black/50 dark:text-white/50 text-center">Select how you appear to your friends.</p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4 mb-6">
+                      {['boy1', 'boy2', 'boy3', 'girl1', 'girl2', 'girl3'].map(av => (
+                        <button
+                          key={av}
+                          onClick={() => {
+                            setAvatar(av);
+                            setIsAvatarModalOpen(false);
+                            // It syncs automatically due to useEffect tracking avatar state
+                          }}
+                          className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition-all duration-200 active:scale-95 ${avatar === av ? 'border-[#FF9F0A] shadow-[0_0_20px_rgba(255,159,10,0.3)]' : 'border-transparent hover:border-white/20'}`}
+                        >
+                          <img src={`/avatars/${av}.png`} alt={av} className="w-full h-full object-cover" />
+                          {avatar === av && (
+                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                              <div className="bg-[#FF9F0A] text-white rounded-full p-1"><Check size={16} strokeWidth={3} /></div>
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ---------------- HEADER ---------------- */}
               <button 
                 onClick={() => { haptic('light'); setIsFriendsPanelOpen(true); }} 
                 className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"
