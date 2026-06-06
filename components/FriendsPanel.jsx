@@ -18,6 +18,8 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
   const [addLoading, setAddLoading] = useState(false);
   const [addMessage, setAddMessage] = useState('');
   const [copied, setCopied] = useState(false);
+  const [showAddFriend, setShowAddFriend] = useState(false);
+  const [showAddGroup, setShowAddGroup] = useState(false);
 
   const isRtl = lang === 'ar';
   const t = {
@@ -280,50 +282,74 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
           ) : activeTab === 'friends' ? (
             <div className="flex flex-col gap-6">
               
-              {/* My Friend Code */}
-              <div className="bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-sm">
-                <div>
-                  <h3 className="text-[10px] font-bold tracking-widest uppercase opacity-50">{t.myCode}</h3>
-                  <p className="text-xl font-black tracking-widest mt-1" style={{ color: themeColor }}>{friendCode}</p>
-                </div>
+              {/* Toggle Add Friend Button */}
+              {!showAddFriend && (
                 <button 
-                  onClick={() => {
-                    navigator.clipboard.writeText(friendCode);
-                  }}
-                  className="px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
+                  onClick={() => setShowAddFriend(true)}
+                  className="w-full bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-2xl p-4 flex items-center justify-center gap-2 shadow-sm font-bold text-sm tracking-wide transition-all active:scale-95"
+                  style={{ color: themeColor }}
                 >
-                  {t.copy}
+                  <UserPlus size={18} />
+                  {t.addFriend || 'Add Friend'}
                 </button>
-              </div>
+              )}
 
-              {/* Add Friend Form inline */}
-              <div className="flex flex-col gap-3">
-                <form onSubmit={handleSendRequest} className="relative">
-                  <input 
-                    type="text" 
-                    value={addCode}
-                    onChange={(e) => setAddCode(e.target.value.toUpperCase())}
-                    placeholder={t.enterCode}
-                    maxLength={6}
-                    className="w-full bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-2xl px-5 py-4 text-center text-lg font-black tracking-widest placeholder:opacity-30 focus:outline-none focus:border-current transition-colors uppercase"
-                    style={{ outlineColor: themeColor }}
-                  />
+              {/* Add Friend Section */}
+              {showAddFriend && (
+                <div className="flex flex-col gap-6 bg-black/5 dark:bg-white/5 p-4 rounded-3xl relative">
                   <button 
-                    type="submit"
-                    disabled={addLoading || addCode.length < 6}
-                    className="mt-3 w-full py-4 rounded-2xl font-bold text-sm tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
-                    style={{ backgroundColor: themeColor }}
+                    onClick={() => setShowAddFriend(false)}
+                    className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 transition-colors"
                   >
-                    {addLoading ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
-                    {t.sendRequest}
+                    <X size={14} />
                   </button>
-                </form>
-                {addMessage && activeTab === 'friends' && (
-                  <p className="text-xs text-center font-bold" style={{ color: addMessage.includes('Error') ? '#EF4444' : themeColor }}>
-                    {addMessage}
-                  </p>
-                )}
-              </div>
+                  
+                  {/* My Friend Code */}
+                  <div className="bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-sm mt-4">
+                    <div>
+                      <h3 className="text-[10px] font-bold tracking-widest uppercase opacity-50">{t.myCode}</h3>
+                      <p className="text-xl font-black tracking-widest mt-1" style={{ color: themeColor }}>{friendCode}</p>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(friendCode);
+                      }}
+                      className="px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
+                    >
+                      {t.copy}
+                    </button>
+                  </div>
+
+                  {/* Add Friend Form inline */}
+                  <div className="flex flex-col gap-3">
+                    <form onSubmit={handleSendRequest} className="relative">
+                      <input 
+                        type="text" 
+                        value={addCode}
+                        onChange={(e) => setAddCode(e.target.value.toUpperCase())}
+                        placeholder={t.enterCode}
+                        maxLength={6}
+                        className="w-full bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-2xl px-5 py-4 text-center text-lg font-black tracking-widest placeholder:opacity-30 focus:outline-none focus:border-current transition-colors uppercase"
+                        style={{ outlineColor: themeColor }}
+                      />
+                      <button 
+                        type="submit"
+                        disabled={addLoading || addCode.length < 6}
+                        className="mt-3 w-full py-4 rounded-2xl font-bold text-sm tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
+                        style={{ backgroundColor: themeColor }}
+                      >
+                        {addLoading ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
+                        {t.sendRequest}
+                      </button>
+                    </form>
+                    {addMessage && activeTab === 'friends' && (
+                      <p className="text-xs text-center font-bold" style={{ color: addMessage.includes('Error') ? '#EF4444' : themeColor }}>
+                        {addMessage}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Pending Requests */}
               {requests.length > 0 && (
@@ -420,54 +446,76 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
           ) : activeTab === 'groups' ? (
             <div className="flex flex-col gap-6">
 
+              {/* Toggle Add Group Button */}
+              {!showAddGroup && (
+                <button 
+                  onClick={() => setShowAddGroup(true)}
+                  className="w-full bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-2xl p-4 flex items-center justify-center gap-2 shadow-sm font-bold text-sm tracking-wide transition-all active:scale-95"
+                  style={{ color: themeColor }}
+                >
+                  <Users size={18} />
+                  {t.joinGroup || 'Join / Create Group'}
+                </button>
+              )}
+
               {/* Join/Create Group Form inline */}
-              <div className="flex flex-col gap-4 pb-6 border-b border-black/5 dark:border-white/5">
-                <form onSubmit={handleJoinGroup} className="flex flex-col gap-3">
-                  <input 
-                    type="text" 
-                    value={addCode}
-                    onChange={(e) => setAddCode(e.target.value.toUpperCase())}
-                    placeholder={t.groupCode}
-                    className="w-full bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-2xl px-5 py-4 text-center text-sm font-black tracking-widest placeholder:opacity-30 focus:outline-none focus:border-current transition-colors uppercase"
-                    style={{ outlineColor: themeColor }}
-                  />
+              {showAddGroup && (
+                <div className="flex flex-col gap-4 bg-black/5 dark:bg-white/5 p-4 rounded-3xl relative mb-2">
                   <button 
-                    type="submit"
-                    disabled={joinGroupLoading || !addCode}
-                    className="w-full py-4 rounded-2xl font-bold text-sm tracking-wide transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
-                    style={{ backgroundColor: themeColor, color: themeColor.toLowerCase() === '#ffffff' ? '#000' : '#fff' }}
+                    onClick={() => setShowAddGroup(false)}
+                    className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 transition-colors"
                   >
-                    {joinGroupLoading ? <Loader2 size={16} className="animate-spin" /> : null}
-                    {t.joinGroup || 'Join Group'}
+                    <X size={14} />
                   </button>
-                </form>
-                
-                <form onSubmit={(e) => { e.preventDefault(); handleCreateGroup(); }} className="flex flex-col gap-3">
-                  <input 
-                    type="text" 
-                    value={groupName}
-                    onChange={(e) => setGroupName(e.target.value)}
-                    placeholder={t.groupName}
-                    className="w-full bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-2xl px-5 py-4 text-center text-sm font-black placeholder:opacity-30 focus:outline-none focus:border-current transition-colors"
-                    style={{ outlineColor: themeColor }}
-                  />
-                  <button 
-                    type="submit"
-                    disabled={createGroupLoading || !groupName}
-                    className="w-full py-4 rounded-2xl font-bold text-sm tracking-wide transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
-                    style={{ backgroundColor: themeColor, color: themeColor.toLowerCase() === '#ffffff' ? '#000' : '#fff' }}
-                  >
-                    {createGroupLoading ? <Loader2 size={16} className="animate-spin" /> : null}
-                    {t.createGroup || 'Create Group'}
-                  </button>
-                </form>
-                
-                {addMessage && activeTab === 'groups' && (
-                  <p className="text-xs text-center font-bold mt-1" style={{ color: addMessage.includes('Error') ? '#EF4444' : themeColor }}>
-                    {addMessage}
-                  </p>
-                )}
-              </div>
+                  
+                  <div className="mt-4 flex flex-col gap-4">
+                    <form onSubmit={handleJoinGroup} className="flex flex-col gap-3">
+                      <input 
+                        type="text" 
+                        value={addCode}
+                        onChange={(e) => setAddCode(e.target.value.toUpperCase())}
+                        placeholder={t.groupCode}
+                        className="w-full bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-2xl px-5 py-4 text-center text-sm font-black tracking-widest placeholder:opacity-30 focus:outline-none focus:border-current transition-colors uppercase"
+                        style={{ outlineColor: themeColor }}
+                      />
+                      <button 
+                        type="submit"
+                        disabled={joinGroupLoading || !addCode}
+                        className="w-full py-4 rounded-2xl font-bold text-sm tracking-wide transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
+                        style={{ backgroundColor: themeColor, color: themeColor.toLowerCase() === '#ffffff' ? '#000' : '#fff' }}
+                      >
+                        {joinGroupLoading ? <Loader2 size={16} className="animate-spin" /> : null}
+                        {t.joinGroup || 'Join Group'}
+                      </button>
+                    </form>
+                    
+                    <form onSubmit={(e) => { e.preventDefault(); handleCreateGroup(); }} className="flex flex-col gap-3 pt-4 border-t border-black/10 dark:border-white/10">
+                      <input 
+                        type="text" 
+                        value={groupName}
+                        onChange={(e) => setGroupName(e.target.value)}
+                        placeholder={t.groupName}
+                        className="w-full bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-2xl px-5 py-4 text-center text-sm font-black placeholder:opacity-30 focus:outline-none focus:border-current transition-colors"
+                        style={{ outlineColor: themeColor }}
+                      />
+                      <button 
+                        type="submit"
+                        disabled={createGroupLoading || !groupName}
+                        className="w-full py-4 rounded-2xl font-bold text-sm tracking-wide transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
+                        style={{ backgroundColor: themeColor, color: themeColor.toLowerCase() === '#ffffff' ? '#000' : '#fff' }}
+                      >
+                        {createGroupLoading ? <Loader2 size={16} className="animate-spin" /> : null}
+                        {t.createGroup || 'Create Group'}
+                      </button>
+                    </form>
+                  </div>
+                  {addMessage && activeTab === 'groups' && (
+                    <p className="text-xs text-center font-bold mt-1" style={{ color: addMessage.includes('Error') ? '#EF4444' : themeColor }}>
+                      {addMessage}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {groups.length === 0 ? (
                 <div className="text-center py-10 opacity-50">
