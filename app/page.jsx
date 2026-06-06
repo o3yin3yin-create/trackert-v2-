@@ -4166,7 +4166,7 @@ export default function App() {
               <button onClick={() => navTo('flight')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><PlaneTakeoff size={18} /></button>
 
               {/* Avatar Picker Modal */}
-              {isAvatarModalOpen && (
+              {isAvatarModalOpen && createPortal(
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
                   <div className="liquid-panel rounded-[32px] p-8 w-full max-w-md animate-in fade-in zoom-in duration-300 relative border border-white/10">
                     <button onClick={() => setIsAvatarModalOpen(false)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-black dark:text-white transition-colors">
@@ -4175,7 +4175,7 @@ export default function App() {
                     
                     <div className="flex flex-col items-center gap-2 mb-8">
                       <div className="w-16 h-16 rounded-full bg-[#1A1A1A] flex items-center justify-center mb-2 shadow-xl border border-white/10 text-white">
-                        <AvatarIcon name={avatar} size={32} />
+                        <AvatarIcon name={isMounted ? avatar : 'user'} size={32} />
                       </div>
                       <h2 className="text-2xl font-black text-black dark:text-white text-center">Choose Your Avatar</h2>
                       <p className="text-sm font-semibold text-black/50 dark:text-white/50 text-center">Select how you appear to your friends.</p>
@@ -4196,7 +4196,8 @@ export default function App() {
                       ))}
                     </div>
                   </div>
-                </div>
+                </div>,
+                document.body
               )}
 
               {/* ---------------- HEADER ---------------- */}

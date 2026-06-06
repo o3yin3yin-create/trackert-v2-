@@ -109,12 +109,11 @@ export default function FriendsWidget({ themeColor, lang, activeDateStr, prefere
                   <div key={f.id} className="flex flex-col items-center gap-2 snap-start min-w-[60px] relative">
                     {f.isMe && <div className="absolute -top-2 text-[8px] font-black uppercase tracking-widest opacity-50">YOU</div>}
                     <div 
-                      className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-sm border-2 overflow-hidden transition-all duration-300 ${f.isMe ? 'ring-2 ring-offset-2 dark:ring-offset-[#0A0A0A]' : ''}`}
+                      className="w-14 h-14 rounded-full flex items-center justify-center text-white shadow-sm border-2 overflow-hidden transition-all duration-300"
                       style={{ 
                         borderColor: score > 0 ? themeColor : 'rgba(150,150,150,0.2)',
                         backgroundColor: '#1A1A1A',
-                        opacity: score === 0 ? 0.6 : 1,
-                        ...(f.isMe ? { ringColor: themeColor } : {})
+                        opacity: score === 0 ? 0.6 : 1
                       }}
                     >
                       <AvatarIcon name={f.avatar} size={24} />
