@@ -2720,7 +2720,7 @@ export default function App() {
           {/* Preserves the original clean vertical mobile stack that the user loves */}
           <div className="flex flex-col w-full md:hidden gap-6">
             <Show when="signed-in">
-              <FriendsWidget themeColor={themeColor} lang={lang} activeDateStr={activeDateStr} preferences={isMounted ? widgetPreferences : undefined} setPreferences={setWidgetPreferences} />
+              <FriendsWidget themeColor={themeColor} lang={lang} activeDateStr={activeDateStr} preferences={isMounted ? widgetPreferences : undefined} setPreferences={setWidgetPreferences} currentUserStats={{ habitsCompleted: totalCompleted, habitsTotal: totalPossible }} />
             </Show>
             
             {/* Mobile Mission Card */}
@@ -2880,7 +2880,7 @@ export default function App() {
             {/* COLUMN 1: Personal Routine (التركيز والعادات اليومية) */}
             <div className="flex flex-col gap-6 w-full">
               <Show when="signed-in">
-                <FriendsWidget themeColor={themeColor} lang={lang} activeDateStr={activeDateStr} preferences={isMounted ? widgetPreferences : undefined} setPreferences={setWidgetPreferences} />
+                <FriendsWidget themeColor={themeColor} lang={lang} activeDateStr={activeDateStr} preferences={isMounted ? widgetPreferences : undefined} setPreferences={setWidgetPreferences} currentUserStats={{ habitsCompleted: totalCompleted, habitsTotal: totalPossible }} />
               </Show>
               
               {/* Mission & Score Card */}

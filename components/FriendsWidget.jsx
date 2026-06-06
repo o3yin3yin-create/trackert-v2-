@@ -3,8 +3,9 @@ import { Users, Loader2, Settings, Target, Check, Plus, X } from 'lucide-react';
 import ChallengeModal from './ChallengeModal';
 import AvatarIcon from './AvatarIcon';
 
-export default function FriendsWidget({ themeColor, lang, activeDateStr, preferences = {}, setPreferences }) {
+export default function FriendsWidget({ themeColor, lang, activeDateStr, preferences = {}, setPreferences, currentUserStats }) {
   const [friends, setFriends] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [challenges, setChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -14,7 +15,7 @@ export default function FriendsWidget({ themeColor, lang, activeDateStr, prefere
   const prefs = {
     mode: 'default', // 'default' | 'challenge'
     friends: [], // array of friend IDs to show
-    groups: [],
+    groups: [], // array of group IDs to show
     challengeId: null,
     ...preferences
   };
@@ -23,27 +24,26 @@ export default function FriendsWidget({ themeColor, lang, activeDateStr, prefere
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [friendsRes, challengesRes] = await Promise.all([
+        const [friendsRes, groupsRes, challengesRes] = await Promise.all([
           fetch(`/api/friends?date=${activeDateStr}`),
-          fetch(`/api/challenges`) // We need to create this!
+          fetch(`/api/groups?date=${activeDateStr}`),
+          fetch(`/api/challenges`)
         ]);
         
         const friendsData = await friendsRes.json();
+        const groupsData = await groupsRes.json();
         const challengesData = await challengesRes.json();
 
         if (friendsData.friends) {
-          // Add current user to the list for ranking
-          const allUsers = [...friendsData.friends];
+          const allFriends = [...friendsData.friends];
           if (friendsData.currentUser) {
-            allUsers.push({ ...friendsData.currentUser, isMe: true });
+            allFriends.push({ ...friendsData.currentUser, isMe: true });
           }
+          setFriends(allFriends);
+        }
 
-          const sorted = allUsers.sort((a, b) => {
-            const scoreA = a.habitsTotal > 0 ? a.habitsCompleted / a.habitsTotal : 0;
-            const scoreB = b.habitsTotal > 0 ? b.habitsCompleted / b.habitsTotal : 0;
-            return scoreB - scoreA;
-          });
-          setFriends(sorted);
+        if (groupsData.groups) {
+          setGroups(groupsData.groups);
         }
 
         if (challengesData.challenges) {
@@ -66,10 +66,59 @@ export default function FriendsWidget({ themeColor, lang, activeDateStr, prefere
     );
   }
 
-  // Filter friends based on preferences
-  const displayFriends = prefs.friends?.length > 0 
-    ? friends.filter(f => prefs.friends.includes(f.id) || f.isMe)
-    : friends;
+  // --- Real-time Current User Override ---
+  // If currentUserStats are passed from parent, use them for the "isMe" object to get instantaneous updates
+  const processedFriends = friends.map(f => {
+    if (f.isMe && currentUserStats) {
+      return {
+        ...f,
+        habitsCompleted: currentUserStats.habitsCompleted,
+        habitsTotal: currentUserStats.habitsTotal,
+      };
+    }
+    return f;
+  });
+
+  // --- Filter and Combine Selected Items ---
+  const hasSelection = prefs.friends?.length > 0 || prefs.groups?.length > 0;
+  
+  // If NO selection at all, we ONLY show YOU. This fixes the "app chooses randomly" issue.
+  const displayItems = [];
+
+  // Add Friends
+  processedFriends.forEach(f => {
+    if (f.isMe || (hasSelection && prefs.friends?.includes(f.id))) {
+      displayItems.push(f);
+    }
+  });
+
+  // Add Groups
+  if (hasSelection && prefs.groups?.length > 0) {
+    groups.forEach(g => {
+      if (prefs.groups.includes(g.id)) {
+        let totalCompleted = 0;
+        let totalPossible = 0;
+        g.members.forEach(m => {
+          totalCompleted += m.habitsCompleted || 0;
+          totalPossible += m.habitsTotal || 0;
+        });
+        displayItems.push({
+          id: g.id,
+          name: g.name,
+          isGroup: true,
+          habitsCompleted: totalCompleted,
+          habitsTotal: totalPossible
+        });
+      }
+    });
+  }
+
+  // Sort display items by score
+  displayItems.sort((a, b) => {
+    const scoreA = a.habitsTotal > 0 ? a.habitsCompleted / a.habitsTotal : 0;
+    const scoreB = b.habitsTotal > 0 ? b.habitsCompleted / b.habitsTotal : 0;
+    return scoreB - scoreA;
+  });
 
   const activeChallenge = challenges.find(c => c.id === prefs.challengeId);
 
@@ -99,28 +148,32 @@ export default function FriendsWidget({ themeColor, lang, activeDateStr, prefere
         </div>
 
         {prefs.mode === 'default' && (
-          displayFriends.length === 0 ? (
-            <div className="text-center text-sm font-semibold opacity-50 py-4">No friends added yet.</div>
+          displayItems.length === 0 ? (
+            <div className="text-center text-sm font-semibold opacity-50 py-4">No selection. Please choose friends or groups in settings.</div>
           ) : (
             <div className="flex gap-4 overflow-x-auto scrollbar-hide snap-x pb-2 items-end">
-              {displayFriends.map(f => {
-                const score = f.habitsTotal > 0 ? Math.round((f.habitsCompleted / f.habitsTotal) * 100) : 0;
+              {displayItems.map(item => {
+                const score = item.habitsTotal > 0 ? Math.round((item.habitsCompleted / item.habitsTotal) * 100) : 0;
                 return (
-                  <div key={f.id} className="flex flex-col items-center gap-2 snap-start min-w-[60px] relative">
-                    {f.isMe && <div className="absolute -top-2 text-[8px] font-black uppercase tracking-widest opacity-50">YOU</div>}
+                  <div key={item.id} className="flex flex-col items-center gap-2 snap-start min-w-[60px] relative">
+                    {item.isMe && <div className="absolute -top-2 text-[8px] font-black uppercase tracking-widest opacity-50">YOU</div>}
                     <div 
-                      className="w-14 h-14 rounded-full flex items-center justify-center text-white shadow-sm border-2 overflow-hidden transition-all duration-300"
+                      className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-sm border-2 overflow-hidden transition-all duration-300 ${item.isGroup ? 'bg-black/10 dark:bg-white/10' : ''}`}
                       style={{ 
                         borderColor: score > 0 ? themeColor : 'rgba(150,150,150,0.2)',
-                        backgroundColor: '#1A1A1A',
+                        backgroundColor: item.isGroup ? undefined : '#1A1A1A',
                         opacity: score === 0 ? 0.6 : 1
                       }}
                     >
-                      <AvatarIcon name={f.avatar} size={24} />
+                      {item.isGroup ? (
+                        <Users size={20} className="opacity-80 text-black dark:text-white" />
+                      ) : (
+                        <AvatarIcon name={item.avatar} size={24} />
+                      )}
                     </div>
                     <div className="flex flex-col items-center">
                       <span className="text-[10px] font-bold truncate w-14 text-center opacity-80">
-                        {f.name.split(' ')[0]}
+                        {item.name.split(' ')[0]}
                       </span>
                       <span className="text-[11px] font-black" style={{ color: score > 0 ? themeColor : 'inherit', opacity: score > 0 ? 1 : 0.4 }}>
                         {score}%
@@ -159,7 +212,6 @@ export default function FriendsWidget({ themeColor, lang, activeDateStr, prefere
                 ))}
               </div>
               <div className="w-full h-1.5 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden mt-1">
-                {/* Simplified total progress for the widget */}
                 <div className="h-full rounded-full transition-all duration-500" style={{ width: '50%', backgroundColor: themeColor }} />
               </div>
             </div>
@@ -170,7 +222,7 @@ export default function FriendsWidget({ themeColor, lang, activeDateStr, prefere
       {/* Widget Settings Modal */}
       {isSettingsOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="liquid-panel rounded-[32px] p-6 w-full max-w-sm relative">
+          <div className="liquid-panel rounded-[32px] p-6 w-full max-w-sm relative max-h-[80vh] overflow-y-auto">
             <button onClick={() => setIsSettingsOpen(false)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
               <X size={20} />
             </button>
@@ -193,33 +245,65 @@ export default function FriendsWidget({ themeColor, lang, activeDateStr, prefere
               </div>
 
               {prefs.mode === 'default' && (
-                <div className="flex flex-col gap-2 mt-2">
-                  <span className="text-xs font-bold opacity-50 uppercase tracking-widest">Show Friends</span>
-                  <div className="max-h-48 overflow-y-auto flex flex-col gap-1">
-                    {friends.filter(f => !f.isMe).map(f => (
-                      <label key={f.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-black dark:text-white">
-                            <AvatarIcon name={f.avatar} size={18} />
+                <div className="flex flex-col gap-4 mt-2">
+                  <div className="flex flex-col gap-2">
+                    <span className="text-xs font-bold opacity-50 uppercase tracking-widest">Select Friends</span>
+                    <div className="flex flex-col gap-1">
+                      {friends.filter(f => !f.isMe).map(f => (
+                        <label key={f.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-black dark:text-white">
+                              <AvatarIcon name={f.avatar} size={18} />
+                            </div>
+                            <span className="font-bold text-sm">{f.name}</span>
                           </div>
-                          <span className="font-bold text-sm">{f.name}</span>
-                        </div>
-                        <input 
-                          type="checkbox" 
-                          className="w-4 h-4"
-                          checked={prefs.friends.includes(f.id)}
-                          onChange={(e) => {
-                            let newFriends = [...prefs.friends];
-                            if (e.target.checked) newFriends.push(f.id);
-                            else newFriends = newFriends.filter(id => id !== f.id);
-                            setPreferences({ ...prefs, friends: newFriends });
-                          }}
-                        />
-                      </label>
-                    ))}
-                    {friends.filter(f => !f.isMe).length === 0 && (
-                      <span className="text-sm opacity-50 py-2">No friends to show.</span>
-                    )}
+                          <input 
+                            type="checkbox" 
+                            className="w-4 h-4"
+                            checked={prefs.friends.includes(f.id)}
+                            onChange={(e) => {
+                              let newFriends = [...(prefs.friends || [])];
+                              if (e.target.checked) newFriends.push(f.id);
+                              else newFriends = newFriends.filter(id => id !== f.id);
+                              setPreferences({ ...prefs, friends: newFriends });
+                            }}
+                          />
+                        </label>
+                      ))}
+                      {friends.filter(f => !f.isMe).length === 0 && (
+                        <span className="text-sm opacity-50 py-2">No friends available.</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <span className="text-xs font-bold opacity-50 uppercase tracking-widest">Select Groups</span>
+                    <div className="flex flex-col gap-1">
+                      {groups.map(g => (
+                        <label key={g.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-black dark:text-white">
+                              <Users size={18} />
+                            </div>
+                            <span className="font-bold text-sm">{g.name}</span>
+                          </div>
+                          <input 
+                            type="checkbox" 
+                            className="w-4 h-4"
+                            checked={prefs.groups?.includes(g.id)}
+                            onChange={(e) => {
+                              let newGroups = [...(prefs.groups || [])];
+                              if (e.target.checked) newGroups.push(g.id);
+                              else newGroups = newGroups.filter(id => id !== g.id);
+                              setPreferences({ ...prefs, groups: newGroups });
+                            }}
+                          />
+                        </label>
+                      ))}
+                      {groups.length === 0 && (
+                        <span className="text-sm opacity-50 py-2">No groups available.</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
