@@ -484,82 +484,74 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
                   });
 
                   return (
-                    <div key={g.id} className="bg-white dark:bg-[#1a1b1e] border border-black/5 dark:border-white/5 rounded-3xl p-5 shadow-sm">
-                      <div className="flex justify-between items-center mb-6">
-                        <h3 className="font-black text-lg tracking-wide">{g.name}</h3>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold tracking-widest uppercase opacity-40 bg-black/5 dark:bg-white/5 px-2 py-1 rounded-md">{g.code}</span>
-                          <button 
-                            onClick={() => handleLeaveGroup(g.id)}
-                            className="w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-red-500/10 text-red-500 transition-all"
-                            title={t.remove || 'Leave'}
-                          >
-                            <LogOut size={14} />
-                          </button>
-                        </div>
-                      </div>
+                    <div key={g.id} className="bg-white dark:bg-[#1a1b1e] border border-black/5 dark:border-white/5 rounded-3xl p-6 shadow-sm flex flex-col gap-6 relative overflow-hidden group">
+                      {/* Ambient Background glow based on top member */}
+                      <div className="absolute -top-24 -right-24 w-48 h-48 bg-yellow-500/10 blur-3xl rounded-full pointer-events-none" />
                       
-                      {/* Podium */}
-                      <div className="flex items-end justify-center gap-4 mb-8 pt-6">
-                        {/* 2nd Place */}
-                        {sortedMembers.length > 1 && (
-                          <div className="flex flex-col items-center">
-                            <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-white/10 flex items-center justify-center font-black text-sm mb-2 shadow-inner border border-white/20">
-                              {sortedMembers[1].name.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="text-[9px] font-black tracking-wider opacity-50 mb-1">2ND</div>
-                            <div className="w-14 h-16 bg-gradient-to-t from-gray-300 to-gray-200 dark:from-white/10 dark:to-white/5 rounded-t-xl flex flex-col items-center justify-center font-black border-t border-l border-r border-white/20 dark:border-white/5">
-                              <span className="text-xs">{Math.round(getScore(sortedMembers[1]) * 100)}%</span>
-                            </div>
-                            <div className="text-[9px] font-bold mt-2 truncate max-w-[50px] opacity-70">{sortedMembers[1].name}</div>
+                      <div className="flex justify-between items-start relative z-10">
+                        <div>
+                          <h3 className="font-black text-2xl tracking-tight text-black dark:text-white mb-2">{g.name}</h3>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black tracking-widest uppercase opacity-50 bg-black/5 dark:bg-white/5 px-2 py-1 rounded-md flex items-center gap-1">
+                              <Users size={10} /> {sortedMembers.length} {t.members || 'MEMBERS'}
+                            </span>
+                            <span className="text-[10px] font-black tracking-widest uppercase opacity-50 bg-black/5 dark:bg-white/5 px-2 py-1 rounded-md flex items-center gap-1 cursor-copy" onClick={() => navigator.clipboard.writeText(g.code)} title={t.copy}>
+                              {g.code}
+                            </span>
                           </div>
-                        )}
-                        
-                        {/* 1st Place */}
-                        {sortedMembers.length > 0 && (
-                          <div className="flex flex-col items-center relative">
-                            <Crown size={28} className="text-yellow-500 rotate-12 absolute -top-7 drop-shadow-md" strokeWidth={2.5} />
-                            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-500 border-2 border-yellow-200 flex items-center justify-center font-black text-lg mb-2 text-white shadow-lg">
-                              {sortedMembers[0].name.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="text-[9px] font-black tracking-wider text-yellow-600 dark:text-yellow-500 mb-1">1ST</div>
-                            <div className="w-16 h-24 bg-gradient-to-t from-yellow-200 to-yellow-100 dark:from-yellow-500/20 dark:to-yellow-500/10 rounded-t-xl flex flex-col items-center justify-center font-black text-yellow-700 dark:text-yellow-400 text-lg border-t border-l border-r border-yellow-300/50 dark:border-yellow-500/20 shadow-[0_0_20px_rgba(234,179,8,0.15)] relative overflow-hidden">
-                              <div className="absolute inset-0 bg-white/20 dark:bg-white/5 skew-y-12 translate-y-1/2"></div>
-                              <span className="relative z-10">{Math.round(getScore(sortedMembers[0]) * 100)}%</span>
-                            </div>
-                            <div className="text-[10px] font-black mt-2 truncate max-w-[60px]">{sortedMembers[0].name}</div>
-                          </div>
-                        )}
-                        
-                        {/* 3rd Place */}
-                        {sortedMembers.length > 2 && (
-                          <div className="flex flex-col items-center">
-                            <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center font-black text-sm mb-2 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-500/30">
-                              {sortedMembers[2].name.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="text-[9px] font-black tracking-wider opacity-50 mb-1 text-orange-600 dark:text-orange-400">3RD</div>
-                            <div className="w-14 h-12 bg-gradient-to-t from-orange-200/50 to-orange-100/50 dark:from-orange-500/10 dark:to-orange-500/5 rounded-t-xl flex flex-col items-center justify-center font-black text-orange-700 dark:text-orange-400 border-t border-l border-r border-orange-200/50 dark:border-orange-500/20">
-                              <span className="text-xs">{Math.round(getScore(sortedMembers[2]) * 100)}%</span>
-                            </div>
-                            <div className="text-[9px] font-bold mt-2 truncate max-w-[50px] opacity-70">{sortedMembers[2].name}</div>
-                          </div>
-                        )}
+                        </div>
+                        <button 
+                          onClick={() => handleLeaveGroup(g.id)}
+                          className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center hover:bg-red-500 hover:text-white text-red-500 transition-all opacity-0 group-hover:opacity-100"
+                          title={t.remove || 'Leave'}
+                        >
+                          <LogOut size={14} />
+                        </button>
                       </div>
 
-                      {/* Other Members List */}
-                      <div className="flex flex-col gap-2 border-t border-black/5 dark:border-white/5 pt-4">
-                        {sortedMembers.map((m, i) => (
-                          <div key={m.id} className="flex items-center justify-between opacity-80">
-                            <div className="flex items-center gap-3">
-                              <span className="text-[10px] font-black w-4 text-center">{i + 1}</span>
-                              <span className="text-xs font-bold">{m.name}</span>
+                      {/* Members Leaderboard */}
+                      <div className="flex flex-col gap-3 relative z-10">
+                        {sortedMembers.map((m, i) => {
+                          const score = Math.round(getScore(m) * 100);
+                          const isFirst = i === 0;
+                          const isSecond = i === 1;
+                          const isThird = i === 2;
+                          const isMe = m.id === currentUser?.id;
+
+                          return (
+                            <div key={m.id} className={`flex flex-col p-3 rounded-2xl border transition-all ${isFirst ? 'bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/10 dark:to-amber-900/10 border-yellow-200/50 dark:border-yellow-500/20 shadow-sm' : isMe ? 'bg-black/5 dark:bg-white/5 border-transparent' : 'bg-transparent border-transparent opacity-80'}`}>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs ${isFirst ? 'bg-yellow-400 text-yellow-900' : isSecond ? 'bg-gray-300 text-gray-800' : isThird ? 'bg-amber-600 text-white' : 'bg-black/10 dark:bg-white/10 text-black dark:text-white'}`}>
+                                    {isFirst ? <Crown size={14} /> : i + 1}
+                                  </div>
+                                  <div>
+                                    <div className="text-sm font-bold flex items-center gap-2">
+                                      {m.name}
+                                      {isMe && <span className="text-[9px] font-black tracking-widest uppercase opacity-40 bg-black/10 dark:bg-white/10 px-1.5 py-0.5 rounded">{t.you}</span>}
+                                    </div>
+                                    <div className="text-[10px] font-bold opacity-40 flex items-center gap-2">
+                                      <span>{m.habitsCompleted || 0}/{m.habitsTotal || 0} {t.items || 'items'}</span>
+                                      <span>•</span>
+                                      <span>{formatTime(m.focusTime || 0)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className={`text-lg font-black ${isFirst ? 'text-yellow-600 dark:text-yellow-500' : ''}`}>
+                                  {score}%
+                                </div>
+                              </div>
+                              
+                              {/* Progress Bar */}
+                              <div className="w-full bg-black/5 dark:bg-white/5 rounded-full h-1.5 overflow-hidden">
+                                <div 
+                                  className={`h-full rounded-full transition-all duration-1000 ${isFirst ? 'bg-yellow-400 dark:bg-yellow-500' : isSecond ? 'bg-gray-400' : isThird ? 'bg-amber-600' : 'bg-black/20 dark:bg-white/20'}`} 
+                                  style={{ width: `${score}%`, backgroundColor: isFirst || isSecond || isThird ? undefined : themeColor }} 
+                                />
+                              </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-[10px] opacity-60">{formatTime(m.focusTime)}</span>
-                              <span className="text-xs font-black">{Math.round(getScore(m) * 100)}%</span>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   );
