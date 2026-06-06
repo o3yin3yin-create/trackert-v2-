@@ -21,6 +21,10 @@ export async function GET() {
       },
     });
 
+    if (user?.isBlocked) {
+      return NextResponse.json({ error: 'ACCOUNT_BLOCKED' }, { status: 403 });
+    }
+
     if (!user) {
       // First time user, create default record
       const friendCode = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -45,6 +49,7 @@ export async function GET() {
       bgStyle: user.bgStyle,
       lang: user.lang,
       themeColor: user.themeColor,
+      isAdmin: user.isAdmin,
       emergencyCards: user.emergencyCards || [],
       grantedCardsLog: user.grantedCards || {},
       finishedTickets: user.finishedTickets || [],
@@ -91,6 +96,14 @@ export async function POST(req) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    if (user.isBlocked) {
+      return NextResponse.json({ error: 'ACCOUNT_BLOCKED' }, { status: 403 });
+    }
+
     const state = await req.json();
 
     // 1. Upsert User Settings

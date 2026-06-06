@@ -23,6 +23,8 @@ model User {
   activeSessionType String? // "pomodoro" or "flight"
   activeSessionData Json?   // Session details
   friendCode     String?    @unique // كود الصداقة المميز
+  isAdmin        Boolean    @default(false)
+  isBlocked      Boolean    @default(false)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   

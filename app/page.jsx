@@ -20,6 +20,7 @@ import WindowSeat from '../components/WindowSeat';
 import SeatSelection from '../components/SeatSelection';
 import FriendsPanel from '../components/FriendsPanel';
 import FriendsBoundary from '../components/FriendsBoundary';
+import AdminPanel from '../components/AdminPanel';
 
 let globalAudioCtx = null;
 const getAudioCtx = () => {
@@ -658,7 +659,13 @@ export default function App() {
     return {};
   });
 
+
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+
   // --- CLOUD SYNC LOGIC ---
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+
   useEffect(() => {
     if (!user || !isMounted) return;
     
@@ -669,6 +676,7 @@ export default function App() {
         if (res.ok) {
           const { state } = await res.json();
           if (state) {
+            if (state.isAdmin) setIsAdmin(true);
             if (state.theme) {
                setTheme(state.theme);
                if (typeof window !== 'undefined') localStorage.setItem('daybase_theme', state.theme);
@@ -754,9 +762,14 @@ export default function App() {
             if (state.theme === 'dark') document.documentElement.classList.add('dark');
             else document.documentElement.classList.remove('dark');
           }
+        } else if (res.status === 403) {
+          const data = await res.json();
+          if (data.error === 'ACCOUNT_BLOCKED') {
+            setIsBlocked(true);
+          }
         }
       } catch (err) {
-        console.error("Failed to fetch cloud state", err);
+        console.error("Cloud Sync Error", err);
       } finally {
         setIsCloudLoaded(true);
         setIsSyncing(false);
@@ -1500,6 +1513,20 @@ export default function App() {
   const sleepChartData = getChartData();
 
   if (!isMounted) return null;
+
+  if (isBlocked) {
+    return (
+      <div className="min-h-screen bg-[#0c0c0e] flex flex-col items-center justify-center p-6 text-center">
+        <ShieldAlert size={64} className="text-red-500 mb-6 mx-auto" />
+        <h1 className="text-3xl font-black text-white mb-4 uppercase tracking-widest">{lang === 'ar' ? 'حساب محظور' : 'Account Blocked'}</h1>
+        <p className="text-white/60 font-bold max-w-sm mx-auto">
+          {lang === 'ar' 
+            ? 'تم حظر حسابك بسبب انتهاك شروط الاستخدام. لا يمكنك استخدام التطبيق حالياً.' 
+            : 'Your account has been blocked due to a violation of our terms. You can no longer use this application.'}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div dir={lang === 'ar' ? 'rtl' : 'ltr'} className={`min-h-screen text-black dark:text-white transition-colors duration-500 font-sans`}>
@@ -2638,15 +2665,20 @@ export default function App() {
                     <button onClick={() => { setIsCardsModalOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-red-500 dark:text-red-400">
                       <ShieldAlert size={16} /> {t('emergencyCards')}
                     </button>
-                    <label className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold cursor-pointer relative text-black dark:text-white">
-                      <SlidersHorizontal size={16} /> Accent Color
-                      <input type="color" value={themeColor} onChange={(e) => {
-                        setThemeColor(e.target.value);
-                        if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', e.target.value);
-                      }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                    </label>
-                  </div>
-                )}
+                      <label className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold cursor-pointer relative text-black dark:text-white">
+                        <SlidersHorizontal size={16} /> Accent Color
+                        <input type="color" value={themeColor} onChange={(e) => {
+                          setThemeColor(e.target.value);
+                          if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', e.target.value);
+                        }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                      </label>
+                      {isAdmin && (
+                        <button onClick={() => { setIsAdminPanelOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-purple-500 dark:text-purple-400 border-t border-black/5 dark:border-white/5 mt-1 pt-3">
+                          <Users size={16} /> Admin Dashboard
+                        </button>
+                      )}
+                    </div>
+                  )}
               </div>
               </div>
             </div>
@@ -4128,6 +4160,18 @@ export default function App() {
                 friendCode={friendCode}
               />
             </FriendsBoundary>,
+            document.body
+          )}
+
+          {/* ---------------- ADMIN PANEL ---------------- */}
+          {isAdminPanelOpen && createPortal(
+            <AdminPanel 
+              isOpen={isAdminPanelOpen}
+              onClose={() => setIsAdminPanelOpen(false)}
+              lang={lang}
+              themeColor={themeColor}
+              isRtl={isRtl}
+            />,
             document.body
           )}
 
