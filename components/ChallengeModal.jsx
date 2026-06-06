@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Target, X, Plus, Copy, Check } from 'lucide-react';
+import AvatarIcon from './AvatarIcon';
 
 export default function ChallengeModal({ onClose, themeColor, activeChallenge, setPreferences, prefs, activeDateStr }) {
   const [view, setView] = useState(activeChallenge ? 'active' : 'create'); // 'create', 'join', 'active'
@@ -218,7 +219,9 @@ export default function ChallengeModal({ onClose, themeColor, activeChallenge, s
 
                     return (
                       <div key={p.userId} className="flex items-center gap-3 p-3 bg-white dark:bg-[#1A1A1A] rounded-2xl border border-black/5 dark:border-white/5">
-                        <img src={`/avatars/${p.user?.avatar || 'boy1'}.png`} className="w-10 h-10 rounded-[14px] border border-black/5 dark:border-white/5" />
+                        <div className="w-10 h-10 rounded-[14px] border border-black/5 dark:border-white/5 bg-black/5 dark:bg-white/5 flex items-center justify-center text-black dark:text-white">
+                          <AvatarIcon name={p.user?.avatar} size={20} />
+                        </div>
                         <div className="flex-1 flex flex-col justify-center">
                           <div className="flex justify-between items-center mb-1">
                             <span className="text-sm font-bold">{p.user?.name} {p.isMe && '(You)'}</span>

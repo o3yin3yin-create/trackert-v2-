@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { X, Users, UserPlus, Check, Trash2, Loader2, Trophy, Clock, Copy, Crown, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import AvatarIcon from './AvatarIcon';
 
 export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B981', friendCode = '' }) {
   const [activeTab, setActiveTab] = useState('friends'); // 'friends', 'groups', 'add'
@@ -412,7 +413,7 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
                         {/* Me */}
                         <div className={`flex flex-col items-center flex-1 ${iAmWinning ? '' : 'opacity-40 grayscale'}`}>
                           <div className={`w-12 h-12 rounded-full flex items-center justify-center font-black text-lg mb-2 shadow-sm ${iAmWinning ? 'bg-gradient-to-br from-yellow-300 to-yellow-500 text-white border-2 border-yellow-200' : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400 border border-black/10 dark:border-white/10'}`}>
-                            {t.you.charAt(0)}
+                            <AvatarIcon name={currentUser?.avatar} size={24} />
                           </div>
                           <span className={`text-xs font-black ${iAmWinning ? 'text-yellow-600 dark:text-yellow-500' : ''}`}>{Math.round(myScore * 100)}%</span>
                           <div className="flex gap-2 mt-2 text-[10px] font-bold opacity-50">
@@ -427,7 +428,7 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
                         {/* Them */}
                         <div className={`flex flex-col items-center flex-1 ${!iAmWinning ? '' : 'opacity-40 grayscale'}`}>
                           <div className={`w-12 h-12 rounded-full flex items-center justify-center font-black text-lg mb-2 shadow-sm ${!iAmWinning ? 'bg-gradient-to-br from-yellow-300 to-yellow-500 text-white border-2 border-yellow-200' : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400 border border-black/10 dark:border-white/10'}`}>
-                            {f.name.charAt(0).toUpperCase()}
+                            <AvatarIcon name={f.avatar} size={24} />
                           </div>
                           <span className={`text-xs font-black ${!iAmWinning ? 'text-yellow-600 dark:text-yellow-500' : ''}`}>{Math.round(theirScore * 100)}%</span>
                           <div className="flex gap-2 mt-2 text-[10px] font-bold opacity-50">

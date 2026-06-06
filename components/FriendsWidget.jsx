@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Loader2, Settings, Target, Check, Plus, X } from 'lucide-react';
 import ChallengeModal from './ChallengeModal';
+import AvatarIcon from './AvatarIcon';
 
 export default function FriendsWidget({ themeColor, lang, activeDateStr, preferences = {}, setPreferences }) {
   const [friends, setFriends] = useState([]);
@@ -66,7 +67,7 @@ export default function FriendsWidget({ themeColor, lang, activeDateStr, prefere
   }
 
   // Filter friends based on preferences
-  const displayFriends = prefs.friends.length > 0 
+  const displayFriends = prefs.friends?.length > 0 
     ? friends.filter(f => prefs.friends.includes(f.id) || f.isMe)
     : friends;
 
@@ -108,14 +109,15 @@ export default function FriendsWidget({ themeColor, lang, activeDateStr, prefere
                   <div key={f.id} className="flex flex-col items-center gap-2 snap-start min-w-[60px] relative">
                     {f.isMe && <div className="absolute -top-2 text-[8px] font-black uppercase tracking-widest opacity-50">YOU</div>}
                     <div 
-                      className={`w-14 h-14 rounded-[20px] flex items-center justify-center font-black text-lg text-white shadow-sm border-2 overflow-hidden transition-all duration-300 ${f.isMe ? 'ring-2 ring-offset-2 dark:ring-offset-black' : ''}`}
+                      className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-sm border-2 overflow-hidden transition-all duration-300 ${f.isMe ? 'ring-2 ring-offset-2 dark:ring-offset-[#0A0A0A]' : ''}`}
                       style={{ 
                         borderColor: score > 0 ? themeColor : 'rgba(150,150,150,0.2)',
+                        backgroundColor: '#1A1A1A',
                         opacity: score === 0 ? 0.6 : 1,
                         ...(f.isMe ? { ringColor: themeColor } : {})
                       }}
                     >
-                      <img src={`/avatars/${f.avatar || 'boy1'}.png`} alt={f.name} className="w-full h-full object-cover" />
+                      <AvatarIcon name={f.avatar} size={24} />
                     </div>
                     <div className="flex flex-col items-center">
                       <span className="text-[10px] font-bold truncate w-14 text-center opacity-80">
@@ -152,8 +154,8 @@ export default function FriendsWidget({ themeColor, lang, activeDateStr, prefere
               </div>
               <div className="flex -space-x-3">
                 {activeChallenge.participants.map((p, i) => (
-                  <div key={p.userId} className="w-8 h-8 rounded-full border-2 border-[#1c1c1e] overflow-hidden z-10" style={{ zIndex: 10 - i }}>
-                     <img src={`/avatars/${p.user?.avatar || 'boy1'}.png`} className="w-full h-full object-cover" />
+                  <div key={p.userId} className="w-8 h-8 rounded-full border-2 border-[#1c1c1e] bg-[#1A1A1A] text-white flex items-center justify-center overflow-hidden z-10" style={{ zIndex: 10 - i }}>
+                     <AvatarIcon name={p.user?.avatar} size={16} />
                   </div>
                 ))}
               </div>
@@ -198,7 +200,9 @@ export default function FriendsWidget({ themeColor, lang, activeDateStr, prefere
                     {friends.filter(f => !f.isMe).map(f => (
                       <label key={f.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer">
                         <div className="flex items-center gap-3">
-                          <img src={`/avatars/${f.avatar || 'boy1'}.png`} className="w-8 h-8 rounded-full" />
+                          <div className="w-8 h-8 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-black dark:text-white">
+                            <AvatarIcon name={f.avatar} size={18} />
+                          </div>
                           <span className="font-bold text-sm">{f.name}</span>
                         </div>
                         <input 

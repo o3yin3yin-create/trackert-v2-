@@ -22,6 +22,7 @@ import FriendsPanel from '../components/FriendsPanel';
 import FriendsBoundary from '../components/FriendsBoundary';
 import AdminPanel from '../components/AdminPanel';
 import FriendsWidget from '../components/FriendsWidget';
+import AvatarIcon, { AVATAR_OPTIONS } from '../components/AvatarIcon';
 
 let globalAudioCtx = null;
 const getAudioCtx = () => {
@@ -446,9 +447,9 @@ export default function App() {
 
   const [avatar, setAvatar] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('daybase_avatar_v1') || 'boy1';
+      return localStorage.getItem('daybase_avatar_v1') || 'user';
     }
-    return 'boy1';
+    return 'user';
   });
 
   const [widgetPreferences, setWidgetPreferences] = useState(() => {
@@ -713,7 +714,7 @@ export default function App() {
             }
             if (state.avatar) {
                setAvatar(state.avatar);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_avatar_v1', state.avatar);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_avatar_v1', state.avatar || 'user');
             }
             if (state.widgetPreferences) {
                setWidgetPreferences(state.widgetPreferences);
@@ -2701,7 +2702,7 @@ export default function App() {
                         }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                       </label>
                       <button onClick={() => { setIsAvatarModalOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-black dark:text-white border-t border-black/5 dark:border-white/5 mt-1 pt-3">
-                        <img src={`/avatars/${avatar}.png`} alt="Avatar" className="w-5 h-5 rounded-full border border-white/20" /> Change Avatar
+                        <div className="w-6 h-6 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center"><AvatarIcon name={avatar} size={14} /></div> Change Avatar
                       </button>
                       {isAdmin && (
                         <button onClick={() => { setIsAdminPanelOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-purple-500 dark:text-purple-400 border-t border-black/5 dark:border-white/5 mt-1 pt-3">
@@ -4175,30 +4176,24 @@ export default function App() {
                     </button>
                     
                     <div className="flex flex-col items-center gap-2 mb-8">
-                      <div className="w-16 h-16 rounded-full bg-indigo-500/20 flex items-center justify-center mb-2">
-                        <img src={`/avatars/${avatar}.png`} alt="Current Avatar" className="w-14 h-14 rounded-full border-2 border-indigo-500 shadow-xl" />
+                      <div className="w-16 h-16 rounded-full bg-[#1A1A1A] flex items-center justify-center mb-2 shadow-xl border border-white/10 text-white">
+                        <AvatarIcon name={avatar} size={32} />
                       </div>
                       <h2 className="text-2xl font-black text-black dark:text-white text-center">Choose Your Avatar</h2>
                       <p className="text-sm font-semibold text-black/50 dark:text-white/50 text-center">Select how you appear to your friends.</p>
                     </div>
 
                     <div className="grid grid-cols-3 gap-4 mb-6">
-                      {['boy1', 'boy2', 'boy3', 'girl1', 'girl2', 'girl3'].map(av => (
+                      {AVATAR_OPTIONS.map(av => (
                         <button
                           key={av}
                           onClick={() => {
                             setAvatar(av);
                             setIsAvatarModalOpen(false);
-                            // It syncs automatically due to useEffect tracking avatar state
                           }}
-                          className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition-all duration-200 active:scale-95 ${avatar === av ? 'border-[#FF9F0A] shadow-[0_0_20px_rgba(255,159,10,0.3)]' : 'border-transparent hover:border-white/20'}`}
+                          className={`relative aspect-square rounded-2xl flex items-center justify-center border-2 transition-all duration-200 active:scale-95 bg-black/5 dark:bg-[#1A1A1A] text-black dark:text-white ${avatar === av ? 'border-[#FF9F0A] shadow-[0_0_20px_rgba(255,159,10,0.3)] text-[#FF9F0A] dark:text-[#FF9F0A]' : 'border-transparent hover:border-black/10 dark:hover:border-white/20'}`}
                         >
-                          <img src={`/avatars/${av}.png`} alt={av} className="w-full h-full object-cover" />
-                          {avatar === av && (
-                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                              <div className="bg-[#FF9F0A] text-white rounded-full p-1"><Check size={16} strokeWidth={3} /></div>
-                            </div>
-                          )}
+                          <AvatarIcon name={av} size={28} />
                         </button>
                       ))}
                     </div>
