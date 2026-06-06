@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { X, Users, UserPlus, Check, Trash2, Loader2, Trophy, Clock, Copy, Crown } from 'lucide-react';
+import { X, Users, UserPlus, Check, Trash2, Loader2, Trophy, Clock, Copy, Crown, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B981', friendCode = '' }) {
@@ -188,6 +188,22 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
       setAddMessage('Error joining group');
     }
     setJoinGroupLoading(false);
+  };
+
+  const handleLeaveGroup = async (groupId) => {
+    if (!confirm(t.confirmLeave || 'Are you sure you want to leave this group?')) return;
+    try {
+      const res = await fetch('/api/groups/leave', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupId })
+      });
+      if (res.ok) {
+        fetchData();
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const formatTime = (seconds) => {
@@ -418,10 +434,10 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
                   <button 
                     onClick={handleJoinGroup}
                     disabled={joinGroupLoading || !addCode}
-                    className="w-24 rounded-xl font-bold text-xs tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 shrink-0"
-                    style={{ backgroundColor: themeColor }}
+                    className="w-24 rounded-xl font-bold text-xs tracking-wide transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 shrink-0"
+                    style={{ backgroundColor: themeColor, color: themeColor.toLowerCase() === '#ffffff' ? '#000' : '#fff' }}
                   >
-                    {joinGroupLoading ? <Loader2 size={16} className="animate-spin" /> : t.joinGroup}
+                    {joinGroupLoading ? <Loader2 size={16} className="animate-spin" /> : (t.joinGroup || 'Join')}
                   </button>
                 </div>
                 
@@ -437,10 +453,10 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
                   <button 
                     onClick={handleCreateGroup}
                     disabled={createGroupLoading || !groupName}
-                    className="w-24 rounded-xl font-bold text-xs tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 shrink-0"
-                    style={{ backgroundColor: themeColor }}
+                    className="w-24 rounded-xl font-bold text-xs tracking-wide transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 shrink-0"
+                    style={{ backgroundColor: themeColor, color: themeColor.toLowerCase() === '#ffffff' ? '#000' : '#fff' }}
                   >
-                    {createGroupLoading ? <Loader2 size={16} className="animate-spin" /> : t.createGroup}
+                    {createGroupLoading ? <Loader2 size={16} className="animate-spin" /> : (t.createGroup || 'Create')}
                   </button>
                 </div>
                 
@@ -469,7 +485,16 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
                     <div key={g.id} className="bg-white dark:bg-[#1a1b1e] border border-black/5 dark:border-white/5 rounded-3xl p-5 shadow-sm">
                       <div className="flex justify-between items-center mb-6">
                         <h3 className="font-black text-lg tracking-wide">{g.name}</h3>
-                        <span className="text-[10px] font-bold tracking-widest uppercase opacity-40 bg-black/5 dark:bg-white/5 px-2 py-1 rounded-md">{g.code}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold tracking-widest uppercase opacity-40 bg-black/5 dark:bg-white/5 px-2 py-1 rounded-md">{g.code}</span>
+                          <button 
+                            onClick={() => handleLeaveGroup(g.id)}
+                            className="w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-red-500/10 text-red-500 transition-all"
+                            title={t.remove || 'Leave'}
+                          >
+                            <LogOut size={14} />
+                          </button>
+                        </div>
                       </div>
                       
                       {/* Podium */}
