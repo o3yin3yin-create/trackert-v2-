@@ -49,16 +49,52 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { targetUserId, action } = await req.json(); // action can be 'block' or 'unblock'
+    const { targetUserId, action } = await req.json();
 
     if (!targetUserId || !action) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id: targetUserId },
-      data: { isBlocked: action === 'block' }
-    });
+    const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!targetUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Protect primary admin from any negative actions or demotion
+    if (targetUser.email === '3yin3yin@gmail.com') {
+      if (['block', 'removeAdmin'].includes(action)) {
+        return NextResponse.json({ error: 'Cannot modify primary admin' }, { status: 403 });
+      }
+    }
+
+    let updatedUser;
+    if (action === 'block') {
+      updatedUser = await prisma.user.update({
+        where: { id: targetUserId },
+        data: { isBlocked: true }
+      });
+    } else if (action === 'unblock') {
+      updatedUser = await prisma.user.update({
+        where: { id: targetUserId },
+        data: { isBlocked: false }
+      });
+    } else if (action === 'makeAdmin') {
+      updatedUser = await prisma.user.update({
+        where: { id: targetUserId },
+        data: { isAdmin: true }
+      });
+    } else if (action === 'removeAdmin') {
+      // Prevent a user from removing their own admin status (as an extra safeguard)
+      if (targetUserId === caller.id) {
+        return NextResponse.json({ error: 'Cannot remove your own admin status' }, { status: 403 });
+      }
+      updatedUser = await prisma.user.update({
+        where: { id: targetUserId },
+        data: { isAdmin: false }
+      });
+    } else {
+      return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    }
 
     return NextResponse.json({ success: true, user: updatedUser });
   } catch (error) {

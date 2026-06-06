@@ -1,11 +1,12 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Users, Shield, Loader2, UserX, Check, ShieldAlert } from 'lucide-react';
+import { X, Users, Shield, Loader2, UserX, Check, ShieldAlert, BarChart3, Activity, Target } from 'lucide-react';
 import { translations } from '../lib/translations';
 
 export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl }) {
-  const [activeTab, setActiveTab] = useState('users'); // users, groups
+  const [activeTab, setActiveTab] = useState('overview'); // overview, users, groups
+  const [overview, setOverview] = useState(null);
   const [users, setUsers] = useState([]);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -23,7 +24,15 @@ export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl })
     setLoading(true);
     setError('');
     try {
-      if (activeTab === 'users') {
+      if (activeTab === 'overview') {
+        const res = await fetch('/api/admin/overview');
+        if (res.ok) {
+          const data = await res.json();
+          setOverview(data.overview);
+        } else {
+          setError('Failed to fetch overview metrics');
+        }
+      } else if (activeTab === 'users') {
         const res = await fetch('/api/admin/users');
         if (res.ok) {
           const data = await res.json();
@@ -57,7 +66,27 @@ export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl })
       if (res.ok) {
         setUsers(users.map(u => u.id === userId ? { ...u, isBlocked: !currentStatus } : u));
       } else {
-        alert('Failed to update block status');
+        const data = await res.json();
+        alert(data.error || 'Failed to update block status');
+      }
+    } catch (err) {
+      alert('Error updating user');
+    }
+  };
+
+  const handleToggleAdmin = async (userId, currentStatus) => {
+    try {
+      const action = currentStatus ? 'removeAdmin' : 'makeAdmin';
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUserId: userId, action })
+      });
+      if (res.ok) {
+        setUsers(users.map(u => u.id === userId ? { ...u, isAdmin: !currentStatus } : u));
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to update admin status');
       }
     } catch (err) {
       alert('Error updating user');
@@ -98,6 +127,13 @@ export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl })
         {/* Tabs */}
         <div className="flex px-6 pt-4 gap-4 shrink-0 overflow-x-auto scrollbar-hide border-b border-black/5 dark:border-white/5">
           <button 
+            onClick={() => setActiveTab('overview')}
+            className={`pb-3 text-sm font-bold tracking-wide uppercase transition-colors whitespace-nowrap relative flex items-center gap-2 ${activeTab === 'overview' ? 'text-black dark:text-white border-b-2' : 'text-gray-400 dark:text-white/40 border-b-2 border-transparent'}`}
+            style={{ borderColor: activeTab === 'overview' ? '#A855F7' : 'transparent' }}
+          >
+            Overview
+          </button>
+          <button 
             onClick={() => setActiveTab('users')}
             className={`pb-3 text-sm font-bold tracking-wide uppercase transition-colors whitespace-nowrap relative flex items-center gap-2 ${activeTab === 'users' ? 'text-black dark:text-white border-b-2' : 'text-gray-400 dark:text-white/40 border-b-2 border-transparent'}`}
             style={{ borderColor: activeTab === 'users' ? '#A855F7' : 'transparent' }}
@@ -125,6 +161,39 @@ export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl })
             <div className="flex items-center justify-center h-full">
               <Loader2 size={24} className="animate-spin text-gray-400" />
             </div>
+          ) : activeTab === 'overview' && overview ? (
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white dark:bg-[#1a1b1e] border border-black/5 dark:border-white/5 rounded-2xl p-5 shadow-sm flex flex-col gap-2">
+                  <div className="flex items-center gap-2 opacity-50 mb-1">
+                    <Users size={16} />
+                    <span className="text-[10px] font-black tracking-widest uppercase">Total Users</span>
+                  </div>
+                  <span className="text-3xl font-black text-purple-500">{overview.totalUsers}</span>
+                </div>
+                <div className="bg-white dark:bg-[#1a1b1e] border border-black/5 dark:border-white/5 rounded-2xl p-5 shadow-sm flex flex-col gap-2">
+                  <div className="flex items-center gap-2 opacity-50 mb-1">
+                    <Users size={16} />
+                    <span className="text-[10px] font-black tracking-widest uppercase">Study Groups</span>
+                  </div>
+                  <span className="text-3xl font-black text-purple-500">{overview.totalGroups}</span>
+                </div>
+                <div className="bg-white dark:bg-[#1a1b1e] border border-black/5 dark:border-white/5 rounded-2xl p-5 shadow-sm flex flex-col gap-2">
+                  <div className="flex items-center gap-2 opacity-50 mb-1">
+                    <Target size={16} />
+                    <span className="text-[10px] font-black tracking-widest uppercase">Habits Done</span>
+                  </div>
+                  <span className="text-3xl font-black text-purple-500">{overview.totalHabitsCompleted}</span>
+                </div>
+                <div className="bg-white dark:bg-[#1a1b1e] border border-black/5 dark:border-white/5 rounded-2xl p-5 shadow-sm flex flex-col gap-2">
+                  <div className="flex items-center gap-2 opacity-50 mb-1">
+                    <Activity size={16} />
+                    <span className="text-[10px] font-black tracking-widest uppercase">Total Focus Time</span>
+                  </div>
+                  <span className="text-3xl font-black text-purple-500">{Math.round((overview.totalFocusTime || 0) / 60)}h</span>
+                </div>
+              </div>
+            </div>
           ) : activeTab === 'users' ? (
             <div className="flex flex-col gap-4">
               {users.map((u) => (
@@ -138,14 +207,26 @@ export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl })
                       </div>
                       <span className="text-xs opacity-50 block mt-1">{u.email}</span>
                     </div>
-                    <button
-                      onClick={() => handleToggleBlock(u.id, u.isBlocked)}
-                      disabled={u.isAdmin}
-                      className={`h-8 px-3 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition-all ${u.isAdmin ? 'opacity-20 cursor-not-allowed' : u.isBlocked ? 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10' : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'}`}
-                    >
-                      {u.isBlocked ? <Check size={14} /> : <UserX size={14} />}
-                      {u.isBlocked ? 'Unblock' : 'Block'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleAdmin(u.id, u.isAdmin)}
+                        className={`h-8 px-3 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition-all ${u.email === '3yin3yin@gmail.com' ? 'opacity-20 cursor-not-allowed' : u.isAdmin ? 'bg-purple-500/10 text-purple-500 hover:bg-purple-500/20' : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10'}`}
+                        title={u.email === '3yin3yin@gmail.com' ? 'Primary admin cannot be demoted' : 'Toggle Admin Status'}
+                        disabled={u.email === '3yin3yin@gmail.com'}
+                      >
+                        <Shield size={14} />
+                        {u.isAdmin ? 'Admin' : 'Make Admin'}
+                      </button>
+                      <button
+                        onClick={() => handleToggleBlock(u.id, u.isBlocked)}
+                        className={`h-8 px-3 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition-all ${u.email === '3yin3yin@gmail.com' ? 'opacity-20 cursor-not-allowed' : u.isBlocked ? 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10' : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'}`}
+                        title={u.email === '3yin3yin@gmail.com' ? 'Primary admin cannot be blocked' : 'Toggle Block Status'}
+                        disabled={u.email === '3yin3yin@gmail.com'}
+                      >
+                        {u.isBlocked ? <Check size={14} /> : <UserX size={14} />}
+                        {u.isBlocked ? 'Unblock' : 'Block'}
+                      </button>
+                    </div>
                   </div>
                   
                   <div className="grid grid-cols-4 gap-2 border-t border-black/5 dark:border-white/5 pt-3 mt-1">
