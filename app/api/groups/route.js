@@ -46,7 +46,7 @@ export async function GET(req) {
           include: {
             members: {
               include: {
-                user: { select: { id: true, name: true, friendCode: true, habits: { select: { type: true, subItems: true } } } }
+                user: { select: { id: true, name: true, friendCode: true, habits: { select: { id: true, type: true, subItems: true } } } }
               }
             }
           }

@@ -29,8 +29,8 @@ export async function GET(req) {
         ]
       },
       include: {
-        user: { select: { id: true, name: true, friendCode: true, habits: { select: { type: true, subItems: true } } } },
-        friend: { select: { id: true, name: true, friendCode: true, habits: { select: { type: true, subItems: true } } } }
+        user: { select: { id: true, name: true, friendCode: true, habits: { select: { id: true, type: true, subItems: true } } } },
+        friend: { select: { id: true, name: true, friendCode: true, habits: { select: { id: true, type: true, subItems: true } } } }
       }
     });
 
@@ -65,7 +65,7 @@ export async function GET(req) {
     // 4. Fetch the current user separately for 1-on-1 comparisons
     const currentUserProfile = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, friendCode: true, habits: { select: { type: true, subItems: true } } }
+      select: { id: true, name: true, friendCode: true, habits: { select: { id: true, type: true, subItems: true } } }
     });
     const currentUserDailyLog = await prisma.dailyLog.findUnique({
       where: { userId_date: { userId, date } }
