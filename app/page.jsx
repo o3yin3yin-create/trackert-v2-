@@ -2702,7 +2702,7 @@ export default function App() {
                         }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                       </label>
                       <button onClick={() => { setIsAvatarModalOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-black dark:text-white border-t border-black/5 dark:border-white/5 mt-1 pt-3">
-                        <div className="w-6 h-6 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center"><AvatarIcon name={avatar} size={14} /></div> Change Avatar
+                        <div className="w-6 h-6 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center"><AvatarIcon name={isMounted ? avatar : 'user'} size={14} /></div> Change Avatar
                       </button>
                       {isAdmin && (
                         <button onClick={() => { setIsAdminPanelOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-purple-500 dark:text-purple-400 border-t border-black/5 dark:border-white/5 mt-1 pt-3">
@@ -2720,7 +2720,7 @@ export default function App() {
           {/* Preserves the original clean vertical mobile stack that the user loves */}
           <div className="flex flex-col w-full md:hidden gap-6">
             <Show when="signed-in">
-              <FriendsWidget themeColor={themeColor} lang={lang} activeDateStr={activeDateStr} preferences={widgetPreferences} setPreferences={setWidgetPreferences} />
+              <FriendsWidget themeColor={themeColor} lang={lang} activeDateStr={activeDateStr} preferences={isMounted ? widgetPreferences : undefined} setPreferences={setWidgetPreferences} />
             </Show>
             
             {/* Mobile Mission Card */}
@@ -2880,7 +2880,7 @@ export default function App() {
             {/* COLUMN 1: Personal Routine (التركيز والعادات اليومية) */}
             <div className="flex flex-col gap-6 w-full">
               <Show when="signed-in">
-                <FriendsWidget themeColor={themeColor} lang={lang} activeDateStr={activeDateStr} preferences={widgetPreferences} setPreferences={setWidgetPreferences} />
+                <FriendsWidget themeColor={themeColor} lang={lang} activeDateStr={activeDateStr} preferences={isMounted ? widgetPreferences : undefined} setPreferences={setWidgetPreferences} />
               </Show>
               
               {/* Mission & Score Card */}
