@@ -101,7 +101,7 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
           setAddMessage(lang === 'ar' ? 'تم إرسال الطلب بنجاح!' : 'Request sent successfully!');
         }
         setAddCode('');
-        fetchFriends();
+        fetchData();
       } else {
         setAddMessage(data.error || 'Error sending request');
       }
@@ -238,10 +238,13 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
         <div className="flex px-6 pt-4 gap-4 shrink-0 overflow-x-auto scrollbar-hide">
           <button 
             onClick={() => setActiveTab('friends')}
-            className={`pb-3 text-sm font-bold tracking-wide uppercase transition-colors whitespace-nowrap relative ${activeTab === 'friends' ? 'text-black dark:text-white border-b-2' : 'text-gray-400 dark:text-white/40 border-b-2 border-transparent'}`}
+            className={`pb-3 text-sm font-bold tracking-wide uppercase transition-colors whitespace-nowrap relative flex items-center gap-2 ${activeTab === 'friends' ? 'text-black dark:text-white border-b-2' : 'text-gray-400 dark:text-white/40 border-b-2 border-transparent'}`}
             style={{ borderColor: activeTab === 'friends' ? themeColor : 'transparent' }}
           >
             {t.friends}
+            {requests.length > 0 && (
+              <span className="w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center">{requests.length}</span>
+            )}
           </button>
           <button 
             onClick={() => setActiveTab('groups')}
@@ -249,16 +252,6 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
             style={{ borderColor: activeTab === 'groups' ? themeColor : 'transparent' }}
           >
             {t.groups}
-          </button>
-          <button 
-            onClick={() => setActiveTab('add')}
-            className={`pb-3 text-sm font-bold tracking-wide uppercase transition-colors relative flex items-center gap-2 ${activeTab === 'add' ? 'text-black dark:text-white border-b-2' : 'text-gray-400 dark:text-white/40 border-b-2 border-transparent'}`}
-            style={{ borderColor: activeTab === 'add' ? themeColor : 'transparent' }}
-          >
-            {t.addFriend}
-            {requests.length > 0 && (
-              <span className="w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center">{requests.length}</span>
-            )}
           </button>
         </div>
 
@@ -268,9 +261,70 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
             <div className="flex items-center justify-center h-full">
               <Loader2 size={24} className="animate-spin text-gray-400" />
             </div>
-          ) : activeTab === 'leaderboard' ? (
-            <div className="flex flex-col gap-4">
-              {friends.length === 0 ? (
+          ) : activeTab === 'friends' ? (
+            <div className="flex flex-col gap-6">
+              
+              {/* Add Friend Form inline */}
+              <div className="flex flex-col gap-3">
+                <form onSubmit={handleSendRequest} className="relative">
+                  <input 
+                    type="text" 
+                    value={addCode}
+                    onChange={(e) => setAddCode(e.target.value.toUpperCase())}
+                    placeholder={t.enterCode}
+                    maxLength={6}
+                    className="w-full bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-2xl px-5 py-4 text-center text-lg font-black tracking-widest placeholder:opacity-30 focus:outline-none focus:border-current transition-colors uppercase"
+                    style={{ outlineColor: themeColor }}
+                  />
+                  <button 
+                    type="submit"
+                    disabled={addLoading || addCode.length < 6}
+                    className="mt-3 w-full py-4 rounded-2xl font-bold text-sm tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
+                    style={{ backgroundColor: themeColor }}
+                  >
+                    {addLoading ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
+                    {t.sendRequest}
+                  </button>
+                </form>
+                {addMessage && activeTab === 'friends' && (
+                  <p className="text-xs text-center font-bold" style={{ color: addMessage.includes('Error') ? '#EF4444' : themeColor }}>
+                    {addMessage}
+                  </p>
+                )}
+              </div>
+
+              {/* Pending Requests */}
+              {requests.length > 0 && (
+                <div className="flex flex-col gap-3 pb-6 border-b border-black/5 dark:border-white/5">
+                  <h3 className="text-xs font-bold tracking-widest uppercase opacity-50 px-2">{t.pendingRequests}</h3>
+                  {requests.map(r => (
+                    <div key={r.id} className="bg-white dark:bg-[#1a1b1e] border border-black/5 dark:border-white/5 rounded-2xl p-4 flex items-center justify-between shadow-sm gap-4">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-black dark:text-white truncate">{r.user.name}</h4>
+                        <p className="text-xs opacity-50 truncate">Code: {r.user.friendCode}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => handleAccept(r.id)}
+                          className="w-9 h-9 rounded-full bg-[#10B981]/10 text-[#10B981] hover:bg-[#10B981]/20 flex items-center justify-center transition-colors"
+                        >
+                          <Check size={16} />
+                        </button>
+                        <button 
+                          onClick={() => handleDeclineOrRemove(r.id, null)}
+                          className="w-9 h-9 rounded-full bg-red-500/10 text-red-500 hover:bg-red-500/20 flex items-center justify-center transition-colors"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Friends List */}
+              <div className="flex flex-col gap-4">
+                {friends.length === 0 ? (
                 <div className="text-center py-10 opacity-50">
                   <Users size={40} className="mx-auto mb-4 opacity-50" />
                   <p className="text-sm font-bold">{t.noFriends}</p>
@@ -319,9 +373,58 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
                   );
                 })
               )}
+              </div>
             </div>
           ) : activeTab === 'groups' ? (
             <div className="flex flex-col gap-6">
+
+              {/* Join/Create Group Form inline */}
+              <div className="flex flex-col gap-4 pb-6 border-b border-black/5 dark:border-white/5">
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    value={addCode}
+                    onChange={(e) => setAddCode(e.target.value.toUpperCase())}
+                    placeholder={t.groupCode}
+                    className="flex-1 bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-center text-sm font-black tracking-widest placeholder:opacity-30 focus:outline-none focus:border-current transition-colors uppercase"
+                    style={{ outlineColor: themeColor }}
+                  />
+                  <button 
+                    onClick={handleJoinGroup}
+                    disabled={joinGroupLoading || !addCode}
+                    className="px-4 rounded-xl font-bold text-xs tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 shrink-0"
+                    style={{ backgroundColor: themeColor }}
+                  >
+                    {joinGroupLoading ? <Loader2 size={16} className="animate-spin" /> : t.joinGroup}
+                  </button>
+                </div>
+                
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    value={groupName}
+                    onChange={(e) => setGroupName(e.target.value)}
+                    placeholder={t.groupName}
+                    className="flex-1 bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-center text-sm font-black placeholder:opacity-30 focus:outline-none focus:border-current transition-colors"
+                    style={{ outlineColor: themeColor }}
+                  />
+                  <button 
+                    onClick={handleCreateGroup}
+                    disabled={createGroupLoading || !groupName}
+                    className="px-4 rounded-xl font-bold text-xs tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 shrink-0"
+                    style={{ backgroundColor: themeColor }}
+                  >
+                    {createGroupLoading ? <Loader2 size={16} className="animate-spin" /> : t.createGroup}
+                  </button>
+                </div>
+                
+                {addMessage && activeTab === 'groups' && (
+                  <p className="text-xs text-center font-bold mt-1" style={{ color: addMessage.includes('Error') ? '#EF4444' : themeColor }}>
+                    {addMessage}
+                  </p>
+                )}
+              </div>
+
               {groups.length === 0 ? (
                 <div className="text-center py-10 opacity-50">
                   <Users size={40} className="mx-auto mb-4 opacity-50" />
@@ -410,132 +513,7 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
                 })
               )}
             </div>
-          ) : (
-            <div className="flex flex-col gap-8">
-              {/* My Code Section */}
-              <div className="bg-white dark:bg-[#1a1b1e] border border-black/5 dark:border-white/5 rounded-3xl p-6 shadow-sm text-center">
-                <p className="text-xs font-bold tracking-widest uppercase opacity-50 mb-3">{t.myCode}</p>
-                <div className="flex items-center justify-center gap-3 mb-4">
-                  <span className="text-3xl font-black tracking-widest text-black dark:text-white">{friendCode}</span>
-                </div>
-                <button 
-                  onClick={handleCopyCode}
-                  className="w-full py-3 rounded-2xl font-bold text-sm tracking-wide flex items-center justify-center gap-2 transition-all active:scale-95"
-                  style={{ backgroundColor: copied ? '#10B981' : `${themeColor}20`, color: copied ? '#fff' : themeColor }}
-                >
-                  {copied ? <Check size={16} /> : <Copy size={16} />}
-                  {copied ? t.copied : t.copy}
-                </button>
-              </div>
-
-              {/* Add Friend Form */}
-              <div className="flex flex-col gap-3 pb-6 border-b border-black/5 dark:border-white/5">
-                <h3 className="text-xs font-bold tracking-widest uppercase opacity-50 px-2">{t.addFriend}</h3>
-                <form onSubmit={handleSendRequest} className="relative">
-                  <input 
-                    type="text" 
-                    value={addCode}
-                    onChange={(e) => setAddCode(e.target.value.toUpperCase())}
-                    placeholder={t.enterCode}
-                    maxLength={6}
-                    className="w-full bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-2xl px-5 py-4 text-center text-lg font-black tracking-widest placeholder:opacity-30 focus:outline-none focus:border-current transition-colors uppercase"
-                    style={{ outlineColor: themeColor }}
-                  />
-                  <button 
-                    type="submit"
-                    disabled={addLoading || addCode.length < 6}
-                    className="mt-3 w-full py-4 rounded-2xl font-bold text-sm tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
-                    style={{ backgroundColor: themeColor }}
-                  >
-                    {addLoading ? <Loader2 size={16} className="animate-spin" /> : <UserPlus size={16} />}
-                    {t.sendRequest}
-                  </button>
-                </form>
-              </div>
-
-              {/* Join Group Form */}
-              <div className="flex flex-col gap-3 pb-6 border-b border-black/5 dark:border-white/5">
-                <h3 className="text-xs font-bold tracking-widest uppercase opacity-50 px-2">{t.joinGroup}</h3>
-                <form onSubmit={handleJoinGroup} className="relative">
-                  <input 
-                    type="text" 
-                    value={addCode}
-                    onChange={(e) => setAddCode(e.target.value.toUpperCase())}
-                    placeholder={t.groupCode}
-                    className="w-full bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-2xl px-5 py-4 text-center text-lg font-black tracking-widest placeholder:opacity-30 focus:outline-none focus:border-current transition-colors uppercase"
-                    style={{ outlineColor: themeColor }}
-                  />
-                  <button 
-                    type="submit"
-                    disabled={joinGroupLoading || !addCode}
-                    className="mt-3 w-full py-4 rounded-2xl font-bold text-sm tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
-                    style={{ backgroundColor: themeColor }}
-                  >
-                    {joinGroupLoading ? <Loader2 size={16} className="animate-spin" /> : <Users size={16} />}
-                    {t.joinGroup}
-                  </button>
-                </form>
-              </div>
-
-              {/* Create Group Form */}
-              <div className="flex flex-col gap-3">
-                <h3 className="text-xs font-bold tracking-widest uppercase opacity-50 px-2">{t.createGroup}</h3>
-                <form onSubmit={handleCreateGroup} className="relative">
-                  <input 
-                    type="text" 
-                    value={groupName}
-                    onChange={(e) => setGroupName(e.target.value)}
-                    placeholder={t.groupName}
-                    className="w-full bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-2xl px-5 py-4 text-center text-lg font-black tracking-wide placeholder:opacity-30 focus:outline-none focus:border-current transition-colors"
-                    style={{ outlineColor: themeColor }}
-                  />
-                  <button 
-                    type="submit"
-                    disabled={createGroupLoading || !groupName}
-                    className="mt-3 w-full py-4 rounded-2xl font-bold text-sm tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
-                    style={{ backgroundColor: themeColor }}
-                  >
-                    {createGroupLoading ? <Loader2 size={16} className="animate-spin" /> : <Users size={16} />}
-                    {t.createGroup}
-                  </button>
-                </form>
-                {addMessage && (
-                  <p className="text-xs text-center font-bold mt-2" style={{ color: addMessage.includes('Error') ? '#EF4444' : themeColor }}>
-                    {addMessage}
-                  </p>
-                )}
-              </div>
-
-              {/* Pending Requests */}
-              {requests.length > 0 && (
-                <div className="flex flex-col gap-3">
-                  <h3 className="text-xs font-bold tracking-widest uppercase opacity-50 px-2">{t.pendingRequests}</h3>
-                  {requests.map(r => (
-                    <div key={r.id} className="bg-white dark:bg-[#1a1b1e] border border-black/5 dark:border-white/5 rounded-2xl p-4 flex items-center justify-between shadow-sm gap-4">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-black dark:text-white truncate">{r.user.name}</h4>
-                        <p className="text-xs opacity-50 truncate">Code: {r.user.friendCode}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button 
-                          onClick={() => handleAccept(r.id)}
-                          className="w-9 h-9 rounded-full bg-[#10B981]/10 text-[#10B981] hover:bg-[#10B981]/20 flex items-center justify-center transition-colors"
-                        >
-                          <Check size={16} />
-                        </button>
-                        <button 
-                          onClick={() => handleDeclineOrRemove(r.id, null)}
-                          className="w-9 h-9 rounded-full bg-red-500/10 text-red-500 hover:bg-red-500/20 flex items-center justify-center transition-colors"
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          ) : null}
         </div>
       </motion.div>
     </div>
