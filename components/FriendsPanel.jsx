@@ -357,6 +357,11 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
                             {t.you.charAt(0)}
                           </div>
                           <span className={`text-xs font-black ${iAmWinning ? 'text-yellow-600 dark:text-yellow-500' : ''}`}>{Math.round(myScore * 100)}%</span>
+                          <div className="flex gap-2 mt-2 text-[10px] font-bold opacity-50">
+                            <span>{currentUser?.habitsCompleted || 0}/{currentUser?.habitsTotal || 0} {t.items || 'items'}</span>
+                            <span>•</span>
+                            <span>{formatTime(currentUser?.focusTime || 0)}</span>
+                          </div>
                         </div>
                         
                         <div className="text-[10px] font-black tracking-widest opacity-20 px-2">VS</div>
@@ -367,6 +372,11 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
                             {f.name.charAt(0).toUpperCase()}
                           </div>
                           <span className={`text-xs font-black ${!iAmWinning ? 'text-yellow-600 dark:text-yellow-500' : ''}`}>{Math.round(theirScore * 100)}%</span>
+                          <div className="flex gap-2 mt-2 text-[10px] font-bold opacity-50">
+                            <span>{f.habitsCompleted || 0}/{f.habitsTotal || 0} {t.items || 'items'}</span>
+                            <span>•</span>
+                            <span>{formatTime(f.focusTime || 0)}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
