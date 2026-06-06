@@ -21,6 +21,7 @@ import SeatSelection from '../components/SeatSelection';
 import FriendsPanel from '../components/FriendsPanel';
 import FriendsBoundary from '../components/FriendsBoundary';
 import AdminPanel from '../components/AdminPanel';
+import FriendsWidget from '../components/FriendsWidget';
 
 let globalAudioCtx = null;
 const getAudioCtx = () => {
@@ -2687,6 +2688,9 @@ export default function App() {
           {/* ---------------- MOBILE-ONLY LAYOUT (md:hidden) ---------------- */}
           {/* Preserves the original clean vertical mobile stack that the user loves */}
           <div className="flex flex-col w-full md:hidden gap-6">
+            <Show when="signed-in">
+              <FriendsWidget themeColor={themeColor} lang={lang} activeDateStr={activeDateStr} />
+            </Show>
             
             {/* Mobile Mission Card */}
             <div 
@@ -2844,6 +2848,9 @@ export default function App() {
             
             {/* COLUMN 1: Personal Routine (التركيز والعادات اليومية) */}
             <div className="flex flex-col gap-6 w-full">
+              <Show when="signed-in">
+                <FriendsWidget themeColor={themeColor} lang={lang} activeDateStr={activeDateStr} />
+              </Show>
               
               {/* Mission & Score Card */}
               <div 
