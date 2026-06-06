@@ -19,6 +19,11 @@ function calculateHabitsCompleted(logsJson) {
   }
 }
 
+function calculateHabitsTotal(habits) {
+  if (!habits || !Array.isArray(habits)) return 0;
+  return habits.reduce((acc, h) => acc + (h.type === 'multi' ? (h.subItems?.length || 0) : 1), 0);
+}
+
 export async function GET(req) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -35,7 +40,7 @@ export async function GET(req) {
           include: {
             members: {
               include: {
-                user: { select: { id: true, name: true, friendCode: true, _count: { select: { habits: true } } } }
+                user: { select: { id: true, name: true, friendCode: true, habits: { select: { type: true, subItems: true } } } }
               }
             }
           }
@@ -61,7 +66,7 @@ export async function GET(req) {
           friendCode: u.friendCode,
           focusTime: dailyLog?.focusTime || 0,
           habitsCompleted: calculateHabitsCompleted(dailyLog?.logs),
-          habitsTotal: u._count?.habits || 0,
+          habitsTotal: calculateHabitsTotal(u.habits),
         });
       }
 

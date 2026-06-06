@@ -29,8 +29,8 @@ export async function GET(req) {
         ]
       },
       include: {
-        user: { select: { id: true, name: true, friendCode: true, _count: { select: { habits: true } } } },
-        friend: { select: { id: true, name: true, friendCode: true, _count: { select: { habits: true } } } }
+        user: { select: { id: true, name: true, friendCode: true, habits: { select: { type: true, subItems: true } } } },
+        friend: { select: { id: true, name: true, friendCode: true, habits: { select: { type: true, subItems: true } } } }
       }
     });
 
@@ -58,14 +58,14 @@ export async function GET(req) {
         friendCode: friendProfile.friendCode,
         focusTime: dailyLog?.focusTime || 0,
         habitsCompleted: calculateHabitsCompleted(dailyLog?.logs),
-        habitsTotal: friendProfile._count?.habits || 0,
+        habitsTotal: calculateHabitsTotal(friendProfile.habits),
       });
     }
 
     // 4. Fetch the current user separately for 1-on-1 comparisons
     const currentUserProfile = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, friendCode: true, _count: { select: { habits: true } } }
+      select: { id: true, name: true, friendCode: true, habits: { select: { type: true, subItems: true } } }
     });
     const currentUserDailyLog = await prisma.dailyLog.findUnique({
       where: { userId_date: { userId, date } }
@@ -79,7 +79,7 @@ export async function GET(req) {
         friendCode: currentUserProfile.friendCode,
         focusTime: currentUserDailyLog?.focusTime || 0,
         habitsCompleted: calculateHabitsCompleted(currentUserDailyLog?.logs),
-        habitsTotal: currentUserProfile._count?.habits || 0,
+        habitsTotal: calculateHabitsTotal(currentUserProfile.habits),
       };
     }
 
@@ -175,4 +175,9 @@ function calculateHabitsCompleted(logsJson) {
   } catch (e) {
     return 0;
   }
+}
+
+function calculateHabitsTotal(habits) {
+  if (!habits || !Array.isArray(habits)) return 0;
+  return habits.reduce((acc, h) => acc + (h.type === 'multi' ? (h.subItems?.length || 0) : 1), 0);
 }
