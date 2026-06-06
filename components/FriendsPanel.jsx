@@ -422,43 +422,43 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
 
               {/* Join/Create Group Form inline */}
               <div className="flex flex-col gap-4 pb-6 border-b border-black/5 dark:border-white/5">
-                <div className="flex gap-2">
+                <form onSubmit={handleJoinGroup} className="relative">
                   <input 
                     type="text" 
                     value={addCode}
                     onChange={(e) => setAddCode(e.target.value.toUpperCase())}
                     placeholder={t.groupCode}
-                    className="flex-1 bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-center text-sm font-black tracking-widest placeholder:opacity-30 focus:outline-none focus:border-current transition-colors uppercase"
+                    className="w-full bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-2xl px-5 py-4 text-center text-sm font-black tracking-widest placeholder:opacity-30 focus:outline-none focus:border-current transition-colors uppercase"
                     style={{ outlineColor: themeColor }}
                   />
                   <button 
-                    onClick={handleJoinGroup}
+                    type="submit"
                     disabled={joinGroupLoading || !addCode}
-                    className="w-24 rounded-xl font-bold text-xs tracking-wide transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 shrink-0"
+                    className="absolute right-2 top-2 bottom-2 px-6 rounded-xl font-bold text-xs tracking-wide transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
                     style={{ backgroundColor: themeColor, color: themeColor.toLowerCase() === '#ffffff' ? '#000' : '#fff' }}
                   >
                     {joinGroupLoading ? <Loader2 size={16} className="animate-spin" /> : (t.joinGroup || 'Join')}
                   </button>
-                </div>
+                </form>
                 
-                <div className="flex gap-2">
+                <form onSubmit={(e) => { e.preventDefault(); handleCreateGroup(); }} className="relative">
                   <input 
                     type="text" 
                     value={groupName}
                     onChange={(e) => setGroupName(e.target.value)}
                     placeholder={t.groupName}
-                    className="flex-1 bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-xl px-4 py-3 text-center text-sm font-black placeholder:opacity-30 focus:outline-none focus:border-current transition-colors"
+                    className="w-full bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-2xl px-5 py-4 text-center text-sm font-black placeholder:opacity-30 focus:outline-none focus:border-current transition-colors"
                     style={{ outlineColor: themeColor }}
                   />
                   <button 
-                    onClick={handleCreateGroup}
+                    type="submit"
                     disabled={createGroupLoading || !groupName}
-                    className="w-24 rounded-xl font-bold text-xs tracking-wide transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 shrink-0"
+                    className="absolute right-2 top-2 bottom-2 px-6 rounded-xl font-bold text-xs tracking-wide transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2"
                     style={{ backgroundColor: themeColor, color: themeColor.toLowerCase() === '#ffffff' ? '#000' : '#fff' }}
                   >
                     {createGroupLoading ? <Loader2 size={16} className="animate-spin" /> : (t.createGroup || 'Create')}
                   </button>
-                </div>
+                </form>
                 
                 {addMessage && activeTab === 'groups' && (
                   <p className="text-xs text-center font-bold mt-1" style={{ color: addMessage.includes('Error') ? '#EF4444' : themeColor }}>
