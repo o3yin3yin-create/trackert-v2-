@@ -402,7 +402,7 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
                   <button 
                     onClick={handleJoinGroup}
                     disabled={joinGroupLoading || !addCode}
-                    className="px-4 rounded-xl font-bold text-xs tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 shrink-0"
+                    className="w-24 rounded-xl font-bold text-xs tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 shrink-0"
                     style={{ backgroundColor: themeColor }}
                   >
                     {joinGroupLoading ? <Loader2 size={16} className="animate-spin" /> : t.joinGroup}
@@ -421,7 +421,7 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
                   <button 
                     onClick={handleCreateGroup}
                     disabled={createGroupLoading || !groupName}
-                    className="px-4 rounded-xl font-bold text-xs tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 shrink-0"
+                    className="w-24 rounded-xl font-bold text-xs tracking-wide text-white transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 shrink-0"
                     style={{ backgroundColor: themeColor }}
                   >
                     {createGroupLoading ? <Loader2 size={16} className="animate-spin" /> : t.createGroup}

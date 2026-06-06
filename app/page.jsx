@@ -4170,7 +4170,7 @@ export default function App() {
               onClose={() => setIsAdminPanelOpen(false)}
               lang={lang}
               themeColor={themeColor}
-              isRtl={isRtl}
+              isRtl={lang === 'ar'}
             />,
             document.body
           )}
