@@ -57,7 +57,7 @@ export async function GET(req) {
         name: friendProfile.name,
         friendCode: friendProfile.friendCode,
         focusTime: dailyLog?.focusTime || 0,
-        habitsCompleted: calculateHabitsCompleted(dailyLog?.logs),
+        habitsCompleted: calculateHabitsCompleted(dailyLog?.logs, friendProfile.habits, date),
         habitsTotal: calculateHabitsTotal(friendProfile.habits),
       });
     }
@@ -78,7 +78,7 @@ export async function GET(req) {
         name: currentUserProfile.name,
         friendCode: currentUserProfile.friendCode,
         focusTime: currentUserDailyLog?.focusTime || 0,
-        habitsCompleted: calculateHabitsCompleted(currentUserDailyLog?.logs),
+        habitsCompleted: calculateHabitsCompleted(currentUserDailyLog?.logs, currentUserProfile.habits, date),
         habitsTotal: calculateHabitsTotal(currentUserProfile.habits),
       };
     }
@@ -162,14 +162,18 @@ export async function POST(req) {
   }
 }
 
-function calculateHabitsCompleted(logsJson) {
-  if (!logsJson) return 0;
+function calculateHabitsCompleted(logsJson, habits, date) {
+  if (!logsJson || !habits || !Array.isArray(habits)) return 0;
   try {
-    // logsJson is an object with habitIds as keys
-    // We just count how many are marked as completed (assuming true means completed)
     let completed = 0;
-    for (const key in logsJson) {
-      if (logsJson[key]) completed++;
+    for (const h of habits) {
+      if (h.type === 'single') {
+        if (logsJson[`${date}-${h.id}`]) completed++;
+      } else if (h.type === 'multi' && Array.isArray(h.subItems)) {
+        for (const sub of h.subItems) {
+          if (logsJson[`${date}-${h.id}-${sub}`]) completed++;
+        }
+      }
     }
     return completed;
   } catch (e) {

@@ -6,12 +6,18 @@ export const runtime = 'nodejs';
 
 const prisma = new PrismaClient();
 
-function calculateHabitsCompleted(logsJson) {
-  if (!logsJson) return 0;
+function calculateHabitsCompleted(logsJson, habits, date) {
+  if (!logsJson || !habits || !Array.isArray(habits)) return 0;
   try {
     let completed = 0;
-    for (const key in logsJson) {
-      if (logsJson[key]) completed++;
+    for (const h of habits) {
+      if (h.type === 'single') {
+        if (logsJson[`${date}-${h.id}`]) completed++;
+      } else if (h.type === 'multi' && Array.isArray(h.subItems)) {
+        for (const sub of h.subItems) {
+          if (logsJson[`${date}-${h.id}-${sub}`]) completed++;
+        }
+      }
     }
     return completed;
   } catch (e) {
@@ -65,7 +71,7 @@ export async function GET(req) {
           name: u.name,
           friendCode: u.friendCode,
           focusTime: dailyLog?.focusTime || 0,
-          habitsCompleted: calculateHabitsCompleted(dailyLog?.logs),
+          habitsCompleted: calculateHabitsCompleted(dailyLog?.logs, u.habits, date),
           habitsTotal: calculateHabitsTotal(u.habits),
         });
       }
