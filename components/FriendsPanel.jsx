@@ -264,6 +264,22 @@ export default function FriendsPanel({ onClose, lang = 'en', themeColor = '#10B9
           ) : activeTab === 'friends' ? (
             <div className="flex flex-col gap-6">
               
+              {/* My Friend Code */}
+              <div className="bg-white dark:bg-[#1a1b1e] border border-black/10 dark:border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                <div>
+                  <h3 className="text-[10px] font-bold tracking-widest uppercase opacity-50">{t.myCode}</h3>
+                  <p className="text-xl font-black tracking-widest mt-1" style={{ color: themeColor }}>{friendCode}</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(friendCode);
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
+                >
+                  {t.copy}
+                </button>
+              </div>
+
               {/* Add Friend Form inline */}
               <div className="flex flex-col gap-3">
                 <form onSubmit={handleSendRequest} className="relative">

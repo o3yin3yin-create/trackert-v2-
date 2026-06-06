@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { PrismaClient } from '@prisma/client';
 
 
@@ -27,19 +27,37 @@ export async function GET() {
 
     if (!user) {
       // First time user, create default record
+      const clerkUser = await currentUser();
+      const name = clerkUser?.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : 'Unknown';
+      const email = clerkUser?.emailAddresses?.[0]?.emailAddress || userId;
+
       const friendCode = Math.random().toString(36).substring(2, 8).toUpperCase();
       user = await prisma.user.create({
-        data: { id: userId, email: userId, friendCode }, // clerk usually provides email, but ID is what matters for foreign keys
+        data: { id: userId, email, name, friendCode }, // clerk usually provides email, but ID is what matters for foreign keys
         include: { habits: true, dailyLogs: true }
       });
     } else if (!user.friendCode) {
       // Backfill friendCode for existing users
+      const clerkUser = await currentUser();
+      const name = clerkUser?.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : 'Unknown';
+      const email = clerkUser?.emailAddresses?.[0]?.emailAddress || userId;
       const friendCode = Math.random().toString(36).substring(2, 8).toUpperCase();
       user = await prisma.user.update({
         where: { id: userId },
-        data: { friendCode },
+        data: { friendCode, name, email },
         include: { habits: true, dailyLogs: true }
       });
+    } else if (user.name === 'Zain' || user.email.startsWith('user_')) {
+      const clerkUser = await currentUser();
+      if (clerkUser) {
+        const name = clerkUser.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : 'Unknown';
+        const email = clerkUser.emailAddresses?.[0]?.emailAddress || userId;
+        user = await prisma.user.update({
+          where: { id: userId },
+          data: { name, email },
+          include: { habits: true, dailyLogs: true }
+        });
+      }
     }
 
     // Reconstruct the flat state object expected by the frontend
@@ -111,7 +129,7 @@ export async function POST(req) {
       where: { id: userId },
       create: {
         id: userId,
-        email: userId, // Placeholder if email isn't available from token
+        email: userId, // We'll let GET populate email/name properly
         friendCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
         theme: state.theme || 'dark',
         bgStyle: state.bgStyle || 'aurora',
