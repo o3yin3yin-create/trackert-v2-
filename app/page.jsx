@@ -491,6 +491,7 @@ export default function App() {
   const [isMapView, setIsMapView] = useState(false);
   const [isCameraLocked, setIsCameraLocked] = useState(true);
   const [isScreensaverOpen, setIsScreensaverOpen] = useState(false);
+  const [isHudMenuOpen, setIsHudMenuOpen] = useState(false);
   const [showFlightModeAdvice, setShowFlightModeAdvice] = useState(false);
   const [flightDurationFilter, setFlightDurationFilter] = useState(null);
 
@@ -4058,57 +4059,94 @@ export default function App() {
                       </div>
                     </div>
                     
-                    {/* Screensaver Interactive Sidebar HUD Controls */}
-                    <div className="absolute top-1/2 right-6 -translate-y-1/2 flex flex-col gap-4 z-20">
-                      <button 
-                        onClick={() => setIsCameraLocked(!isCameraLocked)}
-                        className={`w-12 h-12 rounded-2xl flex items-center justify-center border shadow-2xl backdrop-blur-xl active:scale-95 transition-all select-none duration-300 ${isCameraLocked ? 'bg-white text-black border-white' : 'bg-black/50 text-white border-white/10 hover:bg-black/75'}`}
-                        title={lang === 'ar' ? 'قفل الكاميرا' : 'Camera Lock'}
+                    {/* Screensaver Unified Settings Popup & Controls */}
+                    <div className="absolute top-6 right-6 md:top-8 md:right-8 z-30 flex items-center gap-3">
+                      {/* SlidersHorizontal Options Trigger Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsHudMenuOpen(!isHudMenuOpen);
+                        }}
+                        className={`w-11 h-11 md:w-12 md:h-12 rounded-2xl flex items-center justify-center border shadow-2xl backdrop-blur-xl active:scale-95 transition-all select-none duration-300 ${isHudMenuOpen ? 'bg-[#10B981] text-black border-[#10B981]' : 'bg-black/60 text-white border-white/15 hover:bg-black/80'}`}
+                        title={lang === 'ar' ? 'خيارات الشاشة' : 'Screensaver Options'}
                       >
-                        <Navigation size={18} className={isCameraLocked ? 'fill-current rotate-45' : 'rotate-45'} />
+                        <SlidersHorizontal size={18} className={isHudMenuOpen ? 'text-black' : 'text-[#10B981]'} />
                       </button>
-                      
-                      <div className="relative group/vol flex items-center">
-                        <button 
-                          onClick={toggleCabinHum}
-                          className={`w-12 h-12 rounded-2xl flex items-center justify-center border shadow-2xl backdrop-blur-xl active:scale-95 transition-all select-none duration-300 ${isCabinHumPlaying ? 'bg-[#10B981] text-black border-[#10B981]' : 'bg-black/50 text-white border-white/10 hover:bg-black/75'}`}
-                          title={lang === 'ar' ? 'صوت كابينة الطائرة' : 'Cabin Noise'}
+
+                      {/* HUD Popup List */}
+                      {isHudMenuOpen && (
+                        <div 
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-0 top-14 w-64 bg-black/90 backdrop-blur-2xl border border-white/15 rounded-3xl p-3 shadow-2xl flex flex-col gap-2 z-50 animate-in fade-in zoom-in-95 duration-200"
                         >
-                          {isCabinHumPlaying ? (
-                            <motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ repeat: Infinity, duration: 1.2 }}>
-                              <Volume2 size={18} />
-                            </motion.div>
-                          ) : <VolumeX size={18} />}
-                        </button>
+                          {/* 1. Camera Lock Option */}
+                          <button
+                            onClick={() => setIsCameraLocked(!isCameraLocked)}
+                            className="flex items-center justify-between p-3 rounded-2xl hover:bg-white/10 transition-colors text-left text-xs font-bold text-white/90"
+                          >
+                            <div className="flex items-center gap-3">
+                              <Navigation size={16} className={`rotate-45 ${isCameraLocked ? 'text-[#10B981]' : 'text-white/40'}`} />
+                              <span>{lang === 'ar' ? 'تتبع الطائرة' : 'Camera Lock'}</span>
+                            </div>
+                            <span className={`text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-md ${isCameraLocked ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-white/10 text-white/40'}`}>
+                              {isCameraLocked ? 'ON' : 'OFF'}
+                            </span>
+                          </button>
 
-                        {/* Interactive Expandable Volume Slider (Appears on Hover / Touch) */}
-                        <div className="absolute right-14 top-1/2 -translate-y-1/2 opacity-0 pointer-events-none group-hover/vol:opacity-100 group-hover/vol:pointer-events-auto transition-all duration-300 transform translate-x-2 group-hover/vol:translate-x-0 flex items-center gap-3 bg-black/80 backdrop-blur-2xl border border-white/15 px-4 py-3 rounded-2xl shadow-2xl">
-                          <Volume2 size={14} className="text-white/60" />
-                          <input 
-                            type="range" min="0" max="1" step="0.01" 
-                            value={audioVolume} onChange={(e) => setAudioVolume(parseFloat(e.target.value))} 
-                            className="w-24 h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-[#10B981]"
-                          />
-                          <span className="text-[10px] font-mono text-white/80 w-6 text-right font-bold">
-                            {Math.round(audioVolume * 100)}%
-                          </span>
+                          {/* 2. Audio Toggle & Slider Option */}
+                          <div className="flex flex-col gap-2 p-3 rounded-2xl bg-white/5 border border-white/5">
+                            <div className="flex items-center justify-between text-xs font-bold text-white/90">
+                              <button 
+                                onClick={toggleCabinHum}
+                                className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity"
+                              >
+                                {isCabinHumPlaying ? <Volume2 size={16} className="text-[#10B981]" /> : <VolumeX size={16} className="text-white/40" />}
+                                <span>{lang === 'ar' ? 'صوت الكابينة' : 'Cabin Audio'}</span>
+                              </button>
+                              <span className={`text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-md ${isCabinHumPlaying ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-white/10 text-white/40'}`}>
+                                {isCabinHumPlaying ? `${Math.round(audioVolume * 100)}%` : 'OFF'}
+                              </span>
+                            </div>
+                            {isCabinHumPlaying && (
+                              <input 
+                                type="range" min="0" max="1" step="0.01" 
+                                value={audioVolume} onChange={(e) => setAudioVolume(parseFloat(e.target.value))} 
+                                className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-[#10B981] mt-1"
+                              />
+                            )}
+                          </div>
+
+                          {/* 3. Window Seat Screensaver */}
+                          <button
+                            onClick={() => { setIsHudMenuOpen(false); setIsWindowSeatOpen(true); }}
+                            className="flex items-center gap-3 p-3 rounded-2xl hover:bg-white/10 transition-colors text-left text-xs font-bold text-white/90"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#10B981]"><rect x="5" y="3" width="14" height="18" rx="5" /><line x1="5" y1="15" x2="19" y2="15" opacity="0.4" /></svg>
+                            <span>{lang === 'ar' ? 'شباك الطائرة 3D' : '3D Window Seat'}</span>
+                          </button>
+
+                          <div className="w-full h-[1px] bg-white/10 my-1" />
+
+                          {/* 4. Exit Screensaver */}
+                          <button
+                            onClick={() => {
+                              haptic('light');
+                              setIsHudMenuOpen(false);
+                              setIsScreensaverOpen(false);
+                            }}
+                            className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-400 font-bold text-xs transition-colors"
+                          >
+                            <X size={14} />
+                            <span>{t('exitScreensaver')}</span>
+                          </button>
                         </div>
-                      </div>
-
-                      
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); setIsWindowSeatOpen(true); }}
-                        className="w-12 h-12 rounded-2xl flex items-center justify-center border shadow-2xl backdrop-blur-xl active:scale-95 transition-all select-none duration-300 bg-black/50 text-white border-white/10 hover:bg-black/75"
-                        title={lang === 'ar' ? 'شباك الطائرة' : 'Window Seat'}
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="3" width="14" height="18" rx="5" /><line x1="5" y1="15" x2="19" y2="15" opacity="0.4" /></svg>
-                      </button>
+                      )}
                     </div>
                     
                     {/* Bottom Cinematic Telemetry Panel */}
-                    <div className="absolute bottom-0 left-0 w-full p-8 bg-gradient-to-t from-[#010705] via-[#010705]/80 to-transparent flex flex-col md:flex-row md:justify-between items-center gap-6 z-10 select-none">
-                      {/* Left: Monospace Avionics HUD */}
-                      <div className="flex flex-wrap gap-8 justify-center md:justify-start font-mono text-white/50 text-xs">
+                    <div className="absolute bottom-0 left-0 w-full p-6 md:p-8 bg-gradient-to-t from-[#010705] via-[#010705]/80 to-transparent flex flex-col md:flex-row md:justify-between items-center gap-6 z-10 select-none pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+                      {/* Monospace Avionics HUD */}
+                      <div className="flex flex-wrap gap-6 md:gap-8 justify-center md:justify-start font-mono text-white/50 text-xs">
                         <div className="flex flex-col text-left">
                           <span className="text-[9px] uppercase tracking-widest text-[#10B981] font-black opacity-60 mb-0.5">{t('speed')}</span>
                           <span className="text-sm font-black text-white">{speed} KTS / {Math.round(speed * 1.852)} KMH</span>
@@ -4122,18 +4160,6 @@ export default function App() {
                           <span className="text-sm font-black text-white">{distanceSim} km</span>
                         </div>
                       </div>
-                      
-                      {/* Right: Close Screen saver button */}
-                      <button
-                        onClick={() => {
-                          haptic('light');
-                          setIsScreensaverOpen(false);
-                        }}
-                        className="px-6 py-3.5 bg-white/5 dark:bg-white/10 hover:bg-white/15 dark:hover:bg-white/20 border border-white/10 rounded-2xl text-xs font-black uppercase tracking-widest text-white shadow-2xl active:scale-95 transition-all duration-300 backdrop-blur-xl flex items-center gap-2"
-                      >
-                        <SlidersHorizontal size={14} className="text-[#10B981]" />
-                        <span>{t('exitScreensaver')}</span>
-                      </button>
                     </div>
                   </>
                 );
