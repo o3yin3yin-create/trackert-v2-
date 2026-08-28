@@ -4068,17 +4068,32 @@ export default function App() {
                         <Navigation size={18} className={isCameraLocked ? 'fill-current rotate-45' : 'rotate-45'} />
                       </button>
                       
-                      <button 
-                        onClick={toggleCabinHum}
-                        className={`w-12 h-12 rounded-2xl flex items-center justify-center border shadow-2xl backdrop-blur-xl active:scale-95 transition-all select-none duration-300 ${isCabinHumPlaying ? 'bg-[#10B981] text-black border-[#10B981]' : 'bg-black/50 text-white border-white/10 hover:bg-black/75'}`}
-                        title={lang === 'ar' ? 'صوت كابينة الطائرة' : 'Cabin Noise'}
-                      >
-                        {isCabinHumPlaying ? (
-                          <motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ repeat: Infinity, duration: 1.2 }}>
-                            <Volume2 size={18} />
-                          </motion.div>
-                        ) : <VolumeX size={18} />}
-                      </button>
+                      <div className="relative group/vol flex items-center">
+                        <button 
+                          onClick={toggleCabinHum}
+                          className={`w-12 h-12 rounded-2xl flex items-center justify-center border shadow-2xl backdrop-blur-xl active:scale-95 transition-all select-none duration-300 ${isCabinHumPlaying ? 'bg-[#10B981] text-black border-[#10B981]' : 'bg-black/50 text-white border-white/10 hover:bg-black/75'}`}
+                          title={lang === 'ar' ? 'صوت كابينة الطائرة' : 'Cabin Noise'}
+                        >
+                          {isCabinHumPlaying ? (
+                            <motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ repeat: Infinity, duration: 1.2 }}>
+                              <Volume2 size={18} />
+                            </motion.div>
+                          ) : <VolumeX size={18} />}
+                        </button>
+
+                        {/* Interactive Expandable Volume Slider (Appears on Hover / Touch) */}
+                        <div className="absolute right-14 top-1/2 -translate-y-1/2 opacity-0 pointer-events-none group-hover/vol:opacity-100 group-hover/vol:pointer-events-auto transition-all duration-300 transform translate-x-2 group-hover/vol:translate-x-0 flex items-center gap-3 bg-black/80 backdrop-blur-2xl border border-white/15 px-4 py-3 rounded-2xl shadow-2xl">
+                          <Volume2 size={14} className="text-white/60" />
+                          <input 
+                            type="range" min="0" max="1" step="0.01" 
+                            value={audioVolume} onChange={(e) => setAudioVolume(parseFloat(e.target.value))} 
+                            className="w-24 h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-[#10B981]"
+                          />
+                          <span className="text-[10px] font-mono text-white/80 w-6 text-right font-bold">
+                            {Math.round(audioVolume * 100)}%
+                          </span>
+                        </div>
+                      </div>
 
                       
                       <button 
