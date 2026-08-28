@@ -180,6 +180,7 @@ const MapComponent = ({ originCoords, destCoords, progress, liveTelemetry, isCam
       >
         {/* Dark Map Tiles without API key watermarks */}
         <TileLayer
+          className="dark-grid-tiles"
           url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
           maxZoom={16}
         />
