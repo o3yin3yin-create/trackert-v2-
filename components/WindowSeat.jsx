@@ -1179,6 +1179,7 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
           </div>
         </div>
       </div>
+    </div>
 
       {/* FLOATING CONTROLS PANEL - Auto-hides on mouse inactivity */}
       <div 
