@@ -226,7 +226,14 @@ const lerpColor = (c1, c2, t) => [
   lerp(c1[2], c2[2], t),
 ];
 
-export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
+export default function WindowSeat({ 
+  onClose, 
+  seat = '5A', 
+  lang = 'ar',
+  isAudioOn = false,
+  onToggleAudio = () => {},
+  audioVolume = 0.55
+}) {
   const canvasRef = useRef(null);
   const animationFrameRef = useRef(null);
   const containerRef = useRef(null);
@@ -271,178 +278,6 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
       clearTimeout(hideTimeout);
     };
   }, []);
-
-  // Cabin Audio Synthesizer (Web Audio API)
-  const [isAudioOn, setIsAudioOn] = useState(false);
-  const audioCtxRef = useRef(null);
-  const gainNodeRef = useRef(null);
-  
-  // Weather-specific audio nodes
-  const rainGainRef = useRef(null);
-  const birdsGainRef = useRef(null);
-  const thunderFilterRef = useRef(null);
-
-  useEffect(() => {
-    if (isAudioOn) {
-      if (!audioCtxRef.current) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        const ctx = new AudioContext();
-        audioCtxRef.current = ctx;
-
-        const bufferSize = 2 * ctx.sampleRate;
-        const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-        const output = noiseBuffer.getChannelData(0);
-        let lastOut = 0;
-        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
-
-        for (let i = 0; i < bufferSize; i++) {
-          let white = Math.random() * 2 - 1;
-          // Brown noise for cabin rumble
-          output[i] = (lastOut + (0.02 * white)) / 1.02;
-          lastOut = output[i];
-          output[i] *= 3.5; 
-        }
-
-        const pinkNoiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-        const pinkOutput = pinkNoiseBuffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-          let white = Math.random() * 2 - 1;
-          b0 = 0.99886 * b0 + white * 0.0555179;
-          b1 = 0.99332 * b1 + white * 0.0750759;
-          b2 = 0.96900 * b2 + white * 0.1538520;
-          b3 = 0.86650 * b3 + white * 0.3104856;
-          b4 = 0.55000 * b4 + white * 0.5329522;
-          b5 = -0.7616 * b5 - white * 0.0168980;
-          pinkOutput[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
-          pinkOutput[i] *= 0.11;
-          b6 = white * 0.115926;
-        }
-
-        // 1. Cabin Rumble
-        const noiseSource = ctx.createBufferSource();
-        noiseSource.buffer = noiseBuffer;
-        noiseSource.loop = true;
-        const rumbleFilter = ctx.createBiquadFilter();
-        rumbleFilter.type = 'lowpass';
-        rumbleFilter.frequency.value = 400; 
-        const gainNode = ctx.createGain();
-        gainNode.gain.value = 0.001; 
-        gainNodeRef.current = gainNode;
-        noiseSource.connect(rumbleFilter);
-        rumbleFilter.connect(gainNode);
-        gainNode.connect(ctx.destination);
-        noiseSource.start();
-
-        // 2. Rain & Thunder
-        const rainSource = ctx.createBufferSource();
-        rainSource.buffer = pinkNoiseBuffer;
-        rainSource.loop = true;
-        const thunderFilter = ctx.createBiquadFilter();
-        thunderFilter.type = 'highpass';
-        thunderFilter.frequency.value = 1200; // Rain is a hiss, not a rumble
-        thunderFilterRef.current = thunderFilter;
-        const rainGain = ctx.createGain();
-        rainGain.gain.value = 0.001;
-        rainGainRef.current = rainGain;
-        rainSource.connect(thunderFilter);
-        thunderFilter.connect(rainGain);
-        rainGain.connect(ctx.destination);
-        rainSource.start();
-
-        // 3. Birds (Chirping Oscillators)
-        const birdsGain = ctx.createGain();
-        birdsGain.gain.value = 0.001;
-        birdsGainRef.current = birdsGain;
-        birdsGain.connect(ctx.destination);
-
-        // Simple bird chirp loop
-        setInterval(() => {
-          if (birdsGain.gain.value > 0.01 && ctx.state === 'running') {
-            const osc = ctx.createOscillator();
-            const oscGain = ctx.createGain();
-            osc.connect(oscGain);
-            oscGain.connect(birdsGain);
-            
-            const now = ctx.currentTime;
-            osc.frequency.setValueAtTime(4000 + Math.random() * 1000, now);
-            osc.frequency.exponentialRampToValueAtTime(6000 + Math.random() * 2000, now + 0.1);
-            
-            oscGain.gain.setValueAtTime(0, now);
-            oscGain.gain.linearRampToValueAtTime(0.2, now + 0.02);
-            oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-            
-            osc.start(now);
-            osc.stop(now + 0.15);
-          }
-        }, 1500);
-        
-        // Advanced Thunder Synth Loop
-        setInterval(() => {
-           if (rainGain.gain.value > 0.01 && ctx.state === 'running' && Math.random() > 0.6) {
-             const osc = ctx.createOscillator();
-             const oscGain = ctx.createGain();
-             const filter = ctx.createBiquadFilter();
-             
-             osc.type = 'square';
-             osc.frequency.value = 40 + Math.random() * 20; // Deep low frequency
-             
-             filter.type = 'lowpass';
-             filter.frequency.value = 250; // Muffle it
-             
-             osc.connect(oscGain);
-             oscGain.connect(filter);
-             filter.connect(ctx.destination);
-             
-             const now = ctx.currentTime;
-             
-             // Thunder Envelope (Crack -> Rumble -> Fade)
-             oscGain.gain.setValueAtTime(0, now);
-             oscGain.gain.linearRampToValueAtTime(2.0, now + 0.1); // Crack!
-             oscGain.gain.exponentialRampToValueAtTime(0.6, now + 0.4); // Drop
-             oscGain.gain.linearRampToValueAtTime(0.4, now + 1.5); // Rumble
-             oscGain.gain.exponentialRampToValueAtTime(0.001, now + 4.0); // Fade away
-             
-             osc.start(now);
-             osc.stop(now + 4.5);
-             
-             // Modulate rain volume with "wind gust"
-             rainGain.gain.linearRampToValueAtTime(1.2, now + 0.5);
-             rainGain.gain.linearRampToValueAtTime(0.5, now + 3.0);
-           }
-        }, 4500);
-      }
-      
-      if (audioCtxRef.current.state === 'suspended') {
-        audioCtxRef.current.resume();
-      }
-      
-      const ctx = audioCtxRef.current;
-      const now = ctx.currentTime;
-
-      if (gainNodeRef.current) gainNodeRef.current.gain.setTargetAtTime(0.5, now, 0.5);
-      
-      if (rainGainRef.current) {
-        rainGainRef.current.gain.setTargetAtTime(weather === 1 ? 0.5 : 0.001, now, 1.0);
-      }
-      if (birdsGainRef.current) {
-        birdsGainRef.current.gain.setTargetAtTime(weather === 2 ? 0.3 : 0.001, now, 1.0);
-      }
-
-    } else {
-      if (audioCtxRef.current && gainNodeRef.current) {
-        const now = audioCtxRef.current.currentTime;
-        gainNodeRef.current.gain.setTargetAtTime(0.001, now, 0.5);
-        if (rainGainRef.current) rainGainRef.current.gain.setTargetAtTime(0.001, now, 0.5);
-        if (birdsGainRef.current) birdsGainRef.current.gain.setTargetAtTime(0.001, now, 0.5);
-        
-        setTimeout(() => {
-           if (!isAudioOn && audioCtxRef.current && audioCtxRef.current.state !== 'suspended') {
-             audioCtxRef.current.suspend();
-           }
-        }, 1000);
-      }
-    }
-  }, [isAudioOn, weather]);
 
   // Synchronize local time
   useEffect(() => {
@@ -1225,7 +1060,7 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
 
           {/* Cabin Audio Toggle */}
           <button
-            onClick={() => setIsAudioOn(!isAudioOn)}
+            onClick={onToggleAudio}
             className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all ${
               isAudioOn 
                 ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' 

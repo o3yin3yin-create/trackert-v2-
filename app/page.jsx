@@ -4227,6 +4227,10 @@ export default function App() {
               originCoords={(selectedFlight?.originCoords?.lat) ? selectedFlight.originCoords : null}
               destCoords={(selectedFlight?.destCoords?.lat) ? selectedFlight.destCoords : null}
               seat={selectedSeat}
+              isAudioOn={isCabinHumPlaying}
+              onToggleAudio={toggleCabinHum}
+              audioVolume={audioVolume}
+              setAudioVolume={setAudioVolume}
             />,
             document.body
           )}
