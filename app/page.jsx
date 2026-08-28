@@ -4079,15 +4079,7 @@ export default function App() {
                           </motion.div>
                         ) : <VolumeX size={18} />}
                       </button>
-                      {isCabinHumPlaying && (
-                         <div className="flex flex-col items-center gap-2">
-                           <input 
-                             type="range" min="0" max="1" step="0.01" 
-                             value={audioVolume} onChange={(e) => setAudioVolume(parseFloat(e.target.value))} 
-                             className="w-24 h-2 bg-black/50 rounded-lg appearance-none cursor-pointer accent-[#10B981]"
-                           />
-                         </div>
-                      )}
+
                       
                       <button 
                         onClick={(e) => { e.stopPropagation(); setIsWindowSeatOpen(true); }}

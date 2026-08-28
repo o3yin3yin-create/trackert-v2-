@@ -177,14 +177,14 @@ const MapComponent = ({ originCoords, destCoords, progress, liveTelemetry, isCam
           maxZoom={19}
         />
 
-        {/* Flight path curve as dotted line (Dark Gray / Black for maximum visibility) */}
+        {/* Flight path curve as dotted line (Semi-transparent dark gray) */}
         {curvePoints.length > 0 && (
           <Polyline 
             positions={curvePoints} 
-            color="#0f172a" 
-            weight={3.5} 
+            color="#1e293b" 
+            weight={3} 
             dashArray="6, 10" 
-            opacity={0.9}
+            opacity={0.45}
           />
         )}
 
