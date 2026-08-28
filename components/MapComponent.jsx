@@ -178,9 +178,9 @@ const MapComponent = ({ originCoords, destCoords, progress, liveTelemetry, isCam
         attributionControl={false}
         style={{ width: '100%', height: '100%', background: '#090a0f' }}
       >
-        {/* Ultra HD Retina Dark Tiles without Watermarks */}
+        {/* Clean High-Resolution Dark Map Tiles without Watermark */}
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}@2x.png"
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png"
           subdomains={['a','b','c','d']}
           tileSize={512}
           zoomOffset={-1}
