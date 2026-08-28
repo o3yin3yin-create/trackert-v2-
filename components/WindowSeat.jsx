@@ -63,8 +63,8 @@ const fragmentShaderSource = `
 
     float side = u_seatSide > 0.5 ? 1.0 : -1.0;
     
-    vec3 ro = vec3(0.0, 2.0, -u_time * 0.08);
-    vec3 ta = vec3(side * 1.5, 2.0, -u_time * 0.08 - 2.0);
+    vec3 ro = vec3(0.0, 2.0, -u_time * 0.025);
+    vec3 ta = vec3(side * 1.5, 2.0, -u_time * 0.025 - 2.0);
     
     vec3 cw = normalize(ta - ro);
     vec3 cp = vec3(0.0, 1.0, 0.0);
@@ -83,7 +83,7 @@ const fragmentShaderSource = `
     if (rd.y > 0.02) {
       vec2 highUV = rd.xz / (rd.y + 0.15); // lowered altitude
       // وسعنا الـ scale سنة عشان يفرش
-      float highNoise = fbm(vec3(highUV * 0.25, u_time * 0.005));
+      float highNoise = fbm(vec3(highUV * 0.25, u_time * 0.0015));
       
       // قللنا العتبة وقربناها عشان السحاب يبقى حاد أكتر
       float cirrus = smoothstep(0.35, 0.60, highNoise);
@@ -149,7 +149,7 @@ const fragmentShaderSource = `
       
       if (pos.y < 1.8) {
         
-        vec3 wind = vec3(u_time * 0.1, 0.0, -u_time * 0.02);
+        vec3 wind = vec3(u_time * 0.025, 0.0, -u_time * 0.005);
         
         vec3 q = pos * 0.35 + wind * 0.5;
         float n1 = fbm(q);
