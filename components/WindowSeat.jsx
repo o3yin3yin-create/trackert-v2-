@@ -916,20 +916,28 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
             {/* RUBBER GLASS GASKET (Textured black sealer ring) */}
             <div 
               id="window-bezel"
-              className="relative overflow-hidden flex items-center justify-center w-full h-full rounded-[92px] bg-[#0f1012]"
+              className="relative overflow-hidden flex items-center justify-center w-full h-full rounded-[90px] bg-[#0f1012]"
               style={{
-                border: '3px solid #141518',
-                boxShadow: 'inset 0 0 15px rgba(0, 0, 0, 0.95)',
+                boxShadow: 'inset 0 0 18px rgba(0, 0, 0, 0.98)',
               }}
             >
-            {/* PROCEDURAL WEBGL SKY & VOLUMETRIC CLOUDS CANVAS */}
-            <canvas 
-              ref={canvasRef}
-              className="absolute inset-0 block w-full h-full rounded-[90px]"
-              style={{
-                backgroundColor: '#0a0d16'
-              }}
-            />
+              {/* PROCEDURAL WEBGL SKY & VOLUMETRIC CLOUDS CANVAS */}
+              <canvas 
+                ref={canvasRef}
+                className="absolute inset-0 block w-full h-full rounded-[90px]"
+                style={{
+                  backgroundColor: '#0a0d16'
+                }}
+              />
+
+              {/* HEAVY INNER RUBBER GASKET VIGNETTE & SEALER - Eliminates edge/corner light bleed */}
+              <div 
+                className="absolute inset-0 pointer-events-none rounded-[90px] z-20"
+                style={{
+                  boxShadow: 'inset 0 0 0 3px #0d0e10, inset 0 0 12px 6px rgba(0, 0, 0, 0.85)',
+                  border: '1px solid rgba(0,0,0,0.9)'
+                }}
+              />
 
 
 
