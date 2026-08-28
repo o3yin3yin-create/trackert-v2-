@@ -799,108 +799,129 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
         <X size={24} className="text-white/80" />
       </button>
 
-      {/* INFO PANEL (Small Minimal Clean Clock, Date, Day) */}
+      {/* INFO PANEL (Smaller, Semi-Transparent Clock, Date, Day) */}
       <div 
-        className="flex flex-col items-center md:items-start text-white/90 z-[10000000] drop-shadow-2xl font-sans select-none"
+        className="flex flex-col items-center md:items-start text-white/50 z-[10000000] drop-shadow-md font-sans select-none opacity-60 hover:opacity-100 transition-opacity duration-300"
       >
-        <div className="flex items-baseline gap-2 mb-1" dir="ltr">
-          <span className="text-4xl md:text-5xl font-light tracking-tight text-white/95">
+        <div className="flex items-baseline gap-1.5 mb-0.5" dir="ltr">
+          <span className="text-2xl md:text-3xl font-light tracking-tight text-white/80">
             {displayH}:{displayM}
           </span>
-          <span className="text-sm font-semibold tracking-widest text-white/50 uppercase">
+          <span className="text-[11px] font-medium tracking-widest text-white/40 uppercase">
             {ampm}
           </span>
         </div>
-        <div className="text-sm md:text-base font-medium tracking-wide text-white/70">
+        <div className="text-xs md:text-sm font-light tracking-wide text-white/45">
           {dayName} • {dateString}
         </div>
       </div>
 
-      {/* OUTER CABIN BEZEL - Fixed physical dimensions with realistic frame texture */}
-      <div 
-        className="relative flex items-center justify-center shrink-0 w-[320px] h-[520px] rounded-[140px] p-[24px] shadow-2xl"
-      >
-        {/* SVG Texture overlay for realistic plastic/composite grain */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none z-30 opacity-15 rounded-[140px]" style={{ mixBlendMode: 'overlay' }}>
-          <filter id="noiseFilter">
-            <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/>
-          </filter>
-          <rect width="100%" height="100%" filter="url(#noiseFilter)"/>
-        </svg>
-
-        {/* Outer Bezel: Day Theme */}
+      {/* OUTER CABIN WALL & BEZEL CONTAINER */}
+      <div className="relative flex items-center justify-center shrink-0 w-[320px] h-[520px]">
+        
+        {/* CABIN WALL AMBIENT LIGHT SPILL (Soft light cast from window onto dark cabin wall) */}
         <div 
-          className="absolute inset-0 rounded-[140px]"
+          className="absolute -inset-16 rounded-[180px] pointer-events-none transition-all duration-700"
           style={{
-            background: 'linear-gradient(135deg, #4b4e54 0%, #292b2f 50%, #1f2023 100%)',
-            boxShadow: `
-              inset 2px 2px 5px rgba(255, 255, 255, 0.2),
-              inset -3px -3px 8px rgba(0, 0, 0, 0.7),
-              0 20px 50px rgba(0, 0, 0, 0.8),
-              0 0 100px rgba(0, 0, 0, 0.6)
-            `,
+            background: `radial-gradient(ellipse at center, rgba(${params.skyColorBottom.map(c => Math.round(c * 255)).join(',')}, ${params.nightMode > 0.5 ? 0.04 : 0.12}) 20%, rgba(0,0,0,0) 75%)`,
+            filter: 'blur(30px)'
           }}
         />
 
-        {/* Outer Bezel: Night Theme Overlay */}
+        {/* CABIN WALL TEXTURE & PANEL SEAMS (Subtle airplane interior wall texture) */}
         <div 
-          className="absolute inset-0 rounded-[140px] pointer-events-none"
+          className="absolute -inset-10 rounded-[160px] pointer-events-none opacity-40"
           style={{
-            opacity: params.nightMode,
-            background: 'linear-gradient(135deg, #18191c 0%, #0d0e10 100%)',
-            boxShadow: `
-              inset 3px 3px 6px rgba(255, 255, 255, 0.08),
-              inset -3px -3px 6px rgba(0, 0, 0, 0.8),
-              0 15px 45px rgba(0, 0, 0, 0.95),
-              0 0 80px rgba(0, 0, 0, 0.8)
-            `,
-            transition: 'opacity 0.5s ease',
+            background: 'radial-gradient(circle at 30% 20%, #1c1e22 0%, #08090a 80%)',
+            boxShadow: 'inset 0 0 60px rgba(0,0,0,0.9)'
           }}
         />
 
-        {/* INNER PLASTIC ACCENT BEZEL (Stepped textured frame) */}
-        <div className="relative z-10 flex items-center justify-center w-full h-full rounded-[115px] p-[26px]">
-          
-          {/* Inner Bezel: Day Theme */}
+        {/* OUTER CABIN BEZEL - Fixed physical dimensions with realistic frame texture */}
+        <div 
+          className="relative flex items-center justify-center shrink-0 w-[320px] h-[520px] rounded-[140px] p-[24px] shadow-2xl overflow-hidden"
+        >
+          {/* High-definition noise & composite grain overlay */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none z-30 opacity-25 rounded-[140px]" style={{ mixBlendMode: 'overlay' }}>
+            <filter id="noiseFilterReal">
+              <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="4" stitchTiles="stitch"/>
+              <feColorMatrix type="saturate" values="0"/>
+            </filter>
+            <rect width="100%" height="100%" filter="url(#noiseFilterReal)"/>
+          </svg>
+
+          {/* Outer Bezel: Day Theme */}
           <div 
-            className="absolute inset-0 rounded-[115px]"
+            className="absolute inset-0 rounded-[140px]"
             style={{
-              background: 'linear-gradient(145deg, #6c727d 0%, #3e4249 100%)',
+              background: 'linear-gradient(135deg, #585c66 0%, #32353b 40%, #1e2024 100%)',
               boxShadow: `
-                inset 16px 0 25px -5px ${params.bezelHighlight},
-                inset -20px 0 30px rgba(0, 0, 0, 0.75),
-                inset 0 20px 30px rgba(0, 0, 0, 0.5),
-                inset 0 -20px 30px rgba(0, 0, 0, 0.5),
-                0 4px 15px rgba(0,0,0,0.5)
+                inset 2px 2px 4px rgba(255, 255, 255, 0.25),
+                inset -4px -4px 10px rgba(0, 0, 0, 0.8),
+                0 25px 60px rgba(0, 0, 0, 0.9),
+                0 0 100px rgba(0, 0, 0, 0.7)
               `,
             }}
           />
 
-          {/* Inner Bezel: Night Theme Overlay */}
+          {/* Outer Bezel: Night Theme Overlay */}
           <div 
-            className="absolute inset-0 rounded-[115px] pointer-events-none"
+            className="absolute inset-0 rounded-[140px] pointer-events-none"
             style={{
               opacity: params.nightMode,
-              background: 'linear-gradient(145deg, #101113 0%, #08090a 100%)',
+              background: 'linear-gradient(135deg, #1d1f24 0%, #0e0f12 100%)',
               boxShadow: `
-                inset 16px 0 25px -5px ${params.bezelHighlight},
-                inset -20px 0 30px rgba(0, 0, 0, 0.95),
-                inset 0 20px 30px rgba(0, 0, 0, 0.95),
-                inset 0 -20px 30px rgba(0, 0, 0, 0.95),
-                0 3px 10px rgba(0,0,0,0.6)
+                inset 2px 2px 5px rgba(255, 255, 255, 0.1),
+                inset -4px -4px 10px rgba(0, 0, 0, 0.9),
+                0 25px 60px rgba(0, 0, 0, 0.95)
               `,
               transition: 'opacity 0.5s ease',
             }}
           />
-          {/* RUBBER GLASS GASKET (Textured black sealer ring) */}
-          <div 
-            id="window-bezel"
-            className="relative overflow-hidden flex items-center justify-center w-full h-full rounded-[92px] bg-[#121315]"
-            style={{
-              border: '3px solid #141517',
-              boxShadow: 'inset 0 0 12px rgba(0, 0, 0, 0.9)',
-            }}
-          >
+
+          {/* INNER PLASTIC ACCENT BEZEL (Stepped textured frame) */}
+          <div className="relative z-10 flex items-center justify-center w-full h-full rounded-[115px] p-[26px]">
+            
+            {/* Inner Bezel: Day Theme */}
+            <div 
+              className="absolute inset-0 rounded-[115px]"
+              style={{
+                background: 'linear-gradient(145deg, #787f8c 0%, #464b54 50%, #2c3036 100%)',
+                boxShadow: `
+                  inset 14px 0 25px -5px ${params.bezelHighlight},
+                  inset -18px 0 28px rgba(0, 0, 0, 0.8),
+                  inset 0 18px 25px rgba(0, 0, 0, 0.6),
+                  inset 0 -18px 25px rgba(0, 0, 0, 0.6),
+                  0 4px 15px rgba(0,0,0,0.6)
+                `,
+              }}
+            />
+
+            {/* Inner Bezel: Night Theme Overlay */}
+            <div 
+              className="absolute inset-0 rounded-[115px] pointer-events-none"
+              style={{
+                opacity: params.nightMode,
+                background: 'linear-gradient(145deg, #141518 0%, #0a0b0d 100%)',
+                boxShadow: `
+                  inset 14px 0 25px -5px ${params.bezelHighlight},
+                  inset -18px 0 28px rgba(0, 0, 0, 0.95),
+                  inset 0 18px 25px rgba(0, 0, 0, 0.95),
+                  inset 0 -18px 25px rgba(0, 0, 0, 0.95),
+                  0 3px 10px rgba(0,0,0,0.7)
+                `,
+                transition: 'opacity 0.5s ease',
+              }}
+            />
+            {/* RUBBER GLASS GASKET (Textured black sealer ring) */}
+            <div 
+              id="window-bezel"
+              className="relative overflow-hidden flex items-center justify-center w-full h-full rounded-[92px] bg-[#0f1012]"
+              style={{
+                border: '3px solid #141518',
+                boxShadow: 'inset 0 0 15px rgba(0, 0, 0, 0.95)',
+              }}
+            >
             {/* PROCEDURAL WEBGL SKY & VOLUMETRIC CLOUDS CANVAS */}
             <canvas 
               ref={canvasRef}
