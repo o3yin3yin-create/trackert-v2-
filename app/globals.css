@@ -278,5 +278,5 @@
 
 /* Map Tile Dark Filter to restore original pitch-black aesthetic */
 .dark-grid-tiles {
-  filter: brightness(0.6) contrast(1.2);
+  filter: brightness(0.45) contrast(1.6) grayscale(0.9);
 }
