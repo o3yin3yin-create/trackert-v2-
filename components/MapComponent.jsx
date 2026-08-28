@@ -134,21 +134,14 @@ const MapComponent = ({ originCoords, destCoords, progress, liveTelemetry, isCam
     }, [targetPos.current, isCameraLocked, map, liveTelemetry]);
 
     const icon = useMemo(() => L.divIcon({
-      html: `<div class="plane-icon-inner" style="transform: rotate(0deg); display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg" style="overflow: visible;">
-          <defs>
-            <linearGradient id="mapTrailGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="white" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="white" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          <ellipse cx="12" cy="24" rx="2.5" ry="12" fill="url(#mapTrailGradient)" opacity="0.6" style="filter: blur(2px);" />
+      html: `<div class="plane-icon-inner" style="transform: rotate(0deg); display: flex; align-items: center; justify-content: justify-center; width: 100%; height: 100%;">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="#090a0f" stroke="#ffffff" stroke-width="1.2" xmlns="http://www.w3.org/2000/svg" style="overflow: visible; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));">
           <path d="M21 16V14L13 9V3.5C13 2.67 12.33 2 11.5 2C10.67 2 10 2.67 10 3.5V9L2 14V16L10 13.5V19L8 20.5V22L11.5 21L15 22V20.5L13 19V13.5L21 16Z"/>
         </svg>
       </div>`,
       className: 'plane-icon-custom',
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
+      iconSize: [26, 26],
+      iconAnchor: [13, 13],
     }), []);
 
     useEffect(() => {
@@ -184,14 +177,14 @@ const MapComponent = ({ originCoords, destCoords, progress, liveTelemetry, isCam
           maxZoom={19}
         />
 
-        {/* Flight path curve as dotted line */}
+        {/* Flight path curve as dotted line (Dark Gray / Black for maximum visibility) */}
         {curvePoints.length > 0 && (
           <Polyline 
             positions={curvePoints} 
-            color={themeColor} 
-            weight={3} 
-            dashArray="6, 12" 
-            opacity={0.8}
+            color="#0f172a" 
+            weight={3.5} 
+            dashArray="6, 10" 
+            opacity={0.9}
           />
         )}
 

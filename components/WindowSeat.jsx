@@ -1236,7 +1236,7 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
             {isAudioOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
           </button>
           
-          <div className="w-[1px] h-6 bg-white/20 mx-1"></div>
+          <div className="w-[1px] h-6 bg-white/20 mx-1 hidden"></div>
 
           {/* Time Scrubber (only visible in manual mode) */}
           <div className="flex items-center gap-3">
