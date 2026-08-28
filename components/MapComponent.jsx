@@ -178,11 +178,12 @@ const MapComponent = ({ originCoords, destCoords, progress, liveTelemetry, isCam
         attributionControl={false}
         style={{ width: '100%', height: '100%', background: '#090a0f' }}
       >
-        {/* 100% Guaranteed Watermark-Free OpenStreetMap Dark Filtered Map */}
+        {/* Pure Dark No-Labels English Map Tiles */}
         <TileLayer
-          className="osm-dark-tiles"
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          subdomains={['a','b','c']}
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}@2x.png"
+          subdomains={['a','b','c','d']}
+          tileSize={512}
+          zoomOffset={-1}
           maxZoom={19}
         />
 
