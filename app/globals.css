@@ -276,7 +276,7 @@
   display: none;
 }
 
-/* Map Tile Dark Filter to restore original pitch-black aesthetic with visible landmasses */
+/* Map Tile Dark Filter for Crisp @2x Retina Tiles */
 .dark-grid-tiles {
-  filter: brightness(0.95) contrast(1.1) opacity(0.85);
+  filter: brightness(0.7) invert(1) contrast(1.4) hue-rotate(200deg) saturate(0.3);
 }
