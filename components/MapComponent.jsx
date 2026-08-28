@@ -178,13 +178,10 @@ const MapComponent = ({ originCoords, destCoords, progress, liveTelemetry, isCam
         attributionControl={false}
         style={{ width: '100%', height: '100%', background: '#090a0f' }}
       >
-        {/* Ultra Crisp High-Resolution Esri Dark Gray Map Tiles */}
+        {/* Clean Native Resolution Esri Dark Gray Map Tiles */}
         <TileLayer
           url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-          tileSize={512}
-          zoomOffset={-1}
-          maxNativeZoom={16}
-          maxZoom={19}
+          maxZoom={16}
         />
 
         {/* Flight path curve as dotted line */}
