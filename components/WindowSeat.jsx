@@ -799,69 +799,52 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
         <X size={24} className="text-white/80" />
       </button>
 
-      {/* INFO PANEL (Time, Date, Day) */}
+      {/* INFO PANEL (Small Minimal Clean Clock, Date, Day) */}
       <div 
-        className="flex flex-col items-center md:items-start text-white/90 z-[10000000] drop-shadow-2xl"
+        className="flex flex-col items-center md:items-start text-white/90 z-[10000000] drop-shadow-2xl font-sans select-none"
       >
-        <div className="flex items-center gap-2 md:gap-4 mb-4 md:mb-6" dir="ltr">
-          <div className="relative flex justify-center items-center bg-gradient-to-b from-[#252528] to-[#121214] rounded-2xl border border-white/5 shadow-2xl px-4 md:px-6 py-3 md:py-4 min-w-[80px] md:min-w-[130px] overflow-hidden">
-            <div className="absolute top-1/2 left-0 w-full h-[3px] bg-black/90 shadow-[0_1px_0_rgba(255,255,255,0.1)] z-20 -translate-y-1/2"></div>
-            <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/10 to-transparent z-10"></div>
-            <div className="absolute inset-0 shadow-[inset_0_10px_20px_rgba(0,0,0,0.6)] pointer-events-none rounded-2xl"></div>
-            <span className="relative z-0 text-6xl md:text-8xl text-gray-100 font-mono font-bold tracking-tighter drop-shadow-lg">
-              {displayH}
-            </span>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white/40 shadow-[0_0_8px_rgba(255,255,255,0.4)] animate-pulse"></div>
-            <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white/40 shadow-[0_0_8px_rgba(255,255,255,0.4)] animate-pulse"></div>
-          </div>
-
-          <div className="relative flex justify-center items-center bg-gradient-to-b from-[#252528] to-[#121214] rounded-2xl border border-white/5 shadow-2xl px-4 md:px-6 py-3 md:py-4 min-w-[80px] md:min-w-[130px] overflow-hidden">
-            <div className="absolute top-1/2 left-0 w-full h-[3px] bg-black/90 shadow-[0_1px_0_rgba(255,255,255,0.1)] z-20 -translate-y-1/2"></div>
-            <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/10 to-transparent z-10"></div>
-            <div className="absolute inset-0 shadow-[inset_0_10px_20px_rgba(0,0,0,0.6)] pointer-events-none rounded-2xl"></div>
-            <span className="relative z-0 text-6xl md:text-8xl text-gray-100 font-mono font-bold tracking-tighter drop-shadow-lg">
-              {displayM}
-            </span>
-          </div>
-
-          <div className="flex flex-col ml-1 md:ml-3 h-full justify-end pb-3 md:pb-4">
-            <span className="text-xl md:text-3xl font-bold tracking-widest text-white/50 uppercase font-sans">
-              {ampm}
-            </span>
-          </div>
+        <div className="flex items-baseline gap-2 mb-1" dir="ltr">
+          <span className="text-4xl md:text-5xl font-light tracking-tight text-white/95">
+            {displayH}:{displayM}
+          </span>
+          <span className="text-sm font-semibold tracking-widest text-white/50 uppercase">
+            {ampm}
+          </span>
         </div>
-        <div className="text-2xl md:text-4xl font-medium tracking-wide drop-shadow-lg mb-1 md:mb-2 text-white/80">
-          {dayName}
-        </div>
-        <div className="text-lg md:text-2xl text-white/50 drop-shadow-md font-light tracking-wide">
-          {dateString}
+        <div className="text-sm md:text-base font-medium tracking-wide text-white/70">
+          {dayName} • {dateString}
         </div>
       </div>
 
-      {/* OUTER CABIN BEZEL - Multi-layer extrusion for 3D depth */}
+      {/* OUTER CABIN BEZEL - Fixed physical dimensions with realistic frame texture */}
       <div 
-        className="relative flex items-center justify-center shrink-0 w-[340px] h-[530px] md:w-[440px] md:h-[680px] rounded-[140px] md:rounded-[180px] p-[24px] md:p-[32px]"
+        className="relative flex items-center justify-center shrink-0 w-[320px] h-[520px] rounded-[140px] p-[24px] shadow-2xl"
       >
+        {/* SVG Texture overlay for realistic plastic/composite grain */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none z-30 opacity-15 rounded-[140px]" style={{ mixBlendMode: 'overlay' }}>
+          <filter id="noiseFilter">
+            <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/>
+          </filter>
+          <rect width="100%" height="100%" filter="url(#noiseFilter)"/>
+        </svg>
+
         {/* Outer Bezel: Day Theme */}
         <div 
-          className="absolute inset-0 rounded-[140px] md:rounded-[180px]"
+          className="absolute inset-0 rounded-[140px]"
           style={{
-            background: 'linear-gradient(135deg, #44474d 0%, #2b2d31 100%)',
+            background: 'linear-gradient(135deg, #4b4e54 0%, #292b2f 50%, #1f2023 100%)',
             boxShadow: `
-              inset 3px 3px 8px rgba(255, 255, 255, 0.15),
-              inset -3px -3px 6px rgba(0, 0, 0, 0.5),
-              0 15px 45px rgba(0, 0, 0, 0.6),
-              0 0 80px rgba(0, 0, 0, 0.5)
+              inset 2px 2px 5px rgba(255, 255, 255, 0.2),
+              inset -3px -3px 8px rgba(0, 0, 0, 0.7),
+              0 20px 50px rgba(0, 0, 0, 0.8),
+              0 0 100px rgba(0, 0, 0, 0.6)
             `,
           }}
         />
 
         {/* Outer Bezel: Night Theme Overlay */}
         <div 
-          className="absolute inset-0 rounded-[140px] md:rounded-[180px] pointer-events-none"
+          className="absolute inset-0 rounded-[140px] pointer-events-none"
           style={{
             opacity: params.nightMode,
             background: 'linear-gradient(135deg, #18191c 0%, #0d0e10 100%)',
@@ -875,27 +858,27 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
           }}
         />
 
-        {/* INNER PLASTIC ACCENT BEZEL (Realistic stepped frame) */}
-        <div className="relative z-10 flex items-center justify-center w-full h-full rounded-[115px] md:rounded-[150px] p-[26px] md:p-[32px]">
+        {/* INNER PLASTIC ACCENT BEZEL (Stepped textured frame) */}
+        <div className="relative z-10 flex items-center justify-center w-full h-full rounded-[115px] p-[26px]">
           
           {/* Inner Bezel: Day Theme */}
           <div 
-            className="absolute inset-0 rounded-[115px] md:rounded-[150px]"
+            className="absolute inset-0 rounded-[115px]"
             style={{
-              background: 'linear-gradient(145deg, #6c727d 0%, #464a52 100%)',
+              background: 'linear-gradient(145deg, #6c727d 0%, #3e4249 100%)',
               boxShadow: `
                 inset 16px 0 25px -5px ${params.bezelHighlight},
-                inset -20px 0 30px rgba(0, 0, 0, 0.6),
-                inset 0 20px 30px rgba(0, 0, 0, 0.4),
-                inset 0 -20px 30px rgba(0, 0, 0, 0.4),
-                0 4px 15px rgba(0,0,0,0.4)
+                inset -20px 0 30px rgba(0, 0, 0, 0.75),
+                inset 0 20px 30px rgba(0, 0, 0, 0.5),
+                inset 0 -20px 30px rgba(0, 0, 0, 0.5),
+                0 4px 15px rgba(0,0,0,0.5)
               `,
             }}
           />
 
           {/* Inner Bezel: Night Theme Overlay */}
           <div 
-            className="absolute inset-0 rounded-[115px] md:rounded-[150px] pointer-events-none"
+            className="absolute inset-0 rounded-[115px] pointer-events-none"
             style={{
               opacity: params.nightMode,
               background: 'linear-gradient(145deg, #101113 0%, #08090a 100%)',
@@ -909,19 +892,19 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
               transition: 'opacity 0.5s ease',
             }}
           />
-          {/* RUBBER GLASS GASKET (Black sealer ring) */}
+          {/* RUBBER GLASS GASKET (Textured black sealer ring) */}
           <div 
             id="window-bezel"
-            className="relative overflow-hidden flex items-center justify-center w-full h-full rounded-[92px] md:rounded-[120px] bg-[#1a1c1e]"
+            className="relative overflow-hidden flex items-center justify-center w-full h-full rounded-[92px] bg-[#121315]"
             style={{
-              border: '2.5px solid #1a1c1e',
-              boxShadow: 'inset 0 0 10px rgba(0, 0, 0, 0.6)',
+              border: '3px solid #141517',
+              boxShadow: 'inset 0 0 12px rgba(0, 0, 0, 0.9)',
             }}
           >
             {/* PROCEDURAL WEBGL SKY & VOLUMETRIC CLOUDS CANVAS */}
             <canvas 
               ref={canvasRef}
-              className="absolute inset-0 block w-full h-full rounded-[90px] md:rounded-[118px]"
+              className="absolute inset-0 block w-full h-full rounded-[90px]"
               style={{
                 backgroundColor: '#0a0d16'
               }}
@@ -1120,15 +1103,15 @@ export default function WindowSeat({ onClose, seat = '5A', lang = 'ar' }) {
                 zIndex: 10,
                 // Soft double reflection glare (simulating multiple acrylic panels)
                 background: `
-                  linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.01) 45%, rgba(255,255,255,0) 70%, rgba(255,255,255,0.03) 100%),
-                  radial-gradient(ellipse at 40% 10%, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 60%)
+                  linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.02) 45%, rgba(255,255,255,0) 70%, rgba(255,255,255,0.04) 100%),
+                  radial-gradient(ellipse at 40% 10%, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 60%)
                 `,
                 // Soft cabin reflection on the dark inner glass pane
                 boxShadow: 'inset 0 0 25px rgba(0, 0, 0, 0.8)'
               }}
             >
               {/* Ultra-realistic micro scratches on acrylic glass (SVG overlays) */}
-              <svg viewBox="0 0 200 400" className="absolute inset-0 w-full h-full opacity-15" style={{ stroke: '#ffffff', strokeWidth: '0.4', fill: 'none' }}>
+              <svg viewBox="0 0 200 400" className="absolute inset-0 w-full h-full opacity-20" style={{ stroke: '#ffffff', strokeWidth: '0.4', fill: 'none' }}>
                 {/* Micro curved hairline scratch 1 */}
                 <path d="M 30,120 A 150,150 0 0,0 75,70" />
                 {/* Micro curved hairline scratch 2 */}
