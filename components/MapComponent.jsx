@@ -178,13 +178,10 @@ const MapComponent = ({ originCoords, destCoords, progress, liveTelemetry, isCam
         attributionControl={false}
         style={{ width: '100%', height: '100%', background: '#090a0f' }}
       >
-        {/* Pure Dark No-Labels English Map Tiles */}
+        {/* 100% Watermark-Free Esri Dark Gray Map Tiles */}
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}@2x.png"
-          subdomains={['a','b','c','d']}
-          tileSize={512}
-          zoomOffset={-1}
-          maxZoom={19}
+          url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+          maxZoom={16}
         />
 
         {/* Flight path curve as dotted line */}
