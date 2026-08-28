@@ -276,4 +276,8 @@
   display: none;
 }
 
+/* OpenStreetMap Sleek Dark Mode Filter - Zero Watermarks */
+.osm-dark-tiles {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
 
