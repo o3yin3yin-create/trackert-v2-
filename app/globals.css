@@ -276,7 +276,7 @@
   display: none;
 }
 
-/* Map Tile Dark Filter to restore original pitch-black aesthetic */
+/* Map Tile Dark Filter to restore original pitch-black aesthetic with visible landmasses */
 .dark-grid-tiles {
-  filter: brightness(0.45) contrast(1.6) grayscale(0.9);
+  filter: brightness(0.95) contrast(1.1) opacity(0.85);
 }
