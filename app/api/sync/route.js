@@ -31,20 +31,8 @@ export async function GET() {
       const name = clerkUser?.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : 'Unknown';
       const email = clerkUser?.emailAddresses?.[0]?.emailAddress || userId;
 
-      const friendCode = Math.random().toString(36).substring(2, 8).toUpperCase();
       user = await prisma.user.create({
-        data: { id: userId, email, name, friendCode }, // clerk usually provides email, but ID is what matters for foreign keys
-        include: { habits: true, dailyLogs: true }
-      });
-    } else if (!user.friendCode) {
-      // Backfill friendCode for existing users
-      const clerkUser = await currentUser();
-      const name = clerkUser?.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : 'Unknown';
-      const email = clerkUser?.emailAddresses?.[0]?.emailAddress || userId;
-      const friendCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-      user = await prisma.user.update({
-        where: { id: userId },
-        data: { friendCode, name, email },
+        data: { id: userId, email, name }, // clerk usually provides email, but ID is what matters for foreign keys
         include: { habits: true, dailyLogs: true }
       });
     } else if (user.name === 'Zain' || user.email.startsWith('user_')) {
@@ -62,14 +50,13 @@ export async function GET() {
 
     // Reconstruct the flat state object expected by the frontend
     const state = {
-      friendCode: user.friendCode,
       theme: user.theme,
       bgStyle: user.bgStyle,
       lang: user.lang,
       themeColor: user.themeColor,
       avatar: user.avatar || 'boy1',
-      widgetPreferences: user.widgetPreferences || { mode: 'default', friends: [], groups: [] },
       isAdmin: user.isAdmin,
+      isBlocked: user.isBlocked,
       emergencyCards: user.emergencyCards || [],
       grantedCardsLog: user.grantedCards || {},
       finishedTickets: user.finishedTickets || [],
@@ -132,13 +119,11 @@ export async function POST(req) {
       create: {
         id: userId,
         email: userId, // We'll let GET populate email/name properly
-        friendCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
         theme: state.theme || 'dark',
         bgStyle: state.bgStyle || 'aurora',
         lang: state.lang || 'en',
         themeColor: state.themeColor || '#FF9F0A',
         avatar: state.avatar || 'boy1',
-        widgetPreferences: state.widgetPreferences || { mode: 'default', friends: [], groups: [] },
         emergencyCards: state.emergencyCards || [],
         grantedCards: state.grantedCardsLog || {},
         finishedTickets: state.finishedTickets || [],

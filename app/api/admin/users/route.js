@@ -22,12 +22,11 @@ export async function GET(req) {
         id: true,
         name: true,
         email: true,
-        friendCode: true,
         isAdmin: true,
         isBlocked: true,
         createdAt: true,
         _count: {
-          select: { friendships: true, friendRequests: true, groupMembers: true, habits: true, dailyLogs: true }
+          select: { habits: true, dailyLogs: true }
         }
       }
     });

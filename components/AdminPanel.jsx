@@ -5,10 +5,9 @@ import { X, Users, Shield, Loader2, UserX, Check, ShieldAlert, BarChart3, Activi
 import { translations } from '../lib/translations';
 
 export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl }) {
-  const [activeTab, setActiveTab] = useState('overview'); // overview, users, groups
+  const [activeTab, setActiveTab] = useState('overview'); // overview, users
   const [overview, setOverview] = useState(null);
   const [users, setUsers] = useState([]);
-  const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -39,14 +38,6 @@ export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl })
           setUsers(data.users || []);
         } else {
           setError('Failed to fetch users');
-        }
-      } else {
-        const res = await fetch('/api/admin/groups');
-        if (res.ok) {
-          const data = await res.json();
-          setGroups(data.groups || []);
-        } else {
-          setError('Failed to fetch groups');
         }
       }
     } catch (err) {
@@ -140,13 +131,6 @@ export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl })
           >
             Users
           </button>
-          <button 
-            onClick={() => setActiveTab('groups')}
-            className={`pb-3 text-sm font-bold tracking-wide uppercase transition-colors whitespace-nowrap relative ${activeTab === 'groups' ? 'text-black dark:text-white border-b-2' : 'text-gray-400 dark:text-white/40 border-b-2 border-transparent'}`}
-            style={{ borderColor: activeTab === 'groups' ? '#A855F7' : 'transparent' }}
-          >
-            Groups
-          </button>
         </div>
 
         {/* Content */}
@@ -229,19 +213,7 @@ export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl })
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-4 gap-2 border-t border-black/5 dark:border-white/5 pt-3 mt-1">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold opacity-50 uppercase tracking-wider">Code</span>
-                      <span className="text-sm font-black text-purple-500">{u.friendCode}</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold opacity-50 uppercase tracking-wider">Friends</span>
-                      <span className="text-sm font-black">{u._count?.friendships || 0}</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold opacity-50 uppercase tracking-wider">Groups</span>
-                      <span className="text-sm font-black">{u._count?.groupMembers || 0}</span>
-                    </div>
+                  <div className="border-t border-black/5 dark:border-white/5 pt-3 mt-1">
                     <div className="flex flex-col">
                       <span className="text-[10px] font-bold opacity-50 uppercase tracking-wider">Habits</span>
                       <span className="text-sm font-black">{u._count?.habits || 0}</span>
@@ -250,32 +222,7 @@ export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl })
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              {groups.map((g) => (
-                <div key={g.id} className="relative overflow-hidden bg-white dark:bg-[#1a1b1e] border border-black/5 dark:border-white/5 rounded-2xl p-4 flex flex-col gap-3 shadow-sm">
-                  <div className="flex justify-between items-center border-b border-black/5 dark:border-white/5 pb-3 mb-1">
-                    <div>
-                      <h3 className="font-black text-sm">{g.name}</h3>
-                      <p className="text-[10px] font-bold opacity-50 uppercase tracking-wider mt-1">{g.members?.length || 0} Members</p>
-                    </div>
-                    <div className="bg-purple-500/10 text-purple-500 px-3 py-1.5 rounded-lg font-black text-sm tracking-widest">
-                      {g.code}
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col gap-2">
-                    {g.members?.map(m => (
-                      <div key={m.id} className="flex items-center justify-between py-1">
-                        <span className="text-xs font-bold opacity-80">{m.user?.name || 'Unknown'}</span>
-                        <span className="text-[10px] font-mono opacity-50">{m.user?.friendCode}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          ) : null}
         </div>
       </motion.div>
     </div>

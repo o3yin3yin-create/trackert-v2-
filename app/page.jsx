@@ -18,10 +18,7 @@ import BoardingPass from '../components/BoardingPass';
 import BoardingPassCard from '../components/BoardingPassCard';
 import WindowSeat from '../components/WindowSeat';
 import SeatSelection from '../components/SeatSelection';
-import FriendsPanel from '../components/FriendsPanel';
-import FriendsBoundary from '../components/FriendsBoundary';
 import AdminPanel from '../components/AdminPanel';
-import FriendsWidget from '../components/FriendsWidget';
 import AvatarIcon, { AVATAR_OPTIONS } from '../components/AvatarIcon';
 
 let globalAudioCtx = null;
@@ -403,7 +400,7 @@ export default function App() {
   }, []);
 
   // --- States (v4) ---
-  const [friendCode, setFriendCode] = useState('');
+
   const [habits, setHabits] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('daybase_habits_v4');
@@ -452,13 +449,7 @@ export default function App() {
     return 'user';
   });
 
-  const [widgetPreferences, setWidgetPreferences] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('daybase_widget_prefs_v1');
-      return saved ? JSON.parse(saved) : { mode: 'default', friends: [], groups: [] };
-    }
-    return { mode: 'default', friends: [], groups: [] };
-  });
+
 
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
 
@@ -508,7 +499,7 @@ export default function App() {
   const [isBoardingPassOpen, setIsBoardingPassOpen] = useState(false);
   const [isSeatSelectionOpen, setIsSeatSelectionOpen] = useState(false);
   const [isWindowSeatOpen, setIsWindowSeatOpen] = useState(false);
-  const [isFriendsPanelOpen, setIsFriendsPanelOpen] = useState(false);
+
   const [selectedSeat, setSelectedSeat] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -716,13 +707,7 @@ export default function App() {
                setAvatar(state.avatar);
                if (typeof window !== 'undefined') localStorage.setItem('daybase_avatar_v1', state.avatar || 'user');
             }
-            if (state.widgetPreferences) {
-               setWidgetPreferences(state.widgetPreferences);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_widget_prefs_v1', JSON.stringify(state.widgetPreferences));
-            }
-            if (state.friendCode) {
-               setFriendCode(state.friendCode);
-            }
+
             
             if (state.habits && state.habits.length > 0) {
                setHabits(state.habits);
@@ -1043,7 +1028,7 @@ export default function App() {
   useEffect(() => { if (isMounted) localStorage.setItem('daybase_mission_v4', mission); }, [mission, isMounted]);
   useEffect(() => { if (isMounted) localStorage.setItem('daybase_themeColor_v4', themeColor); }, [themeColor, isMounted]);
   useEffect(() => { if (isMounted) localStorage.setItem('daybase_avatar_v1', avatar); }, [avatar, isMounted]);
-  useEffect(() => { if (isMounted) localStorage.setItem('daybase_widget_prefs_v1', JSON.stringify(widgetPreferences)); }, [widgetPreferences, isMounted]);
+
   useEffect(() => { if (isMounted) localStorage.setItem('daybase_habitNotes_v4', JSON.stringify(habitNotes)); }, [habitNotes, isMounted]);
   useEffect(() => { if (isMounted) localStorage.setItem('daybase_cards_v4', JSON.stringify(habitCards)); }, [habitCards, isMounted]);
   useEffect(() => { if (isMounted) localStorage.setItem('daybase_daily_tasks_v4', JSON.stringify(dailyTasks)); }, [dailyTasks, isMounted]);
@@ -1257,7 +1242,7 @@ export default function App() {
         const data = await res.json();
         if (data.success) {
           if (data.habits) setHabits(data.habits);
-          if (data.friendCode) setFriendCode(data.friendCode);
+
           if (data.dailyData) setDailyData(data.dailyData);
           if (data.sleepData) setSleepData(data.sleepData);
           
@@ -2719,9 +2704,7 @@ export default function App() {
           {/* ---------------- MOBILE-ONLY LAYOUT (md:hidden) ---------------- */}
           {/* Preserves the original clean vertical mobile stack that the user loves */}
           <div className="flex flex-col w-full md:hidden gap-6">
-            <Show when="signed-in">
-              <FriendsWidget themeColor={themeColor} lang={lang} activeDateStr={activeDateStr} preferences={isMounted ? widgetPreferences : undefined} setPreferences={setWidgetPreferences} currentUserStats={{ habitsCompleted: totalCompleted, habitsTotal: totalPossible }} />
-            </Show>
+              <div className="hidden" />
             
             {/* Mobile Mission Card */}
             <div 
@@ -2879,9 +2862,7 @@ export default function App() {
             
             {/* COLUMN 1: Personal Routine (التركيز والعادات اليومية) */}
             <div className="flex flex-col gap-6 w-full">
-              <Show when="signed-in">
-                <FriendsWidget themeColor={themeColor} lang={lang} activeDateStr={activeDateStr} preferences={isMounted ? widgetPreferences : undefined} setPreferences={setWidgetPreferences} currentUserStats={{ habitsCompleted: totalCompleted, habitsTotal: totalPossible }} />
-              </Show>
+              <div className="hidden" />
               
               {/* Mission & Score Card */}
               <div 
@@ -4178,7 +4159,7 @@ export default function App() {
                         <AvatarIcon name={isMounted ? avatar : 'user'} size={32} />
                       </div>
                       <h2 className="text-2xl font-black text-black dark:text-white text-center">Choose Your Avatar</h2>
-                      <p className="text-sm font-semibold text-black/50 dark:text-white/50 text-center">Select how you appear to your friends.</p>
+                      <p className="text-sm font-semibold text-black/50 dark:text-white/50 text-center">Select your profile icon.</p>
                     </div>
 
                     <div className="grid grid-cols-3 gap-4 mb-6">
@@ -4200,14 +4181,6 @@ export default function App() {
                 document.body
               )}
 
-              {/* ---------------- HEADER ---------------- */}
-              <button 
-                onClick={() => { haptic('light'); setIsFriendsPanelOpen(true); }} 
-                className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"
-                title={lang === 'ar' ? 'الأصدقاء' : 'Friends'}
-              >
-                <Users size={18} />
-              </button>
             </div>
             <button onClick={handleOpenManage} className="w-13 h-13 rounded-full bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-[#2C2C2E] transition-all duration-200 active:scale-90 shadow-2xl dark:shadow-black/60"><Edit2 size={18} className="text-black dark:text-white/90" /></button>
           </div>
@@ -4225,18 +4198,6 @@ export default function App() {
             document.body
           )}
 
-          {/* ---------------- FRIENDS PANEL ---------------- */}
-          {isFriendsPanelOpen && createPortal(
-            <FriendsBoundary onClose={() => setIsFriendsPanelOpen(false)}>
-              <FriendsPanel 
-                onClose={() => setIsFriendsPanelOpen(false)} 
-                lang={lang} 
-                themeColor={themeColor} 
-                friendCode={friendCode}
-              />
-            </FriendsBoundary>,
-            document.body
-          )}
 
           {/* ---------------- ADMIN PANEL ---------------- */}
           {isAdminPanelOpen && createPortal(

@@ -18,14 +18,10 @@ export async function GET(req) {
 
     const [
       totalUsers,
-      totalGroups,
-      totalFriendships,
       totalHabitsCreated,
       dailyLogsAggr
     ] = await Promise.all([
       prisma.user.count(),
-      prisma.studyGroup.count(),
-      prisma.friendship.count(),
       prisma.habit.count(),
       prisma.dailyLog.aggregate({ _sum: { focusTime: true } })
     ]);
@@ -35,9 +31,7 @@ export async function GET(req) {
     return NextResponse.json({
       overview: {
         totalUsers,
-        totalGroups,
-        totalFriendships,
-        totalHabitsCompleted: totalHabitsCreated, // Reusing field name for compatibility, but it's actually total created
+        totalHabitsCompleted: totalHabitsCreated,
         totalFocusTime
       }
     });
