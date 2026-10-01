@@ -1,30 +1,31 @@
 import { NextResponse } from 'next/server';
 import { FlightRadar24API } from 'flightradarapi';
 
-
-
-
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
 
-    if (!query) {
+    if (!query || typeof query !== 'string') {
       return NextResponse.json({ error: "Missing query" }, { status: 400 });
     }
 
-    const frapi = new FlightRadar24API();
-    const searchResults = await frapi.search(query.trim());
+    const cleanQuery = query.trim();
 
-    // We want a live flight that matches
+    // Input validation: Cap length and restrict special characters to prevent abuse / injection
+    if (cleanQuery.length < 2 || cleanQuery.length > 30 || !/^[a-zA-Z0-9\s-]+$/.test(cleanQuery)) {
+      return NextResponse.json({ error: "Invalid flight search format" }, { status: 400 });
+    }
+
+    const frapi = new FlightRadar24API();
+    const searchResults = await frapi.search(cleanQuery);
+
     if (!searchResults || !searchResults.live || searchResults.live.length === 0) {
       return NextResponse.json({ error: "No active flight found with that number" }, { status: 404 });
     }
 
-    // Just take the first active match
     const liveMatch = searchResults.live[0];
     
-    // getFlightDetails needs an object with an 'id'
     const details = await frapi.getFlightDetails({ id: liveMatch.id });
 
     if (!details || !details.time || !details.airport) {
@@ -51,7 +52,7 @@ export async function GET(request) {
     const formattedFlight = {
       id: liveMatch.id,
       airline: details.airline?.name || 'Unknown Airline',
-      callsign: details.identification?.callsign || liveMatch.detail?.callsign || query.toUpperCase(),
+      callsign: details.identification?.callsign || liveMatch.detail?.callsign || cleanQuery.toUpperCase(),
       origin: details.airport.origin?.code?.iata || details.airport.origin?.name || 'Unknown',
       destination: details.airport.destination?.code?.iata || details.airport.destination?.name || 'Unknown',
       originCoords: {

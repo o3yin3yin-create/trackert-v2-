@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
 import { FlightRadar24API } from 'flightradarapi';
 
-
-
-
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
@@ -11,24 +8,26 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const flightId = searchParams.get('id');
 
-    if (!flightId) {
+    if (!flightId || typeof flightId !== 'string') {
       return NextResponse.json({ error: "Missing flight ID" }, { status: 400 });
     }
 
-    if (flightId === "TEST-1MIN") {
-        // Fake GPS telemetry for the 1 minute test flight
-        const t = (Date.now() / 1000) % 60; // 0 to 60 loop
+    const cleanId = flightId.trim();
+    if (cleanId.length > 50 || !/^[a-zA-Z0-9_-]+$/.test(cleanId)) {
+      return NextResponse.json({ error: "Invalid flight ID format" }, { status: 400 });
+    }
+
+    if (cleanId === "TEST-1MIN") {
+        const t = (Date.now() / 1000) % 60;
         const progress = t / 60;
-        // Move from 0,0 to 1,1
         return NextResponse.json({ lat: progress, lng: progress, angle: 45 });
     }
 
     const frapi = new FlightRadar24API();
     const flights = await frapi.getFlights();
-    const flight = flights.find(f => f.id === flightId);
+    const flight = flights.find(f => f.id === cleanId);
     
     if (!flight) {
-      // Flight might have landed or lost coverage
       return NextResponse.json({ error: "Flight not found" }, { status: 404 });
     }
 
