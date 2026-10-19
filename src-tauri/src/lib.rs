@@ -47,71 +47,96 @@ async fn start_auth_server(app: tauri::AppHandle) -> Result<u16, String> {
                     }
                 }
 
-                let html_body = r#"<!DOCTYPE html>
-<html dir="rtl" lang="ar">
+                let html_body = r##"<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>بُكرة - تم تسجيل الدخول</title>
+    <title>bokra — Successfully Signed In</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
             background-color: #000000;
             color: #FFFFFF;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
             display: flex;
             align-items: center;
             justify-content: center;
             height: 100vh;
             margin: 0;
-            padding: 20px;
+            padding: 24px;
             box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
         }
         .card {
             background: #111113;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 28px;
-            padding: 40px 32px;
-            max-width: 420px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 32px;
+            padding: 48px 36px;
+            max-width: 400px;
             text-align: center;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.9);
         }
-        .icon {
-            font-size: 48px;
-            margin-bottom: 16px;
+        .logo-box {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 24px;
+            border-radius: 20px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.6);
         }
         h1 {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 700;
+            letter-spacing: -0.02em;
             margin: 0 0 10px 0;
-            color: #34D399;
+            color: #FFFFFF;
         }
         p {
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.6);
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.55);
             line-height: 1.6;
-            margin: 0 0 24px 0;
+            margin: 0 0 28px 0;
         }
         .badge {
-            display: inline-block;
-            background: rgba(52, 211, 153, 0.1);
-            color: #34D399;
-            padding: 6px 16px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.85);
+            padding: 8px 18px;
             border-radius: 9999px;
             font-size: 12px;
             font-weight: 600;
-            border: 1px solid rgba(52, 211, 153, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            letter-spacing: 0.02em;
+        }
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #22C55E;
+            box-shadow: 0 0 8px #22C55E;
         }
     </style>
 </head>
 <body>
     <div class="card">
-        <div class="icon">🚀</div>
-        <h1>تم تسجيل الدخول بنجاح!</h1>
-        <p>تم ربط حسابك بتطبيق بُكرة المكتبي بنجاح. يمكنك إغلاق هذا التبويب الآن والعودة إلى التطبيق.</p>
-        <div class="badge">جاهز للاستخدام</div>
+        <div class="logo-box">
+            <svg width="72" height="72" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="100" height="100" rx="24" fill="#1C1C1E"/>
+                <circle cx="42" cy="50" r="22" stroke="rgba(255,255,255,0.25)" stroke-width="7"/>
+                <circle cx="62" cy="50" r="16" fill="white" filter="drop-shadow(0 0 12px rgba(255,255,255,0.9))"/>
+            </svg>
+        </div>
+        <h1>Successfully Signed In</h1>
+        <p>Your account is now linked to bokra for Mac. You can close this tab and return to the application.</p>
+        <div class="badge"><span class="dot"></span> Connected</div>
     </div>
 </body>
-</html>"#;
+</html>"##;
 
                 let response = format!(
                     "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=UTF-8\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\nContent-Length: {}\r\n\r\n{}",

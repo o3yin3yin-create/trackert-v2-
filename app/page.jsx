@@ -1495,7 +1495,7 @@ export default function App() {
   const enableNotifications = async () => {
     try {
       if (!user) {
-        alert("لازم تسجل دخول الأول!");
+        alert("Please sign in first to enable notifications.");
         return;
       }
 
@@ -1517,22 +1517,22 @@ export default function App() {
               email: userEmail,
               fcmToken: token,
               notifyTime: "10:00 PM", 
-              customMessage: "حان وقت تسجيل عاداتك يا بطل! 🚀"
+              customMessage: "Time to complete your daily habits!"
             })
           });
 
           const data = await res.json();
           if (data.success) {
-            alert("تم ربط الإشعارات بحسابك وسيفناها في الداتا بيز فوراً! 🔥");
+            alert("Notifications enabled and linked to your account successfully.");
           } else {
-            alert("حصلت مشكلة في الحفظ: " + data.error);
+            alert("Error saving notification settings: " + (data.error || "Unknown error"));
           }
           
         } else {
-          alert("مفيش توكن رجع، اتأكد من المفاتيح.");
+          alert("Could not generate notification token.");
         }
       } else {
-        alert("إنت رفضت صلاحية الإشعارات!");
+        alert("Notification permission was denied.");
       }
     } catch (error) {
       console.error("Error getting notification permission:", error);
@@ -1944,10 +1944,10 @@ export default function App() {
                             setFlightTimer(data.flight.remainingSeconds);
                             setIsSeatSelectionOpen(true);
                           } else {
-                            alert(data.error || (lang === 'ar' ? 'لم يتم العثور على الرحلة' : 'Flight not found'));
+                            alert(data.error || 'Flight not found');
                           }
                         } catch (err) {
-                          alert(lang === 'ar' ? 'يحتاج إلى اتصال بالإنترنت للبحث عن الرحلات المباشرة والرادار' : 'Internet connection required for live flight tracking & radar');
+                          alert('Internet connection required for live flight tracking & radar');
                         }
                         setIsSearching(false);
                       }}
@@ -2671,9 +2671,14 @@ export default function App() {
             )}
 
             <div className="flex justify-between items-center w-full">
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex flex-wrap gap-2 items-center select-none">
-                {dayName} <span className="text-white/30 font-light">{dayNum}</span>
-              </h1>
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-2xl overflow-hidden shadow-lg border border-white/10 shrink-0 bg-black flex items-center justify-center">
+                  <img src="/logo.png" alt="bokra" className="w-full h-full object-cover select-none" />
+                </div>
+                <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex flex-wrap gap-2 items-center select-none">
+                  {dayName} <span className="text-white/30 font-light">{dayNum}</span>
+                </h1>
+              </div>
               
               <div className="flex items-center gap-4">
                 <Show when="signed-out">
@@ -3556,10 +3561,10 @@ export default function App() {
                                     setFlightTimer(data.flight.remainingSeconds);
                                     setIsSeatSelectionOpen(true);
                                   } else {
-                                    alert(data.error || (lang === 'ar' ? 'لم يتم العثور على الرحلة' : 'Flight not found'));
+                                    alert(data.error || 'Flight not found');
                                   }
                                 } catch (err) {
-                                  alert(lang === 'ar' ? 'يحتاج إلى اتصال بالإنترنت للبحث عن الرحلات المباشرة والرادار' : 'Internet connection required for live flight tracking & radar');
+                                  alert('Internet connection required for live flight tracking & radar');
                                 }
                                 setIsSearching(false);
                               }}

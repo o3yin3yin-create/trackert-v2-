@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { isTauri, invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { LogOut, ExternalLink, CheckCircle } from 'lucide-react';
+import { LogOut, ExternalLink, KeyRound } from 'lucide-react';
 
 const AuthContext = createContext({
   user: null,
@@ -121,10 +121,9 @@ export const ClerkProvider = ({ children }) => {
     if (!manualCode.trim()) return;
     try {
       const code = manualCode.trim();
-      // Code can be either raw token or base64
       applyLoginData(code, { id: 'desktop_user', name: 'User' });
     } catch (err) {
-      alert('رمز غير صالح');
+      alert('Invalid key');
     }
   };
 
@@ -152,34 +151,38 @@ export const ClerkProvider = ({ children }) => {
       {/* Waiting for Browser Authentication Modal */}
       {isWaitingForBrowser && (
         <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#1C1C1E] border border-white/10 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl flex flex-col items-center animate-in fade-in zoom-in-95">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-2xl mb-4 border border-emerald-500/20">
-              <ExternalLink size={26} className="animate-pulse" />
+          <div className="bg-[#1C1C1E] border border-white/10 rounded-3xl p-7 max-w-sm w-full text-center shadow-2xl flex flex-col items-center animate-in fade-in zoom-in-95">
+            
+            {/* App Logo */}
+            <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-2xl mb-4 border border-white/10 bg-black flex items-center justify-center">
+              <img src="/logo.png" alt="bokra" className="w-full h-full object-cover" />
             </div>
             
             <h3 className="text-lg font-bold text-white mb-2">
-              جاري تسجيل الدخول في المتصفح...
+              Signing in via Browser...
             </h3>
             
             <p className="text-xs text-white/60 mb-6 leading-relaxed">
-              تم فتح صفحة تسجيل الدخول في متصفحك الافتراضي (Safari / Chrome). بمجرد إتمام الدخول سيتم ربط التطبيق تلقائياً والعودة إلى هنا.
+              We opened the secure sign-in page in your default browser. Once completed, your habits and progress will link automatically.
             </p>
 
             <div className="flex flex-col gap-2 w-full">
               <button
                 type="button"
                 onClick={openLoginInBrowser}
-                className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-xs transition-colors cursor-pointer"
+                className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-xs transition-colors cursor-pointer active:scale-95 flex items-center justify-center gap-2"
               >
-                إعادة فتح المتصفح
+                <ExternalLink size={14} />
+                Reopen Browser
               </button>
 
               <button
                 type="button"
                 onClick={() => setShowManualInput(!showManualInput)}
-                className="text-[11px] text-white/40 hover:text-white/80 py-1 transition-colors"
+                className="text-[11px] text-white/40 hover:text-white/80 py-1 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
               >
-                {showManualInput ? 'إخفاء الإدخال اليدوي' : 'إدخال الرمز يدوياً؟'}
+                <KeyRound size={12} />
+                {showManualInput ? 'Hide manual entry' : 'Enter key manually?'}
               </button>
 
               {showManualInput && (
@@ -188,14 +191,14 @@ export const ClerkProvider = ({ children }) => {
                     type="text"
                     value={manualCode}
                     onChange={(e) => setManualCode(e.target.value)}
-                    placeholder="الصق رمز التحقق هنا..."
-                    className="flex-1 bg-black/50 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500/50"
+                    placeholder="Paste authentication key..."
+                    className="flex-1 bg-black/50 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-white/30"
                   />
                   <button
                     type="submit"
-                    className="bg-emerald-500 text-black font-bold text-xs px-3 py-1.5 rounded-xl hover:bg-emerald-400 transition-colors"
+                    className="bg-white text-black font-semibold text-xs px-3.5 py-1.5 rounded-xl hover:bg-white/90 transition-colors cursor-pointer"
                   >
-                    تأكيد
+                    Connect
                   </button>
                 </form>
               )}
@@ -205,7 +208,7 @@ export const ClerkProvider = ({ children }) => {
                 onClick={() => setIsWaitingForBrowser(false)}
                 className="w-full py-2 rounded-xl text-white/40 hover:text-white font-medium text-xs transition-colors cursor-pointer mt-1"
               >
-                إلغاء
+                Cancel
               </button>
             </div>
           </div>
@@ -258,8 +261,8 @@ export const UserButton = ({ appearance }) => {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-bold text-sm flex items-center justify-center hover:scale-105 transition-transform overflow-hidden cursor-pointer"
-        title={user?.name || user?.email || 'حسابي'}
+        className="w-9 h-9 rounded-full bg-white/10 border border-white/20 text-white font-bold text-sm flex items-center justify-center hover:scale-105 transition-transform overflow-hidden cursor-pointer active:scale-95"
+        title={user?.name || user?.email || 'Account'}
       >
         {user?.avatar ? (
           <img src={user.avatar} alt="Avatar" className="w-full h-full rounded-full object-cover" />
@@ -271,18 +274,18 @@ export const UserButton = ({ appearance }) => {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute right-0 mt-2 w-64 bg-[#1C1C1E] border border-white/10 rounded-2xl shadow-2xl p-4 z-50 text-right animate-in fade-in slide-in-from-top-2">
+          <div className="absolute right-0 mt-2 w-64 bg-[#1C1C1E] border border-white/10 rounded-2xl shadow-2xl p-4 z-50 text-left animate-in fade-in slide-in-from-top-2">
             <div className="flex items-center gap-3 mb-3 pb-3 border-b border-white/5">
-              <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center shrink-0 overflow-hidden">
+              <div className="w-10 h-10 rounded-full bg-white/10 text-white font-bold flex items-center justify-center shrink-0 overflow-hidden border border-white/10">
                 {user?.avatar ? (
                   <img src={user.avatar} alt="Avatar" className="w-full h-full rounded-full object-cover" />
                 ) : (
                   initial
                 )}
               </div>
-              <div className="flex flex-col overflow-hidden text-right">
-                <span className="text-sm font-bold text-white truncate">{user?.name || 'مستخدم بُكرة'}</span>
-                <span className="text-xs text-white/50 truncate dir-ltr">{user?.email || ''}</span>
+              <div className="flex flex-col overflow-hidden text-left">
+                <span className="text-sm font-bold text-white truncate">{user?.name || 'bokra User'}</span>
+                <span className="text-xs text-white/50 truncate font-mono">{user?.email || ''}</span>
               </div>
             </div>
 
@@ -291,10 +294,10 @@ export const UserButton = ({ appearance }) => {
                 setIsOpen(false);
                 signOut();
               }}
-              className="w-full py-2 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 font-medium text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              className="w-full py-2 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 font-medium text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer active:scale-95"
             >
               <LogOut size={14} />
-              تسجيل الخروج
+              Sign Out
             </button>
           </div>
         </>

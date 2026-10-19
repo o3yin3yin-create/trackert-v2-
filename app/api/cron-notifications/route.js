@@ -69,7 +69,7 @@ export async function GET(req) {
 
       const message = {
         notification: {
-          title: `bokra 🚀`,
+          title: `bokra`,
           body: habit.customMessage || `Habit reminder: ${habit.name}!`,
         },
         token: token,
