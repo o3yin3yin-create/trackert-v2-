@@ -2677,19 +2677,18 @@ export default function App() {
               </div>
             )}
 
-            <div className="flex justify-between items-center w-full">
-              <div className="flex items-center gap-3">
+            {/* 1. Top Brand & Account Bar */}
+            <div className="flex items-center justify-between w-full mb-1">
+              <div className="flex items-center gap-2.5 select-none">
                 <img 
                   src="/logo-transparent.png" 
                   alt="bokra" 
-                  className="h-8 sm:h-9 w-auto object-contain select-none shrink-0" 
+                  className="h-7 w-auto object-contain select-none shrink-0" 
                 />
-                <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex flex-wrap gap-2 items-center select-none">
-                  {dayName} <span className="text-white/30 font-light">{dayNum}</span>
-                </h1>
+                <span className="text-base font-bold tracking-tight text-white/90">bokra</span>
               </div>
               
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
                 <Show when="signed-out">
                   <button 
                     onClick={() => {
@@ -2700,7 +2699,7 @@ export default function App() {
                         setAuthModal('sign-in');
                       }
                     }}
-                    className="text-white/70 hover:text-white font-medium text-sm transition-colors cursor-pointer px-2 py-1"
+                    className="text-white/70 hover:text-white font-medium text-xs sm:text-sm transition-colors cursor-pointer px-2.5 py-1"
                   >
                     Log In
                   </button>
@@ -2713,7 +2712,7 @@ export default function App() {
                         setAuthModal('sign-up');
                       }
                     }}
-                    className="bg-white hover:bg-white/90 text-black rounded-xl font-semibold text-sm h-8.5 px-4 cursor-pointer transition-all active:scale-95 shadow-sm"
+                    className="bg-white hover:bg-white/90 text-black rounded-xl font-semibold text-xs sm:text-sm h-8 px-3.5 cursor-pointer transition-all active:scale-95 shadow-sm whitespace-nowrap shrink-0"
                   >
                     Sign Up
                   </button>
@@ -2726,33 +2725,46 @@ export default function App() {
                 </Show>
                 
                 <Show when="signed-in">
-                  <UserButton appearance={{ elements: { avatarBox: "w-9 h-9" } }} />
+                  <UserButton appearance={{ elements: { avatarBox: "w-8 h-8 sm:w-9 sm:h-9" } }} />
                 </Show>
               </div>
             </div>
-            
-            <div className="flex flex-wrap items-center justify-between gap-2 mt-1">
+
+            {/* 2. Date Title & Navigation Controls Header */}
+            <div className="flex items-center justify-between w-full mt-1">
+              <div className="flex items-baseline gap-2.5 select-none">
+                <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+                  {dayName}
+                </h1>
+                <span className="text-2xl sm:text-3xl font-light text-white/30">
+                  {dayNum}
+                </span>
+              </div>
+
               {/* Date Navigation Controls */}
-              <div className="flex items-center gap-2">
-                <button onClick={handlePrevDay} className="p-1.5 bg-[#1C1C1E] border border-white/5 rounded-full text-white/40 hover:text-white transition-all duration-200 active:scale-90">
+              <div className="flex items-center gap-1.5">
+                <button onClick={handlePrevDay} className="p-1.5 bg-[#1C1C1E] border border-white/5 rounded-full text-white/40 hover:text-white transition-all duration-200 active:scale-90" aria-label="Previous day">
                   <ChevronLeft size={16} />
                 </button>
-                <button onClick={handleNextDay} className="p-1.5 bg-[#1C1C1E] border border-white/5 rounded-full text-white/40 hover:text-white transition-all duration-200 active:scale-90">
+                <button onClick={handleNextDay} className="p-1.5 bg-[#1C1C1E] border border-white/5 rounded-full text-white/40 hover:text-white transition-all duration-200 active:scale-90" aria-label="Next day">
                   <ChevronRight size={16} />
                 </button>
                 {activeDateStr !== realTodayStr && (
-                  <button onClick={handleToday} className="text-[10px] font-bold tracking-widest uppercase bg-[#1C1C1E] border border-white/5 px-3 py-1.5 rounded-full text-white/60 hover:text-white transition-all duration-200 active:scale-95">
+                  <button onClick={handleToday} className="text-[10px] font-bold tracking-widest uppercase bg-[#1C1C1E] border border-white/5 px-2.5 py-1.5 rounded-full text-white/60 hover:text-white transition-all duration-200 active:scale-95">
                     Today
                   </button>
                 )}
               </div>
+            </div>
+            
+            {/* 3. Status and Action Buttons */}
+            <div className="flex items-center justify-between w-full mt-0.5">
+              <span className="text-[10px] font-bold tracking-widest uppercase px-2.5 py-1.5 rounded-full bg-[#1C1C1E] flex items-center gap-1.5 border border-white/5 select-none text-white/60">
+                <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${!isOnline ? 'bg-red-500 shadow-[0_0_8px_#ef4444]' : isSyncing ? 'bg-[#FF9F0A] pulse-glow shadow-[0_0_8px_#FF9F0A]' : 'bg-green-500 shadow-[0_0_8px_#22c55e]'}`} />
+                {!isOnline ? 'Offline' : isSyncing ? 'Syncing' : 'Synced'}
+              </span>
 
-              {/* Status and Action Buttons */}
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold tracking-widest uppercase px-2.5 py-1.5 rounded-full bg-[#1C1C1E] flex items-center gap-1.5 border border-white/5 select-none text-white/60">
-                  <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${!isOnline ? 'bg-red-500 shadow-[0_0_8px_#ef4444]' : isSyncing ? 'bg-[#FF9F0A] pulse-glow shadow-[0_0_8px_#FF9F0A]' : 'bg-green-500 shadow-[0_0_8px_#22c55e]'}`} />
-                  {!isOnline ? 'Offline' : isSyncing ? 'Syncing' : 'Synced'}
-                </span>
 
               {/* Fullscreen Toggle */}
               <button
