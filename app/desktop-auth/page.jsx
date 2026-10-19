@@ -80,60 +80,111 @@ export default function DesktopAuthPage() {
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 selection:bg-white/20 font-sans antialiased">
       
-      {/* Scoped CSS overrides for Clerk components to guarantee pure dark theme & remove duplicate headers */}
+      {/* Precision Scoped CSS overrides for Clerk to eliminate double-cards and enforce pure dark Apple identity */}
       <style dangerouslySetInnerHTML={{ __html: `
-        .cl-card {
+        /* 1. Strip ALL inner cards, borders, backgrounds, and shadows from Clerk */
+        .cl-rootBox,
+        .cl-cardBox,
+        .cl-card,
+        .cl-main,
+        .cl-signIn-start,
+        .cl-pageScrollBox,
+        .cl-contentBox {
           background: transparent !important;
+          background-color: transparent !important;
           box-shadow: none !important;
           border: none !important;
           padding: 0 !important;
+          margin: 0 !important;
           width: 100% !important;
         }
-        .cl-rootBox {
-          width: 100% !important;
-        }
+
+        /* 2. Hide duplicate Clerk header */
         .cl-header {
           display: none !important;
         }
+
+        /* 3. Social Buttons (Apple & Google) */
+        .cl-socialButtonsRoot {
+          width: 100% !important;
+        }
+        .cl-socialButtons {
+          display: flex !important;
+          gap: 10px !important;
+          width: 100% !important;
+        }
         .cl-socialButtonsBlockButton {
-          background-color: #202023 !important;
+          flex: 1 !important;
+          background-color: #1C1C1E !important;
           border: 1px solid rgba(255, 255, 255, 0.1) !important;
           color: #FFFFFF !important;
           border-radius: 14px !important;
           height: 44px !important;
           transition: all 0.2s ease !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 8px !important;
         }
         .cl-socialButtonsBlockButton:hover {
-          background-color: #28282C !important;
-          border-color: rgba(255, 255, 255, 0.2) !important;
+          background-color: #2C2C2E !important;
+          border-color: rgba(255, 255, 255, 0.22) !important;
         }
         .cl-socialButtonsBlockButtonText {
           color: #FFFFFF !important;
           font-size: 13px !important;
-          font-weight: 500 !important;
+          font-weight: 600 !important;
+          opacity: 1 !important;
+        }
+
+        /* 4. Make Apple icon crisp white in dark theme */
+        .cl-socialButtonsBlockButton__apple svg,
+        .cl-socialButtonsBlockButton__apple img,
+        .cl-socialButtonsBlockButton__apple .cl-socialButtonsProviderIcon {
+          filter: brightness(0) invert(1) !important;
+          fill: #FFFFFF !important;
+          color: #FFFFFF !important;
+        }
+
+        /* 5. Divider */
+        .cl-dividerRow {
+          margin: 18px 0 !important;
         }
         .cl-dividerLine {
-          background-color: rgba(255, 255, 255, 0.1) !important;
+          background-color: rgba(255, 255, 255, 0.08) !important;
         }
         .cl-dividerText {
-          color: rgba(255, 255, 255, 0.4) !important;
+          color: rgba(255, 255, 255, 0.35) !important;
           font-size: 11px !important;
+          font-weight: 500 !important;
           text-transform: uppercase !important;
-          letter-spacing: 0.05em !important;
+          letter-spacing: 0.08em !important;
+        }
+
+        /* 6. Form Field / Email Input */
+        .cl-form {
+          width: 100% !important;
+        }
+        .cl-formFieldRow {
+          margin-bottom: 14px !important;
         }
         .cl-formFieldLabel {
           color: rgba(255, 255, 255, 0.7) !important;
           font-size: 12px !important;
+          font-weight: 500 !important;
           margin-bottom: 6px !important;
+          display: block !important;
         }
         .cl-formFieldInput {
-          background-color: #202023 !important;
-          border: 1px solid rgba(255, 255, 255, 0.12) !important;
+          background-color: #1C1C1E !important;
+          border: 1px solid rgba(255, 255, 255, 0.1) !important;
           color: #FFFFFF !important;
           border-radius: 14px !important;
           height: 44px !important;
           font-size: 14px !important;
           padding: 0 14px !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
           transition: all 0.2s ease !important;
         }
         .cl-formFieldInput:focus {
@@ -142,8 +193,10 @@ export default function DesktopAuthPage() {
           outline: none !important;
         }
         .cl-formFieldInput::placeholder {
-          color: rgba(255, 255, 255, 0.3) !important;
+          color: rgba(255, 255, 255, 0.25) !important;
         }
+
+        /* 7. Continue Primary Button */
         .cl-formButtonPrimary {
           background-color: #FFFFFF !important;
           color: #000000 !important;
@@ -152,14 +205,27 @@ export default function DesktopAuthPage() {
           font-weight: 600 !important;
           font-size: 14px !important;
           border: none !important;
+          width: 100% !important;
+          cursor: pointer !important;
           transition: all 0.15s ease !important;
-          margin-top: 10px !important;
+          margin-top: 14px !important;
         }
         .cl-formButtonPrimary:hover {
           background-color: rgba(255, 255, 255, 0.88) !important;
         }
         .cl-formButtonPrimary:active {
           transform: scale(0.98) !important;
+        }
+
+        /* 8. Clean Footer & Remove Clerk Dev Mode Badges */
+        .cl-footer {
+          background: transparent !important;
+          border: none !important;
+          padding: 16px 0 0 0 !important;
+          margin: 0 !important;
+        }
+        .cl-footerAction {
+          margin: 0 !important;
         }
         .cl-footerActionText {
           color: rgba(255, 255, 255, 0.5) !important;
@@ -173,13 +239,21 @@ export default function DesktopAuthPage() {
         .cl-footerActionLink:hover {
           text-decoration: underline !important;
         }
-        .cl-footer {
-          background: transparent !important;
-          border: none !important;
-          padding-top: 14px !important;
+        .cl-footerPages,
+        .cl-footerPages__signIn,
+        [class*="footerPages"],
+        [class*="securedBy"],
+        .cl-footer__developmentMode,
+        .cl-developmentModeBadge,
+        .cl-devModeBadge,
+        [class*="developmentMode"],
+        [class*="devModeBadge"] {
+          display: none !important;
         }
+
+        /* 9. Identity & Verification inputs */
         .cl-identityPreview {
-          background-color: #202023 !important;
+          background-color: #1C1C1E !important;
           border: 1px solid rgba(255, 255, 255, 0.1) !important;
           border-radius: 14px !important;
         }
@@ -190,7 +264,7 @@ export default function DesktopAuthPage() {
           color: rgba(255, 255, 255, 0.6) !important;
         }
         .cl-otpCodeFieldInput {
-          background-color: #202023 !important;
+          background-color: #1C1C1E !important;
           border: 1px solid rgba(255, 255, 255, 0.15) !important;
           color: #FFFFFF !important;
           border-radius: 12px !important;
@@ -198,11 +272,11 @@ export default function DesktopAuthPage() {
       ` }} />
 
       {/* Unified Single Card */}
-      <div className="w-full max-w-[400px] bg-[#141416] border border-white/10 rounded-3xl p-8 shadow-2xl flex flex-col items-center backdrop-blur-xl">
+      <div className="w-full max-w-[390px] bg-[#121214] border border-white/10 rounded-3xl p-8 shadow-2xl flex flex-col items-center backdrop-blur-xl">
         
         {/* Official App Logo */}
         <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-2xl mb-4 border border-white/10 bg-black flex items-center justify-center">
-          <img src="/logo.png" alt="bokra" className="w-full h-full object-cover" />
+          <img src="/logo.png" alt="bokra" className="w-full h-full object-cover select-none" />
         </div>
 
         {/* Brand Header */}
