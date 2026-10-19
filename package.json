@@ -8,7 +8,7 @@
     "build:export": "node scripts/build-export.js",
     "tauri": "tauri",
     "tauri:dev": "source $HOME/.cargo/env && tauri dev",
-    "tauri:build": "source $HOME/.cargo/env && tauri build",
+    "tauri:build": "source $HOME/.cargo/env && tauri build -b app",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate"

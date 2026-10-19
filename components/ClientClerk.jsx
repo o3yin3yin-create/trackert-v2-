@@ -1,48 +1,25 @@
 "use client";
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React from 'react';
+import {
+  ClerkProvider as BaseClerkProvider,
+  useUser,
+  Show,
+  SignInButton,
+  SignUpButton,
+  UserButton,
+  useClerk,
+  useAuth,
+} from '@clerk/react';
 
-const AuthContext = createContext({
-  user: null,
-  isSignedIn: false,
-  isLoaded: true,
-});
+const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_c2luY2VyZS1zcG9uZ2UtNDAuY2xlcmsuYWNjb3VudHMuZGV2JA';
 
 export const ClerkProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const savedUser = localStorage.getItem('bokra_local_user');
-      if (savedUser) {
-        try { return JSON.parse(savedUser); } catch(e) {}
-      }
-      return {
-        id: 'desktop_user',
-        firstName: 'User',
-        primaryEmailAddress: { emailAddress: 'user@bokra.local' }
-      };
-    }
-    return null;
-  });
-
   return (
-    <AuthContext.Provider value={{ user, isSignedIn: !!user, isLoaded: true }}>
+    <BaseClerkProvider publishableKey={PUBLISHABLE_KEY}>
       {children}
-    </AuthContext.Provider>
+    </BaseClerkProvider>
   );
 };
 
-export const useUser = () => useContext(AuthContext);
+export { useUser, Show, SignInButton, SignUpButton, UserButton, useClerk, useAuth };
 
-export const Show = ({ when, children }) => {
-  const { isSignedIn } = useContext(AuthContext);
-  if (when === 'signed-in' && isSignedIn) return children;
-  if (when === 'signed-out' && !isSignedIn) return children;
-  return null;
-};
-
-export const SignInButton = ({ children }) => children || null;
-export const SignUpButton = ({ children }) => children || null;
-export const UserButton = () => (
-  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-white/80 border border-white/20">
-    B
-  </div>
-);
