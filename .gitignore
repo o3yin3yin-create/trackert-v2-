@@ -50,3 +50,5 @@ service-account.json
 node_modules
 .next
 dist
+src-tauri/target/
+.api_backup/

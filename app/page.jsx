@@ -4,7 +4,9 @@ import { messaging, getToken } from '../lib/firebase';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { useUser, Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
+import { useUser, Show, SignInButton, SignUpButton, UserButton } from '../components/AuthBridge';
+import { apiFetch } from '../lib/api';
+import { loadLocalOfflineState, saveLocalOfflineState, queueSyncMutation, resolveConflict, getPendingSyncQueue, clearPendingSyncQueue } from '../lib/db';
 import { motion } from 'framer-motion';
 import MinimalTimer from '../components/MinimalTimer';
 import { translations } from '../lib/translations';
@@ -677,71 +679,123 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
 
+  // --- 1. Instant Offline-First Local Load from IndexedDB ---
+  useEffect(() => {
+    async function initFromLocalDb() {
+      try {
+        const localState = await loadLocalOfflineState();
+        if (localState) {
+          if (localState.habits && localState.habits.length > 0) setHabits(localState.habits);
+          if (localState.dailyData && Object.keys(localState.dailyData).length > 0) setDailyData(localState.dailyData);
+          if (localState.sleepData && Object.keys(localState.sleepData).length > 0) setSleepData(localState.sleepData);
+          if (localState.focusTimeData && Object.keys(localState.focusTimeData).length > 0) setFocusTimeData(localState.focusTimeData);
+          if (localState.pomodoroTasksData && Object.keys(localState.pomodoroTasksData).length > 0) setPomodoroTasksData(localState.pomodoroTasksData);
+          if (localState.theme) setTheme(localState.theme);
+          if (localState.bgStyle) setBgStyle(localState.bgStyle);
+          if (localState.lang) setLang(localState.lang);
+          if (localState.themeColor) setThemeColor(localState.themeColor);
+          if (localState.avatar) setAvatar(localState.avatar);
+          if (localState.emergencyCards && localState.emergencyCards.length > 0) setHabitCards(localState.emergencyCards);
+          if (localState.grantedCardsLog && Object.keys(localState.grantedCardsLog).length > 0) setGrantedCardsLog(localState.grantedCardsLog);
+          if (localState.finishedTickets && localState.finishedTickets.length > 0) setFinishedTickets(localState.finishedTickets);
+        }
+      } catch (err) {
+        console.warn("[bokra Offline] Could not load from IndexedDB:", err);
+      }
+    }
+    initFromLocalDb();
+  }, []);
+
+  // --- 2. Persist to local IndexedDB on state changes ---
+  useEffect(() => {
+    if (!isMounted) return;
+    const currentSnapshot = {
+      habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
+      theme, bgStyle, lang, focusTimeData, pomodoroTasksData, emergencyCards: habitCards,
+      finishedTickets, updatedAt: Date.now()
+    };
+    saveLocalOfflineState(currentSnapshot);
+  }, [
+    habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
+    theme, bgStyle, lang, focusTimeData, pomodoroTasksData, finishedTickets, isMounted
+  ]);
+
+  // --- 3. Cloud Sync with Last-Write-Wins Conflict Resolution ---
   useEffect(() => {
     if (!user || !isMounted) return;
     
     async function fetchCloudState() {
       setIsSyncing(true);
       try {
-        const res = await fetch('/api/sync');
+        const res = await apiFetch('/api/sync');
         if (res.ok) {
           const { state } = await res.json();
           if (state) {
-            if (state.isAdmin) setIsAdmin(true);
-            if (state.theme) {
-               setTheme(state.theme);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_theme', state.theme);
+            // Merge with local state using Last-Write-Wins
+            const localSnapshot = {
+              habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
+              theme, bgStyle, lang, focusTimeData, pomodoroTasksData, emergencyCards: habitCards,
+              finishedTickets, updatedAt: Date.now()
+            };
+            const merged = resolveConflict(localSnapshot, state);
+
+            if (merged.isAdmin) setIsAdmin(true);
+            if (merged.theme) {
+               setTheme(merged.theme);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_theme', merged.theme);
             }
-            if (state.bgStyle) {
-               setBgStyle(state.bgStyle);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', state.bgStyle);
+            if (merged.bgStyle) {
+               setBgStyle(merged.bgStyle);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', merged.bgStyle);
             }
-            if (state.lang) {
-               setLang(state.lang);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_lang', state.lang);
+            if (merged.lang) {
+               setLang(merged.lang);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_lang', merged.lang);
             }
-            if (state.themeColor) {
-               setThemeColor(state.themeColor);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', state.themeColor);
+            if (merged.themeColor) {
+               setThemeColor(merged.themeColor);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', merged.themeColor);
             }
-            if (state.avatar) {
-               setAvatar(state.avatar);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_avatar_v1', state.avatar || 'user');
+            if (merged.avatar) {
+               setAvatar(merged.avatar);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_avatar_v1', merged.avatar || 'user');
             }
 
-            
-            if (state.habits && state.habits.length > 0) {
-               setHabits(state.habits);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_habits_v4', JSON.stringify(state.habits));
+            if (merged.habits && merged.habits.length > 0) {
+               setHabits(merged.habits);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_habits_v4', JSON.stringify(merged.habits));
             }
-            if (state.dailyData && Object.keys(state.dailyData).length > 0) {
-               setDailyData(state.dailyData);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_dailyData_v4', JSON.stringify(state.dailyData));
+            if (merged.dailyData && Object.keys(merged.dailyData).length > 0) {
+               setDailyData(merged.dailyData);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_dailyData_v4', JSON.stringify(merged.dailyData));
             }
-            if (state.sleepData && Object.keys(state.sleepData).length > 0) {
-               setSleepData(state.sleepData);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_sleepData_v4', JSON.stringify(state.sleepData));
+            if (merged.sleepData && Object.keys(merged.sleepData).length > 0) {
+               setSleepData(merged.sleepData);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_sleepData_v4', JSON.stringify(merged.sleepData));
             }
-            if (state.focusTimeData && Object.keys(state.focusTimeData).length > 0) {
-               setFocusTimeData(state.focusTimeData);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_focusTime_v4', JSON.stringify(state.focusTimeData));
+            if (merged.focusTimeData && Object.keys(merged.focusTimeData).length > 0) {
+               setFocusTimeData(merged.focusTimeData);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_focusTime_v4', JSON.stringify(merged.focusTimeData));
             }
-            if (state.pomodoroTasksData && Object.keys(state.pomodoroTasksData).length > 0) {
-               setPomodoroTasksData(state.pomodoroTasksData);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(state.pomodoroTasksData));
+            if (merged.pomodoroTasksData && Object.keys(merged.pomodoroTasksData).length > 0) {
+               setPomodoroTasksData(merged.pomodoroTasksData);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(merged.pomodoroTasksData));
             }
-            if (state.finishedTickets && state.finishedTickets.length > 0) {
-               setFinishedTickets(state.finishedTickets);
-               if (typeof window !== 'undefined') localStorage.setItem('trackert_finished_tickets_v1', JSON.stringify(state.finishedTickets));
+            if (merged.finishedTickets && merged.finishedTickets.length > 0) {
+               setFinishedTickets(merged.finishedTickets);
+               if (typeof window !== 'undefined') localStorage.setItem('trackert_finished_tickets_v1', JSON.stringify(merged.finishedTickets));
             }
-            if (state.emergencyCards && state.emergencyCards.length > 0) {
-               setHabitCards(state.emergencyCards);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_cards_v4', JSON.stringify(state.emergencyCards));
+            if (merged.emergencyCards && merged.emergencyCards.length > 0) {
+               setHabitCards(merged.emergencyCards);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_cards_v4', JSON.stringify(merged.emergencyCards));
             }
-            if (state.grantedCardsLog && Object.keys(state.grantedCardsLog).length > 0) {
-               setGrantedCardsLog(state.grantedCardsLog);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_granted_cards_log_v4', JSON.stringify(state.grantedCardsLog));
+            if (merged.grantedCardsLog && Object.keys(merged.grantedCardsLog).length > 0) {
+               setGrantedCardsLog(merged.grantedCardsLog);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_granted_cards_log_v4', JSON.stringify(merged.grantedCardsLog));
             }
+
+            // Save merged to IndexedDB
+            saveLocalOfflineState(merged);
 
             // Restore Active Session
             if (state.activeSessionType === 'pomodoro' && state.activeSessionData) {
@@ -754,8 +808,7 @@ export default function App() {
                   setIsTimerRunning(true);
                   setIsPomodoroOpen(true);
                } else {
-                  // Session expired while offline
-                  fetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
+                  apiFetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
                }
             } else if (state.activeSessionType === 'flight' && state.activeSessionData) {
                const now = Math.floor(Date.now() / 1000);
@@ -766,13 +819,12 @@ export default function App() {
                   setIsFlightTimerRunning(true);
                   setIsFlightFocusOpen(true);
                } else {
-                  // Flight landed while offline
-                  fetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
+                  apiFetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
                }
             }
             
             // Re-apply theme class
-            if (state.theme === 'dark') document.documentElement.classList.add('dark');
+            if (merged.theme === 'dark') document.documentElement.classList.add('dark');
             else document.documentElement.classList.remove('dark');
           }
         } else if (res.status === 403) {
@@ -782,7 +834,7 @@ export default function App() {
           }
         }
       } catch (err) {
-        console.error("Cloud Sync Error", err);
+        console.warn("[bokra Sync Engine] Running in offline mode, loaded from local IndexedDB.");
       } finally {
         setIsCloudLoaded(true);
         setIsSyncing(false);
@@ -792,25 +844,50 @@ export default function App() {
     fetchCloudState();
   }, [user, isMounted]);
 
+  // --- 4. Auto-flush pending sync queue on reconnect ---
   useEffect(() => {
-    if (!user || !isCloudLoaded) return; // Don't push before we pull!
+    const handleOnline = async () => {
+      console.log("[bokra Sync] Device came online. Flushing sync queue...");
+      try {
+        const queue = await getPendingSyncQueue();
+        if (queue && queue.length > 0) {
+          const latest = queue[queue.length - 1];
+          await apiFetch('/api/sync', {
+            method: 'POST',
+            body: JSON.stringify(latest.payload)
+          });
+          await clearPendingSyncQueue();
+          console.log("[bokra Sync] Pending queue flushed successfully.");
+        }
+      } catch (err) {
+        console.warn("[bokra Sync] Could not flush queue:", err);
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [user]);
+
+  // --- 5. Push cloud state debounced & queue if offline ---
+  useEffect(() => {
+    if (!user || !isCloudLoaded) return;
 
     const stateSnapshot = {
       habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
       theme, bgStyle, lang, focusTimeData, pomodoroTasksData, emergencyCards: habitCards,
-      finishedTickets
+      finishedTickets, updatedAt: Date.now()
     };
 
     setIsSyncing(true);
     const timerId = setTimeout(async () => {
       try {
-        await fetch('/api/sync', {
+        await apiFetch('/api/sync', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(stateSnapshot)
         });
       } catch (err) {
-        console.error("Failed to push cloud state", err);
+        console.warn("[bokra Sync] Push failed, queuing mutation for offline sync:", err);
+        queueSyncMutation('STATE_SNAPSHOT', stateSnapshot);
       } finally {
         setIsSyncing(false);
       }
@@ -840,13 +917,13 @@ export default function App() {
     setFlightLoading(true);
     setFlightOptions([]);
     try {
-      const res = await fetch(`/api/flight?duration=${duration}`);
+      const res = await apiFetch(`/api/flight?duration=${duration}`);
       const data = await res.json();
       if (data.flights) {
         setFlightOptions(data.flights);
       }
     } catch (err) {
-      console.error(err);
+      console.warn("[bokra Flights] Flight radar fetch failed (offline or network):", err);
     }
     setFlightLoading(false);
   };
@@ -1205,7 +1282,7 @@ export default function App() {
     setIsSyncing(true);
     try {
       const dailyTasksData = tasks.length > 0 && tasksDate ? { [tasksDate]: tasks } : {};
-      await fetch('/api/sync', {
+      await apiFetch('/api/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1219,7 +1296,7 @@ export default function App() {
       });
       console.log("[Sync Engine] Cloud sync completed successfully.");
     } catch (error) {
-      console.error("[Sync Engine] Failed to sync with cloud:", error);
+      console.warn("[Sync Engine] Failed to sync with cloud:", error);
     } finally {
       setIsSyncing(false);
     }
@@ -1239,7 +1316,7 @@ export default function App() {
     const loadCloudData = async () => {
       if (!user || !isOnline || isCloudLoaded) return;
       try {
-        const res = await fetch(`/api/sync?clerkId=${user.id}`);
+        const res = await apiFetch(`/api/sync?clerkId=${user.id}`);
         const data = await res.json();
         if (data.success) {
           if (data.habits) setHabits(data.habits);
@@ -1257,7 +1334,7 @@ export default function App() {
         }
         setIsCloudLoaded(true);
       } catch (err) {
-        console.error("[Sync Engine] Failed to load data from cloud:", err);
+        console.warn("[Sync Engine] Failed to load data from cloud:", err);
       }
     };
     if (isMounted) {
@@ -1270,30 +1347,30 @@ export default function App() {
     if (!isCloudLoaded || !isMounted) return;
     if (isTimerRunning) {
       const endTime = Math.floor(Date.now() / 1000) + pomodoroTime;
-      fetch('/api/session', { 
+      apiFetch('/api/session', { 
         method: 'POST', 
         body: JSON.stringify({ 
           type: 'pomodoro', 
           data: { endTime, initialTime: pomodoroInitialTime, taskName: activePomodoroTask.name } 
         }) 
-      }).catch(console.error);
+      }).catch(() => {});
     } else {
-      fetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(console.error);
+      apiFetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
     }
   }, [isTimerRunning, isCloudLoaded, isMounted]);
 
   useEffect(() => {
     if (!isCloudLoaded || !isMounted) return;
     if (isFlightTimerRunning && selectedFlight) {
-      fetch('/api/session', { 
+      apiFetch('/api/session', { 
         method: 'POST', 
         body: JSON.stringify({ 
           type: 'flight', 
           data: { flight: selectedFlight } 
         }) 
-      }).catch(console.error);
+      }).catch(() => {});
     } else if (!isFlightTimerRunning) {
-      fetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(console.error);
+      apiFetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
     }
   }, [isFlightTimerRunning, isCloudLoaded, isMounted]);
 
@@ -1433,9 +1510,8 @@ export default function App() {
         if (token) {
           console.log("FCM Token:", token);
           
-          const res = await fetch('/api/settings', {
+          const res = await apiFetch('/api/settings', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               clerkId: clerkId,
               email: userEmail,
@@ -1861,17 +1937,17 @@ export default function App() {
                         if (!searchQuery.trim()) return;
                         setIsSearching(true);
                         try {
-                          const res = await fetch(`/api/flight/search?q=${encodeURIComponent(searchQuery)}`);
+                          const res = await apiFetch(`/api/flight/search?q=${encodeURIComponent(searchQuery)}`);
                           const data = await res.json();
                           if (data.flight) {
                             setSelectedFlight({ ...data.flight, initialSeconds: data.flight.totalSeconds || data.flight.remainingSeconds });
                             setFlightTimer(data.flight.remainingSeconds);
                             setIsSeatSelectionOpen(true);
                           } else {
-                            alert(data.error || 'Flight not found');
+                            alert(data.error || (lang === 'ar' ? 'لم يتم العثور على الرحلة' : 'Flight not found'));
                           }
                         } catch (err) {
-                          alert('Search failed');
+                          alert(lang === 'ar' ? 'يحتاج إلى اتصال بالإنترنت للبحث عن الرحلات المباشرة والرادار' : 'Internet connection required for live flight tracking & radar');
                         }
                         setIsSearching(false);
                       }}
@@ -3473,17 +3549,17 @@ export default function App() {
                                 if (!searchQuery.trim()) return;
                                 setIsSearching(true);
                                 try {
-                                  const res = await fetch(`/api/flight/search?q=${encodeURIComponent(searchQuery)}`);
+                                  const res = await apiFetch(`/api/flight/search?q=${encodeURIComponent(searchQuery)}`);
                                   const data = await res.json();
                                   if (data.flight) {
                                     setSelectedFlight({ ...data.flight, initialSeconds: data.flight.totalSeconds || data.flight.remainingSeconds });
                                     setFlightTimer(data.flight.remainingSeconds);
                                     setIsSeatSelectionOpen(true);
                                   } else {
-                                    alert(data.error || 'Flight not found');
+                                    alert(data.error || (lang === 'ar' ? 'لم يتم العثور على الرحلة' : 'Flight not found'));
                                   }
                                 } catch (err) {
-                                  alert('Search failed');
+                                  alert(lang === 'ar' ? 'يحتاج إلى اتصال بالإنترنت للبحث عن الرحلات المباشرة والرادار' : 'Internet connection required for live flight tracking & radar');
                                 }
                                 setIsSearching(false);
                               }}

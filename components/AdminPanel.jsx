@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { X, Users, Shield, Loader2, UserX, Check, ShieldAlert, BarChart3, Activity, Target } from 'lucide-react';
 import { translations } from '../lib/translations';
+import { apiFetch } from '../lib/api';
 
 export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl }) {
   const [activeTab, setActiveTab] = useState('overview'); // overview, users
@@ -24,7 +25,7 @@ export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl })
     setError('');
     try {
       if (activeTab === 'overview') {
-        const res = await fetch('/api/admin/overview');
+        const res = await apiFetch('/api/admin/overview');
         if (res.ok) {
           const data = await res.json();
           setOverview(data.overview);
@@ -32,7 +33,7 @@ export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl })
           setError('Failed to fetch overview metrics');
         }
       } else if (activeTab === 'users') {
-        const res = await fetch('/api/admin/users');
+        const res = await apiFetch('/api/admin/users');
         if (res.ok) {
           const data = await res.json();
           setUsers(data.users || []);
@@ -49,7 +50,7 @@ export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl })
   const handleToggleBlock = async (userId, currentStatus) => {
     try {
       const action = currentStatus ? 'unblock' : 'block';
-      const res = await fetch('/api/admin/users', {
+      const res = await apiFetch('/api/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetUserId: userId, action })
@@ -68,7 +69,7 @@ export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl })
   const handleToggleAdmin = async (userId, currentStatus) => {
     try {
       const action = currentStatus ? 'removeAdmin' : 'makeAdmin';
-      const res = await fetch('/api/admin/users', {
+      const res = await apiFetch('/api/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetUserId: userId, action })

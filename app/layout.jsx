@@ -1,9 +1,9 @@
-import { ClerkProvider } from '@clerk/nextjs'
+import { ClerkProvider } from '@/components/AuthBridge'
 import './globals.css'
 
 export const metadata = {
-  title: '6afra Tracker',
-  description: 'Premium Habit Tracker',
+  title: 'bokra',
+  description: 'Habit Tracker & Focus Companion',
   manifest: '/manifest.json',
 }
 
