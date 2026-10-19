@@ -80,79 +80,174 @@ export default function DesktopAuthPage() {
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 selection:bg-white/20 font-sans antialiased">
       
-      {/* Official App Logo */}
-      <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-2xl mb-5 border border-white/10 bg-black flex items-center justify-center">
-        <img src="/logo.png" alt="bokra" className="w-full h-full object-cover" />
-      </div>
+      {/* Scoped CSS overrides for Clerk components to guarantee pure dark theme & remove duplicate headers */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .cl-card {
+          background: transparent !important;
+          box-shadow: none !important;
+          border: none !important;
+          padding: 0 !important;
+          width: 100% !important;
+        }
+        .cl-rootBox {
+          width: 100% !important;
+        }
+        .cl-header {
+          display: none !important;
+        }
+        .cl-socialButtonsBlockButton {
+          background-color: #202023 !important;
+          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+          color: #FFFFFF !important;
+          border-radius: 14px !important;
+          height: 44px !important;
+          transition: all 0.2s ease !important;
+        }
+        .cl-socialButtonsBlockButton:hover {
+          background-color: #28282C !important;
+          border-color: rgba(255, 255, 255, 0.2) !important;
+        }
+        .cl-socialButtonsBlockButtonText {
+          color: #FFFFFF !important;
+          font-size: 13px !important;
+          font-weight: 500 !important;
+        }
+        .cl-dividerLine {
+          background-color: rgba(255, 255, 255, 0.1) !important;
+        }
+        .cl-dividerText {
+          color: rgba(255, 255, 255, 0.4) !important;
+          font-size: 11px !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.05em !important;
+        }
+        .cl-formFieldLabel {
+          color: rgba(255, 255, 255, 0.7) !important;
+          font-size: 12px !important;
+          margin-bottom: 6px !important;
+        }
+        .cl-formFieldInput {
+          background-color: #202023 !important;
+          border: 1px solid rgba(255, 255, 255, 0.12) !important;
+          color: #FFFFFF !important;
+          border-radius: 14px !important;
+          height: 44px !important;
+          font-size: 14px !important;
+          padding: 0 14px !important;
+          transition: all 0.2s ease !important;
+        }
+        .cl-formFieldInput:focus {
+          border-color: rgba(255, 255, 255, 0.35) !important;
+          box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2) !important;
+          outline: none !important;
+        }
+        .cl-formFieldInput::placeholder {
+          color: rgba(255, 255, 255, 0.3) !important;
+        }
+        .cl-formButtonPrimary {
+          background-color: #FFFFFF !important;
+          color: #000000 !important;
+          border-radius: 14px !important;
+          height: 44px !important;
+          font-weight: 600 !important;
+          font-size: 14px !important;
+          border: none !important;
+          transition: all 0.15s ease !important;
+          margin-top: 10px !important;
+        }
+        .cl-formButtonPrimary:hover {
+          background-color: rgba(255, 255, 255, 0.88) !important;
+        }
+        .cl-formButtonPrimary:active {
+          transform: scale(0.98) !important;
+        }
+        .cl-footerActionText {
+          color: rgba(255, 255, 255, 0.5) !important;
+          font-size: 12px !important;
+        }
+        .cl-footerActionLink {
+          color: #FFFFFF !important;
+          font-weight: 600 !important;
+          font-size: 12px !important;
+        }
+        .cl-footerActionLink:hover {
+          text-decoration: underline !important;
+        }
+        .cl-footer {
+          background: transparent !important;
+          border: none !important;
+          padding-top: 14px !important;
+        }
+        .cl-identityPreview {
+          background-color: #202023 !important;
+          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+          border-radius: 14px !important;
+        }
+        .cl-identityPreviewText {
+          color: #FFFFFF !important;
+        }
+        .cl-identityPreviewEditButton {
+          color: rgba(255, 255, 255, 0.6) !important;
+        }
+        .cl-otpCodeFieldInput {
+          background-color: #202023 !important;
+          border: 1px solid rgba(255, 255, 255, 0.15) !important;
+          color: #FFFFFF !important;
+          border-radius: 12px !important;
+        }
+      ` }} />
 
-      {/* Main Container */}
-      <div className="w-full max-w-[420px] flex flex-col items-center">
+      {/* Unified Single Card */}
+      <div className="w-full max-w-[400px] bg-[#141416] border border-white/10 rounded-3xl p-8 shadow-2xl flex flex-col items-center backdrop-blur-xl">
         
+        {/* Official App Logo */}
+        <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-2xl mb-4 border border-white/10 bg-black flex items-center justify-center">
+          <img src="/logo.png" alt="bokra" className="w-full h-full object-cover" />
+        </div>
+
+        {/* Brand Header */}
+        <div className="text-center mb-6">
+          <h1 className="text-xl font-bold tracking-tight text-white mb-1">
+            Sign In to bokra
+          </h1>
+          <p className="text-xs text-white/50 tracking-wide font-medium">
+            Habit & Focus Companion
+          </p>
+        </div>
+
+        {/* State 1: Verifying Session */}
         {status === 'initializing' && (
-          <div className="w-full bg-[#121214] border border-white/10 rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center">
+          <div className="py-8 flex flex-col items-center text-center">
             <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin mb-4" />
-            <h2 className="text-base font-semibold text-white mb-1">Verifying Session</h2>
+            <h2 className="text-sm font-semibold text-white mb-1">Verifying Session</h2>
             <p className="text-xs text-white/40">Checking your account status...</p>
           </div>
         )}
 
+        {/* State 2: Login Form */}
         {status === 'login_required' && (
-          <div className="w-full flex flex-col items-center">
-            <div className="mb-4 text-center">
-              <h1 className="text-xl font-bold tracking-tight text-white mb-1">
-                Sign in to bokra
-              </h1>
-              <p className="text-xs text-white/50">
-                Connect your account to bokra for Mac
-              </p>
-            </div>
-
-            <div className="w-full">
-              <SignIn
-                routing="hash"
-                appearance={{
-                  baseTheme: dark,
-                  variables: {
-                    colorPrimary: '#FFFFFF',
-                    colorBackground: '#121214',
-                    colorInputBackground: '#1C1C1E',
-                    colorInputText: '#FFFFFF',
-                    colorText: '#FFFFFF',
-                    colorTextSecondary: 'rgba(255, 255, 255, 0.55)',
-                    borderRadius: '16px',
-                  },
-                  elements: {
-                    rootBox: 'w-full',
-                    card: 'bg-[#121214] border border-white/10 shadow-2xl rounded-3xl p-6 w-full',
-                    headerTitle: 'text-white text-lg font-bold tracking-tight',
-                    headerSubtitle: 'text-white/50 text-xs',
-                    socialButtonsBlockButton: 'bg-[#1C1C1E] border border-white/10 hover:bg-white/10 text-white rounded-2xl transition-all h-11',
-                    socialButtonsBlockButtonText: 'text-white font-medium text-xs',
-                    dividerLine: 'bg-white/10',
-                    dividerText: 'text-white/40 text-xs uppercase tracking-widest',
-                    formFieldLabel: 'text-white/70 text-xs font-medium',
-                    formFieldInput: 'bg-[#1C1C1E] border border-white/10 rounded-2xl text-white text-sm h-11 px-4 focus:border-white/30 transition-colors',
-                    formButtonPrimary: 'bg-white hover:bg-white/90 text-black font-semibold text-sm rounded-2xl h-11 transition-all active:scale-[0.98]',
-                    footerActionLink: 'text-white font-medium hover:underline',
-                    footer: 'text-white/40 text-xs',
-                    identityPreview: 'bg-[#1C1C1E] border border-white/10 rounded-2xl',
-                  }
-                }}
-              />
-            </div>
+          <div className="w-full">
+            <SignIn
+              routing="hash"
+              appearance={{
+                baseTheme: dark,
+              }}
+            />
           </div>
         )}
 
+        {/* State 3: Authenticating / Redirecting */}
         {status === 'authenticating' && (
-          <div className="w-full bg-[#121214] border border-white/10 rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center">
+          <div className="py-6 flex flex-col items-center text-center w-full">
             <div className="w-7 h-7 border-2 border-white/20 border-t-white rounded-full animate-spin mb-4" />
             <h2 className="text-base font-semibold text-white mb-1">Connecting to bokra for Mac</h2>
             <p className="text-xs text-white/40">Redirecting automatically in a moment...</p>
           </div>
         )}
 
+        {/* State 4: Success */}
         {status === 'success' && (
-          <div className="w-full bg-[#121214] border border-white/10 rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center">
+          <div className="py-2 flex flex-col items-center text-center w-full">
             <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg mb-4 font-bold border border-emerald-500/20">
               ✓
             </div>
@@ -165,7 +260,7 @@ export default function DesktopAuthPage() {
 
             <a
               href={`http://127.0.0.1:${port}/callback?token=${encodeURIComponent(tokenData?.token || '')}&user=${encodeURIComponent(JSON.stringify(tokenData?.user || {}))}`}
-              className="w-full py-3 px-4 rounded-2xl bg-white hover:bg-white/90 text-black font-semibold text-sm transition-all mb-3 text-center active:scale-[0.98]"
+              className="w-full py-3 px-4 rounded-xl bg-white hover:bg-white/90 text-black font-semibold text-sm transition-all mb-3 text-center active:scale-[0.98]"
             >
               Return to bokra
             </a>
@@ -179,8 +274,9 @@ export default function DesktopAuthPage() {
           </div>
         )}
 
+        {/* State 5: Error */}
         {status === 'error' && (
-          <div className="w-full bg-[#121214] border border-white/10 rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center">
+          <div className="py-2 flex flex-col items-center text-center w-full">
             <div className="w-12 h-12 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center text-lg mb-4 font-bold border border-red-500/20">
               !
             </div>
@@ -188,7 +284,7 @@ export default function DesktopAuthPage() {
             <p className="text-xs text-red-400/80 mb-6">{errorMessage}</p>
             <button
               onClick={handleCompleteAuth}
-              className="w-full py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-medium text-sm transition-all active:scale-[0.98]"
+              className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-sm transition-all active:scale-[0.98]"
             >
               Try Again
             </button>
