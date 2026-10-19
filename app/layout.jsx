@@ -12,8 +12,6 @@ export const viewport = {
   themeColor: '#000000',
 }
 
-import ClerkCleanBadge from '@/components/ClerkCleanBadge'
-
 export default function RootLayout({ children }) {
   return (
     <ClerkProvider
@@ -43,7 +41,6 @@ export default function RootLayout({ children }) {
           <meta name="theme-color" content="#000000" />
         </head>
         <body className="bg-black text-white antialiased selection:bg-white/20">
-          <ClerkCleanBadge />
           {children}
         </body>
       </html>
