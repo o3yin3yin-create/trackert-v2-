@@ -1,4 +1,5 @@
 import { ClerkProvider } from '@/components/AuthBridge'
+import { dark } from '@clerk/themes'
 import './globals.css'
 
 export const metadata = {
@@ -13,7 +14,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider appearance={{ baseTheme: dark }}>
       <html lang="en">
         <head>
           <meta name="apple-mobile-web-app-capable" content="yes" />
