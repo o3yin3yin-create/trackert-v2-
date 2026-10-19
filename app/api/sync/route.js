@@ -1,15 +1,13 @@
 import { NextResponse } from 'next/server';
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { currentUser } from '@clerk/nextjs/server';
 import { PrismaClient } from '@prisma/client';
-
-
-
+import { getAuthUserId } from '@/lib/auth-server';
 
 const prisma = new PrismaClient();
 
 // Fetch the complete state for the user
-export async function GET() {
-  const { userId } = await auth();
+export async function GET(req) {
+  const userId = await getAuthUserId(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
@@ -99,7 +97,7 @@ export async function GET() {
 
 // Save the complete state to the database
 export async function POST(req) {
-  const { userId } = await auth();
+  const userId = await getAuthUserId(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {

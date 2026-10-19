@@ -16,20 +16,29 @@ const { execSync } = require('child_process');
 const rootDir = path.resolve(__dirname, '..');
 const apiDir = path.join(rootDir, 'app', 'api');
 const apiBackupDir = path.join(rootDir, '.api_backup');
+const desktopAuthDir = path.join(rootDir, 'app', 'desktop-auth');
+const desktopAuthBackupDir = path.join(rootDir, '.desktop_auth_backup');
 const authBridgeFile = path.join(rootDir, 'components', 'AuthBridge.jsx');
 const authBridgeBackup = path.join(rootDir, 'components', '.AuthBridge_backup.jsx');
 
 let apiMoved = false;
+let desktopAuthMoved = false;
 let authBridgeSwapped = false;
 
 console.log('🚀 Starting bokra static export build for desktop...');
 
 try {
-  // 1. Isolate app/api
+  // 1. Isolate app/api and web-only routes
   if (fs.existsSync(apiDir)) {
     fs.renameSync(apiDir, apiBackupDir);
     apiMoved = true;
     console.log('✓ Isolated app/api for static client export.');
+  }
+
+  if (fs.existsSync(desktopAuthDir)) {
+    fs.renameSync(desktopAuthDir, desktopAuthBackupDir);
+    desktopAuthMoved = true;
+    console.log('✓ Isolated app/desktop-auth for static client export.');
   }
 
   // 2. Switch AuthBridge to client-only mode
@@ -69,6 +78,11 @@ try {
     fs.copyFileSync(authBridgeBackup, authBridgeFile);
     fs.rmSync(authBridgeBackup);
     console.log('✓ Restored AuthBridge for full-stack web/Vercel.');
+  }
+
+  if (desktopAuthMoved && fs.existsSync(desktopAuthBackupDir)) {
+    fs.renameSync(desktopAuthBackupDir, desktopAuthDir);
+    console.log('✓ Restored app/desktop-auth for full-stack web/Vercel.');
   }
 
   if (apiMoved && fs.existsSync(apiBackupDir)) {
