@@ -4,7 +4,7 @@ import { messaging, getToken } from '../lib/firebase';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { useUser, Show, SignInButton, SignUpButton, UserButton } from '../components/AuthBridge';
+import { useUser, Show, SignInButton, SignUpButton, UserButton, SignIn, SignUp } from '../components/AuthBridge';
 import { apiFetch } from '../lib/api';
 import { loadLocalOfflineState, saveLocalOfflineState, queueSyncMutation, resolveConflict, getPendingSyncQueue, clearPendingSyncQueue } from '../lib/db';
 import { motion } from 'framer-motion';
@@ -384,11 +384,18 @@ for (let val = 0; val <= 1000; val += 50) {
 
 export default function App() {
   const { user } = useUser(); 
+  const [authModal, setAuthModal] = useState(null); // 'sign-in' | 'sign-up' | null
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      setAuthModal(null);
+    }
+  }, [user]);
 
   // --- Force Status Bar Color on Mobile ---
   useEffect(() => {
@@ -2684,16 +2691,38 @@ export default function App() {
               
               <div className="flex items-center gap-4">
                 <Show when="signed-out">
-                  <SignInButton mode="modal">
-                    <button className="text-white/70 hover:text-white font-medium text-sm transition-colors cursor-pointer px-2 py-1">
-                      Log In
-                    </button>
-                  </SignInButton>
-                  <SignUpButton mode="modal">
-                    <button className="bg-white hover:bg-white/90 text-black rounded-xl font-semibold text-sm h-8.5 px-4 cursor-pointer transition-all active:scale-95 shadow-sm">
-                      Sign Up
-                    </button>
-                  </SignUpButton>
+                  <button 
+                    onClick={() => {
+                      if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
+                        const fakeBtn = document.getElementById('desktop-login-trigger');
+                        if (fakeBtn) fakeBtn.click();
+                      } else {
+                        setAuthModal('sign-in');
+                      }
+                    }}
+                    className="text-white/70 hover:text-white font-medium text-sm transition-colors cursor-pointer px-2 py-1"
+                  >
+                    Log In
+                  </button>
+                  <button 
+                    onClick={() => {
+                      if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
+                        const fakeBtn = document.getElementById('desktop-signup-trigger');
+                        if (fakeBtn) fakeBtn.click();
+                      } else {
+                        setAuthModal('sign-up');
+                      }
+                    }}
+                    className="bg-white hover:bg-white/90 text-black rounded-xl font-semibold text-sm h-8.5 px-4 cursor-pointer transition-all active:scale-95 shadow-sm"
+                  >
+                    Sign Up
+                  </button>
+
+                  {/* Hidden Tauri triggers for desktop */}
+                  <div className="hidden">
+                    <SignInButton><span id="desktop-login-trigger"></span></SignInButton>
+                    <SignUpButton><span id="desktop-signup-trigger"></span></SignUpButton>
+                  </div>
                 </Show>
                 
                 <Show when="signed-in">
@@ -4328,6 +4357,60 @@ export default function App() {
               themeColor={themeColor}
               isRtl={lang === 'ar'}
             />,
+            document.body
+          )}
+
+          {/* ---------------- APPLE DARK AUTH MODAL (WEB & MOBILE) ---------------- */}
+          {authModal && createPortal(
+            <div 
+              className="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 selection:bg-white/20 animate-in fade-in duration-200"
+              onClick={(e) => { if (e.target === e.currentTarget) setAuthModal(null); }}
+            >
+              <div className="relative w-full max-w-[390px] bg-[#121214] border border-white/10 rounded-3xl p-7 sm:p-8 shadow-2xl flex flex-col items-center animate-in zoom-in-95 duration-200">
+                
+                {/* Close Button */}
+                <button
+                  onClick={() => setAuthModal(null)}
+                  className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-white/50 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                  aria-label="Close"
+                >
+                  <X size={16} />
+                </button>
+
+                {/* Floating bokra Transparent Logo */}
+                <img 
+                  src="/logo-transparent.png" 
+                  alt="bokra" 
+                  className="h-12 w-auto object-contain mb-4 select-none drop-shadow-xl" 
+                />
+
+                {/* Brand Header */}
+                <div className="text-center mb-6">
+                  <h2 className="text-xl font-bold tracking-tight text-white mb-1">
+                    {authModal === 'sign-up' ? 'Join bokra' : 'Sign In to bokra'}
+                  </h2>
+                  <p className="text-xs text-white/50 tracking-wide font-medium">
+                    Habit & Focus Companion
+                  </p>
+                </div>
+
+                {/* Embedded Clerk Form */}
+                <div className="w-full">
+                  {authModal === 'sign-up' ? (
+                    <SignUp
+                      routing="hash"
+                      signInUrl="#sign-in"
+                    />
+                  ) : (
+                    <SignIn
+                      routing="hash"
+                      signUpUrl="#sign-up"
+                    />
+                  )}
+                </div>
+
+              </div>
+            </div>,
             document.body
           )}
 

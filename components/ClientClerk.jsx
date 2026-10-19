@@ -251,6 +251,10 @@ export const SignUpButton = ({ children }) => {
   );
 };
 
+export const SignIn = () => null;
+export const SignUp = () => null;
+
+
 export const UserButton = ({ appearance }) => {
   const { user, signOut } = useContext(AuthContext);
   const [isOpen, setIsOpen] = useState(false);

@@ -367,23 +367,7 @@
 
 /* 5. Header Title & Subtitle */
 .cl-header {
-  text-align: center !important;
-  margin-bottom: 22px !important;
-  padding: 0 !important;
-}
-.cl-headerTitle {
-  color: #FFFFFF !important;
-  font-size: 20px !important;
-  font-weight: 700 !important;
-  letter-spacing: -0.025em !important;
-  margin-bottom: 4px !important;
-  text-align: center !important;
-}
-.cl-headerSubtitle {
-  color: rgba(255, 255, 255, 0.5) !important;
-  font-size: 13px !important;
-  font-weight: 400 !important;
-  text-align: center !important;
+  display: none !important;
 }
 
 /* 6. Close Button */
@@ -506,7 +490,9 @@
 }
 
 /* 11. Primary Continue Button */
-.cl-formButtonPrimary {
+.cl-formButtonPrimary,
+button[data-localization-key*="formButtonPrimary"],
+.cl-form button[type="submit"] {
   background-color: #FFFFFF !important;
   color: #000000 !important;
   border-radius: 14px !important;
@@ -520,10 +506,12 @@
   margin-top: 14px !important;
   box-shadow: none !important;
 }
-.cl-formButtonPrimary:hover {
+.cl-formButtonPrimary:hover,
+.cl-form button[type="submit"]:hover {
   background-color: rgba(255, 255, 255, 0.88) !important;
 }
-.cl-formButtonPrimary:active {
+.cl-formButtonPrimary:active,
+.cl-form button[type="submit"]:active {
   transform: scale(0.98) !important;
 }
 
@@ -539,6 +527,7 @@
   margin: 0 !important;
   text-align: center !important;
   justify-content: center !important;
+  display: block !important;
 }
 .cl-footerActionText {
   color: rgba(255, 255, 255, 0.5) !important;
@@ -551,6 +540,20 @@
 }
 .cl-footerActionLink:hover {
   text-decoration: underline !important;
+}
+
+/* Hide everything in .cl-footer except .cl-footerAction */
+.cl-footer > *:not(.cl-footerAction):not(:has(.cl-footerAction)),
+.cl-footerAction ~ *,
+.cl-footerAction + * {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  pointer-events: none !important;
 }
 
 /* 13. Identity Preview & OTP Inputs */
@@ -574,10 +577,15 @@
   border-radius: 12px !important;
 }
 
-/* 14. Hide Clerk Watermarks and Dev Badges completely */
+/* 14. Hide Clerk Watermarks, Canvas Patterns, and Dev Badges completely */
 .cl-footerPages,
 .cl-footerPages__signIn,
 .cl-footerPages__signUp,
+.cl-footer canvas,
+.cl-card canvas,
+.cl-modalContent canvas,
+.cl-rootBox canvas,
+canvas[class*="clerk"],
 [class*="footerPages"],
 [class*="securedBy"],
 .cl-footer__developmentMode,
@@ -586,6 +594,9 @@
 [class*="developmentMode"],
 [class*="devModeBadge"] {
   display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
 }
 
 /* 15. Mobile Responsiveness */
