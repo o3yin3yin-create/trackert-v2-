@@ -275,9 +275,11 @@ export default function DesktopAuthPage() {
       <div className="w-full max-w-[390px] bg-[#121214] border border-white/10 rounded-3xl p-8 shadow-2xl flex flex-col items-center backdrop-blur-xl">
         
         {/* Official App Logo */}
-        <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-2xl mb-4 border border-white/10 bg-black flex items-center justify-center">
-          <img src="/logo.png" alt="bokra" className="w-full h-full object-cover select-none" />
-        </div>
+        <img 
+          src="/logo-transparent.png" 
+          alt="bokra" 
+          className="h-12 w-auto object-contain mb-4 select-none drop-shadow-xl" 
+        />
 
         {/* Brand Header */}
         <div className="text-center mb-6">

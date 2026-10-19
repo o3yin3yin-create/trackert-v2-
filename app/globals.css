@@ -276,5 +276,334 @@
   display: none;
 }
 
+/* ==========================================================================
+   bokra Apple Dark Auth System — Global Clerk Modal & Card Overrides
+   ========================================================================== */
+
+/* 1. Backdrop */
+.cl-modalBackdrop {
+  background: rgba(0, 0, 0, 0.78) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+  z-index: 99999 !important;
+}
+
+/* 2. Modal Content & Card Container */
+.cl-modalContent {
+  background: #121214 !important;
+  background-color: #121214 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 28px !important;
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+  max-width: 410px !important;
+  width: 100% !important;
+  overflow: hidden !important;
+  color: #FFFFFF !important;
+  animation: modalEnter 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 3. Strip Inner Redundant Box / Cards */
+.cl-rootBox,
+.cl-cardBox {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  width: 100% !important;
+}
+
+.cl-card {
+  background: #121214 !important;
+  background-color: #121214 !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 32px 28px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  color: #FFFFFF !important;
+}
+
+.cl-main,
+.cl-signIn-start,
+.cl-signUp-start,
+.cl-pageScrollBox,
+.cl-contentBox {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+}
+
+/* 4. Logo inside modal */
+.cl-logoBox {
+  display: flex !important;
+  justify-content: center !important;
+  margin-bottom: 14px !important;
+  height: auto !important;
+}
+.cl-logoImage {
+  height: 38px !important;
+  max-height: 40px !important;
+  width: auto !important;
+  object-fit: contain !important;
+}
+
+/* 5. Header Title & Subtitle */
+.cl-header {
+  text-align: center !important;
+  margin-bottom: 22px !important;
+  padding: 0 !important;
+}
+.cl-headerTitle {
+  color: #FFFFFF !important;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.025em !important;
+  margin-bottom: 4px !important;
+  text-align: center !important;
+}
+.cl-headerSubtitle {
+  color: rgba(255, 255, 255, 0.5) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  text-align: center !important;
+}
+
+/* 6. Close Button */
+.cl-modalCloseButton {
+  top: 18px !important;
+  right: 18px !important;
+  color: rgba(255, 255, 255, 0.45) !important;
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border-radius: 9999px !important;
+  width: 28px !important;
+  height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+}
+.cl-modalCloseButton:hover {
+  color: #FFFFFF !important;
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* 7. Social Buttons (Apple & Google) */
+.cl-socialButtonsRoot {
+  width: 100% !important;
+  margin-bottom: 8px !important;
+}
+.cl-socialButtons {
+  display: flex !important;
+  gap: 10px !important;
+  width: 100% !important;
+}
+.cl-socialButtonsBlockButton {
+  flex: 1 !important;
+  background-color: #1C1C1E !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #FFFFFF !important;
+  border-radius: 14px !important;
+  height: 44px !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  cursor: pointer !important;
+}
+.cl-socialButtonsBlockButton:hover {
+  background-color: #2C2C2E !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+.cl-socialButtonsBlockButton:active {
+  transform: scale(0.98) !important;
+}
+.cl-socialButtonsBlockButtonText {
+  color: #FFFFFF !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+/* 8. Pure White Apple Icon */
+.cl-socialButtonsBlockButton__apple svg,
+.cl-socialButtonsBlockButton__apple img,
+.cl-socialButtonsBlockButton__apple .cl-socialButtonsProviderIcon,
+.cl-socialButtonsBlockButton__apple path {
+  filter: brightness(0) invert(1) !important;
+  fill: #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+/* 9. Divider */
+.cl-dividerRow {
+  margin: 18px 0 !important;
+}
+.cl-dividerLine {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  height: 1px !important;
+}
+.cl-dividerText {
+  color: rgba(255, 255, 255, 0.35) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  padding: 0 10px !important;
+}
+
+/* 10. Form & Inputs */
+.cl-form {
+  width: 100% !important;
+}
+.cl-formFieldRow {
+  margin-bottom: 14px !important;
+}
+.cl-formFieldLabel {
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  margin-bottom: 6px !important;
+  display: block !important;
+}
+.cl-formFieldInput {
+  background-color: #1C1C1E !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #FFFFFF !important;
+  border-radius: 14px !important;
+  height: 44px !important;
+  font-size: 14px !important;
+  padding: 0 14px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease !important;
+}
+.cl-formFieldInput:focus {
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2) !important;
+  outline: none !important;
+  background-color: #242426 !important;
+}
+.cl-formFieldInput::placeholder {
+  color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* 11. Primary Continue Button */
+.cl-formButtonPrimary {
+  background-color: #FFFFFF !important;
+  color: #000000 !important;
+  border-radius: 14px !important;
+  height: 44px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  border: none !important;
+  width: 100% !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  margin-top: 14px !important;
+  box-shadow: none !important;
+}
+.cl-formButtonPrimary:hover {
+  background-color: rgba(255, 255, 255, 0.88) !important;
+}
+.cl-formButtonPrimary:active {
+  transform: scale(0.98) !important;
+}
+
+/* 12. Footer & Clean Up */
+.cl-footer {
+  background: transparent !important;
+  border: none !important;
+  padding: 16px 0 0 0 !important;
+  margin: 0 !important;
+  text-align: center !important;
+}
+.cl-footerAction {
+  margin: 0 !important;
+  text-align: center !important;
+  justify-content: center !important;
+}
+.cl-footerActionText {
+  color: rgba(255, 255, 255, 0.5) !important;
+  font-size: 12px !important;
+}
+.cl-footerActionLink {
+  color: #FFFFFF !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+}
+.cl-footerActionLink:hover {
+  text-decoration: underline !important;
+}
+
+/* 13. Identity Preview & OTP Inputs */
+.cl-identityPreview {
+  background-color: #1C1C1E !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 14px !important;
+  padding: 10px 14px !important;
+}
+.cl-identityPreviewText {
+  color: #FFFFFF !important;
+  font-size: 13px !important;
+}
+.cl-identityPreviewEditButton {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+.cl-otpCodeFieldInput {
+  background-color: #1C1C1E !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #FFFFFF !important;
+  border-radius: 12px !important;
+}
+
+/* 14. Hide Clerk Watermarks and Dev Badges completely */
+.cl-footerPages,
+.cl-footerPages__signIn,
+.cl-footerPages__signUp,
+[class*="footerPages"],
+[class*="securedBy"],
+.cl-footer__developmentMode,
+.cl-developmentModeBadge,
+.cl-devModeBadge,
+[class*="developmentMode"],
+[class*="devModeBadge"] {
+  display: none !important;
+}
+
+/* 15. Mobile Responsiveness */
+@media (max-width: 480px) {
+  .cl-modalBackdrop {
+    padding: 12px !important;
+    align-items: center !important;
+  }
+  .cl-modalContent {
+    max-width: 100% !important;
+    width: 100% !important;
+    border-radius: 24px !important;
+  }
+  .cl-card {
+    padding: 24px 20px !important;
+  }
+}
+
+
 
 

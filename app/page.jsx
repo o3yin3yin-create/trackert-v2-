@@ -2671,10 +2671,12 @@ export default function App() {
             )}
 
             <div className="flex justify-between items-center w-full">
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-2xl overflow-hidden shadow-lg border border-white/10 shrink-0 bg-black flex items-center justify-center">
-                  <img src="/logo.png" alt="bokra" className="w-full h-full object-cover select-none" />
-                </div>
+              <div className="flex items-center gap-3">
+                <img 
+                  src="/logo-transparent.png" 
+                  alt="bokra" 
+                  className="h-8 sm:h-9 w-auto object-contain select-none shrink-0" 
+                />
                 <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex flex-wrap gap-2 items-center select-none">
                   {dayName} <span className="text-white/30 font-light">{dayNum}</span>
                 </h1>
@@ -2683,12 +2685,12 @@ export default function App() {
               <div className="flex items-center gap-4">
                 <Show when="signed-out">
                   <SignInButton mode="modal">
-                    <button className="text-white/70 hover:text-white font-medium text-sm transition-colors">
+                    <button className="text-white/70 hover:text-white font-medium text-sm transition-colors cursor-pointer px-2 py-1">
                       Log In
                     </button>
                   </SignInButton>
                   <SignUpButton mode="modal">
-                    <button className="bg-[#FF9F0A] text-black rounded-full font-bold text-sm h-9 px-5 cursor-pointer hover:opacity-80 transition-opacity">
+                    <button className="bg-white hover:bg-white/90 text-black rounded-xl font-semibold text-sm h-8.5 px-4 cursor-pointer transition-all active:scale-95 shadow-sm">
                       Sign Up
                     </button>
                   </SignUpButton>

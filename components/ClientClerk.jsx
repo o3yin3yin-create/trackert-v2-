@@ -154,9 +154,11 @@ export const ClerkProvider = ({ children }) => {
           <div className="bg-[#1C1C1E] border border-white/10 rounded-3xl p-7 max-w-sm w-full text-center shadow-2xl flex flex-col items-center animate-in fade-in zoom-in-95">
             
             {/* App Logo */}
-            <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-2xl mb-4 border border-white/10 bg-black flex items-center justify-center">
-              <img src="/logo.png" alt="bokra" className="w-full h-full object-cover" />
-            </div>
+            <img 
+              src="/logo-transparent.png" 
+              alt="bokra" 
+              className="h-12 w-auto object-contain mb-4 select-none drop-shadow-xl" 
+            />
             
             <h3 className="text-lg font-bold text-white mb-2">
               Signing in via Browser...
