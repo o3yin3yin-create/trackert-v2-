@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useUser, Show, SignInButton, SignUpButton, UserButton, SignIn, SignUp } from '../components/AuthBridge';
+import { clerkAppearance } from '../lib/clerkTheme';
 import { apiFetch } from '../lib/api';
 import { loadLocalOfflineState, saveLocalOfflineState, queueSyncMutation, resolveConflict, getPendingSyncQueue, clearPendingSyncQueue } from '../lib/db';
 import { motion } from 'framer-motion';
@@ -4412,11 +4413,13 @@ export default function App() {
                     <SignUp
                       routing="hash"
                       signInUrl="#sign-in"
+                      appearance={clerkAppearance}
                     />
                   ) : (
                     <SignIn
                       routing="hash"
                       signUpUrl="#sign-up"
+                      appearance={clerkAppearance}
                     />
                   )}
                 </div>

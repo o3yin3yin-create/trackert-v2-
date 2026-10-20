@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useUser, SignIn } from '@clerk/nextjs';
 import { dark } from '@clerk/themes';
+import { clerkAppearance } from '@/lib/clerkTheme';
 
 export default function DesktopAuthPage() {
   const { isSignedIn, isLoaded, user } = useUser();
@@ -104,43 +105,88 @@ export default function DesktopAuthPage() {
           display: none !important;
         }
 
-        /* 3. Social Buttons (Apple & Google) */
+        /* 3. Social Buttons (Apple & Google) - Strictly 14px Squircle Apple Curves */
         .cl-socialButtonsRoot {
           width: 100% !important;
+          margin-bottom: 8px !important;
         }
         .cl-socialButtons {
           display: flex !important;
           gap: 10px !important;
           width: 100% !important;
         }
-        .cl-socialButtonsBlockButton {
+        .cl-socialButtonsBlockButton,
+        .cl-socialButtonsIconButton,
+        .cl-socialButtonsRoot button,
+        .cl-socialButtons button,
+        button.cl-socialButtonsBlockButton,
+        button.cl-socialButtonsIconButton,
+        button[class*="socialButtonsBlockButton"],
+        button[class*="socialButtonsIconButton"],
+        button[class*="socialButtons"],
+        [class*="socialButtons"] button,
+        button[data-localization-key*="socialButtons"],
+        .cl-socialButtonsBlockButton__apple,
+        .cl-socialButtonsBlockButton__google,
+        .cl-socialButtonsIconButton__apple,
+        .cl-socialButtonsIconButton__google {
           flex: 1 !important;
           background-color: #1C1C1E !important;
           border: 1px solid rgba(255, 255, 255, 0.1) !important;
           color: #FFFFFF !important;
           border-radius: 14px !important;
+          -webkit-border-radius: 14px !important;
+          --cl-border-radius: 14px !important;
           height: 44px !important;
+          min-height: 44px !important;
+          max-height: 44px !important;
           transition: all 0.2s ease !important;
           display: flex !important;
           align-items: center !important;
           justify-content: center !important;
           gap: 8px !important;
+          cursor: pointer !important;
+          box-shadow: none !important;
+          overflow: hidden !important;
         }
-        .cl-socialButtonsBlockButton:hover {
+        .cl-socialButtonsBlockButton:hover,
+        .cl-socialButtonsIconButton:hover,
+        .cl-socialButtonsRoot button:hover,
+        .cl-socialButtons button:hover,
+        button[class*="socialButtons"]:hover {
           background-color: #2C2C2E !important;
           border-color: rgba(255, 255, 255, 0.22) !important;
         }
-        .cl-socialButtonsBlockButtonText {
+        .cl-socialButtonsBlockButton:active,
+        .cl-socialButtonsIconButton:active,
+        .cl-socialButtonsRoot button:active,
+        .cl-socialButtons button:active,
+        button[class*="socialButtons"]:active {
+          transform: scale(0.98) !important;
+        }
+        .cl-socialButtonsBlockButtonText,
+        .cl-socialButtonsIconButtonText,
+        .cl-socialButtonsRoot button span,
+        .cl-socialButtons button span,
+        [class*="socialButtons"] span,
+        button[class*="socialButtons"] span {
           color: #FFFFFF !important;
           font-size: 13px !important;
           font-weight: 600 !important;
-          opacity: 1 !important;
         }
 
         /* 4. Make Apple icon crisp white in dark theme */
         .cl-socialButtonsBlockButton__apple svg,
         .cl-socialButtonsBlockButton__apple img,
-        .cl-socialButtonsBlockButton__apple .cl-socialButtonsProviderIcon {
+        .cl-socialButtonsBlockButton__apple .cl-socialButtonsProviderIcon,
+        .cl-socialButtonsBlockButton__apple path,
+        .cl-socialButtonsIconButton__apple svg,
+        .cl-socialButtonsIconButton__apple img,
+        .cl-socialButtonsIconButton__apple .cl-socialButtonsProviderIcon,
+        .cl-socialButtonsIconButton__apple path,
+        [class*="apple"] svg,
+        [class*="apple"] img,
+        [class*="apple"] path {
           filter: brightness(0) invert(1) !important;
           fill: #FFFFFF !important;
           color: #FFFFFF !important;
@@ -223,18 +269,30 @@ export default function DesktopAuthPage() {
           border: none !important;
           padding: 16px 0 0 0 !important;
           margin: 0 !important;
+          text-align: center !important;
         }
         .cl-footerAction {
           margin: 0 !important;
+          text-align: center !important;
+          justify-content: center !important;
+          display: flex !important;
+          align-items: center !important;
+          gap: 6px !important;
         }
         .cl-footerActionText {
           color: rgba(255, 255, 255, 0.5) !important;
           font-size: 12px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          display: inline-block !important;
         }
         .cl-footerActionLink {
           color: #FFFFFF !important;
           font-weight: 600 !important;
           font-size: 12px !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          display: inline-block !important;
         }
         .cl-footerActionLink:hover {
           text-decoration: underline !important;
@@ -305,9 +363,7 @@ export default function DesktopAuthPage() {
           <div className="w-full">
             <SignIn
               routing="hash"
-              appearance={{
-                baseTheme: dark,
-              }}
+              appearance={clerkAppearance}
             />
           </div>
         )}
