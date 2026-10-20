@@ -7,7 +7,7 @@ import { clerkAppearance } from '@/lib/clerkTheme';
 export default function DesktopAuthPage() {
   const { isSignedIn, isLoaded, user } = useUser();
   const [port, setPort] = useState(28282);
-  const [status, setStatus] = useState('initializing'); // initializing, login_required, authenticating, success, error
+  const [status, setStatus] = useState('login_required'); // login_required, authenticating, success, error
   const [tokenData, setTokenData] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -24,15 +24,12 @@ export default function DesktopAuthPage() {
     }
   }, []);
 
+  // When user is signed in (or completes login), automatically complete authentication and link desktop app
   useEffect(() => {
-    if (!isLoaded) return;
-
-    if (isSignedIn && user) {
+    if (isLoaded && isSignedIn && user) {
       handleCompleteAuth();
-    } else {
-      setStatus('login_required');
     }
-  }, [isSignedIn, isLoaded, user, port]);
+  }, [isLoaded, isSignedIn, user, port]);
 
   const handleCompleteAuth = async () => {
     setStatus('authenticating');
@@ -349,16 +346,7 @@ export default function DesktopAuthPage() {
           </p>
         </div>
 
-        {/* State 1: Verifying Session */}
-        {status === 'initializing' && (
-          <div className="py-8 flex flex-col items-center text-center">
-            <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin mb-4" />
-            <h2 className="text-sm font-semibold text-white mb-1">Verifying Session</h2>
-            <p className="text-xs text-white/40">Checking your account status...</p>
-          </div>
-        )}
-
-        {/* State 2: Login Form */}
+        {/* State 1: Login Form (Default) */}
         {status === 'login_required' && (
           <div className="w-full">
             <SignIn
@@ -414,12 +402,20 @@ export default function DesktopAuthPage() {
             </div>
             <h2 className="text-base font-bold text-white mb-1">Connection Failed</h2>
             <p className="text-xs text-red-400/80 mb-6">{errorMessage}</p>
-            <button
-              onClick={handleCompleteAuth}
-              className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-sm transition-all active:scale-[0.98]"
-            >
-              Try Again
-            </button>
+            <div className="flex flex-col gap-2 w-full">
+              <button
+                onClick={handleCompleteAuth}
+                className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-sm transition-all active:scale-[0.98]"
+              >
+                Try Again
+              </button>
+              <button
+                onClick={() => setStatus('login_required')}
+                className="text-xs text-white/40 hover:text-white transition-colors cursor-pointer py-1"
+              >
+                Sign in with another account
+              </button>
+            </div>
           </div>
         )}
 
