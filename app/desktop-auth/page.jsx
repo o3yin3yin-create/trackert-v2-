@@ -102,7 +102,12 @@ export default function DesktopAuthPage() {
           display: none !important;
         }
 
-        /* 3. Social Buttons (Apple & Google) - Strictly 14px Squircle Apple Curves */
+        /* 3. Social Buttons (Apple & Google) - Strictly 14px Squircle Apple Curves on all 4 corners */
+        :root {
+          --clerk-border-radius: 14px !important;
+          --cl-border-radius: 14px !important;
+        }
+
         .cl-socialButtonsRoot {
           width: 100% !important;
           margin-bottom: 8px !important;
@@ -116,27 +121,42 @@ export default function DesktopAuthPage() {
         .cl-socialButtonsIconButton,
         .cl-socialButtonsRoot button,
         .cl-socialButtons button,
+        .cl-socialButtons a,
         button.cl-socialButtonsBlockButton,
         button.cl-socialButtonsIconButton,
         button[class*="socialButtonsBlockButton"],
         button[class*="socialButtonsIconButton"],
         button[class*="socialButtons"],
         [class*="socialButtons"] button,
+        [class*="socialButtons"] a,
         button[data-localization-key*="socialButtons"],
         .cl-socialButtonsBlockButton__apple,
         .cl-socialButtonsBlockButton__google,
         .cl-socialButtonsIconButton__apple,
-        .cl-socialButtonsIconButton__google {
+        .cl-socialButtonsIconButton__google,
+        button[data-variant="outline"],
+        .cl-button[data-variant="outline"] {
           flex: 1 !important;
           background-color: #1C1C1E !important;
           border: 1px solid rgba(255, 255, 255, 0.1) !important;
           color: #FFFFFF !important;
           border-radius: 14px !important;
           -webkit-border-radius: 14px !important;
+          border-top-left-radius: 14px !important;
+          border-top-right-radius: 14px !important;
+          border-bottom-left-radius: 14px !important;
+          border-bottom-right-radius: 14px !important;
+          -webkit-border-top-left-radius: 14px !important;
+          -webkit-border-top-right-radius: 14px !important;
+          -webkit-border-bottom-left-radius: 14px !important;
+          -webkit-border-bottom-right-radius: 14px !important;
           --cl-border-radius: 14px !important;
+          --clerk-border-radius: 14px !important;
           height: 44px !important;
           min-height: 44px !important;
           max-height: 44px !important;
+          box-sizing: border-box !important;
+          padding: 0 14px !important;
           transition: all 0.2s ease !important;
           display: flex !important;
           align-items: center !important;
@@ -144,7 +164,27 @@ export default function DesktopAuthPage() {
           gap: 8px !important;
           cursor: pointer !important;
           box-shadow: none !important;
-          overflow: hidden !important;
+        }
+
+        /* Ensure pseudo-elements match the exact 14px squircle */
+        .cl-socialButtonsBlockButton::before,
+        .cl-socialButtonsBlockButton::after,
+        .cl-socialButtonsIconButton::before,
+        .cl-socialButtonsIconButton::after,
+        [class*="socialButtons"] button::before,
+        [class*="socialButtons"] button::after,
+        .cl-socialButtons button::before,
+        .cl-socialButtons button::after {
+          border-radius: 14px !important;
+          -webkit-border-radius: 14px !important;
+          border-top-left-radius: 14px !important;
+          border-top-right-radius: 14px !important;
+          border-bottom-left-radius: 14px !important;
+          border-bottom-right-radius: 14px !important;
+          -webkit-border-top-left-radius: 14px !important;
+          -webkit-border-top-right-radius: 14px !important;
+          -webkit-border-bottom-left-radius: 14px !important;
+          -webkit-border-bottom-right-radius: 14px !important;
         }
         .cl-socialButtonsBlockButton:hover,
         .cl-socialButtonsIconButton:hover,
