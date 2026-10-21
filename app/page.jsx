@@ -2834,51 +2834,53 @@ export default function App() {
             
             {/* Mobile Mission Card */}
             <div 
-              className="w-full p-6 flex flex-col transition-all duration-500 ease-out liquid-panel" 
+              className="w-full p-4 sm:p-5 flex flex-col transition-all duration-500 ease-out liquid-panel" 
               style={{ 
                 backgroundColor: theme === 'dark' ? `${themeColor}cc` : `${themeColor}aa`, 
-                borderRadius: '28px', 
+                borderRadius: '24px', 
                 color: '#000000',
                 boxShadow: `0 12px 40px -12px ${themeColor}aa` 
               }}
             >
-              {mission ? (
-                <div className="flex items-center gap-1.5 mb-2 opacity-70">
-                  <Target size={14} strokeWidth={2.5} />
-                  <span className="text-[10px] font-bold tracking-widest uppercase">{t('myMission')}</span>
-                </div>
-              ) : (
-                <button onClick={() => setIsEditingMission(true)} className="flex items-center gap-1.5 mb-2 hover:opacity-60 transition-opacity">
-                  <Target size={14} strokeWidth={2.5} />
-                  <span className="text-[10px] font-bold tracking-widest uppercase">{t('setMission')}</span>
-                </button>
-              )}
+              <div className="flex items-center justify-between gap-2 mb-1 select-none">
+                {mission ? (
+                  <div className="flex items-center gap-1.5 opacity-70">
+                    <Target size={13} strokeWidth={2.5} />
+                    <span className="text-[10px] font-bold tracking-widest uppercase">{t('myMission')}</span>
+                  </div>
+                ) : (
+                  <button onClick={() => setIsEditingMission(true)} className="flex items-center gap-1.5 hover:opacity-60 transition-opacity">
+                    <Target size={13} strokeWidth={2.5} />
+                    <span className="text-[10px] font-bold tracking-widest uppercase">{t('setMission')}</span>
+                  </button>
+                )}
+                <span className="text-[9px] font-bold tracking-widest opacity-50 uppercase">
+                  {t('score')} ({activeDateStr === realTodayStr ? t('today') : t('viewed')})
+                </span>
+              </div>
               
               {isEditingMission ? (
                 <input 
                   autoFocus value={missionInput} onChange={(e) => setMissionInput(e.target.value)} onBlur={saveMission} onKeyDown={(e) => e.key === 'Enter' && saveMission()}
-                  className="text-2xl font-black tracking-tight outline-none bg-transparent mb-6 pb-1 border-b border-black/20 w-full placeholder:text-black/30"
+                  className="text-xl sm:text-2xl font-black tracking-tight outline-none bg-transparent mb-3 pb-1 border-b border-black/20 w-full placeholder:text-black/30"
                   style={{ color: '#000000' }} placeholder={t('whatsYourGoal')}
                 />
               ) : (
                 mission && (
-                  <h2 onClick={() => setIsEditingMission(true)} className="text-2xl font-black tracking-tight mb-6 cursor-pointer break-words active:opacity-80 transition-opacity">
+                  <h2 onClick={() => setIsEditingMission(true)} className="text-xl sm:text-2xl font-black tracking-tight mb-3 cursor-pointer break-words active:opacity-80 transition-opacity">
                     {mission}
                   </h2>
                 )
               )}
 
-              <div className="w-full h-[4px] bg-black/10 mb-4 rounded-full overflow-hidden">
-                <div className="h-full bg-black rounded-full transition-all duration-500 ease-out" style={{ width: `${animatedScore}%` }}></div>
-              </div>
-
-              <div className="flex gap-10 select-none">
-                <div className="flex flex-col">
-                  <span className="text-[9px] font-bold tracking-widest opacity-50 uppercase mb-0.5">
-                    {t('score')} ({activeDateStr === realTodayStr ? t('today') : t('viewed')})
-                  </span>
-                  <span className="text-4xl font-black tracking-tighter tabular-nums">
-                    {scoreDisplay}<span className="text-xl font-bold ml-0.5 opacity-80">%</span>
+              {/* Compact Inline Progress Bar + Percentage */}
+              <div className="flex items-center gap-3 w-full select-none">
+                <div className="flex-1 h-[6px] bg-black/15 rounded-full overflow-hidden">
+                  <div className="h-full bg-black rounded-full transition-all duration-500 ease-out" style={{ width: `${animatedScore}%` }}></div>
+                </div>
+                <div className="flex items-baseline shrink-0">
+                  <span className="text-base sm:text-lg font-black tracking-tight tabular-nums">
+                    {scoreDisplay}<span className="text-xs font-bold opacity-80 ml-0.5">%</span>
                   </span>
                 </div>
               </div>
@@ -2992,51 +2994,53 @@ export default function App() {
               
               {/* Mission & Score Card */}
               <div 
-                className="w-full p-6 flex flex-col transition-all duration-500 ease-out liquid-panel" 
+                className="w-full p-4 sm:p-5 flex flex-col transition-all duration-500 ease-out liquid-panel" 
                 style={{ 
                   backgroundColor: theme === 'dark' ? `${themeColor}cc` : `${themeColor}aa`, 
-                  borderRadius: '28px', 
+                  borderRadius: '24px', 
                   color: '#000000',
                   boxShadow: `0 12px 40px -12px ${themeColor}aa` 
                 }}
               >
-                {mission ? (
-                  <div className="flex items-center gap-1.5 mb-2 opacity-70">
-                    <Target size={14} strokeWidth={2.5} />
-                    <span className="text-[10px] font-bold tracking-widest uppercase">{t('myMission')}</span>
-                  </div>
-                ) : (
-                  <button onClick={() => setIsEditingMission(true)} className="flex items-center gap-1.5 mb-2 hover:opacity-60 transition-opacity">
-                    <Target size={14} strokeWidth={2.5} />
-                    <span className="text-[10px] font-bold tracking-widest uppercase">{t('setMission')}</span>
-                  </button>
-                )}
+                <div className="flex items-center justify-between gap-2 mb-1 select-none">
+                  {mission ? (
+                    <div className="flex items-center gap-1.5 opacity-70">
+                      <Target size={13} strokeWidth={2.5} />
+                      <span className="text-[10px] font-bold tracking-widest uppercase">{t('myMission')}</span>
+                    </div>
+                  ) : (
+                    <button onClick={() => setIsEditingMission(true)} className="flex items-center gap-1.5 hover:opacity-60 transition-opacity">
+                      <Target size={13} strokeWidth={2.5} />
+                      <span className="text-[10px] font-bold tracking-widest uppercase">{t('setMission')}</span>
+                    </button>
+                  )}
+                  <span className="text-[9px] font-bold tracking-widest opacity-50 uppercase">
+                    {t('score')} ({activeDateStr === realTodayStr ? t('today') : t('viewed')})
+                  </span>
+                </div>
                 
                 {isEditingMission ? (
                   <input 
                     autoFocus value={missionInput} onChange={(e) => setMissionInput(e.target.value)} onBlur={saveMission} onKeyDown={(e) => e.key === 'Enter' && saveMission()}
-                    className="text-2xl font-black tracking-tight outline-none bg-transparent mb-6 pb-1 border-b border-black/20 w-full placeholder:text-black/30"
+                    className="text-xl sm:text-2xl font-black tracking-tight outline-none bg-transparent mb-3 pb-1 border-b border-black/20 w-full placeholder:text-black/30"
                     style={{ color: '#000000' }} placeholder={t('whatsYourGoal')}
                   />
                 ) : (
                   mission && (
-                    <h2 onClick={() => setIsEditingMission(true)} className="text-2xl font-black tracking-tight mb-6 cursor-pointer break-words active:opacity-80 transition-opacity">
+                    <h2 onClick={() => setIsEditingMission(true)} className="text-xl sm:text-2xl font-black tracking-tight mb-3 cursor-pointer break-words active:opacity-80 transition-opacity">
                       {mission}
                     </h2>
                   )
                 )}
 
-                <div className="w-full h-[4px] bg-black/10 mb-4 rounded-full overflow-hidden">
-                  <div className="h-full bg-black rounded-full transition-all duration-500 ease-out" style={{ width: `${animatedScore}%` }}></div>
-                </div>
-
-                <div className="flex gap-10 select-none">
-                  <div className="flex flex-col">
-                    <span className="text-[9px] font-bold tracking-widest opacity-50 uppercase mb-0.5">
-                      {t('score')} ({activeDateStr === realTodayStr ? t('today') : t('viewed')})
-                    </span>
-                    <span className="text-4xl font-black tracking-tighter tabular-nums">
-                      {scoreDisplay}<span className="text-xl font-bold ml-0.5 opacity-80">%</span>
+                {/* Compact Inline Progress Bar + Percentage */}
+                <div className="flex items-center gap-3 w-full select-none">
+                  <div className="flex-1 h-[6px] bg-black/15 rounded-full overflow-hidden">
+                    <div className="h-full bg-black rounded-full transition-all duration-500 ease-out" style={{ width: `${animatedScore}%` }}></div>
+                  </div>
+                  <div className="flex items-baseline shrink-0">
+                    <span className="text-base sm:text-lg font-black tracking-tight tabular-nums">
+                      {scoreDisplay}<span className="text-xs font-bold opacity-80 ml-0.5">%</span>
                     </span>
                   </div>
                 </div>
