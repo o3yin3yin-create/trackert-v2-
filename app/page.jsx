@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users } from 'lucide-react';
+import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar } from 'lucide-react';
 import { messaging, getToken } from '../lib/firebase';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -557,6 +557,9 @@ export default function App() {
   const [isEmergencyCardsOpen, setIsEmergencyCardsOpen] = useState(false);
   const [isHowToUseOpen, setIsHowToUseOpen] = useState(false);
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const touchStartXRef = useRef(null);
+  const touchStartYRef = useRef(null);
 
   // --- Theme, Language & Background ---
   const [lang, setLang] = useState('en');
@@ -2655,7 +2658,30 @@ export default function App() {
         <div ref={topRef} className="absolute top-0" /> 
 
         {/* ---------------- MAIN APP UI ---------------- */}
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full max-w-[428px] md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto h-full flex flex-col pt-12 px-5 md:px-10 relative z-10">
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ duration: 0.4 }} 
+          className="w-full max-w-[428px] md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto h-full flex flex-col pt-12 px-5 md:px-10 relative z-10"
+          onTouchStart={(e) => {
+            touchStartXRef.current = e.touches[0].clientX;
+            touchStartYRef.current = e.touches[0].clientY;
+          }}
+          onTouchEnd={(e) => {
+            if (touchStartXRef.current === null || touchStartYRef.current === null) return;
+            const diffX = e.changedTouches[0].clientX - touchStartXRef.current;
+            const diffY = e.changedTouches[0].clientY - touchStartYRef.current;
+            if (Math.abs(diffX) > 60 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+              if (diffX > 0) {
+                if (lang === 'ar') handleNextDay(); else handlePrevDay();
+              } else {
+                if (lang === 'ar') handlePrevDay(); else handleNextDay();
+              }
+            }
+            touchStartXRef.current = null;
+            touchStartYRef.current = null;
+          }}
+        >
           
           {/* Header with Navigation */}
           <header className="flex flex-col gap-3 mb-8 w-full">
@@ -2678,152 +2704,148 @@ export default function App() {
               </div>
             )}
 
-            {/* 1. Top Brand & Account Bar */}
-            <div className="flex items-center justify-between w-full mb-1">
-              <div className="flex items-center gap-2.5 select-none">
-                <img 
-                  src="/logo-transparent.png" 
-                  alt="bokra" 
-                  className="h-7 w-auto object-contain select-none shrink-0" 
-                />
-                <span className="text-base font-bold tracking-tight text-white/90">bokra</span>
-              </div>
+            {/* Clean Minimal Apple Header: Day & Date on Left, Glowing Status Account Avatar on Right */}
+            <div className="flex items-center justify-between w-full pt-1 pb-1">
               
-              <div className="flex items-center gap-2">
-                <Show when="signed-out">
-                  <button 
-                    onClick={() => {
-                      if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
-                        const fakeBtn = document.getElementById('desktop-login-trigger');
-                        if (fakeBtn) fakeBtn.click();
-                      } else {
-                        setAuthModal('sign-in');
-                      }
-                    }}
-                    className="text-white/70 hover:text-white font-medium text-xs sm:text-sm transition-colors cursor-pointer px-2.5 py-1"
-                  >
-                    Log In
-                  </button>
-                  <button 
-                    onClick={() => {
-                      if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
-                        const fakeBtn = document.getElementById('desktop-signup-trigger');
-                        if (fakeBtn) fakeBtn.click();
-                      } else {
-                        setAuthModal('sign-up');
-                      }
-                    }}
-                    className="bg-white hover:bg-white/90 text-black rounded-xl font-semibold text-xs sm:text-sm h-8 px-3.5 cursor-pointer transition-all active:scale-95 shadow-sm whitespace-nowrap shrink-0"
-                  >
-                    Sign Up
-                  </button>
+              {/* Left: Day & Date (Interactive) */}
+              <div className="relative">
+                <div 
+                  onClick={() => setIsDatePickerOpen(!isDatePickerOpen)} 
+                  className="flex items-baseline gap-2.5 select-none cursor-pointer group active:scale-[0.98] transition-transform"
+                  title="Change Date"
+                >
+                  <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white group-hover:text-white/90 transition-colors">
+                    {dayName}
+                  </h1>
+                  <span className="text-2xl sm:text-3xl font-light text-white/30 group-hover:text-white/50 transition-colors">
+                    {dayNum}
+                  </span>
+                  {activeDateStr !== realTodayStr && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleToday(); }} 
+                      className="text-[9px] font-bold tracking-widest uppercase bg-white/10 hover:bg-white/20 text-white/70 hover:text-white px-2.5 py-1 rounded-full transition-all active:scale-95 ml-1 self-center"
+                    >
+                      Today
+                    </button>
+                  )}
+                </div>
 
-                  {/* Hidden Tauri triggers for desktop */}
-                  <div className="hidden">
-                    <SignInButton><span id="desktop-login-trigger"></span></SignInButton>
-                    <SignUpButton><span id="desktop-signup-trigger"></span></SignUpButton>
-                  </div>
-                </Show>
-                
-                <Show when="signed-in">
-                  <UserButton appearance={{ elements: { avatarBox: "w-8 h-8 sm:w-9 sm:h-9" } }} />
-                </Show>
-              </div>
-            </div>
+                {/* Date Picker Popover */}
+                {isDatePickerOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40 bg-transparent" 
+                      onClick={() => setIsDatePickerOpen(false)} 
+                    />
+                    <div className="absolute left-0 top-full mt-3 liquid-panel rounded-2xl p-3 shadow-2xl z-50 flex flex-col gap-2.5 min-w-[230px] animate-in fade-in zoom-in-95 duration-150 border border-black/10 dark:border-white/10">
+                      <div className="flex items-center justify-between text-xs font-bold text-black/60 dark:text-white/60 px-1">
+                        <span>Select Date</span>
+                        <button onClick={() => setIsDatePickerOpen(false)} className="text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white"><X size={14} /></button>
+                      </div>
+                      
+                      <div className="grid grid-cols-3 gap-1.5 text-center">
+                        <button 
+                          onClick={() => { handlePrevDay(); }} 
+                          className="px-2 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/15 text-[11px] font-semibold text-black/80 dark:text-white/80 active:scale-95 transition-all"
+                        >
+                          Yesterday
+                        </button>
+                        <button 
+                          onClick={() => { handleToday(); setIsDatePickerOpen(false); }} 
+                          className={`px-2 py-1.5 rounded-xl text-[11px] font-bold active:scale-95 transition-all ${activeDateStr === realTodayStr ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-black dark:text-white'}`}
+                        >
+                          Today
+                        </button>
+                        <button 
+                          onClick={() => { handleNextDay(); }} 
+                          className="px-2 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/15 text-[11px] font-semibold text-black/80 dark:text-white/80 active:scale-95 transition-all"
+                        >
+                          Tomorrow
+                        </button>
+                      </div>
 
-            {/* 2. Date Title & Navigation Controls Header */}
-            <div className="flex items-center justify-between w-full mt-1">
-              <div className="flex items-baseline gap-2.5 select-none">
-                <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
-                  {dayName}
-                </h1>
-                <span className="text-2xl sm:text-3xl font-light text-white/30">
-                  {dayNum}
-                </span>
-              </div>
-
-              {/* Date Navigation Controls */}
-              <div className="flex items-center gap-1.5">
-                <button onClick={handlePrevDay} className="p-1.5 bg-[#1C1C1E] border border-white/5 rounded-full text-white/40 hover:text-white transition-all duration-200 active:scale-90" aria-label="Previous day">
-                  <ChevronLeft size={16} />
-                </button>
-                <button onClick={handleNextDay} className="p-1.5 bg-[#1C1C1E] border border-white/5 rounded-full text-white/40 hover:text-white transition-all duration-200 active:scale-90" aria-label="Next day">
-                  <ChevronRight size={16} />
-                </button>
-                {activeDateStr !== realTodayStr && (
-                  <button onClick={handleToday} className="text-[10px] font-bold tracking-widest uppercase bg-[#1C1C1E] border border-white/5 px-2.5 py-1.5 rounded-full text-white/60 hover:text-white transition-all duration-200 active:scale-95">
-                    Today
-                  </button>
+                      <div className="pt-1 border-t border-black/5 dark:border-white/5">
+                        <input 
+                          type="date" 
+                          value={activeDateStr} 
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              const [y, m, d] = e.target.value.split('-').map(Number);
+                              setBaseDate(new Date(y, m - 1, d));
+                              setIsDatePickerOpen(false);
+                            }
+                          }}
+                          className="w-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-black dark:text-white text-xs rounded-xl px-2.5 py-2 outline-none border border-black/10 dark:border-white/10 cursor-pointer text-center font-medium transition-colors"
+                        />
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
-            </div>
-            
-            {/* 3. Status and Action Buttons */}
-            <div className="flex items-center justify-between w-full mt-0.5">
-              <span className="text-[10px] font-bold tracking-widest uppercase px-2.5 py-1.5 rounded-full bg-[#1C1C1E] flex items-center gap-1.5 border border-white/5 select-none text-white/60">
-                <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${!isOnline ? 'bg-red-500 shadow-[0_0_8px_#ef4444]' : isSyncing ? 'bg-[#FF9F0A] pulse-glow shadow-[0_0_8px_#FF9F0A]' : 'bg-green-500 shadow-[0_0_8px_#22c55e]'}`} />
-                {!isOnline ? 'Offline' : isSyncing ? 'Syncing' : 'Synced'}
-              </span>
 
-              <div className="flex items-center gap-2">
+              {/* Right: Account Avatar with Dynamic Online / Sync Status Glow */}
+              <div className="relative flex items-center justify-center shrink-0">
+                {/* Glow behind Avatar */}
+                <div 
+                  className={`absolute inset-0 rounded-full blur-[7px] transition-all duration-500 pointer-events-none ${
+                    !isOnline
+                      ? 'bg-red-500/50 opacity-90'
+                      : isSyncing
+                      ? 'bg-amber-400/60 animate-pulse opacity-100'
+                      : 'bg-emerald-400/40 opacity-80'
+                  }`} 
+                />
 
-              {/* Fullscreen Toggle */}
-              <button
-                onClick={toggleFullscreen}
-                className="p-2 liquid-panel rounded-full text-black dark:text-white/80 hover:text-black dark:hover:text-white transition-all duration-200 active:scale-90"
-                title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-              >
-                {isFullscreen ? <Minimize size={18} strokeWidth={2.2} className="text-black dark:text-white" /> : <Maximize size={18} strokeWidth={2.2} className="text-black dark:text-white" />}
-              </button>
+                {/* Avatar Ring */}
+                <div className={`relative rounded-full p-[2px] transition-all duration-300 ${
+                  !isOnline 
+                    ? 'border border-red-500/70 shadow-[0_0_10px_rgba(239,68,68,0.4)]' 
+                    : isSyncing 
+                    ? 'border border-amber-400/80 shadow-[0_0_12px_rgba(251,191,36,0.45)]' 
+                    : 'border border-emerald-400/60 shadow-[0_0_10px_rgba(52,211,153,0.35)]'
+                }`}>
+                  <Show when="signed-out">
+                    <button 
+                      onClick={() => {
+                        if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
+                          const fakeBtn = document.getElementById('desktop-login-trigger');
+                          if (fakeBtn) fakeBtn.click();
+                        } else {
+                          setAuthModal('sign-in');
+                        }
+                      }}
+                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95"
+                      title="Sign In"
+                      aria-label="Sign In"
+                    >
+                      <User size={16} className="text-white/80" />
+                    </button>
 
-              {/* Settings Dropdown */}
-              <div className="relative z-50">
-                <button
-                  onClick={() => setIsSettingsMenuOpen(!isSettingsMenuOpen)}
-                  className="p-2 liquid-panel rounded-full text-black dark:text-white/80 hover:text-black dark:hover:text-white transition-all duration-200 active:scale-90"
-                  title="Settings"
-                >
-                  <Settings size={18} strokeWidth={2.2} className="text-black dark:text-white" />
-                </button>
-
-                {isSettingsMenuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-48 liquid-panel rounded-2xl p-2 flex flex-col gap-1 shadow-2xl animate-in fade-in zoom-in duration-200">
-                    <button onClick={() => { toggleLang(); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-black dark:text-white">
-                      <Globe size={16} /> {lang === 'en' ? 'العربية' : 'English'}
-                    </button>
-                    <button onClick={() => { toggleTheme(); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-black dark:text-white">
-                      {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />} {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-                    </button>
-                    <button onClick={() => { 
-                      const newStyle = bgStyle === 'aurora' ? 'solid' : 'aurora';
-                      setBgStyle(newStyle);
-                      if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', newStyle);
-                      setIsSettingsMenuOpen(false); 
-                    }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-black dark:text-white">
-                      <span className="w-4 h-4 flex items-center justify-center opacity-70">✨</span> {bgStyle === 'aurora' ? 'Solid Background' : 'Aurora Background'}
-                    </button>
-                    <button onClick={() => { setIsCardsModalOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-red-500 dark:text-red-400">
-                      <ShieldAlert size={16} /> {t('emergencyCards')}
-                    </button>
-                      <label className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold cursor-pointer relative text-black dark:text-white">
-                        <SlidersHorizontal size={16} /> Accent Color
-                        <input type="color" value={themeColor} onChange={(e) => {
-                          setThemeColor(e.target.value);
-                          if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', e.target.value);
-                        }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                      </label>
-                      <button onClick={() => { setIsAvatarModalOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-black dark:text-white border-t border-black/5 dark:border-white/5 mt-1 pt-3">
-                        <div className="w-6 h-6 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center"><AvatarIcon name={isMounted ? avatar : 'user'} size={14} /></div> Change Avatar
-                      </button>
-                      {isAdmin && (
-                        <button onClick={() => { setIsAdminPanelOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-purple-500 dark:text-purple-400 border-t border-black/5 dark:border-white/5 mt-1 pt-3">
-                          <Users size={16} /> Admin Dashboard
-                        </button>
-                      )}
+                    {/* Hidden Tauri triggers for desktop */}
+                    <div className="hidden">
+                      <SignInButton><span id="desktop-login-trigger"></span></SignInButton>
+                      <SignUpButton><span id="desktop-signup-trigger"></span></SignUpButton>
                     </div>
-                  )}
+                  </Show>
+                  
+                  <Show when="signed-in">
+                    <UserButton appearance={{ elements: { avatarBox: "w-8 h-8 sm:w-9 sm:h-9" } }} />
+                  </Show>
+                </div>
+
+                {/* Status Dot */}
+                <span 
+                  className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-black transition-colors duration-300 pointer-events-none ${
+                    !isOnline 
+                      ? 'bg-red-500' 
+                      : isSyncing 
+                      ? 'bg-amber-400 animate-ping' 
+                      : 'bg-emerald-400'
+                  }`} 
+                  title={!isOnline ? 'Offline' : isSyncing ? 'Syncing...' : 'Synced & Online'}
+                />
               </div>
-              </div>
+
             </div>
           </header>
 
@@ -4307,6 +4329,61 @@ export default function App() {
               <button onClick={() => navTo('tasks')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
               <button onClick={() => navTo('pomodoro')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><Timer size={18} /></button>
               <button onClick={() => navTo('flight')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><PlaneTakeoff size={18} /></button>
+
+              {/* Settings Cog in Bottom Nav */}
+              <div className="relative">
+                <button 
+                  onClick={() => setIsSettingsMenuOpen(!isSettingsMenuOpen)} 
+                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${isSettingsMenuOpen ? 'bg-black/10 dark:bg-white/15 text-black dark:text-white' : 'hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60'}`}
+                  title="Settings"
+                  aria-label="Settings"
+                >
+                  <Settings size={18} />
+                </button>
+
+                {isSettingsMenuOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-[10000] bg-transparent" 
+                      onClick={() => setIsSettingsMenuOpen(false)} 
+                    />
+                    <div className="absolute right-0 bottom-full mb-3 w-52 liquid-panel rounded-2xl p-2 flex flex-col gap-1 shadow-2xl animate-in fade-in zoom-in-95 duration-200 z-[10001] border border-black/10 dark:border-white/10">
+                      <button onClick={() => { toggleLang(); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-black dark:text-white">
+                        <Globe size={16} /> {lang === 'en' ? 'العربية' : 'English'}
+                      </button>
+                      <button onClick={() => { toggleTheme(); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-black dark:text-white">
+                        {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />} {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                      </button>
+                      <button onClick={() => { 
+                        const newStyle = bgStyle === 'aurora' ? 'solid' : 'aurora';
+                        setBgStyle(newStyle);
+                        if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', newStyle);
+                        setIsSettingsMenuOpen(false); 
+                      }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-black dark:text-white">
+                        <span className="w-4 h-4 flex items-center justify-center opacity-70">✨</span> {bgStyle === 'aurora' ? 'Solid Background' : 'Aurora Background'}
+                      </button>
+                      <button onClick={() => { setIsCardsModalOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-red-500 dark:text-red-400">
+                        <ShieldAlert size={16} /> {t('emergencyCards')}
+                      </button>
+                      <label className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold cursor-pointer relative text-black dark:text-white">
+                        <SlidersHorizontal size={16} /> Accent Color
+                        <input type="color" value={themeColor} onChange={(e) => {
+                          setThemeColor(e.target.value);
+                          if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', e.target.value);
+                        }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                      </label>
+                      <button onClick={() => { setIsAvatarModalOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-black dark:text-white border-t border-black/5 dark:border-white/5 mt-1 pt-3">
+                        <div className="w-6 h-6 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center"><AvatarIcon name={isMounted ? avatar : 'user'} size={14} /></div> Change Avatar
+                      </button>
+                      {isAdmin && (
+                        <button onClick={() => { setIsAdminPanelOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-purple-500 dark:text-purple-400 border-t border-black/5 dark:border-white/5 mt-1 pt-3">
+                          <Users size={16} /> Admin Dashboard
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
 
               {/* Avatar Picker Modal */}
               {isAvatarModalOpen && createPortal(
