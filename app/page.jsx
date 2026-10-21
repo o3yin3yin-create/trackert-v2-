@@ -2783,26 +2783,26 @@ export default function App() {
                 )}
               </div>
 
-              {/* Right: Account Avatar with Dynamic Online / Sync Status Glow */}
+              {/* Right: Account Avatar with Dynamic White Glow */}
               <div className="relative flex items-center justify-center shrink-0">
-                {/* Glow behind Avatar */}
+                {/* Pure White Glow behind Avatar */}
                 <div 
-                  className={`absolute inset-0 rounded-full blur-[7px] transition-all duration-500 pointer-events-none ${
+                  className={`absolute inset-0 rounded-full transition-all duration-500 pointer-events-none ${
                     !isOnline
-                      ? 'bg-red-500/50 opacity-90'
+                      ? 'opacity-0'
                       : isSyncing
-                      ? 'bg-amber-400/60 animate-pulse opacity-100'
-                      : 'bg-emerald-400/40 opacity-80'
+                      ? 'bg-white/60 blur-[10px] animate-pulse opacity-100'
+                      : 'bg-white/30 blur-[8px] opacity-100'
                   }`} 
                 />
 
                 {/* Avatar Ring */}
                 <div className={`relative rounded-full p-[2px] transition-all duration-300 ${
                   !isOnline 
-                    ? 'border border-red-500/70 shadow-[0_0_10px_rgba(239,68,68,0.4)]' 
+                    ? 'border border-white/10 opacity-70' 
                     : isSyncing 
-                    ? 'border border-amber-400/80 shadow-[0_0_12px_rgba(251,191,36,0.45)]' 
-                    : 'border border-emerald-400/60 shadow-[0_0_10px_rgba(52,211,153,0.35)]'
+                    ? 'border border-white/50 shadow-[0_0_14px_rgba(255,255,255,0.45)]' 
+                    : 'border border-white/30 shadow-[0_0_10px_rgba(255,255,255,0.2)]'
                 }`}>
                   <Show when="signed-out">
                     <button 
@@ -2815,8 +2815,8 @@ export default function App() {
                         }
                       }}
                       className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95"
-                      title="Sign In"
-                      aria-label="Sign In"
+                      title={!isOnline ? 'Offline' : isSyncing ? 'Syncing...' : 'Sign In'}
+                      aria-label="Account"
                     >
                       <User size={16} className="text-white/80" />
                     </button>
@@ -2829,21 +2829,11 @@ export default function App() {
                   </Show>
                   
                   <Show when="signed-in">
-                    <UserButton appearance={{ elements: { avatarBox: "w-8 h-8 sm:w-9 sm:h-9" } }} />
+                    <div title={!isOnline ? 'Offline' : isSyncing ? 'Syncing...' : 'Online & Synced'}>
+                      <UserButton appearance={{ elements: { avatarBox: "w-8 h-8 sm:w-9 sm:h-9" } }} />
+                    </div>
                   </Show>
                 </div>
-
-                {/* Status Dot */}
-                <span 
-                  className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-black transition-colors duration-300 pointer-events-none ${
-                    !isOnline 
-                      ? 'bg-red-500' 
-                      : isSyncing 
-                      ? 'bg-amber-400 animate-ping' 
-                      : 'bg-emerald-400'
-                  }`} 
-                  title={!isOnline ? 'Offline' : isSyncing ? 'Syncing...' : 'Synced & Online'}
-                />
               </div>
 
             </div>
