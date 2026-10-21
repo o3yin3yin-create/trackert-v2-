@@ -301,7 +301,7 @@
   box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
   max-width: 410px !important;
   width: 100% !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   color: #FFFFFF !important;
   animation: modalEnter 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
@@ -317,38 +317,26 @@
   }
 }
 
-/* 3. Strip Inner Redundant Box / Cards */
+/* 3. Strip Inner Redundant Box / Cards & Prevent Corner Clipping */
 .cl-rootBox,
-.cl-cardBox {
-  background: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
-  width: 100% !important;
-}
-
-.cl-card {
-  background: #121214 !important;
-  background-color: #121214 !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding: 32px 28px !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-  color: #FFFFFF !important;
-}
-
+.cl-cardBox,
+.cl-card,
 .cl-main,
 .cl-signIn-start,
 .cl-signUp-start,
 .cl-pageScrollBox,
-.cl-contentBox {
+.cl-contentBox,
+.cl-socialButtonsRoot,
+.cl-socialButtons {
   background: transparent !important;
   background-color: transparent !important;
   box-shadow: none !important;
   border: none !important;
+  border-radius: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
   width: 100% !important;
+  overflow: visible !important;
 }
 
 /* 4. Logo inside modal */
@@ -398,11 +386,15 @@
 .cl-socialButtonsRoot {
   width: 100% !important;
   margin-bottom: 8px !important;
+  overflow: visible !important;
+  border-radius: 0 !important;
 }
 .cl-socialButtons {
   display: flex !important;
   gap: 10px !important;
   width: 100% !important;
+  overflow: visible !important;
+  border-radius: 0 !important;
 }
 
 /* Force 14px Apple squircle curves with highest specificity across all Clerk variants */
@@ -453,6 +445,7 @@ button[data-variant="outline"],
   gap: 8px !important;
   cursor: pointer !important;
   box-shadow: none !important;
+  overflow: visible !important;
 }
 
 /* Ensure pseudo-elements match the exact 14px squircle */

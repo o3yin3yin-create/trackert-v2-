@@ -87,14 +87,18 @@ export default function DesktopAuthPage() {
         .cl-main,
         .cl-signIn-start,
         .cl-pageScrollBox,
-        .cl-contentBox {
+        .cl-contentBox,
+        .cl-socialButtonsRoot,
+        .cl-socialButtons {
           background: transparent !important;
           background-color: transparent !important;
           box-shadow: none !important;
           border: none !important;
+          border-radius: 0 !important;
           padding: 0 !important;
           margin: 0 !important;
           width: 100% !important;
+          overflow: visible !important;
         }
 
         /* 2. Hide duplicate Clerk header */
@@ -111,11 +115,15 @@ export default function DesktopAuthPage() {
         .cl-socialButtonsRoot {
           width: 100% !important;
           margin-bottom: 8px !important;
+          overflow: visible !important;
+          border-radius: 0 !important;
         }
         .cl-socialButtons {
           display: flex !important;
           gap: 10px !important;
           width: 100% !important;
+          overflow: visible !important;
+          border-radius: 0 !important;
         }
         .cl-socialButtonsBlockButton,
         .cl-socialButtonsIconButton,
@@ -164,6 +172,7 @@ export default function DesktopAuthPage() {
           gap: 8px !important;
           cursor: pointer !important;
           box-shadow: none !important;
+          overflow: visible !important;
         }
 
         /* Ensure pseudo-elements match the exact 14px squircle */
