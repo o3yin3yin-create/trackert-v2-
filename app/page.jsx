@@ -1095,6 +1095,12 @@ export default function App() {
 
   const activeDateStr = getFormatDateStr(baseDate);
   const realTodayStr = getFormatDateStr(new Date());
+  const yesterdayObj = new Date();
+  yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+  const yesterdayStr = getFormatDateStr(yesterdayObj);
+  const tomorrowObj = new Date();
+  tomorrowObj.setDate(tomorrowObj.getDate() + 1);
+  const tomorrowStr = getFormatDateStr(tomorrowObj);
 
   // Sync sleep input when date changes
   useEffect(() => {
@@ -2734,49 +2740,97 @@ export default function App() {
                 {isDatePickerOpen && (
                   <>
                     <div 
-                      className="fixed inset-0 z-40 bg-transparent" 
+                      className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[2px]" 
                       onClick={() => setIsDatePickerOpen(false)} 
                     />
-                    <div className="absolute left-0 top-full mt-3 liquid-panel rounded-2xl p-3 shadow-2xl z-50 flex flex-col gap-2.5 min-w-[230px] animate-in fade-in zoom-in-95 duration-150 border border-black/10 dark:border-white/10">
-                      <div className="flex items-center justify-between text-xs font-bold text-black/60 dark:text-white/60 px-1">
+                    <div className="absolute left-0 top-full mt-3 w-[280px] bg-[#18181b]/95 backdrop-blur-2xl rounded-2xl p-3.5 shadow-[0_20px_50px_rgba(0,0,0,0.7)] z-50 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-150 border border-white/10">
+                      <div className="flex items-center justify-between text-xs font-semibold text-white/70 px-0.5">
                         <span>Select Date</span>
-                        <button onClick={() => setIsDatePickerOpen(false)} className="text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white"><X size={14} /></button>
+                        <button 
+                          onClick={() => setIsDatePickerOpen(false)} 
+                          className="w-6 h-6 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                          title="Close"
+                        >
+                          <X size={14} />
+                        </button>
                       </div>
                       
-                      <div className="grid grid-cols-3 gap-1.5 text-center">
+                      {/* Apple Segmented Control: Yesterday | Today | Tomorrow */}
+                      <div className="flex p-1 bg-white/[0.06] rounded-xl border border-white/[0.04]">
                         <button 
-                          onClick={() => { handlePrevDay(); }} 
-                          className="px-2 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/15 text-[11px] font-semibold text-black/80 dark:text-white/80 active:scale-95 transition-all"
+                          onClick={() => { 
+                            const d = new Date();
+                            d.setDate(d.getDate() - 1);
+                            setBaseDate(d);
+                          }} 
+                          className={`flex-1 py-1.5 text-[11px] rounded-lg transition-all text-center select-none active:scale-95 ${
+                            activeDateStr === yesterdayStr 
+                              ? 'bg-white text-black font-bold shadow-sm' 
+                              : 'text-white/60 hover:text-white hover:bg-white/5 font-medium'
+                          }`}
                         >
                           Yesterday
                         </button>
                         <button 
-                          onClick={() => { handleToday(); setIsDatePickerOpen(false); }} 
-                          className={`px-2 py-1.5 rounded-xl text-[11px] font-bold active:scale-95 transition-all ${activeDateStr === realTodayStr ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-black dark:text-white'}`}
+                          onClick={() => { 
+                            handleToday(); 
+                          }} 
+                          className={`flex-1 py-1.5 text-[11px] rounded-lg transition-all text-center select-none active:scale-95 ${
+                            activeDateStr === realTodayStr 
+                              ? 'bg-white text-black font-bold shadow-sm' 
+                              : 'text-white/60 hover:text-white hover:bg-white/5 font-medium'
+                          }`}
                         >
                           Today
                         </button>
                         <button 
-                          onClick={() => { handleNextDay(); }} 
-                          className="px-2 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/15 text-[11px] font-semibold text-black/80 dark:text-white/80 active:scale-95 transition-all"
+                          onClick={() => { 
+                            const d = new Date();
+                            d.setDate(d.getDate() + 1);
+                            setBaseDate(d);
+                          }} 
+                          className={`flex-1 py-1.5 text-[11px] rounded-lg transition-all text-center select-none active:scale-95 ${
+                            activeDateStr === tomorrowStr 
+                              ? 'bg-white text-black font-bold shadow-sm' 
+                              : 'text-white/60 hover:text-white hover:bg-white/5 font-medium'
+                          }`}
                         >
                           Tomorrow
                         </button>
                       </div>
 
-                      <div className="pt-1 border-t border-black/5 dark:border-white/5">
-                        <input 
-                          type="date" 
-                          value={activeDateStr} 
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              const [y, m, d] = e.target.value.split('-').map(Number);
-                              setBaseDate(new Date(y, m - 1, d));
-                              setIsDatePickerOpen(false);
-                            }
-                          }}
-                          className="w-full bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-black dark:text-white text-xs rounded-xl px-2.5 py-2 outline-none border border-black/10 dark:border-white/10 cursor-pointer text-center font-medium transition-colors"
-                        />
+                      {/* Custom Date Picker & Step Controls */}
+                      <div className="flex items-center gap-1.5 pt-2 border-t border-white/[0.08]">
+                        <button
+                          onClick={handlePrevDay}
+                          title="Previous Day"
+                          className="w-8 h-8 shrink-0 flex items-center justify-center rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white/70 hover:text-white transition-all active:scale-95"
+                        >
+                          <ChevronLeft size={15} />
+                        </button>
+
+                        <div className="relative flex-1 flex items-center">
+                          <Calendar size={13} className="absolute left-2.5 text-white/40 pointer-events-none" />
+                          <input 
+                            type="date" 
+                            value={activeDateStr} 
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                const [y, m, d] = e.target.value.split('-').map(Number);
+                                setBaseDate(new Date(y, m - 1, d));
+                              }
+                            }}
+                            className="w-full bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs font-medium rounded-xl pl-8 pr-2.5 py-1.5 outline-none border border-white/[0.08] cursor-pointer text-center transition-colors [color-scheme:dark]"
+                          />
+                        </div>
+
+                        <button
+                          onClick={handleNextDay}
+                          title="Next Day"
+                          className="w-8 h-8 shrink-0 flex items-center justify-center rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white/70 hover:text-white transition-all active:scale-95"
+                        >
+                          <ChevronRight size={15} />
+                        </button>
                       </div>
                     </div>
                   </>
