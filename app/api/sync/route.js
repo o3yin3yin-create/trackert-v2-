@@ -5,10 +5,30 @@ import { getAuthUserId } from '@/lib/auth-server';
 
 const prisma = new PrismaClient();
 
+function getCorsHeaders(req) {
+  const origin = req?.headers?.get('origin') || '*';
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Headers': 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
+  };
+}
+
+export async function OPTIONS(req) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      ...getCorsHeaders(req),
+      'Access-Control-Max-Age': '86400',
+    }
+  });
+}
+
 // Fetch the complete state for the user
 export async function GET(req) {
   const userId = await getAuthUserId(req);
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: getCorsHeaders(req) });
 
   try {
     const url = new URL(req.url);
@@ -22,13 +42,13 @@ export async function GET(req) {
       });
 
       if (userMeta?.isBlocked) {
-        return NextResponse.json({ error: 'ACCOUNT_BLOCKED' }, { status: 403 });
+        return NextResponse.json({ error: 'ACCOUNT_BLOCKED' }, { status: 403, headers: getCorsHeaders(req) });
       }
 
       if (userMeta?.updatedAt) {
         const serverTime = new Date(userMeta.updatedAt).getTime();
         if (serverTime <= sinceTimestamp) {
-          return NextResponse.json({ unchanged: true, updatedAt: serverTime });
+          return NextResponse.json({ unchanged: true, updatedAt: serverTime }, { headers: getCorsHeaders(req) });
         }
       }
     }
@@ -42,7 +62,7 @@ export async function GET(req) {
     });
 
     if (user?.isBlocked) {
-      return NextResponse.json({ error: 'ACCOUNT_BLOCKED' }, { status: 403 });
+      return NextResponse.json({ error: 'ACCOUNT_BLOCKED' }, { status: 403, headers: getCorsHeaders(req) });
     }
 
     if (!user) {
@@ -111,26 +131,26 @@ export async function GET(req) {
       }
     });
 
-    return NextResponse.json({ state });
+    return NextResponse.json({ state }, { headers: getCorsHeaders(req) });
 
   } catch (error) {
     console.error('Sync GET Error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500, headers: getCorsHeaders(req) });
   }
 }
 
 // Save the complete state to the database
 export async function POST(req) {
   const userId = await getAuthUserId(req);
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: getCorsHeaders(req) });
 
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ error: 'User not found' }, { status: 404, headers: getCorsHeaders(req) });
     }
     if (user.isBlocked) {
-      return NextResponse.json({ error: 'ACCOUNT_BLOCKED' }, { status: 403 });
+      return NextResponse.json({ error: 'ACCOUNT_BLOCKED' }, { status: 403, headers: getCorsHeaders(req) });
     }
 
     const state = await req.json();
@@ -253,10 +273,10 @@ export async function POST(req) {
     }
 
     const finalUpdatedAt = updatedUser?.updatedAt ? new Date(updatedUser.updatedAt).getTime() : Date.now();
-    return NextResponse.json({ success: true, updatedAt: finalUpdatedAt });
+    return NextResponse.json({ success: true, updatedAt: finalUpdatedAt }, { headers: getCorsHeaders(req) });
 
   } catch (error) {
     console.error('Sync POST Error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500, headers: getCorsHeaders(req) });
   }
 }

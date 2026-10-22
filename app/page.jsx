@@ -763,35 +763,30 @@ export default function App() {
     isSyncingRef.current = true;
 
     try {
-      // 1. If we have pending local changes and are online, FLUSH first before pulling!
-      const hasPending = typeof window !== 'undefined' && localStorage.getItem('bokra_has_pending_sync') === 'true';
-      if (hasPending && typeof navigator !== 'undefined' && navigator.onLine) {
+      // 1. If we have queued offline mutations and are online, flush them first
+      let hasQueuedMutations = false;
+      if (typeof navigator !== 'undefined' && navigator.onLine) {
         try {
           const queue = await getPendingSyncQueue();
-          let payloadToFlush = null;
           if (queue && queue.length > 0) {
-            payloadToFlush = queue[queue.length - 1].payload;
-          } else {
-            const current = latestStateRef.current;
-            payloadToFlush = {
-              ...current,
-              updatedAt: Date.now()
-            };
-          }
-          if (payloadToFlush) {
-            const pushRes = await apiFetch('/api/sync', {
-              method: 'POST',
-              body: JSON.stringify(payloadToFlush)
-            });
-            if (pushRes.ok) {
-              const pushData = await pushRes.json().catch(() => ({}));
-              if (pushData.updatedAt) {
-                lastServerUpdatedAtRef.current = pushData.updatedAt;
+            hasQueuedMutations = true;
+            const latest = queue[queue.length - 1];
+            if (latest?.payload) {
+              const pushRes = await apiFetch('/api/sync', {
+                method: 'POST',
+                body: JSON.stringify(latest.payload)
+              });
+              if (pushRes.ok) {
+                const pushData = await pushRes.json().catch(() => ({}));
+                if (pushData.updatedAt) {
+                  lastServerUpdatedAtRef.current = pushData.updatedAt;
+                }
+                if (typeof window !== 'undefined') {
+                  localStorage.removeItem('bokra_has_pending_sync');
+                }
+                await clearPendingSyncQueue();
+                hasQueuedMutations = false;
               }
-              if (typeof window !== 'undefined') {
-                localStorage.removeItem('bokra_has_pending_sync');
-              }
-              await clearPendingSyncQueue();
             }
           }
         } catch (flushErr) {
@@ -825,12 +820,10 @@ export default function App() {
           const isLocalDefault = (!currentHabits || currentHabits.length === 0 || 
             (currentHabits.length <= 2 && currentHabits.every(h => h.id === '1' || h.id === '2')));
 
-          const hasPendingNow = typeof window !== 'undefined' && localStorage.getItem('bokra_has_pending_sync') === 'true';
-
           const localSnapshot = {
             ...current,
             isLocalDefault,
-            hasPendingChanges: hasPendingNow,
+            hasPendingChanges: hasQueuedMutations,
             updatedAt: typeof window !== 'undefined' ? parseInt(localStorage.getItem('daybase_last_local_update') || '0', 10) : 0
           };
           const merged = resolveConflict(localSnapshot, state);
@@ -928,6 +921,9 @@ export default function App() {
 
           // Save merged to IndexedDB
           saveLocalOfflineState(merged);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('bokra_has_pending_sync');
+          }
 
           // Restore Active Session (only on initial load or if user not in active session)
           if (!isSilent) {
