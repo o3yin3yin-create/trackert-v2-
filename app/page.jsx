@@ -745,6 +745,7 @@ export default function App() {
   const lastServerUpdatedAtRef = useRef(0);
   const isSyncingRef = useRef(false);
   const isApplyingRemoteRef = useRef(false);
+  const lastLocalMutationTimeRef = useRef(0);
   const latestStateRef = useRef({});
 
   const [deletedHabitIds, setDeletedHabitIds] = useState(() => {
@@ -760,6 +761,7 @@ export default function App() {
   });
 
   const markLocalMutation = useCallback(() => {
+    lastLocalMutationTimeRef.current = Date.now();
     if (typeof window !== 'undefined') {
       localStorage.setItem('daybase_last_local_update', String(Date.now()));
       localStorage.setItem('bokra_has_pending_sync', 'true');
@@ -787,6 +789,14 @@ export default function App() {
   const fetchCloudState = useCallback(async (isSilent = false) => {
     if (!user) return;
     if (isSyncingRef.current && isSilent) return;
+
+    if (isSilent) {
+      const hasPending = typeof window !== 'undefined' && localStorage.getItem('bokra_has_pending_sync') === 'true';
+      const timeSinceLocalMutation = Date.now() - (lastLocalMutationTimeRef.current || 0);
+      if (hasPending || timeSinceLocalMutation < 2500) {
+        return; // User is actively editing or has pending changes; never pull over active user input
+      }
+    }
 
     if (!isSilent) setIsSyncing(true);
     isSyncingRef.current = true;
@@ -941,9 +951,6 @@ export default function App() {
 
           // Cache authoritative server state into IndexedDB
           saveLocalOfflineState(authoritative);
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('bokra_has_pending_sync');
-          }
           setTimeout(() => {
             isApplyingRemoteRef.current = false;
           }, 300);
@@ -1066,10 +1073,15 @@ export default function App() {
     };
   }, [user, isMounted, isCloudLoaded, fetchCloudState]);
 
-  // --- 5. Push cloud state debounced (100ms) & queue if offline ---
+  // --- 5. Push cloud state debounced (50ms) & queue if offline ---
   useEffect(() => {
     if (!user || !isCloudLoaded) return;
-    if (isApplyingRemoteRef.current) return;
+    if (isApplyingRemoteRef.current) {
+      const timeSinceLocalMutation = Date.now() - (lastLocalMutationTimeRef.current || 0);
+      if (timeSinceLocalMutation > 1000) {
+        return;
+      }
+    }
 
     // Only push if there are actual local changes to sync
     const hasPending = typeof window !== 'undefined' && localStorage.getItem('bokra_has_pending_sync') === 'true';
@@ -1134,7 +1146,7 @@ export default function App() {
       } finally {
         setIsSyncing(false);
       }
-    }, 100);
+    }, 50);
 
     return () => clearTimeout(timerId);
   }, [
@@ -1625,6 +1637,7 @@ export default function App() {
 
     haptic('light');
     const key = subItem ? `${activeDateStr}-${habitId}-${subItem}` : `${activeDateStr}-${habitId}`;
+    lastLocalMutationTimeRef.current = Date.now();
     setDailyData(prev => ({ ...prev, [key]: !prev[key] }));
     if (typeof window !== 'undefined') {
       localStorage.setItem('daybase_last_local_update', String(Date.now()));
