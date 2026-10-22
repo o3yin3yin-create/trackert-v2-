@@ -254,6 +254,16 @@ export const SignUpButton = ({ children }) => {
 export const SignIn = () => null;
 export const SignUp = () => null;
 
+export const useAuth = () => {
+  const { user, isLoaded, isSignedIn } = useContext(AuthContext);
+  return {
+    isLoaded,
+    isSignedIn: Boolean(user),
+    userId: user?.id || null,
+    getToken: async () => localStorage.getItem('bokra_desktop_token') || null,
+  };
+};
+
 
 export const UserButton = ({ appearance }) => {
   const { user, signOut } = useContext(AuthContext);

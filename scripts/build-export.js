@@ -44,7 +44,7 @@ try {
   // 2. Switch AuthBridge to client-only mode
   if (fs.existsSync(authBridgeFile)) {
     fs.copyFileSync(authBridgeFile, authBridgeBackup);
-    const clientAuthContent = `export { ClerkProvider, useUser, Show, SignInButton, SignUpButton, UserButton, SignIn, SignUp } from './ClientClerk';\n`;
+    const clientAuthContent = `export { ClerkProvider, useUser, useAuth, Show, SignInButton, SignUpButton, UserButton, SignIn, SignUp } from './ClientClerk';\n`;
     fs.writeFileSync(authBridgeFile, clientAuthContent);
     authBridgeSwapped = true;
     console.log('✓ Switched AuthBridge to offline-first client mode.');

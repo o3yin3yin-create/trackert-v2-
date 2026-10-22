@@ -4,9 +4,9 @@ import { messaging, getToken } from '../lib/firebase';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { useUser, Show, SignInButton, SignUpButton, UserButton, SignIn, SignUp } from '../components/AuthBridge';
+import { useUser, useAuth, Show, SignInButton, SignUpButton, UserButton, SignIn, SignUp } from '../components/AuthBridge';
 import { clerkAppearance } from '../lib/clerkTheme';
-import { apiFetch } from '../lib/api';
+import { apiFetch, setApiTokenGetter } from '../lib/api';
 import { loadLocalOfflineState, saveLocalOfflineState, queueSyncMutation, resolveConflict, getPendingSyncQueue, clearPendingSyncQueue } from '../lib/db';
 import { motion } from 'framer-motion';
 import MinimalTimer from '../components/MinimalTimer';
@@ -385,8 +385,15 @@ for (let val = 0; val <= 1000; val += 50) {
 
 export default function App() {
   const { user } = useUser(); 
+  const { getToken: getClerkToken } = useAuth();
   const [authModal, setAuthModal] = useState(null); // 'sign-in' | 'sign-up' | null
   const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    if (getClerkToken) {
+      setApiTokenGetter(getClerkToken);
+    }
+  }, [getClerkToken]);
 
   useEffect(() => {
     setIsMounted(true);
