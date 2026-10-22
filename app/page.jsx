@@ -2666,6 +2666,20 @@ export default function App() {
 
         <div ref={topRef} className="absolute top-0" /> 
 
+        {/* macOS Desktop Window Drag Region (Handles grabbing next to traffic lights) */}
+        <div 
+          data-tauri-drag-region
+          className="fixed top-0 left-0 right-0 h-11 z-[9990] window-drag-region pointer-events-auto select-none"
+          onMouseDown={(e) => {
+            if (e.button === 0 && typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
+              if (e.target.closest('button, input, a, select, textarea, [data-no-drag]')) return;
+              import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
+                getCurrentWindow().startDragging().catch(() => {});
+              }).catch(() => {});
+            }
+          }}
+        />
+
         {/* ---------------- MAIN APP UI ---------------- */}
         <motion.div 
           initial={{ opacity: 0, y: 15 }} 
@@ -2697,7 +2711,7 @@ export default function App() {
             {/* Live Activity Widgets */}
 
             {(!isPomodoroOpen && isTimerRunning) && (
-              <div onClick={() => setIsPomodoroOpen(true)} className="mb-2 liquid-panel rounded-full px-4 py-3 flex items-center justify-between cursor-pointer animate-in fade-in slide-in-from-top-2 border-[1.5px]" style={{ borderColor: `${activePomodoroTask.color}40` }}>
+              <div onClick={() => setIsPomodoroOpen(true)} className="mb-2 liquid-panel rounded-full px-4 py-3 flex items-center justify-between cursor-pointer animate-in fade-in slide-in-from-top-2 border-[1.5px] window-no-drag" style={{ borderColor: `${activePomodoroTask.color}40` }}>
                 <div className="flex items-center gap-3">
                    <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: `${activePomodoroTask.color}20` }}>
                       <Timer size={16} color={activePomodoroTask.color} />
@@ -2714,10 +2728,13 @@ export default function App() {
             )}
 
             {/* Clean Minimal Apple Header: Day & Date on Left, Glowing Status Account Avatar on Right */}
-            <div className="flex items-center justify-between w-full pt-1 pb-1">
+            <div 
+              data-tauri-drag-region 
+              className="flex items-center justify-between w-full pt-1 pb-1 window-drag-region"
+            >
               
               {/* Left: Day & Date (Interactive) */}
-              <div className="relative">
+              <div className="relative window-no-drag" data-no-drag>
                 <div 
                   onClick={() => setIsDatePickerOpen(!isDatePickerOpen)} 
                   className="flex items-baseline gap-2.5 select-none cursor-pointer group active:scale-[0.98] transition-transform"
@@ -2841,7 +2858,7 @@ export default function App() {
               </div>
 
               {/* Right: Account Avatar with Dynamic White Glow */}
-              <div className="relative flex items-center justify-center shrink-0">
+              <div className="relative flex items-center justify-center shrink-0 window-no-drag" data-no-drag>
                 {/* Pure White Glow behind Avatar */}
                 <div 
                   className={`absolute inset-0 rounded-full transition-all duration-500 pointer-events-none ${
