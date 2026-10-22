@@ -557,6 +557,7 @@ export default function App() {
   const [isEmergencyCardsOpen, setIsEmergencyCardsOpen] = useState(false);
   const [isHowToUseOpen, setIsHowToUseOpen] = useState(false);
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
+  const [isFocusMenuOpen, setIsFocusMenuOpen] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const touchStartXRef = useRef(null);
   const touchStartYRef = useRef(null);
@@ -1053,6 +1054,8 @@ export default function App() {
     setIsPomodoroOpen(false);
     setIsFlightFocusOpen(false);
     setIsHowToUseOpen(false);
+    setIsSettingsMenuOpen(false);
+    setIsFocusMenuOpen(false);
     if (!skipManage) {
       setIsManageVisible(false);
       setTimeout(() => setIsManageMounted(false), 300);
@@ -4371,13 +4374,89 @@ export default function App() {
               <button onClick={() => navTo('home')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white transition-all duration-200 active:scale-90"><Home size={18} /></button>
               <button onClick={() => navTo('analytics')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><BarChart2 size={18} /></button>
               <button onClick={() => navTo('tasks')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
-              <button onClick={() => navTo('pomodoro')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><Timer size={18} /></button>
-              <button onClick={() => navTo('flight')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><PlaneTakeoff size={18} /></button>
+              {/* Focus Menu: Combines Pomodoro & Flight Focus */}
+              <div className="relative">
+                <button 
+                  onClick={() => {
+                    setIsFocusMenuOpen(!isFocusMenuOpen);
+                    setIsSettingsMenuOpen(false);
+                  }} 
+                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${
+                    isFocusMenuOpen || isPomodoroOpen || isFlightFocusOpen 
+                      ? 'bg-black/10 dark:bg-white/15 text-black dark:text-white' 
+                      : 'hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60'
+                  }`}
+                  title={t('focus')}
+                  aria-label={t('focus')}
+                >
+                  <Target size={18} />
+                </button>
+
+                {isFocusMenuOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-[10000] bg-transparent" 
+                      onClick={() => setIsFocusMenuOpen(false)} 
+                    />
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-64 bg-[#18181b]/95 backdrop-blur-2xl rounded-2xl p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.7)] z-[10001] border border-white/10 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-150">
+                      <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-white/40 flex items-center justify-between">
+                        <span>{t('focus')}</span>
+                        <Target size={13} className="text-white/30" />
+                      </div>
+
+                      {/* Pomodoro Option */}
+                      <button 
+                        onClick={() => {
+                          setIsFocusMenuOpen(false);
+                          navTo('pomodoro');
+                        }} 
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-white/10 transition-all flex items-center gap-3 group active:scale-[0.98]"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-orange-500/15 border border-orange-500/25 flex items-center justify-center text-orange-400 group-hover:scale-105 transition-transform shrink-0">
+                          <Timer size={18} />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-bold text-white group-hover:text-white transition-colors truncate">
+                            {lang === 'ar' ? 'تركيز بومودورو' : 'Pomodoro'}
+                          </span>
+                          <span className="text-[11px] text-white/50 truncate">
+                            {lang === 'ar' ? 'مؤقت فترات التركيز الكلاسيكي' : 'Classic interval focus timer'}
+                          </span>
+                        </div>
+                      </button>
+
+                      {/* Flight Focus Option */}
+                      <button 
+                        onClick={() => {
+                          setIsFocusMenuOpen(false);
+                          navTo('flight');
+                        }} 
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-white/10 transition-all flex items-center gap-3 group active:scale-[0.98]"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform shrink-0">
+                          <PlaneTakeoff size={18} />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-bold text-white group-hover:text-white transition-colors truncate">
+                            {lang === 'ar' ? 'التركيز مع الطيران' : 'Flight Focus'}
+                          </span>
+                          <span className="text-[11px] text-white/50 truncate">
+                            {lang === 'ar' ? 'رادار حي وتذكرة صعود سينمائية' : 'Live radar & boarding pass'}
+                          </span>
+                        </div>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
 
               {/* Settings Cog in Bottom Nav */}
               <div className="relative">
                 <button 
-                  onClick={() => setIsSettingsMenuOpen(!isSettingsMenuOpen)} 
+                  onClick={() => {
+                    setIsSettingsMenuOpen(!isSettingsMenuOpen);
+                    setIsFocusMenuOpen(false);
+                  }} 
                   className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${isSettingsMenuOpen ? 'bg-black/10 dark:bg-white/15 text-black dark:text-white' : 'hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60'}`}
                   title="Settings"
                   aria-label="Settings"
@@ -4391,11 +4470,11 @@ export default function App() {
                       className="fixed inset-0 z-[10000] bg-transparent" 
                       onClick={() => setIsSettingsMenuOpen(false)} 
                     />
-                    <div className="absolute right-0 bottom-full mb-3 w-52 liquid-panel rounded-2xl p-2 flex flex-col gap-1 shadow-2xl animate-in fade-in zoom-in-95 duration-200 z-[10001] border border-black/10 dark:border-white/10">
-                      <button onClick={() => { toggleLang(); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-black dark:text-white">
+                    <div className="absolute right-0 bottom-full mb-3 w-56 bg-[#18181b]/95 backdrop-blur-2xl rounded-2xl p-2 flex flex-col gap-1 shadow-[0_20px_50px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in-95 duration-200 z-[10001] border border-white/10">
+                      <button onClick={() => { toggleLang(); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-white">
                         <Globe size={16} /> {lang === 'en' ? 'العربية' : 'English'}
                       </button>
-                      <button onClick={() => { toggleTheme(); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-black dark:text-white">
+                      <button onClick={() => { toggleTheme(); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-white">
                         {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />} {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
                       </button>
                       <button onClick={() => { 
@@ -4403,24 +4482,24 @@ export default function App() {
                         setBgStyle(newStyle);
                         if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', newStyle);
                         setIsSettingsMenuOpen(false); 
-                      }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-black dark:text-white">
+                      }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-white">
                         <span className="w-4 h-4 flex items-center justify-center opacity-70">✨</span> {bgStyle === 'aurora' ? 'Solid Background' : 'Aurora Background'}
                       </button>
-                      <button onClick={() => { setIsCardsModalOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-red-500 dark:text-red-400">
+                      <button onClick={() => { setIsCardsModalOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-red-400">
                         <ShieldAlert size={16} /> {t('emergencyCards')}
                       </button>
-                      <label className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold cursor-pointer relative text-black dark:text-white">
+                      <label className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold cursor-pointer relative text-white">
                         <SlidersHorizontal size={16} /> Accent Color
                         <input type="color" value={themeColor} onChange={(e) => {
                           setThemeColor(e.target.value);
                           if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', e.target.value);
                         }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                       </label>
-                      <button onClick={() => { setIsAvatarModalOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-black dark:text-white border-t border-black/5 dark:border-white/5 mt-1 pt-3">
-                        <div className="w-6 h-6 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center"><AvatarIcon name={isMounted ? avatar : 'user'} size={14} /></div> Change Avatar
+                      <button onClick={() => { setIsAvatarModalOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-white border-t border-white/10 mt-1 pt-3">
+                        <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center"><AvatarIcon name={isMounted ? avatar : 'user'} size={14} /></div> Change Avatar
                       </button>
                       {isAdmin && (
-                        <button onClick={() => { setIsAdminPanelOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-purple-500 dark:text-purple-400 border-t border-black/5 dark:border-white/5 mt-1 pt-3">
+                        <button onClick={() => { setIsAdminPanelOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-purple-400 border-t border-white/10 mt-1 pt-3">
                           <Users size={16} /> Admin Dashboard
                         </button>
                       )}
