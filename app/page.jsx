@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar } from 'lucide-react';
+import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar } from 'lucide-react';
 import { messaging, getToken } from '../lib/firebase';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -1858,9 +1858,13 @@ export default function App() {
                           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.05) 50%, transparent 70%)', pointerEvents: 'none' }} />
                         )}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', zIndex: 1, flex: 1, minWidth: 0, paddingRight: '8px' }}>
-                          <span className={`${hasCards ? (theme === 'dark' ? 'text-white' : 'text-gray-900') : (theme === 'dark' ? 'text-white/30' : 'text-gray-400')}`} style={{ fontSize: '15px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.name}</span>
-                          <span className={hasCards ? 'opacity-80' : 'opacity-50'} style={{ fontSize: '11px', fontWeight: 600, color: hasCards ? (theme === 'dark' ? `${themeColor}cc` : '#3b82f6') : 'inherit', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                            {streak > 0 ? `🔥 ${streak} ${t('dayStreak')}` : t('noActiveStreak')}
+                          <span className={hasCards ? 'opacity-80' : 'opacity-50'} style={{ fontSize: '11px', fontWeight: 600, color: hasCards ? (theme === 'dark' ? `${themeColor}cc` : '#3b82f6') : 'inherit', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {streak > 0 ? (
+                              <>
+                                <Flame size={12} strokeWidth={2.5} className="shrink-0" />
+                                <span>{streak} {t('dayStreak')}</span>
+                              </>
+                            ) : t('noActiveStreak')}
                           </span>
                         </div>
                         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', zIndex: 1, flexShrink: 0 }}>
@@ -3043,7 +3047,14 @@ export default function App() {
                     >
                       <div className="flex flex-col flex-1 pr-2 overflow-hidden">
                         <div className="flex justify-between items-start mb-2">
-                          <span className="text-[10px] font-bold" style={{ color: isAllChecked ? 'rgba(0,0,0,0.5)' : themeColor }}>{getStreak(habit.id) > 0 ? `🔥 ${getStreak(habit.id)}` : ''}</span>
+                          <span className="text-[10px] font-bold flex items-center gap-0.5" style={{ color: isAllChecked ? 'rgba(0,0,0,0.5)' : themeColor }}>
+                            {getStreak(habit.id) > 0 ? (
+                              <>
+                                <Flame size={11} strokeWidth={2.5} className="shrink-0" />
+                                <span>{getStreak(habit.id)}</span>
+                              </>
+                            ) : null}
+                          </span>
                         </div>
                         <span className="text-[15px] font-semibold tracking-tight leading-tight line-clamp-2">{habit.name}</span>
                         {isMulti && !isExpanded && (
@@ -3203,7 +3214,14 @@ export default function App() {
                       >
                         <div className="flex flex-col flex-1 pr-2 overflow-hidden">
                           <div className="flex justify-between items-start mb-2">
-                            <span className="text-[10px] font-bold" style={{ color: isAllChecked ? 'rgba(0,0,0,0.5)' : themeColor }}>{getStreak(habit.id) > 0 ? `🔥 ${getStreak(habit.id)}` : ''}</span>
+                            <span className="text-[10px] font-bold flex items-center gap-0.5" style={{ color: isAllChecked ? 'rgba(0,0,0,0.5)' : themeColor }}>
+                              {getStreak(habit.id) > 0 ? (
+                                <>
+                                  <Flame size={11} strokeWidth={2.5} className="shrink-0" />
+                                  <span>{getStreak(habit.id)}</span>
+                                </>
+                              ) : null}
+                            </span>
                           </div>
                           <span className="text-[15px] font-semibold tracking-tight leading-tight line-clamp-2">{habit.name}</span>
                           {isMulti && !isExpanded && (
