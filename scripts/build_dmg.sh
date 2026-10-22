@@ -68,8 +68,8 @@ tell application "Finder"
   set arrangement of opts to not arranged
   set background picture of opts to file ".background:background.png" of d
   
-  set position of item "bokra.app" of w to {180, 185}
-  set position of item "Applications" of w to {480, 185}
+  set position of item "bokra.app" of w to {180, 200}
+  set position of item "Applications" of w to {480, 200}
   
   close w
   open d
