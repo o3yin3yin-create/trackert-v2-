@@ -2685,7 +2685,7 @@ export default function App() {
           initial={{ opacity: 0, y: 15 }} 
           animate={{ opacity: 1, y: 0 }} 
           transition={{ duration: 0.4 }} 
-          className={`w-full max-w-[428px] md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto h-full flex flex-col px-5 md:px-10 relative z-10 pt-[calc(env(safe-area-inset-top,0px)+0.5rem)] md:pt-4 ${(typeof window !== 'undefined' && window.__TAURI_INTERNALS__) ? 'pt-9 md:pt-10' : ''}`}
+          className={`w-full max-w-[428px] md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto h-full flex flex-col px-5 md:px-10 relative z-10 pt-[calc(env(safe-area-inset-top,0px)+1.25rem)] md:pt-4 ${(typeof window !== 'undefined' && window.__TAURI_INTERNALS__) ? 'pt-9 md:pt-10' : ''}`}
           onTouchStart={(e) => {
             touchStartXRef.current = e.touches[0].clientX;
             touchStartYRef.current = e.touches[0].clientY;
@@ -2904,7 +2904,16 @@ export default function App() {
                   
                   <Show when="signed-in">
                     <div title={!isOnline ? 'Offline' : isSyncing ? 'Syncing...' : 'Online & Synced'}>
-                      <UserButton appearance={{ elements: { avatarBox: "w-8 h-8 sm:w-9 sm:h-9" } }} />
+                      <UserButton 
+                        appearance={{ 
+                          elements: { 
+                            avatarBox: "w-8 h-8 sm:w-9 sm:h-9",
+                            userButtonPopoverCard: "!bg-[#18181B] !border !border-white/10 !shadow-2xl !bg-none",
+                            userButtonPopoverFooter: "!bg-transparent !bg-none !border-t !border-white/10 !border-b-0",
+                            developmentModeBadge: "!hidden",
+                          } 
+                        }} 
+                      />
                     </div>
                   </Show>
                 </div>

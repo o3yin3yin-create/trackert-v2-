@@ -680,7 +680,6 @@ button[data-localization-key*="formButtonPrimary"],
 .cl-rootBox canvas,
 canvas[class*="clerk"],
 [class*="footerPages"],
-[class*="securedBy"],
 .cl-footer__developmentMode,
 .cl-developmentModeBadge,
 .cl-devModeBadge,
@@ -690,6 +689,100 @@ canvas[class*="clerk"],
   visibility: hidden !important;
   opacity: 0 !important;
   height: 0 !important;
+}
+
+/* --- Clerk UserButton Popover & Clean Brand Customization --- */
+.cl-userButtonPopoverCard {
+  background-color: #18181b !important;
+  background-image: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7) !important;
+}
+
+.cl-userButtonPopoverCard,
+.cl-userButtonPopoverCard *,
+.cl-userButtonPopoverFooter,
+.cl-userButtonPopoverFooter * {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  outline-color: transparent !important;
+}
+
+/* Ensure 'Secured by clerk' in UserButton popover is visible and cleanly styled */
+.cl-userButtonPopoverFooter {
+  background: transparent !important;
+  background-image: none !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  padding: 10px 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Allow footerPages inside UserButton popover so Secured by Clerk can display */
+.cl-userButtonPopoverFooterPages,
+.cl-userButtonPopoverFooter [class*="footerPages"] {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  height: auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+}
+
+.cl-userButtonPopoverFooter [class*="securedBy"],
+.cl-userButtonPopoverFooter a[href*="clerk.com"],
+.cl-userButtonPopoverFooter a[href*="clerk"],
+.cl-userButtonPopoverFooter a,
+.cl-userButtonPopoverFooter svg {
+  display: inline-flex !important;
+  visibility: visible !important;
+  opacity: 0.65 !important;
+  height: auto !important;
+  color: #a1a1aa !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  transition: opacity 0.2s ease !important;
+}
+
+.cl-userButtonPopoverFooter a:hover {
+  opacity: 1 !important;
+  color: #ffffff !important;
+}
+
+/* Hide Development mode text and badge in UserButton popover */
+.cl-userButtonPopoverFooter [class*="devMode"],
+.cl-userButtonPopoverFooter [class*="development"],
+.cl-userButtonPopoverFooter [class*="dev-mode"],
+.cl-userButtonPopoverFooter [class*="badge"],
+.cl-userButtonPopoverFooter [class*="Badge"],
+.cl-userButtonPopoverFooter [data-localization-key*="dev"],
+.cl-userButtonPopoverFooter [data-localization-key*="development"],
+.cl-userButtonPopoverFooter span:not([class*="securedBy"]):not(:has(a)):not(:has(svg)),
+.cl-developmentModeBadge,
+.cl-devModeBadge,
+.cl-footer__developmentMode {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Remove any orange pseudo-element borders or glow bars */
+.cl-userButtonPopoverFooter::before,
+.cl-userButtonPopoverFooter::after,
+.cl-userButtonPopoverCard::before,
+.cl-userButtonPopoverCard::after {
+  display: none !important;
+  background: none !important;
+  background-image: none !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* 15. Mobile Responsiveness */
