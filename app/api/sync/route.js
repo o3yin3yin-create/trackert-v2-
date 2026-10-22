@@ -6,13 +6,16 @@ import { getAuthUserId } from '@/lib/auth-server';
 const prisma = new PrismaClient();
 
 function getCorsHeaders(req) {
-  const origin = req?.headers?.get('origin') || '*';
-  return {
-    'Access-Control-Allow-Origin': origin,
+  const origin = req?.headers?.get('origin');
+  const headers = {
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
     'Access-Control-Allow-Headers': 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization',
-    'Access-Control-Allow-Credentials': 'true',
   };
+  if (origin) {
+    headers['Access-Control-Allow-Origin'] = origin;
+    headers['Access-Control-Allow-Credentials'] = 'true';
+  }
+  return headers;
 }
 
 export async function OPTIONS(req) {

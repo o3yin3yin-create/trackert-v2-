@@ -1013,7 +1013,7 @@ export default function App() {
     fetchCloudState(false);
   }, [user, isMounted, fetchCloudState]);
 
-  // --- 4. Real-time background sync (Polling + Focus + Visibility + Online) ---
+  // --- 4. Real-time background sync (Polling 1.2s + Focus + Visibility + Online + BroadcastChannel) ---
   useEffect(() => {
     if (!user || !isMounted || !isCloudLoaded) return;
 
@@ -1023,8 +1023,8 @@ export default function App() {
       fetchCloudState(true);
     };
 
-    // Lightweight 3-second heartbeat for instant cross-device updates
-    const intervalId = setInterval(syncSilently, 3000);
+    // Ultra-fast 1.2-second heartbeat for instant cross-device updates
+    const intervalId = setInterval(syncSilently, 1200);
 
     const onFocus = () => syncSilently();
     const onVisibilityChange = () => {
@@ -1041,15 +1041,31 @@ export default function App() {
     document.addEventListener('visibilitychange', onVisibilityChange);
     window.addEventListener('online', onOnline);
 
+    // BroadcastChannel for instant 0ms sync between multiple tabs/windows on the same device
+    let channel = null;
+    if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
+      try {
+        channel = new BroadcastChannel('bokra_tab_sync');
+        channel.onmessage = (event) => {
+          if (event.data === 'REMOTE_MUTATION') {
+            fetchCloudState(true);
+          }
+        };
+      } catch (e) {}
+    }
+
     return () => {
       clearInterval(intervalId);
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('online', onOnline);
+      if (channel) {
+        channel.close();
+      }
     };
   }, [user, isMounted, isCloudLoaded, fetchCloudState]);
 
-  // --- 5. Push cloud state debounced (250ms) & queue if offline ---
+  // --- 5. Push cloud state debounced (100ms) & queue if offline ---
   useEffect(() => {
     if (!user || !isCloudLoaded) return;
     if (isApplyingRemoteRef.current) return;
@@ -1068,6 +1084,15 @@ export default function App() {
       theme, bgStyle, lang, focusTimeData, pomodoroTasksData: activePomodoroTasks, emergencyCards: habitCards,
       finishedTickets, mission, deletedHabitIds, updatedAt: Date.now()
     };
+
+    // Broadcast to other tabs immediately
+    if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
+      try {
+        const bc = new BroadcastChannel('bokra_tab_sync');
+        bc.postMessage('REMOTE_MUTATION');
+        bc.close();
+      } catch (e) {}
+    }
 
     // If offline right now, queue immediately!
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
@@ -1108,7 +1133,7 @@ export default function App() {
       } finally {
         setIsSyncing(false);
       }
-    }, 250);
+    }, 100);
 
     return () => clearTimeout(timerId);
   }, [
