@@ -1,7 +1,7 @@
 "use client";
 import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar } from 'lucide-react';
 import { messaging, getToken } from '../lib/firebase';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useUser, Show, SignInButton, SignUpButton, UserButton, SignIn, SignUp } from '../components/AuthBridge';
@@ -733,125 +733,204 @@ export default function App() {
     theme, bgStyle, lang, focusTimeData, pomodoroTasksData, finishedTickets, mission, isMounted
   ]);
 
-  // --- 3. Cloud Sync with Last-Write-Wins Conflict Resolution ---
+  const lastServerUpdatedAtRef = useRef(0);
+  const isSyncingRef = useRef(false);
+  const latestStateRef = useRef({});
+
+  // Keep latestStateRef in sync with the freshest state
   useEffect(() => {
-    if (!user || !isMounted) return;
-    
-    async function fetchCloudState() {
-      setIsSyncing(true);
-      try {
-        const res = await apiFetch('/api/sync');
-        if (res.ok) {
-          const { state } = await res.json();
-          if (state) {
-            // Check if local habits are currently just empty or initial template
-            const isLocalDefault = (!habits || habits.length === 0 || 
-              (habits.length <= 2 && habits.every(h => h.id === '1' || h.id === '2')));
+    const activePomodoroTasks = {
+      ...(pomodoroTasksData || {}),
+      ...(dailyTasksDateStr && dailyTasks ? { [dailyTasksDateStr]: dailyTasks } : {})
+    };
+    latestStateRef.current = {
+      habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
+      theme, bgStyle, lang, focusTimeData, pomodoroTasksData: activePomodoroTasks,
+      emergencyCards: habitCards, finishedTickets, mission
+    };
+  }, [
+    habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
+    theme, bgStyle, lang, focusTimeData, pomodoroTasksData, finishedTickets, mission,
+    dailyTasks, dailyTasksDateStr
+  ]);
 
-            // Merge with local state using Last-Write-Wins
-            const localSnapshot = {
-              habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
-              theme, bgStyle, lang, focusTimeData, pomodoroTasksData, emergencyCards: habitCards,
-              finishedTickets, mission, isLocalDefault,
-              updatedAt: typeof window !== 'undefined' ? parseInt(localStorage.getItem('daybase_last_local_update') || '0', 10) : 0
+  // --- 3. Cloud Sync with Last-Write-Wins Conflict Resolution ---
+  const fetchCloudState = useCallback(async (isSilent = false) => {
+    if (!user) return;
+    if (isSyncingRef.current && isSilent) return;
+
+    if (!isSilent) setIsSyncing(true);
+    isSyncingRef.current = true;
+
+    try {
+      // 1. If we have pending local changes and are online, FLUSH first before pulling!
+      const hasPending = typeof window !== 'undefined' && localStorage.getItem('bokra_has_pending_sync') === 'true';
+      if (hasPending && typeof navigator !== 'undefined' && navigator.onLine) {
+        try {
+          const queue = await getPendingSyncQueue();
+          let payloadToFlush = null;
+          if (queue && queue.length > 0) {
+            payloadToFlush = queue[queue.length - 1].payload;
+          } else {
+            const current = latestStateRef.current;
+            payloadToFlush = {
+              ...current,
+              updatedAt: Date.now()
             };
-            const merged = resolveConflict(localSnapshot, state);
+          }
+          if (payloadToFlush) {
+            const pushRes = await apiFetch('/api/sync', {
+              method: 'POST',
+              body: JSON.stringify(payloadToFlush)
+            });
+            if (pushRes.ok) {
+              const pushData = await pushRes.json().catch(() => ({}));
+              if (pushData.updatedAt) {
+                lastServerUpdatedAtRef.current = pushData.updatedAt;
+              }
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('bokra_has_pending_sync');
+              }
+              await clearPendingSyncQueue();
+            }
+          }
+        } catch (flushErr) {
+          console.warn("[bokra Sync] Could not pre-flush pending sync before GET:", flushErr);
+        }
+      }
 
-            if (merged.isAdmin) setIsAdmin(true);
-            if (merged.theme) {
-               setTheme(merged.theme);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_theme', merged.theme);
-            }
-            if (merged.bgStyle) {
-               setBgStyle(merged.bgStyle);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', merged.bgStyle);
-            }
-            if (merged.lang) {
-               setLang(merged.lang);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_lang', merged.lang);
-            }
-            if (merged.themeColor) {
-               setThemeColor(merged.themeColor);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', merged.themeColor);
-            }
-            if (merged.avatar) {
-               setAvatar(merged.avatar);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_avatar_v1', merged.avatar || 'user');
-            }
-            if (merged.mission !== undefined) {
-               setMission(merged.mission);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_mission_v4', merged.mission);
-            }
+      // 2. Fetch cloud state (conditionally with ?since= if silent)
+      const url = (isSilent && lastServerUpdatedAtRef.current > 0)
+        ? `/api/sync?since=${lastServerUpdatedAtRef.current}`
+        : '/api/sync';
 
-            if (merged.habits && merged.habits.length > 0) {
-               setHabits(merged.habits);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_habits_v4', JSON.stringify(merged.habits));
-            }
-            if (merged.dailyData && Object.keys(merged.dailyData).length > 0) {
-               setDailyData(merged.dailyData);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_dailyData_v4', JSON.stringify(merged.dailyData));
-            }
-            if (merged.sleepData && Object.keys(merged.sleepData).length > 0) {
-               setSleepData(merged.sleepData);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_sleepData_v4', JSON.stringify(merged.sleepData));
-            }
-            if (merged.focusTimeData && Object.keys(merged.focusTimeData).length > 0) {
-               setFocusTimeData(merged.focusTimeData);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_focusTime_v4', JSON.stringify(merged.focusTimeData));
-            }
-            if (merged.pomodoroTasksData && Object.keys(merged.pomodoroTasksData).length > 0) {
-               setPomodoroTasksData(merged.pomodoroTasksData);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(merged.pomodoroTasksData));
-               const todayStr = getFormatDateStr(new Date());
-               let todayTasks = Array.isArray(merged.pomodoroTasksData[todayStr]) ? [...merged.pomodoroTasksData[todayStr]] : [];
+      const res = await apiFetch(url);
+      if (res.ok) {
+        const resData = await res.json();
 
-               // Automatically rollover any uncompleted tasks from past days
-               const pastDates = Object.keys(merged.pomodoroTasksData).filter(d => d < todayStr).sort();
-               const existingTexts = new Set(todayTasks.map(t => t.text));
-               const toRollover = [];
+        // If server hasn't changed since our last check, do nothing
+        if (resData.unchanged) {
+          if (resData.updatedAt) lastServerUpdatedAtRef.current = resData.updatedAt;
+          return;
+        }
 
-               for (const pastDate of pastDates) {
-                 const pastList = merged.pomodoroTasksData[pastDate];
-                 if (Array.isArray(pastList)) {
-                   for (const task of pastList) {
-                     if (!task.completed && !existingTexts.has(task.text)) {
-                       toRollover.push({
-                         ...task,
-                         rolledOver: true,
-                         completed: false,
-                         fromDay: task.fromDay || pastDate
-                       });
-                       existingTexts.add(task.text);
-                     }
+        const { state } = resData;
+        if (state) {
+          if (state.updatedAt) {
+            lastServerUpdatedAtRef.current = state.updatedAt;
+          }
+
+          const current = latestStateRef.current;
+          const currentHabits = current.habits || habits;
+          const isLocalDefault = (!currentHabits || currentHabits.length === 0 || 
+            (currentHabits.length <= 2 && currentHabits.every(h => h.id === '1' || h.id === '2')));
+
+          const hasPendingNow = typeof window !== 'undefined' && localStorage.getItem('bokra_has_pending_sync') === 'true';
+
+          const localSnapshot = {
+            ...current,
+            isLocalDefault,
+            hasPendingChanges: hasPendingNow,
+            updatedAt: typeof window !== 'undefined' ? parseInt(localStorage.getItem('daybase_last_local_update') || '0', 10) : 0
+          };
+          const merged = resolveConflict(localSnapshot, state);
+
+          if (merged.isAdmin) setIsAdmin(true);
+          if (merged.theme) {
+             setTheme(merged.theme);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_theme', merged.theme);
+          }
+          if (merged.bgStyle) {
+             setBgStyle(merged.bgStyle);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', merged.bgStyle);
+          }
+          if (merged.lang) {
+             setLang(merged.lang);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_lang', merged.lang);
+          }
+          if (merged.themeColor) {
+             setThemeColor(merged.themeColor);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', merged.themeColor);
+          }
+          if (merged.avatar) {
+             setAvatar(merged.avatar);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_avatar_v1', merged.avatar || 'user');
+          }
+          if (merged.mission !== undefined) {
+             setMission(merged.mission);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_mission_v4', merged.mission);
+          }
+
+          if (merged.habits && merged.habits.length > 0) {
+             setHabits(merged.habits);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_habits_v4', JSON.stringify(merged.habits));
+          }
+          if (merged.dailyData && Object.keys(merged.dailyData).length > 0) {
+             setDailyData(merged.dailyData);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_dailyData_v4', JSON.stringify(merged.dailyData));
+          }
+          if (merged.sleepData && Object.keys(merged.sleepData).length > 0) {
+             setSleepData(merged.sleepData);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_sleepData_v4', JSON.stringify(merged.sleepData));
+          }
+          if (merged.focusTimeData && Object.keys(merged.focusTimeData).length > 0) {
+             setFocusTimeData(merged.focusTimeData);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_focusTime_v4', JSON.stringify(merged.focusTimeData));
+          }
+          if (merged.pomodoroTasksData && Object.keys(merged.pomodoroTasksData).length > 0) {
+             setPomodoroTasksData(merged.pomodoroTasksData);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(merged.pomodoroTasksData));
+             const todayStr = getFormatDateStr(new Date());
+             let todayTasks = Array.isArray(merged.pomodoroTasksData[todayStr]) ? [...merged.pomodoroTasksData[todayStr]] : [];
+
+             // Automatically rollover any uncompleted tasks from past days
+             const pastDates = Object.keys(merged.pomodoroTasksData).filter(d => d < todayStr).sort();
+             const existingTexts = new Set(todayTasks.map(t => t.text));
+             const toRollover = [];
+
+             for (const pastDate of pastDates) {
+               const pastList = merged.pomodoroTasksData[pastDate];
+               if (Array.isArray(pastList)) {
+                 for (const task of pastList) {
+                   if (!task.completed && !existingTexts.has(task.text)) {
+                     toRollover.push({
+                       ...task,
+                       rolledOver: true,
+                       completed: false,
+                       fromDay: task.fromDay || pastDate
+                     });
+                     existingTexts.add(task.text);
                    }
                  }
                }
+             }
 
-               if (toRollover.length > 0) {
-                 todayTasks = [...toRollover, ...todayTasks];
-                 merged.pomodoroTasksData[todayStr] = todayTasks;
-               }
+             if (toRollover.length > 0) {
+               todayTasks = [...toRollover, ...todayTasks];
+               merged.pomodoroTasksData[todayStr] = todayTasks;
+             }
 
-               setDailyTasks(todayTasks);
-               setDailyTasksDateStr(todayStr);
-            }
-            if (merged.finishedTickets && merged.finishedTickets.length > 0) {
-               setFinishedTickets(merged.finishedTickets);
-               if (typeof window !== 'undefined') localStorage.setItem('trackert_finished_tickets_v1', JSON.stringify(merged.finishedTickets));
-            }
-            if (merged.emergencyCards && merged.emergencyCards.length > 0) {
-               setHabitCards(merged.emergencyCards);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_cards_v4', JSON.stringify(merged.emergencyCards));
-            }
-            if (merged.grantedCardsLog && Object.keys(merged.grantedCardsLog).length > 0) {
-               setGrantedCardsLog(merged.grantedCardsLog);
-               if (typeof window !== 'undefined') localStorage.setItem('daybase_granted_cards_log_v4', JSON.stringify(merged.grantedCardsLog));
-            }
+             setDailyTasks(todayTasks);
+             setDailyTasksDateStr(todayStr);
+          }
+          if (merged.finishedTickets && merged.finishedTickets.length > 0) {
+             setFinishedTickets(merged.finishedTickets);
+             if (typeof window !== 'undefined') localStorage.setItem('trackert_finished_tickets_v1', JSON.stringify(merged.finishedTickets));
+          }
+          if (merged.emergencyCards && merged.emergencyCards.length > 0) {
+             setHabitCards(merged.emergencyCards);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_cards_v4', JSON.stringify(merged.emergencyCards));
+          }
+          if (merged.grantedCardsLog && Object.keys(merged.grantedCardsLog).length > 0) {
+             setGrantedCardsLog(merged.grantedCardsLog);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_granted_cards_log_v4', JSON.stringify(merged.grantedCardsLog));
+          }
 
-            // Save merged to IndexedDB
-            saveLocalOfflineState(merged);
+          // Save merged to IndexedDB
+          saveLocalOfflineState(merged);
 
-            // Restore Active Session
+          // Restore Active Session (only on initial load or if user not in active session)
+          if (!isSilent) {
             if (state.activeSessionType === 'pomodoro' && state.activeSessionData) {
                const now = Math.floor(Date.now() / 1000);
                const remaining = state.activeSessionData.endTime - now;
@@ -876,53 +955,72 @@ export default function App() {
                   apiFetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
                }
             }
-            
-            // Re-apply theme class
-            if (merged.theme === 'dark') document.documentElement.classList.add('dark');
-            else document.documentElement.classList.remove('dark');
           }
-        } else if (res.status === 403) {
-          const data = await res.json();
-          if (data.error === 'ACCOUNT_BLOCKED') {
-            setIsBlocked(true);
-          }
+          
+          // Re-apply theme class
+          if (merged.theme === 'dark') document.documentElement.classList.add('dark');
+          else document.documentElement.classList.remove('dark');
         }
-      } catch (err) {
+      } else if (res.status === 403) {
+        const data = await res.json().catch(() => ({}));
+        if (data.error === 'ACCOUNT_BLOCKED') {
+          setIsBlocked(true);
+        }
+      }
+    } catch (err) {
+      if (!isSilent) {
         console.warn("[bokra Sync Engine] Running in offline mode, loaded from local IndexedDB.");
-      } finally {
-        setIsCloudLoaded(true);
-        setIsSyncing(false);
       }
+    } finally {
+      setIsCloudLoaded(true);
+      if (!isSilent) setIsSyncing(false);
+      isSyncingRef.current = false;
     }
-    
-    fetchCloudState();
-  }, [user, isMounted]);
-
-  // --- 4. Auto-flush pending sync queue on reconnect ---
-  useEffect(() => {
-    const handleOnline = async () => {
-      console.log("[bokra Sync] Device came online. Flushing sync queue...");
-      try {
-        const queue = await getPendingSyncQueue();
-        if (queue && queue.length > 0) {
-          const latest = queue[queue.length - 1];
-          await apiFetch('/api/sync', {
-            method: 'POST',
-            body: JSON.stringify(latest.payload)
-          });
-          await clearPendingSyncQueue();
-          console.log("[bokra Sync] Pending queue flushed successfully.");
-        }
-      } catch (err) {
-        console.warn("[bokra Sync] Could not flush queue:", err);
-      }
-    };
-
-    window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
   }, [user]);
 
-  // --- 5. Push cloud state debounced & queue if offline ---
+  // Initial cloud state load
+  useEffect(() => {
+    if (!user || !isMounted) return;
+    fetchCloudState(false);
+  }, [user, isMounted, fetchCloudState]);
+
+  // --- 4. Real-time background sync (Polling + Focus + Visibility + Online) ---
+  useEffect(() => {
+    if (!user || !isMounted || !isCloudLoaded) return;
+
+    const syncSilently = () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      fetchCloudState(true);
+    };
+
+    // Lightweight 4-second heartbeat
+    const intervalId = setInterval(syncSilently, 4000);
+
+    const onFocus = () => syncSilently();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncSilently();
+      }
+    };
+    const onOnline = () => {
+      console.log("[bokra Sync] Device came online. Triggering immediate sync...");
+      fetchCloudState(false);
+    };
+
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('online', onOnline);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('online', onOnline);
+    };
+  }, [user, isMounted, isCloudLoaded, fetchCloudState]);
+
+  // --- 5. Push cloud state debounced (400ms) & queue if offline ---
   useEffect(() => {
     if (!user || !isCloudLoaded) return;
 
@@ -937,20 +1035,44 @@ export default function App() {
       finishedTickets, mission, updatedAt: Date.now()
     };
 
+    // If offline right now, queue immediately!
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      console.log("[bokra Sync] Offline: queuing mutation directly.");
+      queueSyncMutation('STATE_SNAPSHOT', stateSnapshot);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('bokra_has_pending_sync', 'true');
+      }
+      return;
+    }
+
     setIsSyncing(true);
     const timerId = setTimeout(async () => {
       try {
-        await apiFetch('/api/sync', {
+        const res = await apiFetch('/api/sync', {
           method: 'POST',
           body: JSON.stringify(stateSnapshot)
         });
+        if (res.ok) {
+          const resData = await res.json().catch(() => ({}));
+          if (resData.updatedAt) {
+            lastServerUpdatedAtRef.current = resData.updatedAt;
+          }
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('bokra_has_pending_sync');
+          }
+        } else {
+          throw new Error('Sync POST non-ok');
+        }
       } catch (err) {
         console.warn("[bokra Sync] Push failed, queuing mutation for offline sync:", err);
         queueSyncMutation('STATE_SNAPSHOT', stateSnapshot);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('bokra_has_pending_sync', 'true');
+        }
       } finally {
         setIsSyncing(false);
       }
-    }, 2500);
+    }, 400);
 
     return () => clearTimeout(timerId);
   }, [
@@ -1442,6 +1564,21 @@ export default function App() {
     haptic('light');
     const key = subItem ? `${activeDateStr}-${habitId}-${subItem}` : `${activeDateStr}-${habitId}`;
     setDailyData(prev => ({ ...prev, [key]: !prev[key] }));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('daybase_last_local_update', String(Date.now()));
+      localStorage.setItem('bokra_has_pending_sync', 'true');
+    }
+  };
+
+  const updateDailyTasks = (updater) => {
+    setDailyTasks(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      return next;
+    });
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('daybase_last_local_update', String(Date.now()));
+      localStorage.setItem('bokra_has_pending_sync', 'true');
+    }
   };
 
   const toggleExpand = (habitId) => {
@@ -1456,6 +1593,7 @@ export default function App() {
     setIsEditingMission(false);
     if (typeof window !== 'undefined') {
       localStorage.setItem('daybase_last_local_update', String(Date.now()));
+      localStorage.setItem('bokra_has_pending_sync', 'true');
     }
   };
 
@@ -1467,6 +1605,10 @@ export default function App() {
        setSleepData(newData);
     } else if (!isNaN(sleepInput)) {
       setSleepData(prev => ({ ...prev, [activeDateStr]: parseFloat(sleepInput) }));
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('daybase_last_local_update', String(Date.now()));
+      localStorage.setItem('bokra_has_pending_sync', 'true');
     }
   };
 
@@ -1502,6 +1644,7 @@ export default function App() {
     setHabits([...habits, newHabit]);
     if (typeof window !== 'undefined') {
       localStorage.setItem('daybase_last_local_update', String(Date.now()));
+      localStorage.setItem('bokra_has_pending_sync', 'true');
     }
     
     // Reset fields
@@ -1521,6 +1664,7 @@ export default function App() {
     setHabits(habits.filter(h => h.id !== habitId));
     if (typeof window !== 'undefined') {
       localStorage.setItem('daybase_last_local_update', String(Date.now()));
+      localStorage.setItem('bokra_has_pending_sync', 'true');
     }
   };
 
@@ -1531,6 +1675,10 @@ export default function App() {
     const key = `${activeDateStr}-${habitId}`;
     setDailyData(prev => ({ ...prev, [key]: true }));
     setHabitCards(prev => ({ ...prev, [habitId]: cardsLeft - 1 }));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('daybase_last_local_update', String(Date.now()));
+      localStorage.setItem('bokra_has_pending_sync', 'true');
+    }
   };
 
   // --- تفعيل الإشعارات للمستخدم وسحب التوكن وحفظ جهاز فايربيز ---
@@ -3313,7 +3461,7 @@ export default function App() {
                           className="flex items-center gap-3 cursor-pointer flex-1 min-w-0" 
                           onClick={() => {
                             haptic('light');
-                            setDailyTasks(prev => prev.map((t, i) => i === idx ? { ...t, completed: !t.completed } : t));
+                            updateDailyTasks(prev => prev.map((t, i) => i === idx ? { ...t, completed: !t.completed } : t));
                           }}
                         >
                           <div 
@@ -3347,7 +3495,7 @@ export default function App() {
                           </div>
                         </div>
                         <button 
-                          onClick={() => setDailyTasks(prev => prev.filter((_, i) => i !== idx))} 
+                          onClick={() => updateDailyTasks(prev => prev.filter((_, i) => i !== idx))} 
                           className="text-gray-400 dark:text-white/20 hover:text-red-500 dark:hover:text-red-400 p-1 transition-colors shrink-0"
                         >
                           <Trash2 size={16} />
@@ -3369,7 +3517,7 @@ export default function App() {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && newTaskInput.trim() !== '') {
                         haptic('light');
-                        setDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
+                        updateDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
                         setNewTaskInput("");
                       }
                     }}
@@ -3378,7 +3526,7 @@ export default function App() {
                   <button onClick={() => {
                     if (newTaskInput.trim() !== '') {
                       haptic('light');
-                      setDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
+                      updateDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
                       setNewTaskInput("");
                     }
                   }} className="px-4 py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 hover:opacity-90" style={{ backgroundColor: themeColor, color: '#000' }}>
@@ -4128,7 +4276,7 @@ export default function App() {
                           className="flex items-center gap-3 cursor-pointer flex-1 min-w-0" 
                           onClick={() => {
                             haptic('light');
-                            setDailyTasks(prev => prev.map((t, i) => i === idx ? { ...t, completed: !t.completed } : t));
+                            updateDailyTasks(prev => prev.map((t, i) => i === idx ? { ...t, completed: !t.completed } : t));
                           }}
                         >
                           <div 
@@ -4162,7 +4310,7 @@ export default function App() {
                           </div>
                         </div>
                         <button 
-                          onClick={() => setDailyTasks(prev => prev.filter((_, i) => i !== idx))} 
+                          onClick={() => updateDailyTasks(prev => prev.filter((_, i) => i !== idx))} 
                           className="text-gray-400 dark:text-white/20 hover:text-red-500 dark:hover:text-red-400 p-1 transition-colors shrink-0"
                         >
                           <Trash2 size={16} />
@@ -4184,7 +4332,7 @@ export default function App() {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && newTaskInput.trim() !== '') {
                         haptic('light');
-                        setDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
+                        updateDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
                         setNewTaskInput("");
                       }
                     }}
@@ -4193,7 +4341,7 @@ export default function App() {
                   <button onClick={() => {
                     if (newTaskInput.trim() !== '') {
                       haptic('light');
-                      setDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
+                      updateDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
                       setNewTaskInput("");
                     }
                   }} className="bg-black text-white dark:bg-white dark:text-black px-4 py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 hover:bg-black/80 dark:hover:bg-white/90">

@@ -11,6 +11,28 @@ export async function GET(req) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
+    const url = new URL(req.url);
+    const sinceParam = url.searchParams.get('since');
+    const sinceTimestamp = sinceParam ? parseInt(sinceParam, 10) : null;
+
+    if (sinceTimestamp && !isNaN(sinceTimestamp)) {
+      const userMeta = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { updatedAt: true, isBlocked: true }
+      });
+
+      if (userMeta?.isBlocked) {
+        return NextResponse.json({ error: 'ACCOUNT_BLOCKED' }, { status: 403 });
+      }
+
+      if (userMeta?.updatedAt) {
+        const serverTime = new Date(userMeta.updatedAt).getTime();
+        if (serverTime <= sinceTimestamp) {
+          return NextResponse.json({ unchanged: true, updatedAt: serverTime });
+        }
+      }
+    }
+
     let user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -122,7 +144,7 @@ export async function POST(req) {
     }
 
     // 1. Upsert User Settings
-    await prisma.user.upsert({
+    const updatedUser = await prisma.user.upsert({
       where: { id: userId },
       create: {
         id: userId,
@@ -146,6 +168,7 @@ export async function POST(req) {
         emergencyCards: state.emergencyCards || [],
         grantedCards: newGranted,
         finishedTickets: state.finishedTickets || [],
+        updatedAt: new Date(),
         ...(state.activeSessionType !== undefined && { activeSessionType: state.activeSessionType }),
         ...(state.activeSessionData !== undefined && { activeSessionData: state.activeSessionData }),
       }
@@ -229,7 +252,8 @@ export async function POST(req) {
       });
     }
 
-    return NextResponse.json({ success: true });
+    const finalUpdatedAt = updatedUser?.updatedAt ? new Date(updatedUser.updatedAt).getTime() : Date.now();
+    return NextResponse.json({ success: true, updatedAt: finalUpdatedAt });
 
   } catch (error) {
     console.error('Sync POST Error:', error);
