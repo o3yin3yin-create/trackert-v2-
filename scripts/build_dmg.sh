@@ -8,12 +8,18 @@ TEMP_DMG="/tmp/bokra_rw.dmg"
 STAGING_DIR="/tmp/bokra_dmg_staging"
 VOL_NAME="bokra"
 
-echo "🎨 Step 1: Generating high-resolution Retina background..."
+echo "🎨 Step 1: Generating high-resolution monochrome Retina background..."
 python3 "$PROJECT_ROOT/scripts/create_dmg_background.py"
 sips -s dpiWidth 144 -s dpiHeight 144 "$PROJECT_ROOT/src-tauri/assets/dmg-background@2x.png" > /dev/null
 sips -s dpiWidth 72 -s dpiHeight 72 "$PROJECT_ROOT/src-tauri/assets/dmg-background.png" > /dev/null
 
-echo "📦 Step 2: Preparing staging folder..."
+# Generate multi-resolution TIFF for native Retina and standard display fidelity
+tiffutil -cathidpicheck \
+  "$PROJECT_ROOT/src-tauri/assets/dmg-background.png" \
+  "$PROJECT_ROOT/src-tauri/assets/dmg-background@2x.png" \
+  -out "$PROJECT_ROOT/src-tauri/assets/dmg-background.tiff" > /dev/null
+
+echo "📦 Step 2: Preparing staging folder with all assets..."
 rm -rf "$STAGING_DIR" "$TEMP_DMG" "$OUTPUT_DMG"
 mkdir -p "$STAGING_DIR"
 
@@ -22,6 +28,17 @@ cp -R "$APP_PATH" "$STAGING_DIR/bokra.app"
 
 # Create Applications shortcut link
 ln -s /Applications "$STAGING_DIR/Applications"
+
+# Pre-stage background assets directly
+mkdir -p "$STAGING_DIR/.background"
+cp "$PROJECT_ROOT/src-tauri/assets/dmg-background.png" "$STAGING_DIR/.background/background.png"
+cp "$PROJECT_ROOT/src-tauri/assets/dmg-background@2x.png" "$STAGING_DIR/.background/background@2x.png"
+cp "$PROJECT_ROOT/src-tauri/assets/dmg-background.tiff" "$STAGING_DIR/.background/background.tiff"
+
+# Pre-stage volume icon if present
+if [[ -f "$PROJECT_ROOT/src-tauri/icons/icon.icns" ]]; then
+  cp "$PROJECT_ROOT/src-tauri/icons/icon.icns" "$STAGING_DIR/.VolumeIcon.icns"
+fi
 
 # Calculate required size (in MB) with 30% padding
 SIZE_MB=$(du -sm "$STAGING_DIR" | awk '{print int($1 * 1.3) + 20}')
@@ -35,21 +52,19 @@ hdiutil detach "/Volumes/$VOL_NAME" -force 2>/dev/null || true
 
 MOUNT_OUTPUT=$(hdiutil attach -readwrite -noverify -noautoopen "$TEMP_DMG")
 DEV_NAME=$(echo "$MOUNT_OUTPUT" | grep -E '^/dev/' | head -n 1 | awk '{print $1}')
-MOUNT_DIR="/Volumes/$VOL_NAME"
+MOUNT_DIR=$(echo "$MOUNT_OUTPUT" | grep -o '/Volumes/.*' | head -n 1)
 
 echo "Mounted at $MOUNT_DIR ($DEV_NAME)"
 sleep 1
 
-# Copy custom assets into mounted volume
-mkdir -p "$MOUNT_DIR/.background"
-cp "$PROJECT_ROOT/src-tauri/assets/dmg-background.png" "$MOUNT_DIR/.background/background.png"
-cp "$PROJECT_ROOT/src-tauri/assets/dmg-background@2x.png" "$MOUNT_DIR/.background/background@2x.png"
-
-if [[ -f "$PROJECT_ROOT/src-tauri/icons/icon.icns" ]]; then
-  cp "$PROJECT_ROOT/src-tauri/icons/icon.icns" "$MOUNT_DIR/.VolumeIcon.icns"
-  SetFile -c icnC "$MOUNT_DIR/.VolumeIcon.icns" || true
-  SetFile -a C "$MOUNT_DIR" || true
+# Set Volume icon custom bit
+if [[ -f "$MOUNT_DIR/.VolumeIcon.icns" ]]; then
+  SetFile -c icnC "$MOUNT_DIR/.VolumeIcon.icns" >/dev/null 2>&1 || true
+  SetFile -a C "$MOUNT_DIR" >/dev/null 2>&1 || true
+  SetFile -a V "$MOUNT_DIR/.VolumeIcon.icns" >/dev/null 2>&1 || true
 fi
+
+SetFile -a V "$MOUNT_DIR/.background" >/dev/null 2>&1 || true
 
 echo "✨ Step 5: Applying Finder custom layout and aesthetics..."
 osascript <<EOF
@@ -66,21 +81,17 @@ tell application "Finder"
   set icon size of opts to 128
   set text size of opts to 12
   set arrangement of opts to not arranged
-  set background picture of opts to file ".background:background.png" of d
+  set background picture of opts to file ".background:background.tiff" of d
   
   set position of item "bokra.app" of w to {180, 200}
   set position of item "Applications" of w to {480, 200}
   
-  close w
-  open d
   update d without registering applications
-  delay 2
+  delay 1
+  close w
+  delay 1
 end tell
 EOF
-
-# Hide background folder and volume icon
-SetFile -a V "$MOUNT_DIR/.background" || true
-SetFile -a V "$MOUNT_DIR/.VolumeIcon.icns" 2>/dev/null || true
 
 # Sync changes to disk
 sync
