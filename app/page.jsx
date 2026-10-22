@@ -750,6 +750,7 @@ export default function App() {
   const lastLocalMutationTimeRef = useRef(0);
   const localMutationVersionRef = useRef(0);
   const pushedMutationVersionRef = useRef(0);
+  const dirtyDatesRef = useRef(new Set());
   const latestStateRef = useRef({});
 
   const [deletedHabitIds, setDeletedHabitIds] = useState(() => {
@@ -764,9 +765,12 @@ export default function App() {
     return [];
   });
 
-  const markLocalMutation = useCallback(() => {
+  const markLocalMutation = useCallback((dateStr = null) => {
     localMutationVersionRef.current += 1;
     lastLocalMutationTimeRef.current = Date.now();
+    if (dateStr && typeof dateStr === 'string' && dateStr.length === 10) {
+      dirtyDatesRef.current.add(dateStr);
+    }
     if (typeof window !== 'undefined') {
       localStorage.setItem('daybase_last_local_update', String(Date.now()));
     }
@@ -1041,6 +1045,9 @@ export default function App() {
     }
 
     const versionToPush = localMutationVersionRef.current;
+    const datesBeingPushed = Array.isArray(latestStateRef.current?.targetDates)
+      ? [...latestStateRef.current.targetDates]
+      : [];
     isPushingRef.current = true;
     setIsSyncing(true);
 
@@ -1061,6 +1068,11 @@ export default function App() {
           lastServerUpdatedAtRef.current = resData.updatedAt;
         }
         pushedMutationVersionRef.current = versionToPush;
+
+        // Clear successfully pushed dirty dates
+        for (const d of datesBeingPushed) {
+          dirtyDatesRef.current.delete(d);
+        }
 
         if (typeof window !== 'undefined') {
           localStorage.removeItem('bokra_has_pending_sync');
@@ -1308,11 +1320,18 @@ export default function App() {
     ...(dailyTasksDateStr && dailyTasks ? { [dailyTasksDateStr]: dailyTasks } : {})
   };
 
+  const syncTargetDates = Array.from(new Set([
+    realTodayStr,
+    yesterdayStr,
+    activeDateStr,
+    ...Array.from(dirtyDatesRef.current || [])
+  ])).filter(Boolean);
+
   latestStateRef.current = {
     habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
     theme, bgStyle, lang, focusTimeData, pomodoroTasksData: activePomodoroTasks,
     emergencyCards: habitCards, finishedTickets, mission, deletedHabitIds,
-    targetDates: [realTodayStr, yesterdayStr],
+    targetDates: syncTargetDates,
     activeDateStr
   };
 
@@ -1604,13 +1623,13 @@ export default function App() {
     }
 
     haptic('light');
-    markLocalMutation();
+    markLocalMutation(activeDateStr);
     const key = subItem ? `${activeDateStr}-${habitId}-${subItem}` : `${activeDateStr}-${habitId}`;
     setDailyData(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const updateDailyTasks = (updater) => {
-    markLocalMutation();
+    markLocalMutation(dailyTasksDateStr || activeDateStr);
     setDailyTasks(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
       return next;
@@ -1632,7 +1651,7 @@ export default function App() {
 
   const logSleep = () => {
     haptic('medium');
-    markLocalMutation();
+    markLocalMutation(activeDateStr);
     if (sleepInput === "") {
        const newData = {...sleepData};
        delete newData[activeDateStr];
@@ -1703,7 +1722,7 @@ export default function App() {
   const consumeEmergencyCard = (habitId) => {
     const cardsLeft = habitCards[habitId] ?? 1;
     if (cardsLeft <= 0) return;
-    markLocalMutation();
+    markLocalMutation(activeDateStr);
     const key = `${activeDateStr}-${habitId}`;
     setDailyData(prev => ({ ...prev, [key]: true }));
     setHabitCards(prev => ({ ...prev, [habitId]: cardsLeft - 1 }));
