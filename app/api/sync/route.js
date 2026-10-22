@@ -50,7 +50,8 @@ export async function GET(req) {
 
       if (userMeta?.updatedAt) {
         const serverTime = new Date(userMeta.updatedAt).getTime();
-        if (serverTime <= sinceTimestamp) {
+        // Strict match: only skip full state if client already has this exact server revision
+        if (serverTime === sinceTimestamp) {
           return NextResponse.json({ unchanged: true, updatedAt: serverTime }, { headers: getCorsHeaders(req) });
         }
       }
@@ -301,7 +302,12 @@ export async function POST(req) {
       });
     }
 
-    const finalUpdatedAt = updatedUser?.updatedAt ? new Date(updatedUser.updatedAt).getTime() : Date.now();
+    const finalUser = await prisma.user.update({
+      where: { id: userId },
+      data: { updatedAt: new Date() },
+      select: { updatedAt: true }
+    });
+    const finalUpdatedAt = new Date(finalUser.updatedAt).getTime();
     return NextResponse.json({ success: true, updatedAt: finalUpdatedAt }, { headers: getCorsHeaders(req) });
 
   } catch (error) {

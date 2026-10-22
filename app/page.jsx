@@ -844,75 +844,65 @@ export default function App() {
             lastServerUpdatedAtRef.current = state.updatedAt;
           }
 
-          const current = latestStateRef.current;
-          const currentHabits = current.habits || habits;
-          const isLocalDefault = (!currentHabits || currentHabits.length === 0 || 
-            (currentHabits.length <= 2 && currentHabits.every(h => h.id === '1' || h.id === '2')));
-
-          const localSnapshot = {
-            ...current,
-            isLocalDefault,
-            hasPendingChanges: hasQueuedMutations,
-            updatedAt: typeof window !== 'undefined' ? parseInt(localStorage.getItem('daybase_last_local_update') || '0', 10) : 0
-          };
-          const merged = resolveConflict(localSnapshot, state);
+          // SERVER STATE IS 100% AUTHORITATIVE — OVERWRITES LOCAL OFFLINE CACHE
+          const authoritative = state;
 
           isApplyingRemoteRef.current = true;
-          if (merged.isAdmin) setIsAdmin(true);
-          if (merged.theme) {
-             setTheme(merged.theme);
-             if (typeof window !== 'undefined') localStorage.setItem('daybase_theme', merged.theme);
+          if (authoritative.isAdmin !== undefined) setIsAdmin(authoritative.isAdmin);
+          if (authoritative.theme) {
+             setTheme(authoritative.theme);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_theme', authoritative.theme);
           }
-          if (merged.bgStyle) {
-             setBgStyle(merged.bgStyle);
-             if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', merged.bgStyle);
+          if (authoritative.bgStyle) {
+             setBgStyle(authoritative.bgStyle);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', authoritative.bgStyle);
           }
-          if (merged.lang) {
-             setLang(merged.lang);
-             if (typeof window !== 'undefined') localStorage.setItem('daybase_lang', merged.lang);
+          if (authoritative.lang) {
+             setLang(authoritative.lang);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_lang', authoritative.lang);
           }
-          if (merged.themeColor) {
-             setThemeColor(merged.themeColor);
-             if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', merged.themeColor);
+          if (authoritative.themeColor) {
+             setThemeColor(authoritative.themeColor);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', authoritative.themeColor);
           }
-          if (merged.avatar) {
-             setAvatar(merged.avatar);
-             if (typeof window !== 'undefined') localStorage.setItem('daybase_avatar_v1', merged.avatar || 'user');
+          if (authoritative.avatar) {
+             setAvatar(authoritative.avatar);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_avatar_v1', authoritative.avatar || 'user');
           }
-          if (merged.mission !== undefined) {
-             setMission(merged.mission);
-             if (typeof window !== 'undefined') localStorage.setItem('daybase_mission_v4', merged.mission);
+          if (authoritative.mission !== undefined) {
+             setMission(authoritative.mission);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_mission_v4', authoritative.mission);
           }
 
-          if (merged.habits && merged.habits.length > 0) {
-             setHabits(merged.habits);
-             if (typeof window !== 'undefined') localStorage.setItem('daybase_habits_v4', JSON.stringify(merged.habits));
+          if (Array.isArray(authoritative.habits)) {
+             setHabits(authoritative.habits);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_habits_v4', JSON.stringify(authoritative.habits));
           }
-          if (merged.dailyData && Object.keys(merged.dailyData).length > 0) {
-             setDailyData(merged.dailyData);
-             if (typeof window !== 'undefined') localStorage.setItem('daybase_dailyData_v4', JSON.stringify(merged.dailyData));
+          if (authoritative.dailyData && typeof authoritative.dailyData === 'object') {
+             setDailyData(authoritative.dailyData);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_dailyData_v4', JSON.stringify(authoritative.dailyData));
           }
-          if (merged.sleepData && Object.keys(merged.sleepData).length > 0) {
-             setSleepData(merged.sleepData);
-             if (typeof window !== 'undefined') localStorage.setItem('daybase_sleepData_v4', JSON.stringify(merged.sleepData));
+          if (authoritative.sleepData && typeof authoritative.sleepData === 'object') {
+             setSleepData(authoritative.sleepData);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_sleepData_v4', JSON.stringify(authoritative.sleepData));
           }
-          if (merged.focusTimeData && Object.keys(merged.focusTimeData).length > 0) {
-             setFocusTimeData(merged.focusTimeData);
-             if (typeof window !== 'undefined') localStorage.setItem('daybase_focusTime_v4', JSON.stringify(merged.focusTimeData));
+          if (authoritative.focusTimeData && typeof authoritative.focusTimeData === 'object') {
+             setFocusTimeData(authoritative.focusTimeData);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_focusTime_v4', JSON.stringify(authoritative.focusTimeData));
           }
-          if (merged.pomodoroTasksData && Object.keys(merged.pomodoroTasksData).length > 0) {
-             setPomodoroTasksData(merged.pomodoroTasksData);
-             if (typeof window !== 'undefined') localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(merged.pomodoroTasksData));
+          if (authoritative.pomodoroTasksData && typeof authoritative.pomodoroTasksData === 'object') {
+             setPomodoroTasksData(authoritative.pomodoroTasksData);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(authoritative.pomodoroTasksData));
              const todayStr = getFormatDateStr(new Date());
-             let todayTasks = Array.isArray(merged.pomodoroTasksData[todayStr]) ? [...merged.pomodoroTasksData[todayStr]] : [];
+             let todayTasks = Array.isArray(authoritative.pomodoroTasksData[todayStr]) ? [...authoritative.pomodoroTasksData[todayStr]] : [];
 
              // Automatically rollover any uncompleted tasks from past days
-             const pastDates = Object.keys(merged.pomodoroTasksData).filter(d => d < todayStr).sort();
+             const pastDates = Object.keys(authoritative.pomodoroTasksData).filter(d => d < todayStr).sort();
              const existingTexts = new Set(todayTasks.map(t => t.text));
              const toRollover = [];
 
              for (const pastDate of pastDates) {
-               const pastList = merged.pomodoroTasksData[pastDate];
+               const pastList = authoritative.pomodoroTasksData[pastDate];
                if (Array.isArray(pastList)) {
                  for (const task of pastList) {
                    if (!task.completed && !existingTexts.has(task.text)) {
@@ -930,33 +920,33 @@ export default function App() {
 
              if (toRollover.length > 0) {
                todayTasks = [...toRollover, ...todayTasks];
-               merged.pomodoroTasksData[todayStr] = todayTasks;
+               authoritative.pomodoroTasksData[todayStr] = todayTasks;
              }
 
              setDailyTasks(todayTasks);
              setDailyTasksDateStr(todayStr);
           }
-          if (merged.finishedTickets && merged.finishedTickets.length > 0) {
-             setFinishedTickets(merged.finishedTickets);
-             if (typeof window !== 'undefined') localStorage.setItem('trackert_finished_tickets_v1', JSON.stringify(merged.finishedTickets));
+          if (Array.isArray(authoritative.finishedTickets)) {
+             setFinishedTickets(authoritative.finishedTickets);
+             if (typeof window !== 'undefined') localStorage.setItem('trackert_finished_tickets_v1', JSON.stringify(authoritative.finishedTickets));
           }
-          if (merged.emergencyCards && merged.emergencyCards.length > 0) {
-             setHabitCards(merged.emergencyCards);
-             if (typeof window !== 'undefined') localStorage.setItem('daybase_cards_v4', JSON.stringify(merged.emergencyCards));
+          if (Array.isArray(authoritative.emergencyCards)) {
+             setHabitCards(authoritative.emergencyCards);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_cards_v4', JSON.stringify(authoritative.emergencyCards));
           }
-          if (merged.grantedCardsLog && Object.keys(merged.grantedCardsLog).length > 0) {
-             setGrantedCardsLog(merged.grantedCardsLog);
-             if (typeof window !== 'undefined') localStorage.setItem('daybase_granted_cards_log_v4', JSON.stringify(merged.grantedCardsLog));
+          if (authoritative.grantedCardsLog && typeof authoritative.grantedCardsLog === 'object') {
+             setGrantedCardsLog(authoritative.grantedCardsLog);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_granted_cards_log_v4', JSON.stringify(authoritative.grantedCardsLog));
           }
 
-          // Save merged to IndexedDB
-          saveLocalOfflineState(merged);
+          // Cache authoritative server state into IndexedDB
+          saveLocalOfflineState(authoritative);
           if (typeof window !== 'undefined') {
             localStorage.removeItem('bokra_has_pending_sync');
           }
           setTimeout(() => {
             isApplyingRemoteRef.current = false;
-          }, 600);
+          }, 300);
 
           // Restore Active Session (only on initial load or if user not in active session)
           if (!isSilent) {
@@ -1037,7 +1027,17 @@ export default function App() {
       fetchCloudState(false);
     };
 
+    let lastInteractionSync = 0;
+    const onInteraction = () => {
+      const now = Date.now();
+      if (now - lastInteractionSync > 2000) {
+        lastInteractionSync = now;
+        syncSilently();
+      }
+    };
+
     window.addEventListener('focus', onFocus);
+    window.addEventListener('pointerdown', onInteraction, { passive: true });
     document.addEventListener('visibilitychange', onVisibilityChange);
     window.addEventListener('online', onOnline);
 
@@ -1057,6 +1057,7 @@ export default function App() {
     return () => {
       clearInterval(intervalId);
       window.removeEventListener('focus', onFocus);
+      window.removeEventListener('pointerdown', onInteraction);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('online', onOnline);
       if (channel) {
