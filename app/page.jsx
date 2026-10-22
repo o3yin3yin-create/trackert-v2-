@@ -803,10 +803,37 @@ export default function App() {
                setPomodoroTasksData(merged.pomodoroTasksData);
                if (typeof window !== 'undefined') localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(merged.pomodoroTasksData));
                const todayStr = getFormatDateStr(new Date());
-               if (merged.pomodoroTasksData[todayStr] && Array.isArray(merged.pomodoroTasksData[todayStr])) {
-                 setDailyTasks(merged.pomodoroTasksData[todayStr]);
-                 setDailyTasksDateStr(todayStr);
+               let todayTasks = Array.isArray(merged.pomodoroTasksData[todayStr]) ? [...merged.pomodoroTasksData[todayStr]] : [];
+
+               // Automatically rollover any uncompleted tasks from past days
+               const pastDates = Object.keys(merged.pomodoroTasksData).filter(d => d < todayStr).sort();
+               const existingTexts = new Set(todayTasks.map(t => t.text));
+               const toRollover = [];
+
+               for (const pastDate of pastDates) {
+                 const pastList = merged.pomodoroTasksData[pastDate];
+                 if (Array.isArray(pastList)) {
+                   for (const task of pastList) {
+                     if (!task.completed && !existingTexts.has(task.text)) {
+                       toRollover.push({
+                         ...task,
+                         rolledOver: true,
+                         completed: false,
+                         fromDay: task.fromDay || pastDate
+                       });
+                       existingTexts.add(task.text);
+                     }
+                   }
+                 }
                }
+
+               if (toRollover.length > 0) {
+                 todayTasks = [...toRollover, ...todayTasks];
+                 merged.pomodoroTasksData[todayStr] = todayTasks;
+               }
+
+               setDailyTasks(todayTasks);
+               setDailyTasksDateStr(todayStr);
             }
             if (merged.finishedTickets && merged.finishedTickets.length > 0) {
                setFinishedTickets(merged.finishedTickets);
@@ -1130,11 +1157,39 @@ export default function App() {
     setSleepInput(sleepData[activeDateStr] || "");
   }, [activeDateStr, sleepData]);
 
-  // Handle daily tasks date reset
+  // Handle daily tasks date rollover:
+  // - Completed tasks stay archived in the past day's record
+  // - Uncompleted tasks carry over to today with rolledOver: true (highlighted red)
   useEffect(() => {
     const todayStr = getFormatDateStr(new Date());
-    if (dailyTasksDateStr !== todayStr) {
-      setDailyTasks([]);
+    if (dailyTasksDateStr && dailyTasksDateStr !== todayStr) {
+      const previousTasks = Array.isArray(dailyTasks) ? dailyTasks : [];
+      const uncompletedTasks = previousTasks.filter(t => !t.completed);
+      
+      const rolledOverTasks = uncompletedTasks.map(t => ({
+        ...t,
+        rolledOver: true,
+        completed: false,
+        fromDay: t.fromDay || dailyTasksDateStr
+      }));
+
+      const existingToday = (pomodoroTasksData && Array.isArray(pomodoroTasksData[todayStr])) 
+        ? pomodoroTasksData[todayStr] 
+        : [];
+      const existingTexts = new Set(existingToday.map(t => t.text));
+      const newlyRolled = rolledOverTasks.filter(t => !existingTexts.has(t.text));
+
+      const updatedToday = [...newlyRolled, ...existingToday];
+
+      setDailyTasks(updatedToday);
+      setDailyTasksDateStr(todayStr);
+
+      setPomodoroTasksData(prev => ({
+        ...(prev || {}),
+        [dailyTasksDateStr]: previousTasks,
+        [todayStr]: updatedToday
+      }));
+    } else if (!dailyTasksDateStr) {
       setDailyTasksDateStr(todayStr);
     }
   }, [baseDate, dailyTasksDateStr]);
@@ -3225,22 +3280,63 @@ export default function App() {
                 </div>
 
                 <div className="flex flex-col gap-2.5 mb-5 max-h-[170px] overflow-y-auto pr-1">
-                  {dailyTasks.map((task, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 rounded-2xl bg-white/20 dark:bg-black/20 border border-black/5 dark:border-white/5 transition-all duration-200">
-                      <div className="flex items-center gap-3 cursor-pointer flex-1" onClick={() => {
-                        haptic('light');
-                        setDailyTasks(prev => prev.map((t, i) => i === idx ? { ...t, completed: !t.completed } : t));
-                      }}>
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${task.completed ? 'bg-black dark:bg-white border-transparent' : 'border-black/20 dark:border-white/20'}`} style={{ borderColor: task.completed ? themeColor : undefined }}>
-                          {task.completed && <Check size={12} strokeWidth={4} style={{ color: theme === 'dark' ? themeColor : '#fff' }} />}
+                  {dailyTasks.map((task, idx) => {
+                    const isOverdue = task.rolledOver && !task.completed;
+                    return (
+                      <div 
+                        key={idx} 
+                        className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-200 ${
+                          isOverdue 
+                            ? 'bg-rose-500/10 border-rose-500/30 dark:bg-rose-950/30 dark:border-rose-500/40 shadow-sm shadow-rose-950/20' 
+                            : 'bg-white/20 dark:bg-black/20 border-black/5 dark:border-white/5'
+                        }`}
+                      >
+                        <div 
+                          className="flex items-center gap-3 cursor-pointer flex-1 min-w-0" 
+                          onClick={() => {
+                            haptic('light');
+                            setDailyTasks(prev => prev.map((t, i) => i === idx ? { ...t, completed: !t.completed } : t));
+                          }}
+                        >
+                          <div 
+                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+                              task.completed 
+                                ? 'bg-black dark:bg-white border-transparent' 
+                                : isOverdue 
+                                  ? 'border-rose-500 dark:border-rose-400 bg-rose-500/15' 
+                                  : 'border-black/20 dark:border-white/20'
+                            }`} 
+                            style={{ borderColor: task.completed ? themeColor : undefined }}
+                          >
+                            {task.completed && <Check size={12} strokeWidth={4} style={{ color: theme === 'dark' ? themeColor : '#fff' }} />}
+                          </div>
+                          <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
+                            <span className={`text-sm font-semibold truncate transition-all ${
+                              task.completed 
+                                ? 'text-gray-400 dark:text-white/30 line-through' 
+                                : isOverdue
+                                  ? 'text-rose-900 dark:text-rose-200 font-bold'
+                                  : 'text-black dark:text-white/90'
+                            }`}>
+                              {task.text}
+                            </span>
+                            {isOverdue && (
+                              <span className="text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-500/30 uppercase select-none flex items-center gap-1 shrink-0">
+                                <Clock size={10} strokeWidth={2.5} />
+                                {t('overdueTask')}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <span className={`text-sm font-semibold transition-all ${task.completed ? 'text-gray-400 dark:text-white/30 line-through' : 'text-black dark:text-white/90'}`}>{task.text}</span>
+                        <button 
+                          onClick={() => setDailyTasks(prev => prev.filter((_, i) => i !== idx))} 
+                          className="text-gray-400 dark:text-white/20 hover:text-red-500 dark:hover:text-red-400 p-1 transition-colors shrink-0"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
-                      <button onClick={() => setDailyTasks(prev => prev.filter((_, i) => i !== idx))} className="text-gray-400 dark:text-white/20 hover:text-red-500 dark:hover:text-red-400 p-1 transition-colors">
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {dailyTasks.length === 0 && (
                     <div className="text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-8 border border-dashed border-black/10 dark:border-white/10 rounded-2xl bg-black/5 dark:bg-white/5 select-none">{t('noTasks')}</div>
                   )}
@@ -3999,22 +4095,63 @@ export default function App() {
                 </div>
 
                 <div className="flex flex-col gap-3 mb-6 max-h-[300px] overflow-y-auto pr-2">
-                  {dailyTasks.map((task, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 rounded-2xl bg-white/30 dark:bg-[#1C1C1E] border border-black/5 dark:border-white/5">
-                      <div className="flex items-center gap-3 cursor-pointer flex-1" onClick={() => {
-                        haptic('light');
-                        setDailyTasks(prev => prev.map((t, i) => i === idx ? { ...t, completed: !t.completed } : t));
-                      }}>
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${task.completed ? 'bg-black dark:bg-white border-transparent' : 'border-black/20 dark:border-white/20'}`} style={{ borderColor: task.completed ? themeColor : undefined }}>
-                          {task.completed && <Check size={12} strokeWidth={4} style={{ color: theme === 'dark' ? themeColor : '#fff' }} />}
+                  {dailyTasks.map((task, idx) => {
+                    const isOverdue = task.rolledOver && !task.completed;
+                    return (
+                      <div 
+                        key={idx} 
+                        className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-200 ${
+                          isOverdue 
+                            ? 'bg-rose-500/10 border-rose-500/30 dark:bg-rose-950/30 dark:border-rose-500/40 shadow-sm shadow-rose-950/20' 
+                            : 'bg-white/30 dark:bg-[#1C1C1E] border border-black/5 dark:border-white/5'
+                        }`}
+                      >
+                        <div 
+                          className="flex items-center gap-3 cursor-pointer flex-1 min-w-0" 
+                          onClick={() => {
+                            haptic('light');
+                            setDailyTasks(prev => prev.map((t, i) => i === idx ? { ...t, completed: !t.completed } : t));
+                          }}
+                        >
+                          <div 
+                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+                              task.completed 
+                                ? 'bg-black dark:bg-white border-transparent' 
+                                : isOverdue 
+                                  ? 'border-rose-500 dark:border-rose-400 bg-rose-500/15' 
+                                  : 'border-black/20 dark:border-white/20'
+                            }`} 
+                            style={{ borderColor: task.completed ? themeColor : undefined }}
+                          >
+                            {task.completed && <Check size={12} strokeWidth={4} style={{ color: theme === 'dark' ? themeColor : '#fff' }} />}
+                          </div>
+                          <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
+                            <span className={`text-sm font-semibold truncate transition-all ${
+                              task.completed 
+                                ? 'text-gray-400 dark:text-white/30 line-through' 
+                                : isOverdue
+                                  ? 'text-rose-900 dark:text-rose-200 font-bold'
+                                  : 'text-black dark:text-white/90'
+                            }`}>
+                              {task.text}
+                            </span>
+                            {isOverdue && (
+                              <span className="text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-500/30 uppercase select-none flex items-center gap-1 shrink-0">
+                                <Clock size={10} strokeWidth={2.5} />
+                                {t('overdueTask')}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <span className={`text-sm font-semibold transition-all ${task.completed ? 'text-gray-400 dark:text-white/30 line-through' : 'text-black dark:text-white/90'}`}>{task.text}</span>
+                        <button 
+                          onClick={() => setDailyTasks(prev => prev.filter((_, i) => i !== idx))} 
+                          className="text-gray-400 dark:text-white/20 hover:text-red-500 dark:hover:text-red-400 p-1 transition-colors shrink-0"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
-                      <button onClick={() => setDailyTasks(prev => prev.filter((_, i) => i !== idx))} className="text-gray-400 dark:text-white/20 hover:text-red-500 dark:hover:text-red-400 p-1 transition-colors">
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {dailyTasks.length === 0 && (
                     <div className="text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-8">{t('noTasks')}</div>
                   )}
