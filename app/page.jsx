@@ -655,7 +655,12 @@ export default function App() {
   // --- Daily Tasks State ---
   const [dailyTasks, setDailyTasks] = useState(() => {
     if (typeof window !== 'undefined') {
-      return JSON.parse(localStorage.getItem('daybase_daily_tasks_v4') || "[]");
+      try {
+        const parsed = JSON.parse(localStorage.getItem('daybase_daily_tasks_v4') || "[]");
+        if (Array.isArray(parsed)) {
+          return parsed.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈'));
+        }
+      } catch {}
     }
     return [];
   });
@@ -872,25 +877,31 @@ export default function App() {
              setPomodoroTasksData(authoritative.pomodoroTasksData);
              if (typeof window !== 'undefined') localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(authoritative.pomodoroTasksData));
              const todayStr = getFormatDateStr(new Date());
-             let todayTasks = Array.isArray(authoritative.pomodoroTasksData[todayStr]) ? [...authoritative.pomodoroTasksData[todayStr]] : [];
+             let todayTasks = Array.isArray(authoritative.pomodoroTasksData[todayStr]) 
+               ? authoritative.pomodoroTasksData[todayStr].filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')) 
+               : [];
 
              // Automatically rollover any uncompleted tasks from past days
              const pastDates = Object.keys(authoritative.pomodoroTasksData).filter(d => d < todayStr).sort();
-             const existingTexts = new Set(todayTasks.map(t => t.text));
+             const existingTexts = new Set(todayTasks.map(t => t.text.trim()));
              const toRollover = [];
 
              for (const pastDate of pastDates) {
                const pastList = authoritative.pomodoroTasksData[pastDate];
                if (Array.isArray(pastList)) {
                  for (const task of pastList) {
-                   if (!task.completed && !existingTexts.has(task.text)) {
-                     toRollover.push({
-                       ...task,
-                       rolledOver: true,
-                       completed: false,
-                       fromDay: task.fromDay || pastDate
-                     });
-                     existingTexts.add(task.text);
+                   if (task && typeof task.text === 'string' && task.text.trim() !== '' && !task.name?.includes('✈')) {
+                     const trimmedText = task.text.trim();
+                     if (!task.completed && !existingTexts.has(trimmedText)) {
+                       toRollover.push({
+                         ...task,
+                         text: trimmedText,
+                         rolledOver: true,
+                         completed: false,
+                         fromDay: task.fromDay || pastDate
+                       });
+                       existingTexts.add(trimmedText);
+                     }
                    }
                  }
                }
@@ -1358,20 +1369,23 @@ export default function App() {
   useEffect(() => {
     const todayStr = getFormatDateStr(new Date());
     if (dailyTasksDateStr && dailyTasksDateStr !== todayStr) {
-      const previousTasks = Array.isArray(dailyTasks) ? dailyTasks : [];
+      const previousTasks = Array.isArray(dailyTasks) 
+        ? dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈'))
+        : [];
       const uncompletedTasks = previousTasks.filter(t => !t.completed);
       
       const rolledOverTasks = uncompletedTasks.map(t => ({
         ...t,
+        text: t.text.trim(),
         rolledOver: true,
         completed: false,
         fromDay: t.fromDay || dailyTasksDateStr
       }));
 
       const existingToday = (pomodoroTasksData && Array.isArray(pomodoroTasksData[todayStr])) 
-        ? pomodoroTasksData[todayStr] 
+        ? pomodoroTasksData[todayStr].filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')) 
         : [];
-      const existingTexts = new Set(existingToday.map(t => t.text));
+      const existingTexts = new Set(existingToday.map(t => t.text.trim()));
       const newlyRolled = rolledOverTasks.filter(t => !existingTexts.has(t.text));
 
       const updatedToday = [...newlyRolled, ...existingToday];
@@ -1644,7 +1658,8 @@ export default function App() {
     markLocalMutation(dailyTasksDateStr || activeDateStr);
     setDailyTasks(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
-      return next;
+      if (!Array.isArray(next)) return [];
+      return next.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈'));
     });
   };
 
@@ -3497,16 +3512,16 @@ export default function App() {
                     <h3 className="text-sm font-bold tracking-widest text-gray-700 dark:text-white/80 uppercase">{t('todaysTasks')}</h3>
                   </div>
                   <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold" style={{ backgroundColor: `${themeColor}22`, color: themeColor }}>
-                    {dailyTasks.filter(t => t.completed).length}/{dailyTasks.length}
+                    {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈') && t.completed).length}/{dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).length}
                   </span>
                 </div>
 
                 <div className="flex flex-col gap-2.5 mb-5 max-h-[170px] overflow-y-auto pr-1">
-                  {dailyTasks.map((task, idx) => {
+                  {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).map((task, idx) => {
                     const isOverdue = task.rolledOver && !task.completed;
                     return (
                       <div 
-                        key={idx} 
+                        key={task.text + idx} 
                         className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-200 ${
                           isOverdue 
                             ? 'bg-rose-500/10 border-rose-500/30 dark:bg-rose-950/30 dark:border-rose-500/40 shadow-sm shadow-rose-950/20' 
@@ -3517,7 +3532,7 @@ export default function App() {
                           className="flex items-center gap-3 cursor-pointer flex-1 min-w-0" 
                           onClick={() => {
                             haptic('light');
-                            updateDailyTasks(prev => prev.map((t, i) => i === idx ? { ...t, completed: !t.completed } : t));
+                            updateDailyTasks(prev => prev.map(t => t.text === task.text ? { ...t, completed: !t.completed } : t));
                           }}
                         >
                           <div 
@@ -3551,7 +3566,7 @@ export default function App() {
                           </div>
                         </div>
                         <button 
-                          onClick={() => updateDailyTasks(prev => prev.filter((_, i) => i !== idx))} 
+                          onClick={() => updateDailyTasks(prev => prev.filter(t => t.text !== task.text))} 
                           className="text-gray-400 dark:text-white/20 hover:text-red-500 dark:hover:text-red-400 p-1 transition-colors shrink-0"
                         >
                           <Trash2 size={16} />
@@ -3559,7 +3574,7 @@ export default function App() {
                       </div>
                     );
                   })}
-                  {dailyTasks.length === 0 && (
+                  {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).length === 0 && (
                     <div className="text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-8 border border-dashed border-black/10 dark:border-white/10 rounded-2xl bg-black/5 dark:bg-white/5 select-none">{t('noTasks')}</div>
                   )}
                 </div>
@@ -4317,11 +4332,11 @@ export default function App() {
                 </div>
 
                 <div className="flex flex-col gap-3 mb-6 max-h-[300px] overflow-y-auto pr-2">
-                  {dailyTasks.map((task, idx) => {
+                  {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).map((task, idx) => {
                     const isOverdue = task.rolledOver && !task.completed;
                     return (
                       <div 
-                        key={idx} 
+                        key={task.text + idx} 
                         className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-200 ${
                           isOverdue 
                             ? 'bg-rose-500/10 border-rose-500/30 dark:bg-rose-950/30 dark:border-rose-500/40 shadow-sm shadow-rose-950/20' 
@@ -4332,7 +4347,7 @@ export default function App() {
                           className="flex items-center gap-3 cursor-pointer flex-1 min-w-0" 
                           onClick={() => {
                             haptic('light');
-                            updateDailyTasks(prev => prev.map((t, i) => i === idx ? { ...t, completed: !t.completed } : t));
+                            updateDailyTasks(prev => prev.map(t => t.text === task.text ? { ...t, completed: !t.completed } : t));
                           }}
                         >
                           <div 
@@ -4366,7 +4381,7 @@ export default function App() {
                           </div>
                         </div>
                         <button 
-                          onClick={() => updateDailyTasks(prev => prev.filter((_, i) => i !== idx))} 
+                          onClick={() => updateDailyTasks(prev => prev.filter(t => t.text !== task.text))} 
                           className="text-gray-400 dark:text-white/20 hover:text-red-500 dark:hover:text-red-400 p-1 transition-colors shrink-0"
                         >
                           <Trash2 size={16} />
@@ -4374,7 +4389,7 @@ export default function App() {
                       </div>
                     );
                   })}
-                  {dailyTasks.length === 0 && (
+                  {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).length === 0 && (
                     <div className="text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-8">{t('noTasks')}</div>
                   )}
                 </div>

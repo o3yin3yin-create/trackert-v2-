@@ -366,7 +366,7 @@ export async function POST(req) {
         ? existingDailyLog.tasks
         : [];
       const clientTasks = state.pomodoroTasksData?.[date];
-      const mergedTasks = (Array.isArray(clientTasks) && clientTasks.length > 0)
+      const mergedTasks = Array.isArray(clientTasks)
         ? clientTasks
         : existingTasks;
 
