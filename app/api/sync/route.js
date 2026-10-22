@@ -278,22 +278,32 @@ export async function POST(req) {
       }
     }
 
-    // 3. Sync Daily Logs (Lightning Fast: 1 Batch Read + Only Upsert Changed Dates)
+    // 3. Sync Daily Logs — ONLY FOR TODAY AND YESTERDAY (no querying all days)
+    const now = new Date();
+    const todayStr = (state.activeDateStr && state.activeDateStr.length === 10) 
+      ? state.activeDateStr 
+      : now.toISOString().substring(0, 10);
+    const yesterdayDate = new Date(now);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = yesterdayDate.toISOString().substring(0, 10);
+
+    const allowedDates = new Set([
+      todayStr,
+      yesterdayStr,
+      ...(Array.isArray(state.targetDates) ? state.targetDates : [])
+    ]);
+    const targetDatesArray = Array.from(allowedDates).filter(d => typeof d === 'string' && d.length === 10);
+
+    // Query ONLY today and yesterday from database (max 2 rows)
     const existingDailyLogs = await prisma.dailyLog.findMany({
-      where: { userId }
+      where: {
+        userId,
+        date: { in: targetDatesArray }
+      }
     });
     const existingLogsMap = new Map(existingDailyLogs.map(l => [l.date, l]));
 
-    const dates = new Set([
-      ...Object.keys(state.dailyData || {}).map(k => k.substring(0, 10)),
-      ...Object.keys(state.sleepData || {}),
-      ...Object.keys(state.focusTimeData || {}),
-      ...Object.keys(state.pomodoroTasksData || {})
-    ]);
-
-    for (const date of dates) {
-      if (!date || date.length !== 10) continue;
-
+    for (const date of targetDatesArray) {
       const dateDailyData = {};
       for (const [k, v] of Object.entries(state.dailyData || {})) {
         if (k.startsWith(date)) {
@@ -326,31 +336,23 @@ export async function POST(req) {
       const existingFocus = existingDailyLog?.focusTime || 0;
       const focusVal = Math.max(clientFocus, existingFocus);
 
-      // Compare if this date had any actual mutations to prevent useless database roundtrips
-      const logsChanged = JSON.stringify(existingLogs) !== JSON.stringify(mergedLogs);
-      const tasksChanged = JSON.stringify(existingTasks) !== JSON.stringify(mergedTasks);
-      const sleepChanged = existingDailyLog?.sleep !== sleepVal;
-      const focusChanged = existingDailyLog?.focusTime !== focusVal;
-
-      if (!existingDailyLog || logsChanged || tasksChanged || sleepChanged || focusChanged) {
-        await prisma.dailyLog.upsert({
-          where: { userId_date: { userId, date } },
-          create: {
-            userId,
-            date,
-            logs: mergedLogs,
-            sleep: sleepVal,
-            focusTime: focusVal,
-            tasks: mergedTasks,
-          },
-          update: {
-            logs: mergedLogs,
-            sleep: sleepVal,
-            focusTime: focusVal,
-            tasks: mergedTasks,
-          }
-        });
-      }
+      await prisma.dailyLog.upsert({
+        where: { userId_date: { userId, date } },
+        create: {
+          userId,
+          date,
+          logs: mergedLogs,
+          sleep: sleepVal,
+          focusTime: focusVal,
+          tasks: mergedTasks,
+        },
+        update: {
+          logs: mergedLogs,
+          sleep: sleepVal,
+          focusTime: focusVal,
+          tasks: mergedTasks,
+        }
+      });
     }
 
     const finalUser = await prisma.user.update({

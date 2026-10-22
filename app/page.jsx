@@ -748,7 +748,8 @@ export default function App() {
   const pushTimerRef = useRef(null);
   const isApplyingRemoteRef = useRef(false);
   const lastLocalMutationTimeRef = useRef(0);
-  const hasLocalPendingMutationRef = useRef(false);
+  const localMutationVersionRef = useRef(0);
+  const pushedMutationVersionRef = useRef(0);
   const latestStateRef = useRef({});
 
   const [deletedHabitIds, setDeletedHabitIds] = useState(() => {
@@ -764,29 +765,13 @@ export default function App() {
   });
 
   const markLocalMutation = useCallback(() => {
-    hasLocalPendingMutationRef.current = true;
+    localMutationVersionRef.current += 1;
     lastLocalMutationTimeRef.current = Date.now();
     if (typeof window !== 'undefined') {
       localStorage.setItem('daybase_last_local_update', String(Date.now()));
     }
   }, []);
 
-  // Keep latestStateRef in sync with the freshest state
-  useEffect(() => {
-    const activePomodoroTasks = {
-      ...(pomodoroTasksData || {}),
-      ...(dailyTasksDateStr && dailyTasks ? { [dailyTasksDateStr]: dailyTasks } : {})
-    };
-    latestStateRef.current = {
-      habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
-      theme, bgStyle, lang, focusTimeData, pomodoroTasksData: activePomodoroTasks,
-      emergencyCards: habitCards, finishedTickets, mission, deletedHabitIds
-    };
-  }, [
-    habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
-    theme, bgStyle, lang, focusTimeData, pomodoroTasksData, finishedTickets, mission,
-    dailyTasks, dailyTasksDateStr, deletedHabitIds
-  ]);
 
   // --- 3. Cloud Sync with Server-Authoritative State ---
   const fetchCloudState = useCallback(async (isSilent = false) => {
@@ -794,8 +779,9 @@ export default function App() {
     if ((isSyncingRef.current || isPushingRef.current) && isSilent) return;
 
     if (isSilent) {
+      const hasUnsynced = localMutationVersionRef.current > pushedMutationVersionRef.current;
       const timeSinceLocalMutation = Date.now() - (lastLocalMutationTimeRef.current || 0);
-      if (hasLocalPendingMutationRef.current || isPushingRef.current || timeSinceLocalMutation < 2500) {
+      if (hasUnsynced || isPushingRef.current || timeSinceLocalMutation < 1200) {
         return; // User is actively editing or has pending/in-flight changes; never pull over active user input
       }
     }
@@ -1038,10 +1024,10 @@ export default function App() {
     };
   }, [user, isMounted, isCloudLoaded, fetchCloudState]);
 
-  // --- 5. Push cloud state debounced (300ms) with strict concurrency serialization ---
+  // --- 5. Push cloud state debounced (50ms) with strict versioned queue serialization ---
   const executePush = useCallback(async () => {
     if (!user || !isCloudLoaded) return;
-    if (!hasLocalPendingMutationRef.current) return;
+    if (localMutationVersionRef.current === pushedMutationVersionRef.current) return;
     if (isPushingRef.current) {
       // If a push is already active, return. The finally block of the active push will re-trigger.
       return;
@@ -1054,6 +1040,7 @@ export default function App() {
       return;
     }
 
+    const versionToPush = localMutationVersionRef.current;
     isPushingRef.current = true;
     setIsSyncing(true);
 
@@ -1073,7 +1060,8 @@ export default function App() {
         if (resData.updatedAt) {
           lastServerUpdatedAtRef.current = resData.updatedAt;
         }
-        hasLocalPendingMutationRef.current = false;
+        pushedMutationVersionRef.current = versionToPush;
+
         if (typeof window !== 'undefined') {
           localStorage.removeItem('bokra_has_pending_sync');
           localStorage.removeItem('daybase_deleted_habits');
@@ -1096,10 +1084,10 @@ export default function App() {
     } finally {
       isPushingRef.current = false;
       setIsSyncing(false);
-      // If user performed more mutations while this push was in flight, schedule next push
-      if (hasLocalPendingMutationRef.current) {
+      // If user performed more mutations while this push was in flight, schedule next push immediately!
+      if (localMutationVersionRef.current > pushedMutationVersionRef.current) {
         if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
-        pushTimerRef.current = setTimeout(executePush, 100);
+        pushTimerRef.current = setTimeout(executePush, 50);
       }
     }
   }, [user, isCloudLoaded]);
@@ -1107,10 +1095,10 @@ export default function App() {
   useEffect(() => {
     if (!user || !isCloudLoaded) return;
     if (isApplyingRemoteRef.current) return;
-    if (!hasLocalPendingMutationRef.current) return;
+    if (localMutationVersionRef.current === pushedMutationVersionRef.current) return;
 
     if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
-    pushTimerRef.current = setTimeout(executePush, 100);
+    pushTimerRef.current = setTimeout(executePush, 50);
 
     return () => {
       if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
@@ -1313,6 +1301,20 @@ export default function App() {
   const tomorrowObj = new Date();
   tomorrowObj.setDate(tomorrowObj.getDate() + 1);
   const tomorrowStr = getFormatDateStr(tomorrowObj);
+
+  // Always keep latestStateRef in sync with the freshest state synchronously on every render
+  const activePomodoroTasks = {
+    ...(pomodoroTasksData || {}),
+    ...(dailyTasksDateStr && dailyTasks ? { [dailyTasksDateStr]: dailyTasks } : {})
+  };
+
+  latestStateRef.current = {
+    habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
+    theme, bgStyle, lang, focusTimeData, pomodoroTasksData: activePomodoroTasks,
+    emergencyCards: habitCards, finishedTickets, mission, deletedHabitIds,
+    targetDates: [realTodayStr, yesterdayStr],
+    activeDateStr
+  };
 
   // Sync sleep input when date changes
   useEffect(() => {
