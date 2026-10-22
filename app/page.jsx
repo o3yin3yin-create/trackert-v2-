@@ -744,8 +744,11 @@ export default function App() {
 
   const lastServerUpdatedAtRef = useRef(0);
   const isSyncingRef = useRef(false);
+  const isPushingRef = useRef(false);
+  const pushTimerRef = useRef(null);
   const isApplyingRemoteRef = useRef(false);
   const lastLocalMutationTimeRef = useRef(0);
+  const hasLocalPendingMutationRef = useRef(false);
   const latestStateRef = useRef({});
 
   const [deletedHabitIds, setDeletedHabitIds] = useState(() => {
@@ -761,10 +764,10 @@ export default function App() {
   });
 
   const markLocalMutation = useCallback(() => {
+    hasLocalPendingMutationRef.current = true;
     lastLocalMutationTimeRef.current = Date.now();
     if (typeof window !== 'undefined') {
       localStorage.setItem('daybase_last_local_update', String(Date.now()));
-      localStorage.setItem('bokra_has_pending_sync', 'true');
     }
   }, []);
 
@@ -785,16 +788,15 @@ export default function App() {
     dailyTasks, dailyTasksDateStr, deletedHabitIds
   ]);
 
-  // --- 3. Cloud Sync with Last-Write-Wins Conflict Resolution ---
+  // --- 3. Cloud Sync with Server-Authoritative State ---
   const fetchCloudState = useCallback(async (isSilent = false) => {
     if (!user) return;
-    if (isSyncingRef.current && isSilent) return;
+    if ((isSyncingRef.current || isPushingRef.current) && isSilent) return;
 
     if (isSilent) {
-      const hasPending = typeof window !== 'undefined' && localStorage.getItem('bokra_has_pending_sync') === 'true';
       const timeSinceLocalMutation = Date.now() - (lastLocalMutationTimeRef.current || 0);
-      if (hasPending || timeSinceLocalMutation < 2500) {
-        return; // User is actively editing or has pending changes; never pull over active user input
+      if (hasLocalPendingMutationRef.current || isPushingRef.current || timeSinceLocalMutation < 2500) {
+        return; // User is actively editing or has pending/in-flight changes; never pull over active user input
       }
     }
 
@@ -802,35 +804,9 @@ export default function App() {
     isSyncingRef.current = true;
 
     try {
-      // 1. If we have queued offline mutations and are online, flush them first
-      let hasQueuedMutations = false;
-      if (typeof navigator !== 'undefined' && navigator.onLine) {
-        try {
-          const queue = await getPendingSyncQueue();
-          if (queue && queue.length > 0) {
-            hasQueuedMutations = true;
-            const latest = queue[queue.length - 1];
-            if (latest?.payload) {
-              const pushRes = await apiFetch('/api/sync', {
-                method: 'POST',
-                body: JSON.stringify(latest.payload)
-              });
-              if (pushRes.ok) {
-                const pushData = await pushRes.json().catch(() => ({}));
-                if (pushData.updatedAt) {
-                  lastServerUpdatedAtRef.current = pushData.updatedAt;
-                }
-                if (typeof window !== 'undefined') {
-                  localStorage.removeItem('bokra_has_pending_sync');
-                }
-                await clearPendingSyncQueue();
-                hasQueuedMutations = false;
-              }
-            }
-          }
-        } catch (flushErr) {
-          console.warn("[bokra Sync] Could not pre-flush pending sync before GET:", flushErr);
-        }
+      // 1. Clear any stale offline queue on online load so old snapshots never poison server state
+      if (!isSilent && typeof navigator !== 'undefined' && navigator.onLine) {
+        clearPendingSyncQueue().catch(() => {});
       }
 
       // 2. Fetch cloud state (conditionally with ?since= if silent)
@@ -1010,7 +986,7 @@ export default function App() {
     fetchCloudState(false);
   }, [user, isMounted, fetchCloudState]);
 
-  // --- 4. Real-time background sync (Polling 1.2s + Focus + Visibility + Online + BroadcastChannel) ---
+  // --- 4. Real-time background sync (Polling 1.0s + Focus + Visibility + Online + BroadcastChannel) ---
   useEffect(() => {
     if (!user || !isMounted || !isCloudLoaded) return;
 
@@ -1020,8 +996,8 @@ export default function App() {
       fetchCloudState(true);
     };
 
-    // Ultra-fast 1.2-second heartbeat for instant cross-device updates
-    const intervalId = setInterval(syncSilently, 1200);
+    // Ultra-fast 1.0-second heartbeat for instant cross-device updates
+    const intervalId = setInterval(syncSilently, 1000);
 
     const onFocus = () => syncSilently();
     const onVisibilityChange = () => {
@@ -1034,17 +1010,7 @@ export default function App() {
       fetchCloudState(false);
     };
 
-    let lastInteractionSync = 0;
-    const onInteraction = () => {
-      const now = Date.now();
-      if (now - lastInteractionSync > 2000) {
-        lastInteractionSync = now;
-        syncSilently();
-      }
-    };
-
     window.addEventListener('focus', onFocus);
-    window.addEventListener('pointerdown', onInteraction, { passive: true });
     document.addEventListener('visibilitychange', onVisibilityChange);
     window.addEventListener('online', onOnline);
 
@@ -1064,7 +1030,6 @@ export default function App() {
     return () => {
       clearInterval(intervalId);
       window.removeEventListener('focus', onFocus);
-      window.removeEventListener('pointerdown', onInteraction);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('online', onOnline);
       if (channel) {
@@ -1073,86 +1038,87 @@ export default function App() {
     };
   }, [user, isMounted, isCloudLoaded, fetchCloudState]);
 
-  // --- 5. Push cloud state debounced (50ms) & queue if offline ---
-  useEffect(() => {
+  // --- 5. Push cloud state debounced (300ms) with strict concurrency serialization ---
+  const executePush = useCallback(async () => {
     if (!user || !isCloudLoaded) return;
-    if (isApplyingRemoteRef.current) {
-      const timeSinceLocalMutation = Date.now() - (lastLocalMutationTimeRef.current || 0);
-      if (timeSinceLocalMutation > 1000) {
-        return;
-      }
-    }
-
-    // Only push if there are actual local changes to sync
-    const hasPending = typeof window !== 'undefined' && localStorage.getItem('bokra_has_pending_sync') === 'true';
-    if (!hasPending) return;
-
-    const activePomodoroTasks = {
-      ...(pomodoroTasksData || {}),
-      ...(dailyTasksDateStr && dailyTasks ? { [dailyTasksDateStr]: dailyTasks } : {})
-    };
-
-    const stateSnapshot = {
-      habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
-      theme, bgStyle, lang, focusTimeData, pomodoroTasksData: activePomodoroTasks, emergencyCards: habitCards,
-      finishedTickets, mission, deletedHabitIds, updatedAt: Date.now()
-    };
-
-    // Broadcast to other tabs immediately
-    if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
-      try {
-        const bc = new BroadcastChannel('bokra_tab_sync');
-        bc.postMessage('REMOTE_MUTATION');
-        bc.close();
-      } catch (e) {}
-    }
-
-    // If offline right now, queue immediately!
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      console.log("[bokra Sync] Offline: queuing mutation directly.");
-      queueSyncMutation('STATE_SNAPSHOT', stateSnapshot);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('bokra_has_pending_sync', 'true');
-      }
+    if (!hasLocalPendingMutationRef.current) return;
+    if (isPushingRef.current) {
+      // If a push is already active, return. The finally block of the active push will re-trigger.
       return;
     }
 
-    setIsSyncing(true);
-    const timerId = setTimeout(async () => {
-      try {
-        const res = await apiFetch('/api/sync', {
-          method: 'POST',
-          body: JSON.stringify(stateSnapshot)
-        });
-        if (res.ok) {
-          const resData = await res.json().catch(() => ({}));
-          if (resData.updatedAt) {
-            lastServerUpdatedAtRef.current = resData.updatedAt;
-          }
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('bokra_has_pending_sync');
-            localStorage.removeItem('daybase_deleted_habits');
-          }
-          setDeletedHabitIds([]);
-        } else {
-          throw new Error('Sync POST non-ok');
-        }
-      } catch (err) {
-        console.warn("[bokra Sync] Push failed, queuing mutation for offline sync:", err);
-        queueSyncMutation('STATE_SNAPSHOT', stateSnapshot);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('bokra_has_pending_sync', 'true');
-        }
-      } finally {
-        setIsSyncing(false);
-      }
-    }, 50);
+    // If offline right now, queue locally
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      console.log("[bokra Sync] Offline: queuing mutation directly.");
+      queueSyncMutation('STATE_SNAPSHOT', latestStateRef.current);
+      return;
+    }
 
-    return () => clearTimeout(timerId);
+    isPushingRef.current = true;
+    setIsSyncing(true);
+
+    try {
+      const stateSnapshot = {
+        ...latestStateRef.current,
+        updatedAt: Date.now()
+      };
+
+      const res = await apiFetch('/api/sync', {
+        method: 'POST',
+        body: JSON.stringify(stateSnapshot)
+      });
+
+      if (res.ok) {
+        const resData = await res.json().catch(() => ({}));
+        if (resData.updatedAt) {
+          lastServerUpdatedAtRef.current = resData.updatedAt;
+        }
+        hasLocalPendingMutationRef.current = false;
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('bokra_has_pending_sync');
+          localStorage.removeItem('daybase_deleted_habits');
+        }
+        setDeletedHabitIds([]);
+
+        // Broadcast to other tabs on THIS device only AFTER server confirms successful save
+        if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
+          try {
+            const bc = new BroadcastChannel('bokra_tab_sync');
+            bc.postMessage('REMOTE_MUTATION');
+            bc.close();
+          } catch (e) {}
+        }
+      } else {
+        throw new Error('Sync POST non-ok: ' + res.status);
+      }
+    } catch (err) {
+      console.warn("[bokra Sync] Push failed:", err);
+    } finally {
+      isPushingRef.current = false;
+      setIsSyncing(false);
+      // If user performed more mutations while this push was in flight, schedule next push
+      if (hasLocalPendingMutationRef.current) {
+        if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
+        pushTimerRef.current = setTimeout(executePush, 300);
+      }
+    }
+  }, [user, isCloudLoaded]);
+
+  useEffect(() => {
+    if (!user || !isCloudLoaded) return;
+    if (isApplyingRemoteRef.current) return;
+    if (!hasLocalPendingMutationRef.current) return;
+
+    if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
+    pushTimerRef.current = setTimeout(executePush, 300);
+
+    return () => {
+      if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
+    };
   }, [
     habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog, 
     theme, bgStyle, lang, focusTimeData, pomodoroTasksData, finishedTickets, mission,
-    dailyTasks, dailyTasksDateStr, user, isCloudLoaded, deletedHabitIds
+    dailyTasks, dailyTasksDateStr, deletedHabitIds, user, isCloudLoaded, executePush
   ]);
 
   // --- Live Time Tick for absolute timers ---
@@ -1636,24 +1602,17 @@ export default function App() {
     }
 
     haptic('light');
+    markLocalMutation();
     const key = subItem ? `${activeDateStr}-${habitId}-${subItem}` : `${activeDateStr}-${habitId}`;
-    lastLocalMutationTimeRef.current = Date.now();
     setDailyData(prev => ({ ...prev, [key]: !prev[key] }));
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('daybase_last_local_update', String(Date.now()));
-      localStorage.setItem('bokra_has_pending_sync', 'true');
-    }
   };
 
   const updateDailyTasks = (updater) => {
+    markLocalMutation();
     setDailyTasks(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
       return next;
     });
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('daybase_last_local_update', String(Date.now()));
-      localStorage.setItem('bokra_has_pending_sync', 'true');
-    }
   };
 
   const toggleExpand = (habitId) => {
@@ -1664,26 +1623,20 @@ export default function App() {
   };
 
   const saveMission = () => {
+    markLocalMutation();
     setMission(missionInput);
     setIsEditingMission(false);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('daybase_last_local_update', String(Date.now()));
-      localStorage.setItem('bokra_has_pending_sync', 'true');
-    }
   };
 
   const logSleep = () => {
     haptic('medium');
+    markLocalMutation();
     if (sleepInput === "") {
        const newData = {...sleepData};
        delete newData[activeDateStr];
        setSleepData(newData);
     } else if (!isNaN(sleepInput)) {
       setSleepData(prev => ({ ...prev, [activeDateStr]: parseFloat(sleepInput) }));
-    }
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('daybase_last_local_update', String(Date.now()));
-      localStorage.setItem('bokra_has_pending_sync', 'true');
     }
   };
 
@@ -1701,6 +1654,7 @@ export default function App() {
   const confirmAddHabit = () => {
     if (!newHabitName.trim()) return;
     haptic('medium');
+    markLocalMutation();
     
     // دمج الساعات والدقايق عشان السيرفر يقراهم صح
     const formatted12hTime = `${habitNotifyHour}:${habitNotifyMinute} ${habitNotifyPeriod}`;
@@ -1717,10 +1671,6 @@ export default function App() {
     };
 
     setHabits([...habits, newHabit]);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('daybase_last_local_update', String(Date.now()));
-      localStorage.setItem('bokra_has_pending_sync', 'true');
-    }
     
     // Reset fields
     setNewHabitName("");
@@ -1751,13 +1701,10 @@ export default function App() {
   const consumeEmergencyCard = (habitId) => {
     const cardsLeft = habitCards[habitId] ?? 1;
     if (cardsLeft <= 0) return;
+    markLocalMutation();
     const key = `${activeDateStr}-${habitId}`;
     setDailyData(prev => ({ ...prev, [key]: true }));
     setHabitCards(prev => ({ ...prev, [habitId]: cardsLeft - 1 }));
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('daybase_last_local_update', String(Date.now()));
-      localStorage.setItem('bokra_has_pending_sync', 'true');
-    }
   };
 
   // --- تفعيل الإشعارات للمستخدم وسحب التوكن وحفظ جهاز فايربيز ---
