@@ -996,8 +996,8 @@ export default function App() {
       fetchCloudState(true);
     };
 
-    // Ultra-fast 1.0-second heartbeat for instant cross-device updates
-    const intervalId = setInterval(syncSilently, 1000);
+    // Ultra-fast 500ms heartbeat for Spotify-like instant cross-device updates
+    const intervalId = setInterval(syncSilently, 500);
 
     const onFocus = () => syncSilently();
     const onVisibilityChange = () => {
@@ -1099,7 +1099,7 @@ export default function App() {
       // If user performed more mutations while this push was in flight, schedule next push
       if (hasLocalPendingMutationRef.current) {
         if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
-        pushTimerRef.current = setTimeout(executePush, 300);
+        pushTimerRef.current = setTimeout(executePush, 100);
       }
     }
   }, [user, isCloudLoaded]);
@@ -1110,7 +1110,7 @@ export default function App() {
     if (!hasLocalPendingMutationRef.current) return;
 
     if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
-    pushTimerRef.current = setTimeout(executePush, 300);
+    pushTimerRef.current = setTimeout(executePush, 100);
 
     return () => {
       if (pushTimerRef.current) clearTimeout(pushTimerRef.current);

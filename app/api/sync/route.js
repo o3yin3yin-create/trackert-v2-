@@ -60,7 +60,9 @@ export async function GET(req) {
     let user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
-        habits: true,
+        habits: {
+          orderBy: { createdAt: 'asc' }
+        },
         dailyLogs: true,
       },
     });
@@ -77,7 +79,7 @@ export async function GET(req) {
 
       user = await prisma.user.create({
         data: { id: userId, email, name }, // clerk usually provides email, but ID is what matters for foreign keys
-        include: { habits: true, dailyLogs: true }
+        include: { habits: { orderBy: { createdAt: 'asc' } }, dailyLogs: true }
       });
     } else if (user.name === 'Zain' || user.email.startsWith('user_')) {
       const clerkUser = await currentUser();
@@ -87,9 +89,27 @@ export async function GET(req) {
         user = await prisma.user.update({
           where: { id: userId },
           data: { name, email },
-          include: { habits: true, dailyLogs: true }
+          include: { habits: { orderBy: { createdAt: 'asc' } }, dailyLogs: true }
         });
       }
+    }
+
+    // Sort habits according to user's saved _habitOrder or fallback to createdAt
+    let sortedHabits = [...(user.habits || [])];
+    const habitOrder = (user.grantedCards && typeof user.grantedCards === 'object' && Array.isArray(user.grantedCards._habitOrder))
+      ? user.grantedCards._habitOrder
+      : null;
+
+    if (habitOrder && habitOrder.length > 0) {
+      const orderMap = new Map(habitOrder.map((id, idx) => [id, idx]));
+      sortedHabits.sort((a, b) => {
+        const idxA = orderMap.has(a.id) ? orderMap.get(a.id) : 9999;
+        const idxB = orderMap.has(b.id) ? orderMap.get(b.id) : 9999;
+        if (idxA !== idxB) return idxA - idxB;
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      });
+    } else {
+      sortedHabits.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     }
 
     // Reconstruct the flat state object expected by the frontend
@@ -105,7 +125,7 @@ export async function GET(req) {
       emergencyCards: user.emergencyCards || [],
       grantedCardsLog: user.grantedCards || {},
       finishedTickets: user.finishedTickets || [],
-      habits: user.habits,
+      habits: sortedHabits,
       dailyData: {},
       sleepData: {},
       focusTimeData: {},
@@ -149,7 +169,10 @@ export async function POST(req) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: getCorsHeaders(req) });
 
   try {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { habits: true }
+    });
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404, headers: getCorsHeaders(req) });
     }
@@ -166,13 +189,17 @@ export async function POST(req) {
     if (state.mission !== undefined && state.mission !== null) {
       newGranted._mission = state.mission;
     }
+    // Permanently preserve the client's habit order
+    if (Array.isArray(state.habits) && state.habits.length > 0) {
+      newGranted._habitOrder = state.habits.map(h => h.id);
+    }
 
     // 1. Upsert User Settings
-    const updatedUser = await prisma.user.upsert({
+    await prisma.user.upsert({
       where: { id: userId },
       create: {
         id: userId,
-        email: userId, // We'll let GET populate email/name properly
+        email: userId,
         theme: state.theme || 'dark',
         bgStyle: state.bgStyle || 'aurora',
         lang: state.lang || 'en',
@@ -198,8 +225,7 @@ export async function POST(req) {
       }
     });
 
-    // 2. Sync Habits
-    // Delete ONLY habits that the user explicitly chose to delete
+    // 2. Sync Habits (Only execute upserts if habits actually changed or deleted)
     if (state.deletedHabitIds && Array.isArray(state.deletedHabitIds) && state.deletedHabitIds.length > 0) {
       await prisma.habit.deleteMany({
         where: { userId, id: { in: state.deletedHabitIds } }
@@ -207,9 +233,27 @@ export async function POST(req) {
     }
 
     if (state.habits && Array.isArray(state.habits) && state.habits.length > 0) {
-      // Upsert existing/new habits
+      const existingHabitsMap = new Map((user.habits || []).map(h => [h.id, h]));
+      const habitsToUpsert = [];
+
       for (const h of state.habits) {
         if (!h.id || !h.name) continue;
+        const ex = existingHabitsMap.get(h.id);
+        const subItemsMatch = ex && JSON.stringify(ex.subItems || []) === JSON.stringify(h.subItems || []);
+        const hasChanged = !ex || 
+          ex.name !== h.name || 
+          ex.type !== (h.type || 'single') || 
+          !subItemsMatch || 
+          ex.isNotifyEnabled !== (h.isNotifyEnabled || false) || 
+          ex.notifyTime !== (h.notifyTime || null) || 
+          ex.customMessage !== (h.customMessage || null);
+
+        if (hasChanged) {
+          habitsToUpsert.push(h);
+        }
+      }
+
+      for (const h of habitsToUpsert) {
         await prisma.habit.upsert({
           where: { id: h.id },
           create: {
@@ -234,8 +278,12 @@ export async function POST(req) {
       }
     }
 
-    // 3. Sync Daily Logs
-    // Extract unique dates from all data sources
+    // 3. Sync Daily Logs (Lightning Fast: 1 Batch Read + Only Upsert Changed Dates)
+    const existingDailyLogs = await prisma.dailyLog.findMany({
+      where: { userId }
+    });
+    const existingLogsMap = new Map(existingDailyLogs.map(l => [l.date, l]));
+
     const dates = new Set([
       ...Object.keys(state.dailyData || {}).map(k => k.substring(0, 10)),
       ...Object.keys(state.sleepData || {}),
@@ -244,9 +292,8 @@ export async function POST(req) {
     ]);
 
     for (const date of dates) {
-      if (!date || date.length !== 10) continue; // safety check
+      if (!date || date.length !== 10) continue;
 
-      // Filter incoming dailyData for this specific date
       const dateDailyData = {};
       for (const [k, v] of Object.entries(state.dailyData || {})) {
         if (k.startsWith(date)) {
@@ -254,15 +301,11 @@ export async function POST(req) {
         }
       }
 
-      const existingDailyLog = await prisma.dailyLog.findUnique({
-        where: { userId_date: { userId, date } }
-      });
-
+      const existingDailyLog = existingLogsMap.get(date);
       const existingLogs = (existingDailyLog?.logs && typeof existingDailyLog.logs === 'object')
         ? existingDailyLog.logs
         : {};
 
-      // Merge incoming checks into existing logs (preserves checks made from other devices)
       const mergedLogs = {
         ...existingLogs,
         ...dateDailyData
@@ -283,23 +326,31 @@ export async function POST(req) {
       const existingFocus = existingDailyLog?.focusTime || 0;
       const focusVal = Math.max(clientFocus, existingFocus);
 
-      await prisma.dailyLog.upsert({
-        where: { userId_date: { userId, date } },
-        create: {
-          userId,
-          date,
-          logs: mergedLogs,
-          sleep: sleepVal,
-          focusTime: focusVal,
-          tasks: mergedTasks,
-        },
-        update: {
-          logs: mergedLogs,
-          sleep: sleepVal,
-          focusTime: focusVal,
-          tasks: mergedTasks,
-        }
-      });
+      // Compare if this date had any actual mutations to prevent useless database roundtrips
+      const logsChanged = JSON.stringify(existingLogs) !== JSON.stringify(mergedLogs);
+      const tasksChanged = JSON.stringify(existingTasks) !== JSON.stringify(mergedTasks);
+      const sleepChanged = existingDailyLog?.sleep !== sleepVal;
+      const focusChanged = existingDailyLog?.focusTime !== focusVal;
+
+      if (!existingDailyLog || logsChanged || tasksChanged || sleepChanged || focusChanged) {
+        await prisma.dailyLog.upsert({
+          where: { userId_date: { userId, date } },
+          create: {
+            userId,
+            date,
+            logs: mergedLogs,
+            sleep: sleepVal,
+            focusTime: focusVal,
+            tasks: mergedTasks,
+          },
+          update: {
+            logs: mergedLogs,
+            sleep: sleepVal,
+            focusTime: focusVal,
+            tasks: mergedTasks,
+          }
+        });
+      }
     }
 
     const finalUser = await prisma.user.update({
