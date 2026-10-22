@@ -2654,7 +2654,7 @@ export default function App() {
       <div className="min-h-screen bg-transparent text-white font-sans flex justify-center w-full selection:bg-white/20 pb-28 overflow-x-hidden relative">
         
         {/* Animated Aurora Background or Solid */}
-        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-white dark:bg-black transition-colors duration-500">
+        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-black transition-colors duration-500">
           {bgStyle === 'aurora' && (
             <>
               <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full opacity-40 blur-[80px] mix-blend-multiply dark:mix-blend-screen aurora-anim-1" style={{ background: themeColor }}></div>
@@ -2685,7 +2685,7 @@ export default function App() {
           initial={{ opacity: 0, y: 15 }} 
           animate={{ opacity: 1, y: 0 }} 
           transition={{ duration: 0.4 }} 
-          className={`w-full max-w-[428px] md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto h-full flex flex-col px-5 md:px-10 relative z-10 ${(typeof window !== 'undefined' && window.__TAURI_INTERNALS__) ? 'pt-9 md:pt-10' : 'pt-3 sm:pt-4'}`}
+          className={`w-full max-w-[428px] md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto h-full flex flex-col px-5 md:px-10 relative z-10 pt-[calc(env(safe-area-inset-top,0px)+0.5rem)] md:pt-4 ${(typeof window !== 'undefined' && window.__TAURI_INTERNALS__) ? 'pt-9 md:pt-10' : ''}`}
           onTouchStart={(e) => {
             touchStartXRef.current = e.touches[0].clientX;
             touchStartYRef.current = e.touches[0].clientY;
@@ -2915,7 +2915,7 @@ export default function App() {
 
           {/* ---------------- MOBILE-ONLY LAYOUT (md:hidden) ---------------- */}
           {/* Preserves the original clean vertical mobile stack that the user loves */}
-          <div className="flex flex-col w-full md:hidden gap-6">
+          <div className="flex flex-col w-full md:hidden gap-3">
               <div className="hidden" />
             
             {/* Mobile Mission Card */}
@@ -2973,7 +2973,7 @@ export default function App() {
             </div>
 
             {/* Mobile Habits Cards Grid */}
-            <div className="grid grid-cols-2 gap-3 mb-6 items-start w-full">
+            <div className="grid grid-cols-2 gap-3 items-start w-full">
               {habits.map((habit) => {
                 const isMulti = habit.type === 'multi';
                 const isExpanded = expandedHabits.includes(habit.id);
@@ -3057,7 +3057,7 @@ export default function App() {
             </div>
 
             {/* Mobile Sleep Logger Card */}
-            <div className="w-full p-4 liquid-panel rounded-3xl flex justify-between items-center shadow-lg mb-10">
+            <div className="w-full p-4 liquid-panel rounded-[24px] flex justify-between items-center shadow-lg mb-6">
               <div className="flex items-center gap-2">
                 <Moon size={18} className="text-indigo-500 dark:text-indigo-400" strokeWidth={2.5} />
                 <span className="text-sm font-bold tracking-widest uppercase text-gray-700 dark:text-white/80">{t('sleep')}</span>
@@ -4385,7 +4385,7 @@ export default function App() {
         </motion.div>
 
         {/* --- FLOATING NAV --- */}
-        <div className="fixed bottom-0 left-0 w-full flex justify-center pt-3 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none z-[10000] pb-3 sm:pb-5">
+        <div className="fixed bottom-0 left-0 w-full flex justify-center pt-3 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none z-[10000] pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] sm:pb-5">
           <div className="w-full max-w-[428px] md:max-w-2xl lg:max-w-3xl px-6 flex justify-between items-center pointer-events-auto">
             <div className="bg-white/50 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border border-black/10 dark:border-white/5 rounded-full flex items-center p-1.5 gap-1.5 shadow-2xl dark:shadow-black/80">
               <button onClick={() => navTo('home')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white transition-all duration-200 active:scale-90"><Home size={18} /></button>
