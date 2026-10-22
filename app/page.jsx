@@ -753,17 +753,18 @@ export default function App() {
   const dirtyDatesRef = useRef(new Set());
   const latestStateRef = useRef({});
 
-  const [deletedHabitIds, setDeletedHabitIds] = useState(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('daybase_deleted_habits');
-        return saved ? JSON.parse(saved) : [];
-      } catch {
-        return [];
+  const deletedHabitIdsRef = useRef(new Set());
+  if (typeof window !== 'undefined' && deletedHabitIdsRef.current.size === 0) {
+    try {
+      const saved = localStorage.getItem('daybase_deleted_habits');
+      if (saved) {
+        const arr = JSON.parse(saved);
+        if (Array.isArray(arr)) {
+          arr.forEach(id => deletedHabitIdsRef.current.add(id));
+        }
       }
-    }
-    return [];
-  });
+    } catch {}
+  }
 
   const markLocalMutation = useCallback((dateStr = null) => {
     localMutationVersionRef.current += 1;
@@ -851,8 +852,9 @@ export default function App() {
           }
 
           if (Array.isArray(authoritative.habits)) {
-             setHabits(authoritative.habits);
-             if (typeof window !== 'undefined') localStorage.setItem('daybase_habits_v4', JSON.stringify(authoritative.habits));
+             const cleanHabits = authoritative.habits.filter(h => h && h.id && !deletedHabitIdsRef.current.has(h.id));
+             setHabits(cleanHabits);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_habits_v4', JSON.stringify(cleanHabits));
           }
           if (authoritative.dailyData && typeof authoritative.dailyData === 'object') {
              setDailyData(authoritative.dailyData);
@@ -950,7 +952,7 @@ export default function App() {
           }
           
           // Re-apply theme class
-          if (merged.theme === 'dark') document.documentElement.classList.add('dark');
+          if (authoritative.theme === 'dark') document.documentElement.classList.add('dark');
           else document.documentElement.classList.remove('dark');
         }
       } else if (res.status === 403) {
@@ -1048,12 +1050,14 @@ export default function App() {
     const datesBeingPushed = Array.isArray(latestStateRef.current?.targetDates)
       ? [...latestStateRef.current.targetDates]
       : [];
+    const deletedHabitsBeingPushed = Array.from(deletedHabitIdsRef.current);
     isPushingRef.current = true;
     setIsSyncing(true);
 
     try {
       const stateSnapshot = {
         ...latestStateRef.current,
+        deletedHabitIds: deletedHabitsBeingPushed,
         updatedAt: Date.now()
       };
 
@@ -1074,11 +1078,19 @@ export default function App() {
           dirtyDatesRef.current.delete(d);
         }
 
+        // Clear ONLY the successfully pushed deleted habits
+        for (const id of deletedHabitsBeingPushed) {
+          deletedHabitIdsRef.current.delete(id);
+        }
+
         if (typeof window !== 'undefined') {
           localStorage.removeItem('bokra_has_pending_sync');
-          localStorage.removeItem('daybase_deleted_habits');
+          if (deletedHabitIdsRef.current.size === 0) {
+            localStorage.removeItem('daybase_deleted_habits');
+          } else {
+            localStorage.setItem('daybase_deleted_habits', JSON.stringify(Array.from(deletedHabitIdsRef.current)));
+          }
         }
-        setDeletedHabitIds([]);
 
         // Broadcast to other tabs on THIS device only AFTER server confirms successful save
         if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
@@ -1118,7 +1130,7 @@ export default function App() {
   }, [
     habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog, 
     theme, bgStyle, lang, focusTimeData, pomodoroTasksData, finishedTickets, mission,
-    dailyTasks, dailyTasksDateStr, deletedHabitIds, user, isCloudLoaded, executePush
+    dailyTasks, dailyTasksDateStr, user, isCloudLoaded, executePush
   ]);
 
   // --- Live Time Tick for absolute timers ---
@@ -1330,7 +1342,7 @@ export default function App() {
   latestStateRef.current = {
     habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
     theme, bgStyle, lang, focusTimeData, pomodoroTasksData: activePomodoroTasks,
-    emergencyCards: habitCards, finishedTickets, mission, deletedHabitIds,
+    emergencyCards: habitCards, finishedTickets, mission, deletedHabitIds: Array.from(deletedHabitIdsRef.current),
     targetDates: syncTargetDates,
     activeDateStr
   };
@@ -1707,14 +1719,11 @@ export default function App() {
 
   const deleteHabit = (habitId) => {
     haptic('heavy');
-    setHabits(habits.filter(h => h.id !== habitId));
-    setDeletedHabitIds(prev => {
-      const next = [...prev, habitId];
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('daybase_deleted_habits', JSON.stringify(next));
-      }
-      return next;
-    });
+    deletedHabitIdsRef.current.add(habitId);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('daybase_deleted_habits', JSON.stringify(Array.from(deletedHabitIdsRef.current)));
+    }
+    setHabits(prev => prev.filter(h => h.id !== habitId));
     markLocalMutation();
   };
 

@@ -94,11 +94,35 @@ export async function GET(req) {
       }
     }
 
-    // Sort habits according to user's saved _habitOrder or fallback to createdAt
-    let sortedHabits = [...(user.habits || [])];
+    // Filter out any habits in _deletedHabits tombstone
+    const deletedHabitsList = (user.grantedCards && typeof user.grantedCards === 'object' && Array.isArray(user.grantedCards._deletedHabits))
+      ? user.grantedCards._deletedHabits
+      : [];
+    const deletedHabitsSet = new Set(deletedHabitsList);
+
+    // Also: If _habitOrder is set, any habit in user.habits that was excluded from _habitOrder should be treated as deleted
     const habitOrder = (user.grantedCards && typeof user.grantedCards === 'object' && Array.isArray(user.grantedCards._habitOrder))
       ? user.grantedCards._habitOrder
       : null;
+
+    if (habitOrder && habitOrder.length > 0) {
+      const orderSet = new Set(habitOrder);
+      for (const h of user.habits || []) {
+        if (!orderSet.has(h.id)) {
+          deletedHabitsSet.add(h.id);
+        }
+      }
+    }
+
+    if (deletedHabitsSet.size > 0) {
+      // Clean up deleted habits from DB in background
+      prisma.habit.deleteMany({
+        where: { userId, id: { in: Array.from(deletedHabitsSet) } }
+      }).catch(() => {});
+    }
+
+    // Filter out deleted habits and sort according to user's saved _habitOrder or fallback to createdAt
+    let sortedHabits = (user.habits || []).filter(h => !deletedHabitsSet.has(h.id));
 
     if (habitOrder && habitOrder.length > 0) {
       const orderMap = new Map(habitOrder.map((id, idx) => [id, idx]));
@@ -189,12 +213,35 @@ export async function POST(req) {
     if (state.mission !== undefined && state.mission !== null) {
       newGranted._mission = state.mission;
     }
-    // Permanently preserve the client's habit order
-    if (Array.isArray(state.habits) && state.habits.length > 0) {
-      newGranted._habitOrder = state.habits.map(h => h.id);
+
+    // 1. Maintain persistent Tombstones (_deletedHabits) in user metadata
+    const existingDeleted = (existingGranted._deletedHabits && Array.isArray(existingGranted._deletedHabits))
+      ? existingGranted._deletedHabits
+      : [];
+    const deletedHabitsSet = new Set(existingDeleted);
+
+    if (Array.isArray(state.deletedHabitIds)) {
+      for (const id of state.deletedHabitIds) {
+        if (id) deletedHabitsSet.add(id);
+      }
     }
 
-    // 1. Upsert User Settings
+    // Filter incoming state.habits against deletedHabitsSet to strictly prevent resurrection of deleted habits
+    const activeStateHabits = Array.isArray(state.habits)
+      ? state.habits.filter(h => h && h.id && !deletedHabitsSet.has(h.id))
+      : [];
+
+    newGranted._habitOrder = activeStateHabits.map(h => h.id);
+    newGranted._deletedHabits = Array.from(deletedHabitsSet);
+
+    // 2. Delete habits from database
+    if (deletedHabitsSet.size > 0) {
+      await prisma.habit.deleteMany({
+        where: { userId, id: { in: Array.from(deletedHabitsSet) } }
+      });
+    }
+
+    // 3. Upsert User Settings
     await prisma.user.upsert({
       where: { id: userId },
       create: {
@@ -225,18 +272,12 @@ export async function POST(req) {
       }
     });
 
-    // 2. Sync Habits (Only execute upserts if habits actually changed or deleted)
-    if (state.deletedHabitIds && Array.isArray(state.deletedHabitIds) && state.deletedHabitIds.length > 0) {
-      await prisma.habit.deleteMany({
-        where: { userId, id: { in: state.deletedHabitIds } }
-      });
-    }
-
-    if (state.habits && Array.isArray(state.habits) && state.habits.length > 0) {
+    // 4. Sync Habits (Upsert only active non-deleted habits)
+    if (activeStateHabits.length > 0) {
       const existingHabitsMap = new Map((user.habits || []).map(h => [h.id, h]));
       const habitsToUpsert = [];
 
-      for (const h of state.habits) {
+      for (const h of activeStateHabits) {
         if (!h.id || !h.name) continue;
         const ex = existingHabitsMap.get(h.id);
         const subItemsMatch = ex && JSON.stringify(ex.subItems || []) === JSON.stringify(h.subItems || []);
