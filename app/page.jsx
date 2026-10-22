@@ -2685,7 +2685,7 @@ export default function App() {
           initial={{ opacity: 0, y: 15 }} 
           animate={{ opacity: 1, y: 0 }} 
           transition={{ duration: 0.4 }} 
-          className="w-full max-w-[428px] md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto h-full flex flex-col pt-12 px-5 md:px-10 relative z-10"
+          className={`w-full max-w-[428px] md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto h-full flex flex-col px-5 md:px-10 relative z-10 ${(typeof window !== 'undefined' && window.__TAURI_INTERNALS__) ? 'pt-9 md:pt-10' : 'pt-3 sm:pt-4'}`}
           onTouchStart={(e) => {
             touchStartXRef.current = e.touches[0].clientX;
             touchStartYRef.current = e.touches[0].clientY;
@@ -2707,7 +2707,7 @@ export default function App() {
         >
           
           {/* Header with Navigation */}
-          <header className="flex flex-col gap-3 mb-8 w-full">
+          <header className="flex flex-col gap-2 mb-4 sm:mb-6 w-full">
             {/* Live Activity Widgets */}
 
             {(!isPomodoroOpen && isTimerRunning) && (
