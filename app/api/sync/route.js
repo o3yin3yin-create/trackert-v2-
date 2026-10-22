@@ -55,6 +55,7 @@ export async function GET(req) {
       avatar: user.avatar || 'boy1',
       isAdmin: user.isAdmin,
       isBlocked: user.isBlocked,
+      mission: (user.grantedCards && typeof user.grantedCards === 'object' && user.grantedCards._mission) || "",
       emergencyCards: user.emergencyCards || [],
       grantedCardsLog: user.grantedCards || {},
       finishedTickets: user.finishedTickets || [],
@@ -65,6 +66,7 @@ export async function GET(req) {
       pomodoroTasksData: {},
       activeSessionType: user.activeSessionType,
       activeSessionData: user.activeSessionData,
+      updatedAt: user.updatedAt ? new Date(user.updatedAt).getTime() : Date.now(),
     };
 
     // Unpack daily logs into their respective maps
@@ -111,6 +113,14 @@ export async function POST(req) {
 
     const state = await req.json();
 
+    const existingGranted = (user.grantedCards && typeof user.grantedCards === 'object') ? user.grantedCards : {};
+    const newGranted = (state.grantedCardsLog && typeof state.grantedCardsLog === 'object') 
+      ? { ...existingGranted, ...state.grantedCardsLog }
+      : { ...existingGranted };
+    if (state.mission !== undefined && state.mission !== null) {
+      newGranted._mission = state.mission;
+    }
+
     // 1. Upsert User Settings
     await prisma.user.upsert({
       where: { id: userId },
@@ -123,7 +133,7 @@ export async function POST(req) {
         themeColor: state.themeColor || '#FF9F0A',
         avatar: state.avatar || 'boy1',
         emergencyCards: state.emergencyCards || [],
-        grantedCards: state.grantedCardsLog || {},
+        grantedCards: newGranted,
         finishedTickets: state.finishedTickets || [],
         activeSessionType: state.activeSessionType || null,
         activeSessionData: state.activeSessionData || null,
@@ -134,7 +144,7 @@ export async function POST(req) {
         lang: state.lang,
         themeColor: state.themeColor,
         emergencyCards: state.emergencyCards || [],
-        grantedCards: state.grantedCardsLog || {},
+        grantedCards: newGranted,
         finishedTickets: state.finishedTickets || [],
         ...(state.activeSessionType !== undefined && { activeSessionType: state.activeSessionType }),
         ...(state.activeSessionData !== undefined && { activeSessionData: state.activeSessionData }),
@@ -143,21 +153,25 @@ export async function POST(req) {
 
     // 2. Sync Habits
     if (state.habits && Array.isArray(state.habits)) {
-      const habitIds = state.habits.map(h => h.id);
+      const habitIds = state.habits.map(h => h.id).filter(Boolean);
       
-      // Delete habits that were removed
-      await prisma.habit.deleteMany({
-        where: { userId, id: { notIn: habitIds } }
-      });
+      // CRITICAL DATA PROTECTION: Only delete habits not in habitIds IF the client provided at least 1 habit!
+      // This prevents a newly opened client or unhydrated state with [] from wiping out existing user habits.
+      if (habitIds.length > 0) {
+        await prisma.habit.deleteMany({
+          where: { userId, id: { notIn: habitIds } }
+        });
+      }
 
       // Upsert existing/new habits
       for (const h of state.habits) {
+        if (!h.id || !h.name) continue;
         await prisma.habit.upsert({
           where: { id: h.id },
           create: {
             id: h.id,
             name: h.name,
-            type: h.type,
+            type: h.type || 'single',
             subItems: h.subItems || [],
             isNotifyEnabled: h.isNotifyEnabled || false,
             notifyTime: h.notifyTime,
@@ -166,7 +180,7 @@ export async function POST(req) {
           },
           update: {
             name: h.name,
-            type: h.type,
+            type: h.type || 'single',
             subItems: h.subItems || [],
             isNotifyEnabled: h.isNotifyEnabled || false,
             notifyTime: h.notifyTime,

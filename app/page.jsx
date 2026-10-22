@@ -707,6 +707,7 @@ export default function App() {
           if (localState.lang) setLang(localState.lang);
           if (localState.themeColor) setThemeColor(localState.themeColor);
           if (localState.avatar) setAvatar(localState.avatar);
+          if (localState.mission !== undefined && localState.mission !== null) setMission(localState.mission);
           if (localState.emergencyCards && localState.emergencyCards.length > 0) setHabitCards(localState.emergencyCards);
           if (localState.grantedCardsLog && Object.keys(localState.grantedCardsLog).length > 0) setGrantedCardsLog(localState.grantedCardsLog);
           if (localState.finishedTickets && localState.finishedTickets.length > 0) setFinishedTickets(localState.finishedTickets);
@@ -724,12 +725,12 @@ export default function App() {
     const currentSnapshot = {
       habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
       theme, bgStyle, lang, focusTimeData, pomodoroTasksData, emergencyCards: habitCards,
-      finishedTickets, updatedAt: Date.now()
+      finishedTickets, mission, updatedAt: Date.now()
     };
     saveLocalOfflineState(currentSnapshot);
   }, [
     habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
-    theme, bgStyle, lang, focusTimeData, pomodoroTasksData, finishedTickets, isMounted
+    theme, bgStyle, lang, focusTimeData, pomodoroTasksData, finishedTickets, mission, isMounted
   ]);
 
   // --- 3. Cloud Sync with Last-Write-Wins Conflict Resolution ---
@@ -743,11 +744,16 @@ export default function App() {
         if (res.ok) {
           const { state } = await res.json();
           if (state) {
+            // Check if local habits are currently just empty or initial template
+            const isLocalDefault = (!habits || habits.length === 0 || 
+              (habits.length <= 2 && habits.every(h => h.id === '1' || h.id === '2')));
+
             // Merge with local state using Last-Write-Wins
             const localSnapshot = {
               habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
               theme, bgStyle, lang, focusTimeData, pomodoroTasksData, emergencyCards: habitCards,
-              finishedTickets, updatedAt: Date.now()
+              finishedTickets, mission, isLocalDefault,
+              updatedAt: typeof window !== 'undefined' ? parseInt(localStorage.getItem('daybase_last_local_update') || '0', 10) : 0
             };
             const merged = resolveConflict(localSnapshot, state);
 
@@ -772,6 +778,10 @@ export default function App() {
                setAvatar(merged.avatar);
                if (typeof window !== 'undefined') localStorage.setItem('daybase_avatar_v1', merged.avatar || 'user');
             }
+            if (merged.mission !== undefined) {
+               setMission(merged.mission);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_mission_v4', merged.mission);
+            }
 
             if (merged.habits && merged.habits.length > 0) {
                setHabits(merged.habits);
@@ -792,6 +802,11 @@ export default function App() {
             if (merged.pomodoroTasksData && Object.keys(merged.pomodoroTasksData).length > 0) {
                setPomodoroTasksData(merged.pomodoroTasksData);
                if (typeof window !== 'undefined') localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(merged.pomodoroTasksData));
+               const todayStr = getFormatDateStr(new Date());
+               if (merged.pomodoroTasksData[todayStr] && Array.isArray(merged.pomodoroTasksData[todayStr])) {
+                 setDailyTasks(merged.pomodoroTasksData[todayStr]);
+                 setDailyTasksDateStr(todayStr);
+               }
             }
             if (merged.finishedTickets && merged.finishedTickets.length > 0) {
                setFinishedTickets(merged.finishedTickets);
@@ -884,10 +899,15 @@ export default function App() {
   useEffect(() => {
     if (!user || !isCloudLoaded) return;
 
+    const activePomodoroTasks = {
+      ...(pomodoroTasksData || {}),
+      ...(dailyTasksDateStr && dailyTasks ? { [dailyTasksDateStr]: dailyTasks } : {})
+    };
+
     const stateSnapshot = {
       habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
-      theme, bgStyle, lang, focusTimeData, pomodoroTasksData, emergencyCards: habitCards,
-      finishedTickets, updatedAt: Date.now()
+      theme, bgStyle, lang, focusTimeData, pomodoroTasksData: activePomodoroTasks, emergencyCards: habitCards,
+      finishedTickets, mission, updatedAt: Date.now()
     };
 
     setIsSyncing(true);
@@ -908,8 +928,8 @@ export default function App() {
     return () => clearTimeout(timerId);
   }, [
     habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog, 
-    theme, bgStyle, lang, focusTimeData, pomodoroTasksData, finishedTickets,
-    user, isCloudLoaded
+    theme, bgStyle, lang, focusTimeData, pomodoroTasksData, finishedTickets, mission,
+    dailyTasks, dailyTasksDateStr, user, isCloudLoaded
   ]);
 
   // --- Live Time Tick for absolute timers ---
@@ -1297,70 +1317,7 @@ export default function App() {
     };
   }, []);
 
-  const triggerSync = async (h, d, s, tasks, tasksDate) => {
-    if (!navigator.onLine || !user) return;
-    setIsSyncing(true);
-    try {
-      const dailyTasksData = tasks.length > 0 && tasksDate ? { [tasksDate]: tasks } : {};
-      await apiFetch('/api/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clerkId: user.id,
-          email: user.primaryEmailAddress?.emailAddress,
-          habits: h,
-          dailyData: d,
-          sleepData: s,
-          dailyTasksData: dailyTasksData
-        })
-      });
-      console.log("[Sync Engine] Cloud sync completed successfully.");
-    } catch (error) {
-      console.warn("[Sync Engine] Failed to sync with cloud:", error);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
-  useEffect(() => {
-    if (isMounted && user && isOnline) {
-      const delayDebounce = setTimeout(() => {
-        triggerSync(habits, dailyData, sleepData, dailyTasks, dailyTasksDateStr);
-      }, 1000); 
-      return () => clearTimeout(delayDebounce);
-    }
-  }, [habits, dailyData, sleepData, dailyTasks, dailyTasksDateStr, user, isMounted, isOnline]);
-
-  // --- جلب البيانات من السحابة عند تحميل الصفحة لأول مرة للمستخدم ---
-  useEffect(() => {
-    const loadCloudData = async () => {
-      if (!user || !isOnline || isCloudLoaded) return;
-      try {
-        const res = await apiFetch(`/api/sync?clerkId=${user.id}`);
-        const data = await res.json();
-        if (data.success) {
-          if (data.habits) setHabits(data.habits);
-
-          if (data.dailyData) setDailyData(data.dailyData);
-          if (data.sleepData) setSleepData(data.sleepData);
-          
-          const todayStr = getFormatDateStr(new Date());
-          if (data.dailyTasksData && data.dailyTasksData[todayStr]) {
-            setDailyTasks(data.dailyTasksData[todayStr]);
-            setDailyTasksDateStr(todayStr);
-          }
-
-          console.log("[Sync Engine] Loaded data from cloud successfully.");
-        }
-        setIsCloudLoaded(true);
-      } catch (err) {
-        console.warn("[Sync Engine] Failed to load data from cloud:", err);
-      }
-    };
-    if (isMounted) {
-      loadCloudData();
-    }
-  }, [user, isOnline, isMounted, isCloudLoaded]);
 
   // --- Sync Active Focus Sessions Across Devices ---
   useEffect(() => {
@@ -1442,6 +1399,9 @@ export default function App() {
   const saveMission = () => {
     setMission(missionInput);
     setIsEditingMission(false);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('daybase_last_local_update', String(Date.now()));
+    }
   };
 
   const logSleep = () => {
@@ -1480,10 +1440,14 @@ export default function App() {
       subItems: newHabitType === 'multi' ? newHabitSubItems.filter(s => s.trim() !== '') : [],
       isNotifyEnabled: isNotifyEnabled,
       notifyTime: isNotifyEnabled ? formatted12hTime : null,
-      customMessage: isNotifyEnabled ? habitCustomMessage.trim() : null
+      customMessage: isNotifyEnabled ? habitCustomMessage.trim() : null,
+      updatedAt: Date.now()
     };
 
     setHabits([...habits, newHabit]);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('daybase_last_local_update', String(Date.now()));
+    }
     
     // Reset fields
     setNewHabitName("");
@@ -1500,6 +1464,9 @@ export default function App() {
   const deleteHabit = (habitId) => {
     haptic('heavy');
     setHabits(habits.filter(h => h.id !== habitId));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('daybase_last_local_update', String(Date.now()));
+    }
   };
 
   // --- Emergency Card Function ---
