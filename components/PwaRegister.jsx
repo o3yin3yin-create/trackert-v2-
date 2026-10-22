@@ -10,15 +10,49 @@ export default function PwaRegister() {
     if (window.__TAURI_INTERNALS__) return;
 
     if ('serviceWorker' in navigator) {
-      const registerSW = () => {
-        navigator.serviceWorker
-          .register('/sw.js')
-          .then((registration) => {
-            console.log('[bokra PWA] Service Worker registered with scope:', registration.scope);
-          })
-          .catch((error) => {
-            console.warn('[bokra PWA] Service Worker registration failed:', error);
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          console.log('[bokra PWA] Controller changed, reloading page for latest version...');
+          window.location.reload();
+        }
+      });
+
+      const registerSW = async () => {
+        try {
+          const registration = await navigator.serviceWorker.register('/sw.js');
+          console.log('[bokra PWA] Service Worker registered with scope:', registration.scope);
+
+          // Force check for sw.js updates
+          registration.update().catch(() => {});
+
+          // Check on visibility change (when user returns to the app)
+          const onVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+              registration.update().catch(() => {});
+            }
+          };
+          document.addEventListener('visibilitychange', onVisibilityChange);
+
+          if (registration.waiting) {
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  console.log('[bokra PWA] New worker installed, sending SKIP_WAITING...');
+                  newWorker.postMessage({ type: 'SKIP_WAITING' });
+                }
+              });
+            }
           });
+        } catch (error) {
+          console.warn('[bokra PWA] Service Worker registration failed:', error);
+        }
       };
 
       if (document.readyState === 'complete') {

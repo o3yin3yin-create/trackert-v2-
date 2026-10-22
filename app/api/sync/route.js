@@ -195,17 +195,14 @@ export async function POST(req) {
     });
 
     // 2. Sync Habits
-    if (state.habits && Array.isArray(state.habits)) {
-      const habitIds = state.habits.map(h => h.id).filter(Boolean);
-      
-      // CRITICAL DATA PROTECTION: Only delete habits not in habitIds IF the client provided at least 1 habit!
-      // This prevents a newly opened client or unhydrated state with [] from wiping out existing user habits.
-      if (habitIds.length > 0) {
-        await prisma.habit.deleteMany({
-          where: { userId, id: { notIn: habitIds } }
-        });
-      }
+    // Delete ONLY habits that the user explicitly chose to delete
+    if (state.deletedHabitIds && Array.isArray(state.deletedHabitIds) && state.deletedHabitIds.length > 0) {
+      await prisma.habit.deleteMany({
+        where: { userId, id: { in: state.deletedHabitIds } }
+      });
+    }
 
+    if (state.habits && Array.isArray(state.habits) && state.habits.length > 0) {
       // Upsert existing/new habits
       for (const h of state.habits) {
         if (!h.id || !h.name) continue;
@@ -245,7 +242,7 @@ export async function POST(req) {
     for (const date of dates) {
       if (!date || date.length !== 10) continue; // safety check
 
-      // Filter dailyData for this specific date
+      // Filter incoming dailyData for this specific date
       const dateDailyData = {};
       for (const [k, v] of Object.entries(state.dailyData || {})) {
         if (k.startsWith(date)) {
@@ -253,21 +250,50 @@ export async function POST(req) {
         }
       }
 
+      const existingDailyLog = await prisma.dailyLog.findUnique({
+        where: { userId_date: { userId, date } }
+      });
+
+      const existingLogs = (existingDailyLog?.logs && typeof existingDailyLog.logs === 'object')
+        ? existingDailyLog.logs
+        : {};
+
+      // Merge incoming checks into existing logs (preserves checks made from other devices)
+      const mergedLogs = {
+        ...existingLogs,
+        ...dateDailyData
+      };
+
+      const existingTasks = (existingDailyLog?.tasks && Array.isArray(existingDailyLog.tasks))
+        ? existingDailyLog.tasks
+        : [];
+      const clientTasks = state.pomodoroTasksData?.[date];
+      const mergedTasks = (Array.isArray(clientTasks) && clientTasks.length > 0)
+        ? clientTasks
+        : existingTasks;
+
+      const clientSleep = state.sleepData?.[date];
+      const sleepVal = clientSleep !== undefined ? clientSleep : (existingDailyLog?.sleep || null);
+
+      const clientFocus = state.focusTimeData?.[date] || 0;
+      const existingFocus = existingDailyLog?.focusTime || 0;
+      const focusVal = Math.max(clientFocus, existingFocus);
+
       await prisma.dailyLog.upsert({
         where: { userId_date: { userId, date } },
         create: {
           userId,
           date,
-          logs: dateDailyData,
-          sleep: state.sleepData?.[date] || null,
-          focusTime: state.focusTimeData?.[date] || 0,
-          tasks: state.pomodoroTasksData?.[date] || [],
+          logs: mergedLogs,
+          sleep: sleepVal,
+          focusTime: focusVal,
+          tasks: mergedTasks,
         },
         update: {
-          logs: dateDailyData,
-          sleep: state.sleepData?.[date] || null,
-          focusTime: state.focusTimeData?.[date] || 0,
-          tasks: state.pomodoroTasksData?.[date] || [],
+          logs: mergedLogs,
+          sleep: sleepVal,
+          focusTime: focusVal,
+          tasks: mergedTasks,
         }
       });
     }

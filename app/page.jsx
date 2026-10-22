@@ -591,6 +591,7 @@ export default function App() {
     const newLang = lang === 'en' ? 'ar' : 'en';
     setLang(newLang);
     if (typeof window !== 'undefined') localStorage.setItem('daybase_lang', newLang);
+    markLocalMutation();
   };
 
   const toggleTheme = () => {
@@ -602,6 +603,7 @@ export default function App() {
       document.documentElement.classList.remove('dark');
     }
     if (typeof window !== 'undefined') localStorage.setItem('daybase_theme', newTheme);
+    markLocalMutation();
   };
 
   const toggleCabinHum = () => {
@@ -735,7 +737,27 @@ export default function App() {
 
   const lastServerUpdatedAtRef = useRef(0);
   const isSyncingRef = useRef(false);
+  const isApplyingRemoteRef = useRef(false);
   const latestStateRef = useRef({});
+
+  const [deletedHabitIds, setDeletedHabitIds] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('daybase_deleted_habits');
+        return saved ? JSON.parse(saved) : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+
+  const markLocalMutation = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('daybase_last_local_update', String(Date.now()));
+      localStorage.setItem('bokra_has_pending_sync', 'true');
+    }
+  }, []);
 
   // Keep latestStateRef in sync with the freshest state
   useEffect(() => {
@@ -746,12 +768,12 @@ export default function App() {
     latestStateRef.current = {
       habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
       theme, bgStyle, lang, focusTimeData, pomodoroTasksData: activePomodoroTasks,
-      emergencyCards: habitCards, finishedTickets, mission
+      emergencyCards: habitCards, finishedTickets, mission, deletedHabitIds
     };
   }, [
     habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
     theme, bgStyle, lang, focusTimeData, pomodoroTasksData, finishedTickets, mission,
-    dailyTasks, dailyTasksDateStr
+    dailyTasks, dailyTasksDateStr, deletedHabitIds
   ]);
 
   // --- 3. Cloud Sync with Last-Write-Wins Conflict Resolution ---
@@ -828,6 +850,7 @@ export default function App() {
           };
           const merged = resolveConflict(localSnapshot, state);
 
+          isApplyingRemoteRef.current = true;
           if (merged.isAdmin) setIsAdmin(true);
           if (merged.theme) {
              setTheme(merged.theme);
@@ -924,6 +947,9 @@ export default function App() {
           if (typeof window !== 'undefined') {
             localStorage.removeItem('bokra_has_pending_sync');
           }
+          setTimeout(() => {
+            isApplyingRemoteRef.current = false;
+          }, 600);
 
           // Restore Active Session (only on initial load or if user not in active session)
           if (!isSilent) {
@@ -990,8 +1016,8 @@ export default function App() {
       fetchCloudState(true);
     };
 
-    // Lightweight 4-second heartbeat
-    const intervalId = setInterval(syncSilently, 4000);
+    // Lightweight 3-second heartbeat for instant cross-device updates
+    const intervalId = setInterval(syncSilently, 3000);
 
     const onFocus = () => syncSilently();
     const onVisibilityChange = () => {
@@ -1016,9 +1042,14 @@ export default function App() {
     };
   }, [user, isMounted, isCloudLoaded, fetchCloudState]);
 
-  // --- 5. Push cloud state debounced (400ms) & queue if offline ---
+  // --- 5. Push cloud state debounced (250ms) & queue if offline ---
   useEffect(() => {
     if (!user || !isCloudLoaded) return;
+    if (isApplyingRemoteRef.current) return;
+
+    // Only push if there are actual local changes to sync
+    const hasPending = typeof window !== 'undefined' && localStorage.getItem('bokra_has_pending_sync') === 'true';
+    if (!hasPending) return;
 
     const activePomodoroTasks = {
       ...(pomodoroTasksData || {}),
@@ -1028,7 +1059,7 @@ export default function App() {
     const stateSnapshot = {
       habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
       theme, bgStyle, lang, focusTimeData, pomodoroTasksData: activePomodoroTasks, emergencyCards: habitCards,
-      finishedTickets, mission, updatedAt: Date.now()
+      finishedTickets, mission, deletedHabitIds, updatedAt: Date.now()
     };
 
     // If offline right now, queue immediately!
@@ -1055,7 +1086,9 @@ export default function App() {
           }
           if (typeof window !== 'undefined') {
             localStorage.removeItem('bokra_has_pending_sync');
+            localStorage.removeItem('daybase_deleted_habits');
           }
+          setDeletedHabitIds([]);
         } else {
           throw new Error('Sync POST non-ok');
         }
@@ -1068,13 +1101,13 @@ export default function App() {
       } finally {
         setIsSyncing(false);
       }
-    }, 400);
+    }, 250);
 
     return () => clearTimeout(timerId);
   }, [
     habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog, 
     theme, bgStyle, lang, focusTimeData, pomodoroTasksData, finishedTickets, mission,
-    dailyTasks, dailyTasksDateStr, user, isCloudLoaded
+    dailyTasks, dailyTasksDateStr, user, isCloudLoaded, deletedHabitIds
   ]);
 
   // --- Live Time Tick for absolute timers ---
@@ -1658,10 +1691,14 @@ export default function App() {
   const deleteHabit = (habitId) => {
     haptic('heavy');
     setHabits(habits.filter(h => h.id !== habitId));
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('daybase_last_local_update', String(Date.now()));
-      localStorage.setItem('bokra_has_pending_sync', 'true');
-    }
+    setDeletedHabitIds(prev => {
+      const next = [...prev, habitId];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('daybase_deleted_habits', JSON.stringify(next));
+      }
+      return next;
+    });
+    markLocalMutation();
   };
 
   // --- Emergency Card Function ---
@@ -4773,6 +4810,7 @@ export default function App() {
                         const newStyle = bgStyle === 'aurora' ? 'solid' : 'aurora';
                         setBgStyle(newStyle);
                         if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', newStyle);
+                        markLocalMutation();
                         setIsSettingsMenuOpen(false); 
                       }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-white">
                         <span className="w-4 h-4 flex items-center justify-center opacity-70">✨</span> {bgStyle === 'aurora' ? 'Solid Background' : 'Aurora Background'}
@@ -4785,6 +4823,7 @@ export default function App() {
                         <input type="color" value={themeColor} onChange={(e) => {
                           setThemeColor(e.target.value);
                           if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', e.target.value);
+                          markLocalMutation();
                         }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                       </label>
                       <button onClick={() => { setIsAvatarModalOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-white border-t border-white/10 mt-1 pt-3">
@@ -4822,6 +4861,8 @@ export default function App() {
                           key={av}
                           onClick={() => {
                             setAvatar(av);
+                            if (typeof window !== 'undefined') localStorage.setItem('daybase_avatar_v1', av);
+                            markLocalMutation();
                             setIsAvatarModalOpen(false);
                           }}
                           className={`relative aspect-square rounded-2xl flex items-center justify-center border-2 transition-all duration-200 active:scale-95 bg-black/5 dark:bg-[#1A1A1A] text-black dark:text-white ${avatar === av ? 'border-[#FF9F0A] shadow-[0_0_20px_rgba(255,159,10,0.3)] text-[#FF9F0A] dark:text-[#FF9F0A]' : 'border-transparent hover:border-black/10 dark:hover:border-white/20'}`}
