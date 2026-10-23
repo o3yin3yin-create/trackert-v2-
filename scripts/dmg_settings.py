@@ -26,10 +26,10 @@ background = bg_path
 # 3. Window geometry (Generous widescreen bounds)
 window_rect = ((120, 80), (1000, 560))
 
-# 4. Icon locations
+# 4. Icon locations - shifted upwards and balanced vertically
 icon_locations = {
-    "bokra.app": (280, 270),
-    "Applications": (640, 270)
+    "bokra.app": (280, 200),
+    "Applications": (640, 200)
 }
 
 # 5. Finder view options

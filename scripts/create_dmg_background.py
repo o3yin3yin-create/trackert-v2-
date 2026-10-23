@@ -7,7 +7,6 @@ from PIL import Image, ImageDraw
 
 def create_monochrome_topo_dmg_background():
     # Ultra-wide panoramic canvas: 1800pt x 1000pt => 3600px x 2000px at 2x Retina
-    # This completely eliminates any white borders in Finder across all display resolutions.
     W_PT = 1800
     H_PT = 1000
     S = 2  # Retina 2x factor
@@ -53,13 +52,13 @@ def create_monochrome_topo_dmg_background():
     img = Image.open(temp_topo).convert('RGBA')
 
     # 2. Sleek Minimalist Directional Arrow
-    # bokra.app at (280, 270), Applications at (640, 270)
+    # Shifted upwards to match icon y=200 (visual arrow at y=185)
     arrow_layer = Image.new('RGBA', (WIDTH, HEIGHT), (0, 0, 0, 0))
     a_draw = ImageDraw.Draw(arrow_layer)
 
     arrow_start_x = 380 * S
     arrow_end_x = 540 * S
-    arrow_y = 250 * S
+    arrow_y = 185 * S
     ah_len = 14 * S
     ah_w = 8 * S
 
@@ -78,14 +77,15 @@ def create_monochrome_topo_dmg_background():
     img = Image.alpha_composite(img, arrow_layer)
 
     # 3. Top Center: Brand Celestial Toggle Logo
+    # Adjusted logo_y slightly to maintain proportional breathing room (y=45)
     logo_path = 'public/logo-transparent.png'
     if os.path.exists(logo_path):
         logo_img = Image.open(logo_path).convert('RGBA')
-        target_h = int(38 * S)
+        target_h = int(36 * S)
         target_w = int(logo_img.width * (target_h / logo_img.height))
         logo_resized = logo_img.resize((target_w, target_h), Image.Resampling.LANCZOS)
         logo_x = 460 * S - target_w // 2
-        logo_y = int(60 * S)
+        logo_y = int(45 * S)
         img.paste(logo_resized, (logo_x, logo_y), logo_resized)
 
     # 4. Save Retina @2x and 1x Standard Assets as RGB
