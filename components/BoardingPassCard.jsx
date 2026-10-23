@@ -47,7 +47,7 @@ const BoardingPassCard = ({ flight, seat, date, isArrived, lang, isExpanded, onT
           </div>
           
           <div className="flex flex-col items-center mx-2 flex-1">
-            <Plane size={isExpanded ? 24 : 16} className="text-emerald-500 mb-1 transition-all duration-300" />
+            <Plane size={isExpanded ? 24 : 16} className="text-sky-500 mb-1 transition-all duration-300" />
             <div className="w-full h-[2px] bg-gray-200 border-t-2 border-dashed border-gray-300"></div>
             <span className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest text-center">
               {lang === 'ar' ? 'مدة الرحلة' : 'Duration'}
@@ -83,7 +83,7 @@ const BoardingPassCard = ({ flight, seat, date, isArrived, lang, isExpanded, onT
             </div>
             <div className="flex flex-col">
               <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{lang === 'ar' ? 'الصعود' : 'Boarding'}</span>
-              <span className="text-lg font-black text-emerald-500">{currentTime}</span>
+              <span className="text-lg font-black text-sky-500">{currentTime}</span>
             </div>
             <div className="flex flex-col items-end">
               <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{lang === 'ar' ? 'التاريخ' : 'Date'}</span>
@@ -91,7 +91,7 @@ const BoardingPassCard = ({ flight, seat, date, isArrived, lang, isExpanded, onT
             </div>
             <div className="flex flex-col col-span-2 items-center text-center mt-2">
               <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{lang === 'ar' ? 'المقعد' : 'Seat'}</span>
-              <span className="text-3xl font-black text-emerald-500">{seat || '12A'}</span>
+              <span className="text-3xl font-black text-sky-500">{seat || '12A'}</span>
             </div>
           </div>
         )}
@@ -113,7 +113,7 @@ const BoardingPassCard = ({ flight, seat, date, isArrived, lang, isExpanded, onT
             </div>
             <div className="flex items-center justify-between w-full mt-3">
               <span className="text-[10px] font-mono tracking-[0.3em] text-gray-400">{(flight.id || 'N/A').toUpperCase()}</span>
-              <span className="text-[9px] font-bold tracking-widest text-emerald-600/40 uppercase">trackert-v2.vercel.app</span>
+              <span className="text-[9px] font-bold tracking-widest text-sky-600/40 uppercase">trackert-v2.vercel.app</span>
             </div>
           </div>
 

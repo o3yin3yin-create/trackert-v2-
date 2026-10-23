@@ -1063,7 +1063,7 @@ export default function WindowSeat({
             onClick={onToggleAudio}
             className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all ${
               isAudioOn 
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' 
+                ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/30' 
                 : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'
             }`}
             title={isAudioOn ? "Mute Cabin Audio" : "Play Cabin Audio"}
@@ -1110,7 +1110,7 @@ export default function WindowSeat({
               </>
             ) : (
               <span className="text-xs font-medium tracking-wide text-white/70 flex items-center gap-1.5 px-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
                 Synced: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
             )}

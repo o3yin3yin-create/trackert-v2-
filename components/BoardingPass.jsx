@@ -45,7 +45,7 @@ const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart })
           ref={ticketRef}
           className="relative bg-white text-black rounded-[2rem] w-full overflow-hidden shadow-2xl"
           style={{
-            boxShadow: '0 25px 50px -12px rgba(16, 185, 129, 0.25)' // emerald shadow for brand accent
+            boxShadow: '0 25px 50px -12px rgba(14, 165, 233, 0.25)' // sky blue shadow for aviation accent
           }}
         >
           {/* World Map Background */}
@@ -65,7 +65,7 @@ const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart })
               </div>
               
               <div className="flex flex-col items-center mx-4 flex-1">
-                <Plane size={24} className="text-emerald-500 mb-1" />
+                <Plane size={24} className="text-sky-500 mb-1" />
                 <div className="w-full h-[2px] bg-gray-200 border-t-2 border-dashed border-gray-300"></div>
                 <span className="text-[10px] font-bold text-gray-400 mt-2 uppercase tracking-widest">
                   {lang === 'ar' ? 'مدة الرحلة' : 'Duration'}
@@ -92,7 +92,7 @@ const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart })
               </div>
               <div className="flex flex-col">
                 <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{lang === 'ar' ? 'الصعود' : 'Boarding'}</span>
-                <span className="text-lg font-black text-emerald-500">{currentTime}</span>
+                <span className="text-lg font-black text-sky-500">{currentTime}</span>
               </div>
               <div className="flex flex-col items-end">
                 <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{lang === 'ar' ? 'التاريخ' : 'Date'}</span>
@@ -100,7 +100,7 @@ const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart })
               </div>
               <div className="flex flex-col col-span-2 items-center text-center mt-2">
                 <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{lang === 'ar' ? 'المقعد' : 'Seat'}</span>
-                <span className="text-3xl font-black text-emerald-500">{seat || '12A'}</span>
+                <span className="text-3xl font-black text-sky-500">{seat || '12A'}</span>
               </div>
             </div>
           </div>
@@ -122,7 +122,7 @@ const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart })
             </div>
             <div className="flex items-center justify-between w-full mt-3">
               <span className="text-[10px] font-mono tracking-[0.3em] text-gray-400">{flight.id.toUpperCase()}</span>
-              <span className="text-[9px] font-bold tracking-widest text-emerald-600/40 uppercase">trackert-v2.vercel.app</span>
+              <span className="text-[9px] font-bold tracking-widest text-sky-600/40 uppercase">trackert-v2.vercel.app</span>
             </div>
           </div>
 
@@ -168,7 +168,7 @@ const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart })
           {!isArrived && (
             <button 
               onClick={onStart}
-              className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black rounded-2xl font-black tracking-widest uppercase transition-colors shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+              className="w-full py-4 bg-sky-500 hover:bg-sky-400 text-black rounded-2xl font-black tracking-widest uppercase transition-colors shadow-[0_0_20px_rgba(14,165,233,0.3)]"
             >
               {lang === 'ar' ? 'بدء الرحلة' : 'Start Focus'}
             </button>
@@ -177,7 +177,7 @@ const BoardingPass = ({ flight, seat, date, isArrived, lang, onClose, onStart })
           {isArrived && (
             <button 
               onClick={onClose}
-              className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-black rounded-2xl font-black tracking-widest uppercase transition-colors shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+              className="w-full py-4 bg-sky-500 hover:bg-sky-400 text-black rounded-2xl font-black tracking-widest uppercase transition-colors shadow-[0_0_20px_rgba(14,165,233,0.3)]"
             >
               {lang === 'ar' ? 'إنهاء' : 'Finish'}
             </button>

@@ -189,7 +189,7 @@ const MapComponent = ({ originCoords, destCoords, progress, liveTelemetry, isCam
         )}
 
         {/* Origin Marker */}
-        <Marker position={[p0.lat, p0.lng]} icon={cityIcon('#10B981')} />
+        <Marker position={[p0.lat, p0.lng]} icon={cityIcon('#0EA5E9')} />
         
         {/* Destination Marker */}
         <Marker position={[p2.lat, p2.lng]} icon={cityIcon('#EF4444')} />

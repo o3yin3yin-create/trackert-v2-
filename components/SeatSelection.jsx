@@ -38,7 +38,7 @@ const SeatSelection = ({ onSelectSeat, lang }) => {
                     onClick={() => handleSelect(seatId)}
                     className={`w-10 h-10 rounded-t-xl rounded-b-md flex items-center justify-center text-xs font-bold transition-all ${
                       isSelected 
-                        ? 'bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.5)] scale-110 z-10' 
+                        ? 'bg-sky-500 text-black shadow-[0_0_15px_rgba(14,165,233,0.5)] scale-110 z-10' 
                         : 'bg-white/10 text-white/50 hover:bg-white/20 hover:text-white'
                     }`}
                   >
@@ -61,7 +61,7 @@ const SeatSelection = ({ onSelectSeat, lang }) => {
                     onClick={() => handleSelect(seatId)}
                     className={`w-10 h-10 rounded-t-xl rounded-b-md flex items-center justify-center text-xs font-bold transition-all ${
                       isSelected 
-                        ? 'bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.5)] scale-110 z-10' 
+                        ? 'bg-sky-500 text-black shadow-[0_0_15px_rgba(14,165,233,0.5)] scale-110 z-10' 
                         : 'bg-white/10 text-white/50 hover:bg-white/20 hover:text-white'
                     }`}
                   >
@@ -78,7 +78,7 @@ const SeatSelection = ({ onSelectSeat, lang }) => {
         onClick={() => selected ? onSelectSeat(selected) : null}
         disabled={!selected}
         className={`w-full mt-6 py-4 rounded-2xl font-black tracking-widest uppercase transition-all ${
-          selected ? 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]' : 'bg-white/5 text-white/20 cursor-not-allowed'
+          selected ? 'bg-sky-500 hover:bg-sky-400 text-black shadow-[0_0_20px_rgba(14,165,233,0.3)]' : 'bg-white/5 text-white/20 cursor-not-allowed'
         }`}
       >
         {lang === 'ar' ? 'تأكيد المقعد' : 'Confirm Seat'}
