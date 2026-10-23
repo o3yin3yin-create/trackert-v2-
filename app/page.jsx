@@ -15,7 +15,7 @@ import dynamic from 'next/dynamic';
 
 const MapComponent = dynamic(() => import('../components/MapComponent'), {
   ssr: false,
-  loading: () => <div className="w-full h-full bg-[#05070e] flex items-center justify-center text-sky-400/50 text-xs font-bold tracking-widest uppercase animate-pulse">Initializing Global Radar...</div>
+  loading: () => <div className="w-full h-full bg-[#05070e] flex items-center justify-center text-white/50 text-xs font-bold tracking-widest uppercase animate-pulse">Initializing Global Radar...</div>
 });
 import BoardingPass from '../components/BoardingPass';
 import BoardingPassCard from '../components/BoardingPassCard';
@@ -2223,12 +2223,12 @@ export default function App() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder={lang === 'ar' ? 'رقم الرحلة (مثال: EK1)' : 'Flight Number (e.g. EK1)'}
-                        className="flex-1 min-w-0 bg-white dark:bg-black/40 text-black dark:text-white rounded-2xl px-4 py-4 text-sm font-bold border border-black/10 dark:border-white/10 outline-none focus:border-sky-500 uppercase tracking-widest"
+                        className="flex-1 min-w-0 bg-white dark:bg-black/40 text-black dark:text-white rounded-2xl px-4 py-4 text-sm font-bold border border-black/10 dark:border-white/10 outline-none focus:border-black/40 dark:focus:border-white/40 uppercase tracking-widest"
                       />
                       <button 
                         type="submit"
                         disabled={isSearching}
-                        className="bg-sky-500 hover:bg-sky-400 text-black px-6 rounded-2xl font-black tracking-widest disabled:opacity-50 transition-colors shadow-lg shadow-sky-500/20 active:scale-95"
+                        className="bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 px-6 rounded-2xl font-black tracking-widest disabled:opacity-50 transition-all shadow-lg active:scale-95"
                       >
                         {isSearching ? <Loader2 size={20} className="animate-spin" /> : <PlaneTakeoff size={20} />}
                       </button>
@@ -2346,14 +2346,14 @@ export default function App() {
                           const distanceSim = Math.round(Math.max(0, Math.sqrt(totalDistSim) * 10 * progressRemaining));
                           
                           return (
-                            <div className="w-full relative h-[200px] bg-[#060812] rounded-2xl overflow-hidden border border-sky-900/30 shadow-[inset_0_2px_8px_rgba(0,0,0,0.8)] select-none mb-4">
+                            <div className="w-full relative h-[200px] bg-[#060812] rounded-2xl overflow-hidden border border-white/10 shadow-[inset_0_2px_8px_rgba(0,0,0,0.8)] select-none mb-4">
                               <MapComponent 
                                 originCoords={originCoords} 
                                 destCoords={destCoords} 
                                 progress={progress} 
                                 liveTelemetry={liveTelemetry}
                                 isCameraLocked={isCameraLocked} 
-                                themeColor={themeColor} 
+                                themeColor="#FFFFFF" 
                                 padding={[20, 20]} 
                               />
                               
@@ -2374,7 +2374,7 @@ export default function App() {
                                 </button>
                                 <button 
                                   onClick={toggleCabinHum}
-                                  className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-lg backdrop-blur-md active:scale-95 transition-all select-none ${isCabinHumPlaying ? 'bg-sky-400 text-black border-sky-400' : 'bg-black/60 dark:bg-black/75 text-white border-white/10'}`}
+                                  className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-lg backdrop-blur-md active:scale-95 transition-all select-none ${isCabinHumPlaying ? 'bg-white text-black border-white' : 'bg-black/60 dark:bg-black/75 text-white border-white/10'}`}
                                   title={lang === 'ar' ? 'صوت كابينة الطائرة' : 'Cabin Noise'}
                                 >
                                   {isCabinHumPlaying ? (
@@ -2387,7 +2387,7 @@ export default function App() {
                                   <input 
                                     type="range" min="0" max="1" step="0.01" 
                                     value={audioVolume} onChange={(e) => setAudioVolume(parseFloat(e.target.value))} 
-                                    className="w-16 h-1 bg-black/30 rounded-lg appearance-none cursor-pointer accent-sky-400"
+                                    className="w-16 h-1 bg-black/30 rounded-lg appearance-none cursor-pointer accent-white"
                                   />
                                 )}
                               </div>
@@ -2463,7 +2463,7 @@ export default function App() {
                               className="px-2.5 py-1.5 rounded-xl bg-black/50 hover:bg-black/75 dark:bg-white/10 dark:hover:bg-white/20 border border-white/5 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 active:scale-95 select-none"
                               title={lang === 'ar' ? 'عرض خريطة لايف' : 'Live Map'}
                             >
-                              <Map size={11} className="text-sky-400" />
+                              <Map size={11} className="text-white" />
                               <span>{lang === 'ar' ? 'خريطة لايف' : 'Live Map'}</span>
                             </button>
                           </div>
@@ -2593,8 +2593,8 @@ export default function App() {
                       <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-white/40 px-1 select-none">
                         <span>{lang === 'ar' ? 'حالة الرحلة:' : 'FLIGHT STATUS:'}</span>
                         {isFlightTimerRunning ? (
-                          <span className="text-sky-400 flex items-center gap-1 font-bold">
-                            <span className="w-1.5 h-1.5 bg-sky-400 rounded-full animate-ping" />
+                          <span className="text-black dark:text-white flex items-center gap-1 font-bold">
+                            <span className="w-1.5 h-1.5 bg-black dark:bg-white rounded-full animate-ping" />
                             {lang === 'ar' ? 'جاري التركيز' : 'FOCUS ACTIVE'}
                           </span>
                         ) : (
@@ -2649,7 +2649,7 @@ export default function App() {
                           )}
                         </div>
                       ) : (
-                        <span className="text-sky-400 font-bold tracking-widest uppercase text-sm text-center animate-pulse mt-4 w-full">{t('landed')}</span>
+                        <span className="text-black dark:text-white font-bold tracking-widest uppercase text-sm text-center animate-pulse mt-4 w-full">{t('landed')}</span>
                       )}
 
                     </div>
@@ -3668,18 +3668,18 @@ export default function App() {
                   <div className="flex flex-col w-full">
                     {/* Active Flight Header */}
                     <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-white/40 px-1 select-none mb-3">
-                      <span className="flex items-center gap-1.5 font-bold text-sky-400">
-                        <PlaneTakeoff size={14} className="text-sky-400" />
+                      <span className="flex items-center gap-1.5 font-bold text-black dark:text-white">
+                        <PlaneTakeoff size={14} className="text-black dark:text-white" />
                         {lang === 'ar' ? 'رحلة نشطة' : 'ACTIVE FLIGHT'}
                       </span>
                       {isFlightTimerRunning ? (
-                        <span className="text-sky-400 flex items-center gap-1 font-bold">
-                          <span className="w-1.5 h-1.5 bg-sky-400 rounded-full animate-ping" />
+                        <span className="text-black dark:text-white flex items-center gap-1 font-bold">
+                          <span className="w-1.5 h-1.5 bg-black dark:bg-white rounded-full animate-ping" />
                           {lang === 'ar' ? 'جاري التركيز' : 'FOCUS ACTIVE'}
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1 font-bold animate-pulse text-sky-400">
-                          <span className="w-1.5 h-1.5 rounded-full animate-pulse bg-sky-400" />
+                        <span className="flex items-center gap-1 font-bold animate-pulse text-black dark:text-white">
+                          <span className="w-1.5 h-1.5 rounded-full animate-pulse bg-black dark:bg-white" />
                           {lang === 'ar' ? 'في الطريق' : 'EN ROUTE'}
                         </span>
                       )}
@@ -3689,7 +3689,7 @@ export default function App() {
                     <div className="flex items-center justify-between w-full mb-1 text-center select-none bg-black/5 dark:bg-black/25 p-3 rounded-2xl border border-black/5 dark:border-white/5">
                       <span className="text-2xl font-black tracking-tight text-black dark:text-white">{selectedFlight.origin}</span>
                       <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-black/10 dark:via-white/10 to-transparent mx-3" />
-                      <PlaneTakeoff size={16} className="text-sky-400 rotate-45 animate-pulse" />
+                      <PlaneTakeoff size={16} className="text-black dark:text-white rotate-45 animate-pulse" />
                       <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-black/10 dark:via-white/10 to-transparent mx-3" />
                       <span className="text-2xl font-black tracking-tight text-black dark:text-white">{selectedFlight.destination}</span>
                     </div>
@@ -3746,14 +3746,14 @@ export default function App() {
                         const distanceSim = Math.round(Math.max(0, Math.sqrt(totalDistSim) * 10 * progressRemaining));
                         
                         return (
-                          <div className="w-full relative h-[200px] bg-[#060812] rounded-2xl overflow-hidden border border-sky-900/30 shadow-[inset_0_2px_8px_rgba(0,0,0,0.8)] select-none mb-4">
+                          <div className="w-full relative h-[200px] bg-[#060812] rounded-2xl overflow-hidden border border-black/10 dark:border-white/10 shadow-[inset_0_2px_8px_rgba(0,0,0,0.8)] select-none mb-4">
                             <MapComponent 
                               originCoords={originCoords} 
                               destCoords={destCoords} 
                               progress={progress} 
                               liveTelemetry={liveTelemetry}
                               isCameraLocked={isCameraLocked} 
-                              themeColor="#0EA5E9" 
+                              themeColor="#FFFFFF" 
                               padding={[20, 20]} 
                             />
                             
@@ -3774,7 +3774,7 @@ export default function App() {
                               </button>
                               <button 
                                 onClick={toggleCabinHum}
-                                className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-lg backdrop-blur-md active:scale-95 transition-all select-none ${isCabinHumPlaying ? 'bg-sky-400 text-black border-sky-400' : 'bg-black/60 dark:bg-black/75 text-white border-white/10'}`}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-lg backdrop-blur-md active:scale-95 transition-all select-none ${isCabinHumPlaying ? 'bg-white text-black border-white' : 'bg-black/60 dark:bg-black/75 text-white border-white/10'}`}
                                 title={lang === 'ar' ? 'صوت كابينة الطائرة' : 'Cabin Noise'}
                               >
                                 {isCabinHumPlaying ? (
@@ -3787,7 +3787,7 @@ export default function App() {
                                   <input 
                                     type="range" min="0" max="1" step="0.01" 
                                     value={audioVolume} onChange={(e) => setAudioVolume(parseFloat(e.target.value))} 
-                                    className="w-16 h-1 bg-black/30 rounded-lg appearance-none cursor-pointer accent-sky-400"
+                                    className="w-16 h-1 bg-black/30 rounded-lg appearance-none cursor-pointer accent-white"
                                   />
                               )}
                             </div>
@@ -3848,7 +3848,7 @@ export default function App() {
                           className="absolute top-2.5 right-2.5 z-10 px-2.5 py-1.5 rounded-xl bg-black/50 hover:bg-black/75 dark:bg-white/10 dark:hover:bg-white/20 border border-white/5 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 active:scale-95 select-none"
                           title={lang === 'ar' ? 'عرض خريطة لايف' : 'Live Map'}
                         >
-                          <Map size={11} className="text-sky-400" />
+                          <Map size={11} className="text-white" />
                           <span>{lang === 'ar' ? 'خريطة لايف' : 'Live Map'}</span>
                         </button>
                         
@@ -3871,8 +3871,8 @@ export default function App() {
                               <svg viewBox="0 0 300 90" className="w-full h-auto overflow-visible select-none">
                                 <defs>
                                   <linearGradient id="widget-route-grad-cockpit" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" stopColor="#0EA5E9" stopOpacity="0.1" />
-                                    <stop offset="100%" stopColor="#0EA5E9" stopOpacity="0.9" />
+                                    <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.1" />
+                                    <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.9" />
                                   </linearGradient>
                                 </defs>
                                 
@@ -3895,9 +3895,9 @@ export default function App() {
                                 />
                                 
                                 <g transform="translate(30, 65)">
-                                  <circle r="5" fill="rgba(14, 165, 233, 0.2)" />
-                                  <circle r="2.5" fill="#0EA5E9" className="animate-pulse" />
-                                  <circle r="7" stroke="#0EA5E9" opacity="0.4" className="fill-none stroke-1 animate-ping" />
+                                  <circle r="5" fill="rgba(255, 255, 255, 0.2)" />
+                                  <circle r="2.5" fill="#FFFFFF" className="animate-pulse" />
+                                  <circle r="7" stroke="#FFFFFF" opacity="0.4" className="fill-none stroke-1 animate-ping" />
                                 </g>
                                 
                                 <g transform="translate(270, 65)">
@@ -3906,20 +3906,20 @@ export default function App() {
                                 </g>
                                 
                                 <g transform={`translate(${x}, ${y}) rotate(${angle + 90})`} className="transition-all duration-1000 ease-linear">
-                                  <circle r="10" fill="#0EA5E9" opacity="0.3" className="blur-[2px]" />
+                                  <circle r="10" fill="#FFFFFF" opacity="0.3" className="blur-[2px]" />
                                   <path 
                                     d="M 0,-8 L 1.6,-6.4 L 1.6,-2.4 L 8,1.6 L 8,3.2 L 1.6,1.6 L 1.6,6.4 L 4,8 L 4,8.8 L 0,8 L -4,8.8 L -4,8 L -1.6,6.4 L -1.6,1.6 L -8,3.2 L -8,1.6 L -1.6,-2.4 L -1.6,-6.4 Z" 
-                                    fill="#0EA5E9" 
-                                    stroke="#0EA5E9" 
+                                    fill="#FFFFFF" 
+                                    stroke="#FFFFFF" 
                                     strokeWidth="0.3" 
-                                    style={{ filter: 'drop-shadow(0 0 6px #0EA5E9)' }}
+                                    style={{ filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.8))' }}
                                   />
                                 </g>
                               </svg>
                               
                               <div className="flex justify-between items-center mt-1 px-1 text-[9px] font-mono text-gray-400 dark:text-white/30 uppercase tracking-widest font-black">
                                 <span>{selectedFlight.origin}</span>
-                                <span className="font-bold text-sky-400">{Math.round(progress * 100)}% {lang === 'ar' ? 'اكتمل' : 'completed'}</span>
+                                <span className="font-bold text-black dark:text-white">{Math.round(progress * 100)}% {lang === 'ar' ? 'اكتمل' : 'completed'}</span>
                                 <span>{selectedFlight.destination}</span>
                               </div>
                             </div>
@@ -3930,15 +3930,15 @@ export default function App() {
 
                     {/* Glowing Digital Cockpit Chronograph */}
                     <div className="flex flex-col items-center justify-center py-4 px-3 rounded-2xl w-full relative mb-4">
-                       <span className="text-[9px] uppercase tracking-widest font-black mb-3 flex items-center gap-1 select-none text-sky-400">
-                          <span className="w-1 h-1 rounded-full animate-pulse bg-sky-400" />
+                       <span className="text-[9px] uppercase tracking-widest font-black mb-3 flex items-center gap-1 select-none text-black dark:text-white">
+                          <span className="w-1 h-1 rounded-full animate-pulse bg-black dark:bg-white" />
                           {t('remainingTime')}
                        </span>
                        
                        <MinimalTimer 
                          timeSeconds={flightTimer} 
                          totalSeconds={selectedFlight?.initialSeconds || 0} 
-                         themeColor="#0EA5E9" 
+                         themeColor="#FFFFFF" 
                          size="md" 
                        />
                     </div>
@@ -3949,7 +3949,7 @@ export default function App() {
                         {!isFlightTimerRunning ? (
                           <button 
                             onClick={() => setShowFlightModeAdvice(true)}
-                            className="px-5 py-3 rounded-2xl font-bold text-xs tracking-widest transition-colors active:scale-95 shadow-xl w-full bg-sky-500 hover:bg-sky-400 text-black border border-sky-400 shadow-sky-500/20"
+                            className="px-5 py-3 rounded-2xl font-black text-xs tracking-widest transition-all active:scale-95 shadow-xl w-full bg-black dark:bg-white text-white dark:text-black hover:opacity-90"
                           >
                             {t('startFocus')}
                           </button>
@@ -3966,7 +3966,7 @@ export default function App() {
                         )}
                       </div>
                     ) : (
-                      <span className="text-sky-400 font-bold tracking-widest uppercase text-xs text-center animate-pulse py-2 w-full select-none">{t('landed')}</span>
+                      <span className="text-black dark:text-white font-bold tracking-widest uppercase text-xs text-center animate-pulse py-2 w-full select-none">{t('landed')}</span>
                     )}
 
                   </div>
@@ -3974,7 +3974,7 @@ export default function App() {
                   <div className="flex flex-col w-full h-full justify-between">
                     <div>
                       <div className="flex items-center gap-2 mb-3 select-none">
-                        <PlaneTakeoff size={18} className="text-sky-400" />
+                        <PlaneTakeoff size={18} className="text-black dark:text-white" />
                         <h3 className="text-sm font-bold tracking-widest text-gray-700 dark:text-white/80 uppercase">{t('flightFocus')}</h3>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-white/40 mb-5 select-none leading-relaxed">
@@ -4017,12 +4017,12 @@ export default function App() {
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder={lang === 'ar' ? 'رقم الرحلة (EK1)' : 'Flight No. (EK1)'}
-                                className="flex-1 min-w-0 bg-white dark:bg-black/40 text-black dark:text-white rounded-xl px-3 py-3 text-xs font-bold border border-black/10 dark:border-white/10 outline-none focus:border-sky-500 uppercase tracking-widest"
+                                className="flex-1 min-w-0 bg-white dark:bg-black/40 text-black dark:text-white rounded-xl px-3 py-3 text-xs font-bold border border-black/10 dark:border-white/10 outline-none focus:border-black/40 dark:focus:border-white/40 uppercase tracking-widest"
                               />
                               <button 
                                 type="submit"
                                 disabled={isSearching}
-                                className="shrink-0 bg-sky-500 hover:bg-sky-400 text-black px-4 rounded-xl font-black tracking-widest disabled:opacity-50 transition-colors shadow-lg shadow-sky-500/20 active:scale-95"
+                                className="shrink-0 bg-black text-white dark:bg-white dark:text-black hover:opacity-90 px-4 rounded-xl font-black tracking-widest disabled:opacity-50 transition-all shadow-lg active:scale-95"
                               >
                                 {isSearching ? <Loader2 size={16} className="animate-spin" /> : <PlaneTakeoff size={16} />}
                               </button>
@@ -4206,7 +4206,7 @@ export default function App() {
                     className="w-full py-4 px-4 bg-white/5 hover:bg-white/10 transition-colors rounded-2xl flex justify-between items-center"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-sky-500/20 flex items-center justify-center text-sky-400">
+                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white">
                         <Plane size={16} />
                       </div>
                       <span className="text-sm font-bold text-white tracking-wide">
@@ -4460,7 +4460,7 @@ export default function App() {
                     <p className="text-xs leading-relaxed">{t('htu_habits_desc')}</p>
                   </div>
                   <div>
-                    <h4 className="font-bold text-black dark:text-white mb-2 flex items-center gap-2"><PlaneTakeoff size={16} className="text-blue-500 dark:text-blue-400"/> {t('htu_flight_title')}</h4>
+                    <h4 className="font-bold text-black dark:text-white mb-2 flex items-center gap-2"><PlaneTakeoff size={16} className="text-black dark:text-white"/> {t('htu_flight_title')}</h4>
                     <p className="text-xs leading-relaxed">{t('htu_flight_desc')}</p>
                   </div>
                   <div>
@@ -4493,7 +4493,7 @@ export default function App() {
               padding: '24px', background: 'rgba(0,0,0,0.65)',
               backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
             }}>
-              <div className="liquid-panel shadow-2xl border border-sky-500/20 dark:border-white/10" style={{
+              <div className="liquid-panel shadow-2xl border border-black/10 dark:border-white/10" style={{
                 width: '100%', maxWidth: '420px',
                 borderRadius: '32px',
                 padding: '32px 24px', position: 'relative',
@@ -4502,8 +4502,8 @@ export default function App() {
                 textAlign: 'center',
                 background: theme === 'dark' ? 'rgba(28,28,30,0.85)' : 'rgba(255,255,255,0.85)',
               }}>
-                <div className="w-16 h-16 rounded-full bg-sky-500/10 dark:bg-sky-500/25 flex items-center justify-center mb-6 animate-bounce shadow-lg">
-                  <PlaneTakeoff size={28} className="text-sky-400 rotate-45" />
+                <div className="w-16 h-16 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center mb-6 animate-bounce shadow-lg">
+                  <PlaneTakeoff size={28} className="text-black dark:text-white rotate-45" />
                 </div>
                 
                 <h3 className="text-xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-3">
@@ -4521,7 +4521,7 @@ export default function App() {
                       setIsFlightTimerRunning(true);
                       setShowFlightModeAdvice(false);
                     }}
-                    className="w-full py-4 rounded-2xl font-black text-sm tracking-wider uppercase transition-all duration-300 active:scale-[0.98] shadow-lg text-black bg-sky-400 hover:bg-sky-300 border border-sky-400 shadow-sky-500/20"
+                    className="w-full py-4 rounded-2xl font-black text-sm tracking-wider uppercase transition-all duration-300 active:scale-[0.98] shadow-lg text-white dark:text-black bg-black dark:bg-white hover:opacity-90"
                   >
                     {t('flightModeAdviceStart')}
                   </button>
@@ -4599,10 +4599,10 @@ export default function App() {
                     {/* Cinematic Top Ambient HUD bar */}
                     <div className="absolute top-0 left-0 w-full p-8 bg-gradient-to-b from-[#03060c] via-[#03060c]/80 to-transparent flex flex-col items-center justify-center gap-3 z-10 select-none">
                       <div className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/5 border border-white/5 backdrop-blur-xl shadow-lg">
-                        <span className="text-xs font-black tracking-widest text-sky-400 font-mono">{selectedFlight.origin}</span>
+                        <span className="text-xs font-black tracking-widest text-white font-mono">{selectedFlight.origin}</span>
                         <PlaneTakeoff size={14} className="text-white/40 animate-pulse rotate-45" />
-                        <span className="text-xs font-black tracking-widest text-sky-400 font-mono">{selectedFlight.destination}</span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping ml-1" />
+                        <span className="text-xs font-black tracking-widest text-white font-mono">{selectedFlight.destination}</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping ml-1" />
                       </div>
                       
                       {/* HUGE tabular figures digital clock */}
@@ -4630,10 +4630,10 @@ export default function App() {
                           e.stopPropagation();
                           setIsHudMenuOpen(!isHudMenuOpen);
                         }}
-                        className={`w-11 h-11 md:w-12 md:h-12 rounded-2xl flex items-center justify-center border shadow-2xl backdrop-blur-xl active:scale-95 transition-all select-none duration-300 ${isHudMenuOpen ? 'bg-sky-400 text-black border-sky-400' : 'bg-black/60 text-white border-white/15 hover:bg-black/80'}`}
+                        className={`w-11 h-11 md:w-12 md:h-12 rounded-2xl flex items-center justify-center border shadow-2xl backdrop-blur-xl active:scale-95 transition-all select-none duration-300 ${isHudMenuOpen ? 'bg-white text-black border-white' : 'bg-black/60 text-white border-white/15 hover:bg-black/80'}`}
                         title={lang === 'ar' ? 'خيارات الشاشة' : 'Screensaver Options'}
                       >
-                        <SlidersHorizontal size={18} className={isHudMenuOpen ? 'text-black' : 'text-sky-400'} />
+                        <SlidersHorizontal size={18} className={isHudMenuOpen ? 'text-black' : 'text-white'} />
                       </button>
 
                       {/* HUD Popup List */}
@@ -4648,10 +4648,10 @@ export default function App() {
                             className="flex items-center justify-between p-3 rounded-2xl hover:bg-white/10 transition-colors text-left text-xs font-bold text-white/90"
                           >
                             <div className="flex items-center gap-3">
-                              <Navigation size={16} className={`rotate-45 ${isCameraLocked ? 'text-sky-400' : 'text-white/40'}`} />
+                              <Navigation size={16} className={`rotate-45 ${isCameraLocked ? 'text-white' : 'text-white/40'}`} />
                               <span>{lang === 'ar' ? 'تتبع الطائرة' : 'Camera Lock'}</span>
                             </div>
-                            <span className={`text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-md ${isCameraLocked ? 'bg-sky-500/20 text-sky-400' : 'bg-white/10 text-white/40'}`}>
+                            <span className={`text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-md ${isCameraLocked ? 'bg-white/20 text-white' : 'bg-white/10 text-white/40'}`}>
                               {isCameraLocked ? 'ON' : 'OFF'}
                             </span>
                           </button>
@@ -4663,10 +4663,10 @@ export default function App() {
                                 onClick={toggleCabinHum}
                                 className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity"
                               >
-                                {isCabinHumPlaying ? <Volume2 size={16} className="text-sky-400" /> : <VolumeX size={16} className="text-white/40" />}
+                                {isCabinHumPlaying ? <Volume2 size={16} className="text-white" /> : <VolumeX size={16} className="text-white/40" />}
                                 <span>{lang === 'ar' ? 'صوت الكابينة' : 'Cabin Audio'}</span>
                               </button>
-                              <span className={`text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-md ${isCabinHumPlaying ? 'bg-sky-500/20 text-sky-400' : 'bg-white/10 text-white/40'}`}>
+                              <span className={`text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-md ${isCabinHumPlaying ? 'bg-white/20 text-white' : 'bg-white/10 text-white/40'}`}>
                                 {isCabinHumPlaying ? `${Math.round(audioVolume * 100)}%` : 'OFF'}
                               </span>
                             </div>
@@ -4674,7 +4674,7 @@ export default function App() {
                               <input 
                                 type="range" min="0" max="1" step="0.01" 
                                 value={audioVolume} onChange={(e) => setAudioVolume(parseFloat(e.target.value))} 
-                                className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-sky-400 mt-1"
+                                className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white mt-1"
                               />
                             )}
                           </div>
@@ -4684,7 +4684,7 @@ export default function App() {
                             onClick={() => { setIsHudMenuOpen(false); setIsWindowSeatOpen(true); }}
                             className="flex items-center gap-3 p-3 rounded-2xl hover:bg-white/10 transition-colors text-left text-xs font-bold text-white/90"
                           >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-sky-400"><rect x="5" y="3" width="14" height="18" rx="5" /><line x1="5" y1="15" x2="19" y2="15" opacity="0.4" /></svg>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white"><rect x="5" y="3" width="14" height="18" rx="5" /><line x1="5" y1="15" x2="19" y2="15" opacity="0.4" /></svg>
                             <span>{lang === 'ar' ? 'شباك الطائرة 3D' : '3D Window Seat'}</span>
                           </button>
 
@@ -4711,15 +4711,15 @@ export default function App() {
                       {/* Monospace Avionics HUD */}
                       <div className="flex flex-wrap gap-6 md:gap-8 justify-center md:justify-start font-mono text-white/50 text-xs">
                         <div className="flex flex-col text-left">
-                          <span className="text-[9px] uppercase tracking-widest text-sky-400 font-black opacity-60 mb-0.5">{t('speed')}</span>
+                          <span className="text-[9px] uppercase tracking-widest text-white/60 font-black opacity-60 mb-0.5">{t('speed')}</span>
                           <span className="text-sm font-black text-white">{speed} KTS / {Math.round(speed * 1.852)} KMH</span>
                         </div>
                         <div className="flex flex-col text-left">
-                          <span className="text-[9px] uppercase tracking-widest text-sky-400 font-black opacity-60 mb-0.5">{t('altitude')}</span>
+                          <span className="text-[9px] uppercase tracking-widest text-white/60 font-black opacity-60 mb-0.5">{t('altitude')}</span>
                           <span className="text-sm font-black text-white">{altitude.toLocaleString()} FT / {Math.round(altitude * 0.3048).toLocaleString()} M</span>
                         </div>
                         <div className="flex flex-col text-left">
-                          <span className="text-[9px] uppercase tracking-widest text-sky-400 font-black opacity-60 mb-0.5">{t('distanceRemaining')}</span>
+                          <span className="text-[9px] uppercase tracking-widest text-white/60 font-black opacity-60 mb-0.5">{t('distanceRemaining')}</span>
                           <span className="text-sm font-black text-white">{distanceSim} km</span>
                         </div>
                       </div>
@@ -4798,7 +4798,7 @@ export default function App() {
                         }} 
                         className="w-full text-left p-2.5 rounded-xl hover:bg-white/10 transition-all flex items-center gap-3 group active:scale-[0.98]"
                       >
-                        <div className="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/25 flex items-center justify-center text-sky-400 group-hover:scale-105 transition-transform shrink-0">
+                        <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white group-hover:scale-105 transition-transform shrink-0">
                           <PlaneTakeoff size={18} />
                         </div>
                         <div className="flex flex-col min-w-0">

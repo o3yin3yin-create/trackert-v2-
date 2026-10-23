@@ -1050,7 +1050,7 @@ export default function WindowSeat({
             onClick={() => setIsManualTime(!isManualTime)}
             className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all ${
               !isManualTime 
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
+                ? 'bg-white text-black shadow-lg shadow-white/20' 
                 : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'
             }`}
             title={!isManualTime ? "Syncing with Local Clock" : "Using Manual Time"}
@@ -1063,7 +1063,7 @@ export default function WindowSeat({
             onClick={onToggleAudio}
             className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all ${
               isAudioOn 
-                ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/30' 
+                ? 'bg-white text-black shadow-lg shadow-white/20' 
                 : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'
             }`}
             title={isAudioOn ? "Mute Cabin Audio" : "Play Cabin Audio"}
@@ -1078,9 +1078,9 @@ export default function WindowSeat({
             {isManualTime ? (
               <>
                 {localTime < 5 || localTime >= 19.5 ? (
-                  <Moon size={16} className="text-indigo-400" />
+                  <Moon size={16} className="text-white/60" />
                 ) : (
-                  <Sun size={16} className="text-amber-400 animate-spin-slow" />
+                  <Sun size={16} className="text-white animate-spin-slow" />
                 )}
                 
                 <input
@@ -1099,7 +1099,7 @@ export default function WindowSeat({
                     outline: 'none',
                     cursor: 'pointer'
                   }}
-                  className="accent-blue-500"
+                  className="accent-white"
                 />
 
                 <span className="text-xs font-mono text-white/80 w-11 text-right">
@@ -1110,7 +1110,7 @@ export default function WindowSeat({
               </>
             ) : (
               <span className="text-xs font-medium tracking-wide text-white/70 flex items-center gap-1.5 px-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                 Synced: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
             )}

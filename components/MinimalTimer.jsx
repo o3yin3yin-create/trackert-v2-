@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function MinimalTimer({ timeSeconds, totalSeconds = 0, themeColor = '#0EA5E9', size = 'md' }) {
+export default function MinimalTimer({ timeSeconds, totalSeconds = 0, themeColor = '#FFFFFF', size = 'md' }) {
   const hours = Math.floor(timeSeconds / 3600);
   const minutes = Math.floor((timeSeconds % 3600) / 60);
   const seconds = timeSeconds % 60;
