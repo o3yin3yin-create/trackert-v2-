@@ -20,16 +20,16 @@ files = [app_path]
 # Standard Applications symlink
 symlinks = {"Applications": "/Applications"}
 
-# 2. Background (dmgbuild detects @2x Retina companion automatically)
+# 2. Topographic Panoramic Background
 background = bg_path
 
-# 3. Window geometry
-window_rect = ((200, 120), (660, 400))
+# 3. Window geometry (Generous widescreen bounds)
+window_rect = ((120, 80), (1000, 560))
 
 # 4. Icon locations
 icon_locations = {
-    "bokra.app": (180, 200),
-    "Applications": (480, 200)
+    "bokra.app": (280, 270),
+    "Applications": (640, 270)
 }
 
 # 5. Finder view options
