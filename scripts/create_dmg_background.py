@@ -117,14 +117,15 @@ def create_monochrome_dmg_background():
         logo_y = int(46 * S)
         img.paste(logo_resized, (logo_x, logo_y), logo_resized)
 
-    # 6. Save Retina @2x and 1x Standard Assets
+    # 6. Save Retina @2x and 1x Standard Assets as pure RGB (macOS Finder requires no alpha for backgrounds)
     os.makedirs("src-tauri/assets", exist_ok=True)
     out_2x = "src-tauri/assets/dmg-background@2x.png"
     out_1x = "src-tauri/assets/dmg-background.png"
 
-    img.save(out_2x, "PNG")
+    img_rgb = img.convert("RGB")
+    img_rgb.save(out_2x, "PNG")
 
-    img_1x = img.resize((660, 400), Image.Resampling.LANCZOS)
+    img_1x = img_rgb.resize((660, 400), Image.Resampling.LANCZOS)
     img_1x.save(out_1x, "PNG")
 
     print(f"✅ Generated DMG background: {out_2x} & {out_1x}")
