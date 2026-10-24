@@ -90,3 +90,46 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
+
+// Firebase Cloud Messaging & Push Notifications
+self.addEventListener('push', (event) => {
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data = { notification: { title: 'bokra', body: event.data.text() } };
+    }
+  }
+
+  const notification = data.notification || {};
+  const title = notification.title || 'bokra';
+  const options = {
+    body: notification.body || 'Habit reminder!',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    data: data.data || {},
+    vibrate: [100, 50, 100],
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      if (clientList.length > 0) {
+        let client = clientList[0];
+        for (let i = 0; i < clientList.length; i++) {
+          if (clientList[i].focused) {
+            client = clientList[i];
+            break;
+          }
+        }
+        return client.focus();
+      }
+      return self.clients.openWindow('/');
+    })
+  );
+});

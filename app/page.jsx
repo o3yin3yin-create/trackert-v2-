@@ -5195,6 +5195,9 @@ export default function App() {
                       }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-white">
                         <span className="w-4 h-4 flex items-center justify-center opacity-70">✨</span> {bgStyle === 'aurora' ? 'Solid Background' : 'Aurora Background'}
                       </button>
+                      <button onClick={() => { enableNotifications(); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-white">
+                        <Bell size={16} /> {lang === 'en' ? 'Enable Notifications' : 'تفعيل الإشعارات'}
+                      </button>
                       <button onClick={() => { setIsCardsModalOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-red-400">
                         <ShieldAlert size={16} /> {t('emergencyCards')}
                       </button>
