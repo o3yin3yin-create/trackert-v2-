@@ -32,15 +32,20 @@ model User {
   dailyLogs      DailyLog[]
 }
 
-// 2. جدول العادات ببيانات الإشعارات المخصصة بنظام 12 ساعة
+// 2. جدول العادات ببيانات الإشعارات المخصصة والمواعيد المجدولة
 model Habit {
   id              String   @id // هيفضل ياخد الـ id العشوائي اللي بنكريته في الواجهة
   name            String
   type            String   // "single" أو "multi"
   subItems        String[] // خانات الـ checklist
   
+  frequency       String   @default("daily") // "daily" أو "weekly" أو "monthly" أو "yearly"
+  scheduleDays    Int[]    @default([])      // أيام الأسبوع [0..6] (0=الأحد)
+  scheduleDate    String?                    // لليوم الشهري ("1".."31") أو اليوم السنوي ("MM-DD")
+  
   isNotifyEnabled Boolean  @default(false)
   notifyTime      String?  // هيتخزن بصيغة "08:00 PM"
+  notifyBefore    Int?     @default(0)       // التنبيه قبلها بقد إيه بالدقائق: 0, 10, 30, 60, 1440
   customMessage   String?  // رسالة المنبه الخاصة بالعادة
   
   userId          String

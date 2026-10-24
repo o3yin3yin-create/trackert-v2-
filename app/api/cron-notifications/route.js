@@ -38,23 +38,69 @@ export async function GET(req) {
     }
 
     const now = new Date();
-    const current12hTime = now.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
+    const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday...
+    const dayOfMonth = String(now.getDate());
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const monthDay = `${month}-${day}`;
 
-    console.log(`[Cron Job] Checking habits for time: ${current12hTime}`);
-
-    const matchingHabits = await prisma.habit.findMany({
+    // Get all habits that have notifications enabled
+    const habitsWithNotifications = await prisma.habit.findMany({
       where: {
         isNotifyEnabled: true,
-        notifyTime: current12hTime,
+        notifyTime: { not: null },
       },
       include: {
         user: true,
       },
     });
+
+    const matchingHabits = [];
+
+    for (const habit of habitsWithNotifications) {
+      if (!habit.notifyTime) continue;
+
+      // 1. Check if habit is scheduled for today
+      const freq = habit.frequency || "daily";
+      let isScheduledToday = false;
+      if (freq === "daily") {
+        isScheduledToday = true;
+      } else if (freq === "weekly") {
+        isScheduledToday = Array.isArray(habit.scheduleDays) && habit.scheduleDays.includes(dayOfWeek);
+      } else if (freq === "monthly") {
+        isScheduledToday = habit.scheduleDate === dayOfMonth;
+      } else if (freq === "yearly") {
+        isScheduledToday = habit.scheduleDate === monthDay;
+      }
+
+      if (!isScheduledToday) continue;
+
+      // 2. Parse notifyTime and calculate target notification timestamp
+      // notifyTime is formatted as "08:00 PM"
+      const timeMatch = habit.notifyTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+      if (!timeMatch) continue;
+
+      let hour = parseInt(timeMatch[1], 10);
+      const minute = parseInt(timeMatch[2], 10);
+      const period = timeMatch[3].toUpperCase();
+
+      if (period === "PM" && hour < 12) hour += 12;
+      if (period === "AM" && hour === 12) hour = 0;
+
+      // Create target Date for the event today
+      const eventDate = new Date(now);
+      eventDate.setHours(hour, minute, 0, 0);
+
+      // Subtract notifyBefore minutes (default 0)
+      const notifyBeforeMins = habit.notifyBefore || 0;
+      const targetNotifyTime = new Date(eventDate.getTime() - notifyBeforeMins * 60 * 1000);
+
+      // Check if targetNotifyTime matches current time (within 1 minute window)
+      const diffMs = Math.abs(now.getTime() - targetNotifyTime.getTime());
+      if (diffMs <= 60 * 1000) {
+        matchingHabits.push(habit);
+      }
+    }
 
     if (matchingHabits.length === 0) {
       return NextResponse.json({ success: true, message: "No habits scheduled at this time." });

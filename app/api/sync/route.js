@@ -281,12 +281,17 @@ export async function POST(req) {
         if (!h.id || !h.name) continue;
         const ex = existingHabitsMap.get(h.id);
         const subItemsMatch = ex && JSON.stringify(ex.subItems || []) === JSON.stringify(h.subItems || []);
+        const scheduleDaysMatch = ex && JSON.stringify(ex.scheduleDays || []) === JSON.stringify(h.scheduleDays || []);
         const hasChanged = !ex || 
           ex.name !== h.name || 
           ex.type !== (h.type || 'single') || 
           !subItemsMatch || 
+          ex.frequency !== (h.frequency || 'daily') ||
+          !scheduleDaysMatch ||
+          ex.scheduleDate !== (h.scheduleDate || null) ||
           ex.isNotifyEnabled !== (h.isNotifyEnabled || false) || 
           ex.notifyTime !== (h.notifyTime || null) || 
+          ex.notifyBefore !== (h.notifyBefore ?? 0) ||
           ex.customMessage !== (h.customMessage || null);
 
         if (hasChanged) {
@@ -302,18 +307,26 @@ export async function POST(req) {
             name: h.name,
             type: h.type || 'single',
             subItems: h.subItems || [],
+            frequency: h.frequency || 'daily',
+            scheduleDays: h.scheduleDays || [],
+            scheduleDate: h.scheduleDate || null,
             isNotifyEnabled: h.isNotifyEnabled || false,
-            notifyTime: h.notifyTime,
-            customMessage: h.customMessage,
+            notifyTime: h.notifyTime || null,
+            notifyBefore: h.notifyBefore ?? 0,
+            customMessage: h.customMessage || null,
             userId
           },
           update: {
             name: h.name,
             type: h.type || 'single',
             subItems: h.subItems || [],
+            frequency: h.frequency || 'daily',
+            scheduleDays: h.scheduleDays || [],
+            scheduleDate: h.scheduleDate || null,
             isNotifyEnabled: h.isNotifyEnabled || false,
-            notifyTime: h.notifyTime,
-            customMessage: h.customMessage,
+            notifyTime: h.notifyTime || null,
+            notifyBefore: h.notifyBefore ?? 0,
+            customMessage: h.customMessage || null,
           }
         });
       }

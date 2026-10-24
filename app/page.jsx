@@ -1,7 +1,7 @@
 "use client";
 import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar } from 'lucide-react';
 import { messaging, getToken } from '../lib/firebase';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useUser, useAuth, Show, SignInButton, SignUpButton, UserButton, SignIn, SignUp } from '../components/AuthBridge';
@@ -1308,11 +1308,18 @@ export default function App() {
   const [newHabitType, setNewHabitType] = useState('single');
   const [newHabitSubItems, setNewHabitSubItems] = useState(['', '']);
 
-  // منبه العادات (محتفظين بالستيت بس مش بنعرضه في الـ UI)
+  // جدولة وتكرار العادات
+  const [habitFrequency, setHabitFrequency] = useState('daily'); // 'daily' | 'weekly' | 'monthly' | 'yearly'
+  const [habitScheduleDays, setHabitScheduleDays] = useState([0]); // 0=Sun, 1=Mon...
+  const [habitScheduleDayOfMonth, setHabitScheduleDayOfMonth] = useState(1);
+  const [habitScheduleMonthDay, setHabitScheduleMonthDay] = useState("01-01");
+
+  // منبه وتنبيهات العادات
   const [isNotifyEnabled, setIsNotifyEnabled] = useState(false);
   const [habitNotifyHour, setHabitNotifyHour] = useState("08");
   const [habitNotifyMinute, setHabitNotifyMinute] = useState("00");
   const [habitNotifyPeriod, setHabitNotifyPeriod] = useState("PM");
+  const [habitNotifyBefore, setHabitNotifyBefore] = useState(0); // 0, 10, 30, 60, 1440 mins
 
   // --- Emergency Cards Modal ---
   const [isCardsModalOpen, setIsCardsModalOpen] = useState(false);
@@ -1336,6 +1343,43 @@ export default function App() {
   const tomorrowObj = new Date();
   tomorrowObj.setDate(tomorrowObj.getDate() + 1);
   const tomorrowStr = getFormatDateStr(tomorrowObj);
+
+  // --- Helper: دالة فحص هل العادة أو الميعاد مجدول لتاريخ معين ---
+  const isHabitScheduledForDate = (habit, targetDateStr) => {
+    if (!habit) return false;
+    const freq = habit.frequency || 'daily';
+    if (freq === 'daily') return true;
+
+    // Parse targetDateStr "YYYY-MM-DD"
+    const parts = targetDateStr.split('-');
+    if (parts.length !== 3) return true;
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10); // 1-12
+    const d = parseInt(parts[2], 10); // 1-31
+    const targetDate = new Date(y, m - 1, d);
+
+    if (freq === 'weekly') {
+      const dayOfWeek = targetDate.getDay(); // 0 = Sunday, 1 = Monday...
+      return Array.isArray(habit.scheduleDays) && habit.scheduleDays.includes(dayOfWeek);
+    }
+
+    if (freq === 'monthly') {
+      const scheduledDay = parseInt(habit.scheduleDate, 10);
+      return scheduledDay === d;
+    }
+
+    if (freq === 'yearly') {
+      const monthDay = `${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      return habit.scheduleDate === monthDay;
+    }
+
+    return true;
+  };
+
+  // العادات المجدولة لتاريخ اليوم النشط
+  const activeScheduledHabits = useMemo(() => {
+    return habits.filter(h => isHabitScheduledForDate(h, activeDateStr));
+  }, [habits, activeDateStr]);
 
   // Always keep latestStateRef in sync with the freshest state synchronously on every render
   const activePomodoroTasks = {
@@ -1420,16 +1464,31 @@ export default function App() {
   // --- Streak Function ---
   const getStreak = (habitId) => {
     let streak = 0; let date = new Date();
-    for (let i = 0; i < 30; i++) {
+    const habit = habits.find(h => h.id === habitId);
+    if (!habit) return 0;
+
+    for (let i = 0; i < 60; i++) {
       const dateStr = getFormatDateStr(date);
-      const habit = habits.find(h => h.id === habitId);
-      if (!habit) break;
+      
+      // لو العادة مش مجدولة في اليوم ده، نتخطى اليوم بدون كسر الستريك
+      if (!isHabitScheduledForDate(habit, dateStr)) {
+        date.setDate(date.getDate() - 1);
+        continue;
+      }
+
       const isCompleted = habit.type === 'single' 
         ? dailyData[`${dateStr}-${habitId}`]
         : habit.subItems.length > 0 && habit.subItems.every(sub => dailyData[`${dateStr}-${habitId}-${sub}`]);
-      if (isCompleted) { streak++; date.setDate(date.getDate() - 1); }
-      else if (i === 0 && !isCompleted) { date.setDate(date.getDate() - 1); }
-      else { break; }
+      
+      if (isCompleted) {
+        streak++;
+        date.setDate(date.getDate() - 1);
+      } else if (i === 0 && !isCompleted && dateStr === realTodayStr) {
+        // لو النهاردة لسه مخلصهاش، منكسرش الستريك وندي فرصة لبقية اليوم
+        date.setDate(date.getDate() - 1);
+      } else {
+        break;
+      }
     }
     return streak;
   };
@@ -1707,13 +1766,25 @@ export default function App() {
     // دمج الساعات والدقايق عشان السيرفر يقراهم صح
     const formatted12hTime = `${habitNotifyHour}:${habitNotifyMinute} ${habitNotifyPeriod}`;
 
+    // تجهيز تفاصيل الجدولة والتكرار
+    let scheduleDateVal = null;
+    if (habitFrequency === 'monthly') {
+      scheduleDateVal = String(habitScheduleDayOfMonth);
+    } else if (habitFrequency === 'yearly') {
+      scheduleDateVal = habitScheduleMonthDay;
+    }
+
     const newHabit = {
       id: generateId(),
       name: newHabitName.trim(),
       type: newHabitType,
       subItems: newHabitType === 'multi' ? newHabitSubItems.filter(s => s.trim() !== '') : [],
+      frequency: habitFrequency,
+      scheduleDays: habitFrequency === 'weekly' ? habitScheduleDays : [],
+      scheduleDate: scheduleDateVal,
       isNotifyEnabled: isNotifyEnabled,
       notifyTime: isNotifyEnabled ? formatted12hTime : null,
+      notifyBefore: isNotifyEnabled ? habitNotifyBefore : 0,
       customMessage: isNotifyEnabled ? habitCustomMessage.trim() : null,
       updatedAt: Date.now()
     };
@@ -1724,10 +1795,15 @@ export default function App() {
     setNewHabitName("");
     setNewHabitType('single');
     setNewHabitSubItems(['', '']);
+    setHabitFrequency('daily');
+    setHabitScheduleDays([0]);
+    setHabitScheduleDayOfMonth(1);
+    setHabitScheduleMonthDay("01-01");
     setIsNotifyEnabled(false);
     setHabitNotifyHour("08");
     setHabitNotifyMinute("00");
     setHabitNotifyPeriod("PM");
+    setHabitNotifyBefore(0);
     setHabitCustomMessage("");
     handleCloseAdd();
   };
@@ -1800,11 +1876,11 @@ export default function App() {
     }
   };
 
-  // --- Score Calculations ---
+  // --- Score Calculations (فقط للعادات المجدولة لليوم النشط) ---
   let totalPossible = 0;
   let totalCompleted = 0;
 
-  habits.forEach(h => {
+  activeScheduledHabits.forEach(h => {
     if (h.type === 'single') {
       totalPossible += 1;
       if (dailyData[`${activeDateStr}-${h.id}`]) totalCompleted += 1;
@@ -1837,6 +1913,7 @@ export default function App() {
       let dayTotal = 0;
       let dayComp = 0;
       habits.forEach(h => {
+        if (!isHabitScheduledForDate(h, currentStr)) return;
         if (h.type === 'single') {
           dayTotal += 1;
           if (dailyData[`${currentStr}-${h.id}`]) dayComp += 1;
@@ -1961,6 +2038,237 @@ export default function App() {
                 </div>
               )}
 
+              {/* ---------------- FREQUENCY & SCHEDULING ---------------- */}
+              <div className="mb-5 bg-white/20 dark:bg-black/40 p-4 rounded-2xl border border-black/5 dark:border-white/5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-bold tracking-wider text-gray-500 dark:text-white/40 uppercase">{t('frequency')}</span>
+                  <div className="flex bg-black/5 dark:bg-white/5 rounded-xl p-0.5">
+                    <button 
+                      type="button"
+                      onClick={() => setHabitFrequency('daily')} 
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${habitFrequency === 'daily' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-sm' : 'text-gray-500 dark:text-white/40'}`}
+                    >
+                      {t('daily')}
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setHabitFrequency('weekly')} 
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${habitFrequency !== 'daily' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-sm' : 'text-gray-500 dark:text-white/40'}`}
+                    >
+                      {t('scheduled')}
+                    </button>
+                  </div>
+                </div>
+
+                {habitFrequency !== 'daily' && (
+                  <div className="pt-2 border-t border-black/5 dark:border-white/5 space-y-3">
+                    {/* Frequency Sub-tabs */}
+                    <div className="flex bg-black/5 dark:bg-white/5 rounded-xl p-1">
+                      <button 
+                        type="button"
+                        onClick={() => setHabitFrequency('weekly')}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${habitFrequency === 'weekly' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-sm' : 'text-gray-500 dark:text-white/40'}`}
+                      >
+                        {t('weekly')}
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setHabitFrequency('monthly')}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${habitFrequency === 'monthly' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-sm' : 'text-gray-500 dark:text-white/40'}`}
+                      >
+                        {t('monthly')}
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setHabitFrequency('yearly')}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${habitFrequency === 'yearly' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-sm' : 'text-gray-500 dark:text-white/40'}`}
+                      >
+                        {t('yearly')}
+                      </button>
+                    </div>
+
+                    {/* Weekly Days Selector */}
+                    {habitFrequency === 'weekly' && (
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] font-bold tracking-wider text-gray-500 dark:text-white/40 uppercase">{t('selectDays')}</span>
+                        <div className="grid grid-cols-7 gap-1">
+                          {[
+                            { day: 0, labelEn: 'Su', labelAr: 'أحد' },
+                            { day: 1, labelEn: 'Mo', labelAr: 'إثن' },
+                            { day: 2, labelEn: 'Tu', labelAr: 'ثلا' },
+                            { day: 3, labelEn: 'We', labelAr: 'أرب' },
+                            { day: 4, labelEn: 'Th', labelAr: 'خمي' },
+                            { day: 5, labelEn: 'Fr', labelAr: 'جمع' },
+                            { day: 6, labelEn: 'Sa', labelAr: 'سبت' },
+                          ].map(d => {
+                            const isSelected = habitScheduleDays.includes(d.day);
+                            return (
+                              <button
+                                key={d.day}
+                                type="button"
+                                onClick={() => {
+                                  if (isSelected) {
+                                    if (habitScheduleDays.length > 1) {
+                                      setHabitScheduleDays(habitScheduleDays.filter(x => x !== d.day));
+                                    }
+                                  } else {
+                                    setHabitScheduleDays([...habitScheduleDays, d.day]);
+                                  }
+                                }}
+                                className={`py-2 rounded-xl text-xs font-bold transition-all ${
+                                  isSelected 
+                                    ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm' 
+                                    : 'bg-black/5 dark:bg-white/5 text-gray-500 dark:text-white/40 hover:bg-black/10 dark:hover:bg-white/10'
+                                }`}
+                              >
+                                {lang === 'ar' ? d.labelAr : d.labelEn}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Monthly Day Selector */}
+                    {habitFrequency === 'monthly' && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-gray-600 dark:text-white/60">{t('dayOfMonth')}</span>
+                        <select
+                          value={habitScheduleDayOfMonth}
+                          onChange={(e) => setHabitScheduleDayOfMonth(parseInt(e.target.value, 10))}
+                          className="bg-white/80 dark:bg-black text-black dark:text-white px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 font-bold text-xs outline-none"
+                        >
+                          {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                            <option key={day} value={day}>{day}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Yearly Date Selector */}
+                    {habitFrequency === 'yearly' && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-gray-600 dark:text-white/60">{t('dateOfYear')}</span>
+                        <div className="flex gap-2">
+                          <select
+                            value={parseInt(habitScheduleMonthDay.split('-')[0], 10)}
+                            onChange={(e) => {
+                              const m = String(e.target.value).padStart(2, '0');
+                              const d = habitScheduleMonthDay.split('-')[1] || '01';
+                              setHabitScheduleMonthDay(`${m}-${d}`);
+                            }}
+                            className="bg-white/80 dark:bg-black text-black dark:text-white px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 font-bold text-xs outline-none"
+                          >
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                              <option key={m} value={m}>{lang === 'ar' ? `شهر ${m}` : `Month ${m}`}</option>
+                            ))}
+                          </select>
+                          <select
+                            value={parseInt(habitScheduleMonthDay.split('-')[1], 10)}
+                            onChange={(e) => {
+                              const m = habitScheduleMonthDay.split('-')[0] || '01';
+                              const d = String(e.target.value).padStart(2, '0');
+                              setHabitScheduleMonthDay(`${m}-${d}`);
+                            }}
+                            className="bg-white/80 dark:bg-black text-black dark:text-white px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 font-bold text-xs outline-none"
+                          >
+                            {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                              <option key={d} value={d}>{lang === 'ar' ? `يوم ${d}` : `Day ${d}`}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* ---------------- TIME & NOTIFICATIONS ---------------- */}
+              <div className="mb-5 bg-white/20 dark:bg-black/40 p-4 rounded-2xl border border-black/5 dark:border-white/5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Bell size={16} className={isNotifyEnabled ? "text-black dark:text-white" : "text-gray-400 dark:text-white/30"} />
+                    <span className="text-xs font-bold text-black dark:text-white">{t('reminderTime')}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsNotifyEnabled(!isNotifyEnabled)}
+                    className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
+                      isNotifyEnabled ? 'bg-black dark:bg-white' : 'bg-black/10 dark:bg-white/10'
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded-full transition-transform ${
+                      isNotifyEnabled 
+                        ? 'translate-x-5 bg-white dark:bg-black' 
+                        : 'translate-x-0 bg-white/80 dark:bg-white/40'
+                    }`} />
+                  </button>
+                </div>
+
+                {isNotifyEnabled && (
+                  <div className="pt-2 border-t border-black/5 dark:border-white/5 space-y-3">
+                    {/* Time Picker */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-500 dark:text-white/40">{t('reminderTime')}</span>
+                      <div className="flex gap-1.5 items-center">
+                        <select
+                          value={habitNotifyHour}
+                          onChange={(e) => setHabitNotifyHour(e.target.value)}
+                          className="bg-white/80 dark:bg-black text-black dark:text-white px-2.5 py-1.5 rounded-xl border border-black/10 dark:border-white/10 font-mono text-xs font-bold outline-none"
+                        >
+                          {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </select>
+                        <span className="font-bold">:</span>
+                        <select
+                          value={habitNotifyMinute}
+                          onChange={(e) => setHabitNotifyMinute(e.target.value)}
+                          className="bg-white/80 dark:bg-black text-black dark:text-white px-2.5 py-1.5 rounded-xl border border-black/10 dark:border-white/10 font-mono text-xs font-bold outline-none"
+                        >
+                          {['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map(m => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={habitNotifyPeriod}
+                          onChange={(e) => setHabitNotifyPeriod(e.target.value)}
+                          className="bg-white/80 dark:bg-black text-black dark:text-white px-2.5 py-1.5 rounded-xl border border-black/10 dark:border-white/10 text-xs font-bold outline-none"
+                        >
+                          <option value="AM">AM</option>
+                          <option value="PM">PM</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Notify Before Options */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-500 dark:text-white/40">{t('notifyBeforeEvent')}</span>
+                      <select
+                        value={habitNotifyBefore}
+                        onChange={(e) => setHabitNotifyBefore(parseInt(e.target.value, 10))}
+                        className="bg-white/80 dark:bg-black text-black dark:text-white px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 font-bold text-xs outline-none"
+                      >
+                        <option value={0}>{t('atEventTime')}</option>
+                        <option value={10}>{t('tenMinsBefore')}</option>
+                        <option value={30}>{t('thirtyMinsBefore')}</option>
+                        <option value={60}>{t('oneHourBefore')}</option>
+                        <option value={1440}>{t('oneDayBefore')}</option>
+                      </select>
+                    </div>
+
+                    {/* Optional Custom Message */}
+                    <input
+                      type="text"
+                      placeholder={t('customMessagePrompt')}
+                      value={habitCustomMessage}
+                      onChange={(e) => setHabitCustomMessage(e.target.value)}
+                      className="w-full bg-white/50 dark:bg-black text-black dark:text-white px-3 py-2 rounded-xl outline-none border border-black/10 dark:border-white/10 text-xs placeholder:text-gray-400 dark:placeholder:text-white/20"
+                    />
+                  </div>
+                )}
+              </div>
+
               <button onClick={confirmAddHabit} className="w-full py-4 rounded-2xl font-bold text-md tracking-wide transition-all duration-200 active:scale-[0.97] shadow-lg shadow-black/20 dark:shadow-black/40" style={{backgroundColor: themeColor, color: '#000'}}>{t('createHabit')}</button>
             </div>
           </div>
@@ -1993,8 +2301,20 @@ export default function App() {
                 {habits.map(h => (
                   <div key={h.id} className="flex items-center gap-2 transition-all duration-200">
                     <div className="flex-1 bg-white/30 dark:bg-black px-4 py-3 rounded-2xl truncate flex items-center justify-between border border-black/5 dark:border-white/5 shadow-sm">
-                      <span className="text-sm font-medium text-black dark:text-white">{h.name}</span>
-                      {h.type === 'multi' && <span className="text-[10px] bg-black/10 dark:bg-white/10 px-2 py-1 rounded-xl text-gray-700 dark:text-white/60 font-semibold">{h.subItems.length} {t('items')}</span>}
+                      <div className="flex flex-col truncate pr-2">
+                        <span className="text-sm font-medium text-black dark:text-white truncate">{h.name}</span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] text-gray-500 dark:text-white/40 font-mono font-bold uppercase tracking-wider">
+                            {h.frequency === 'weekly' ? t('weekly') : h.frequency === 'monthly' ? t('monthly') : h.frequency === 'yearly' ? t('yearly') : t('daily')}
+                          </span>
+                          {h.notifyTime && (
+                            <span className="text-[10px] text-gray-400 dark:text-white/30 flex items-center gap-1 font-mono">
+                              <Bell size={10} /> {h.notifyTime}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {h.type === 'multi' && <span className="text-[10px] bg-black/10 dark:bg-white/10 px-2 py-1 rounded-xl text-gray-700 dark:text-white/60 font-semibold shrink-0">{h.subItems.length} {t('items')}</span>}
                     </div>
                     <button onClick={() => deleteHabit(h.id)} className="p-3 bg-red-500/10 text-red-500 dark:text-red-400 rounded-2xl hover:bg-red-500/20 transition-colors duration-200"><Trash2 size={16} /></button>
                   </div>
@@ -3228,7 +3548,7 @@ export default function App() {
 
             {/* Mobile Habits Cards Grid */}
             <div className="grid grid-cols-2 gap-3 items-start w-full">
-              {habits.map((habit) => {
+              {activeScheduledHabits.map((habit) => {
                 const isMulti = habit.type === 'multi';
                 const isExpanded = expandedHabits.includes(habit.id);
                 
@@ -3274,6 +3594,18 @@ export default function App() {
                               </>
                             ) : null}
                           </span>
+                          {habit.notifyTime && (
+                            <span 
+                              className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${
+                                isAllChecked 
+                                  ? 'bg-black/10 text-black/70' 
+                                  : 'bg-black/10 dark:bg-white/10 text-gray-600 dark:text-white/60'
+                              }`}
+                            >
+                              <Bell size={8} />
+                              {habit.notifyTime}
+                            </span>
+                          )}
                         </div>
                         <span className="text-[15px] font-semibold tracking-tight leading-tight line-clamp-2">{habit.name}</span>
                         {isMulti && !isExpanded && (
@@ -3395,7 +3727,7 @@ export default function App() {
 
               {/* Habits Cards Grid (Reverted back to the custom individual blocks, rendered neatly below Mission/Sleep) */}
               <div className="grid grid-cols-2 gap-3 mt-1 items-start w-full">
-                {habits.map((habit) => {
+                {activeScheduledHabits.map((habit) => {
                   const isMulti = habit.type === 'multi';
                   const isExpanded = expandedHabits.includes(habit.id);
                   
@@ -3441,6 +3773,18 @@ export default function App() {
                                 </>
                               ) : null}
                             </span>
+                            {habit.notifyTime && (
+                              <span 
+                                className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${
+                                  isAllChecked 
+                                    ? 'bg-black/10 text-black/70' 
+                                    : 'bg-black/10 dark:bg-white/10 text-gray-600 dark:text-white/60'
+                                }`}
+                              >
+                                <Bell size={8} />
+                                {habit.notifyTime}
+                              </span>
+                            )}
                           </div>
                           <span className="text-[15px] font-semibold tracking-tight leading-tight line-clamp-2">{habit.name}</span>
                           {isMulti && !isExpanded && (
