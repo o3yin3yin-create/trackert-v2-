@@ -1831,48 +1831,67 @@ export default function App() {
   // --- تفعيل الإشعارات للمستخدم وسحب التوكن وحفظ جهاز فايربيز ---
   const enableNotifications = async () => {
     try {
-      if (!user) {
-        alert("Please sign in first to enable notifications.");
+      if (typeof window === 'undefined' || !('Notification' in window)) {
+        alert(lang === 'ar' ? 'المتصفح لا يدعم الإشعارات.' : 'Notifications are not supported in this browser.');
         return;
       }
 
-      const userEmail = user.primaryEmailAddress?.emailAddress;
-      const clerkId = user.id;
+      if (!user) {
+        alert(lang === 'ar' ? 'يرجى تسجيل الدخول أولاً لتفعيل الإشعارات.' : 'Please sign in first to enable notifications.');
+        return;
+      }
+
+      // Check current permission
+      if (Notification.permission === 'denied') {
+        alert(lang === 'ar' 
+          ? 'تم حظر الإشعارات مسبقاً في إعدادات المتصفح. يرجى تفعيلها من إعدادات الموقع في المتصفح.' 
+          : 'Notifications are blocked in your browser settings. Please enable them from site settings.');
+        return;
+      }
 
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
-     const token = await getToken(messaging, {
-  vapidKey: "BJtzqYQFPVZCM25fxtIQWuWIN8Q0WqnBPL1xxH2-ct9Wt8rbSPMBVUEWIaffCl4yJewzZMjZq8wibm31_igmvck"
-});
-        if (token) {
-          console.log("FCM Token:", token);
-          
-          const res = await apiFetch('/api/settings', {
-            method: 'POST',
-            body: JSON.stringify({
-              clerkId: clerkId,
-              email: userEmail,
-              fcmToken: token,
-              notifyTime: "10:00 PM", 
-              customMessage: "Time to complete your daily habits!"
-            })
-          });
-
-          const data = await res.json();
-          if (data.success) {
-            alert("Notifications enabled and linked to your account successfully.");
-          } else {
-            alert("Error saving notification settings: " + (data.error || "Unknown error"));
+        // Ensure service worker is registered
+        let swRegistration = null;
+        if ('serviceWorker' in navigator) {
+          try {
+            swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+          } catch (e) {
+            console.warn("SW register fallback:", e);
           }
-          
-        } else {
-          alert("Could not generate notification token.");
         }
+
+        const isMessagingSupported = await isSupported().catch(() => false);
+        if (isMessagingSupported && messaging) {
+          try {
+            const token = await getToken(messaging, {
+              vapidKey: "BJtzqYQFPVZCM25fxtIQWuWIN8Q0WqnBPL1xxH2-ct9Wt8rbSPMBVUEWIaffCl4yJewzZMjZq8wibm31_igmvck",
+              serviceWorkerRegistration: swRegistration || undefined
+            });
+
+            if (token) {
+              const res = await apiFetch('/api/settings', {
+                method: 'POST',
+                body: JSON.stringify({ fcmToken: token })
+              });
+              const data = await res.json();
+              if (data.success) {
+                alert(lang === 'ar' ? 'تم تفعيل الإشعارات بنجاح!' : 'Notifications enabled successfully!');
+              }
+              return;
+            }
+          } catch (fcmErr) {
+            console.error("FCM Token error:", fcmErr);
+          }
+        }
+
+        alert(lang === 'ar' ? 'تم منح الإذن بالإشعارات بنجاح!' : 'Notification permission granted!');
       } else {
-        alert("Notification permission was denied.");
+        alert(lang === 'ar' ? 'تم رفض إذن الإشعارات.' : 'Notification permission was denied.');
       }
     } catch (error) {
       console.error("Error getting notification permission:", error);
+      alert(lang === 'ar' ? 'حدث خطأ أثناء طلب الإذن: ' + error.message : 'Error requesting permission: ' + error.message);
     }
   };
 
