@@ -39,9 +39,9 @@ model Habit {
   type            String   // "single" أو "multi"
   subItems        String[] // خانات الـ checklist
   
-  frequency       String   @default("daily") // "daily" أو "weekly" أو "monthly" أو "yearly"
+  frequency       String   @default("daily") // "daily" أو "once" أو "weekly" أو "monthly" أو "yearly"
   scheduleDays    Int[]    @default([])      // أيام الأسبوع [0..6] (0=الأحد)
-  scheduleDate    String?                    // لليوم الشهري ("1".."31") أو اليوم السنوي ("MM-DD")
+  scheduleDate    String?                    // لتاريخ "once" كـ "YYYY-MM-DD" أو لليوم الشهري ("1".."31") أو السنوي ("MM-DD")
   
   time            String?  // ميعاد العادة الاختياري مثل "04:00 PM"
   location        String?  // مكان العادة الاختياري مثل "قاعة 302" أو "الجيم"

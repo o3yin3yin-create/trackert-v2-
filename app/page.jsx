@@ -1308,7 +1308,14 @@ export default function App() {
   const [newHabitSubItems, setNewHabitSubItems] = useState(['', '']);
 
   // جدولة وتكرار العادات
-  const [habitFrequency, setHabitFrequency] = useState('daily'); // 'daily' | 'weekly' | 'monthly' | 'yearly'
+  const [habitFrequency, setHabitFrequency] = useState('daily'); // 'daily' | 'once' | 'weekly' | 'monthly' | 'yearly'
+  const [habitScheduleOnceDate, setHabitScheduleOnceDate] = useState(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  });
   const [habitScheduleDays, setHabitScheduleDays] = useState([0]); // 0=Sun, 1=Mon...
   const [habitScheduleDayOfMonth, setHabitScheduleDayOfMonth] = useState(1);
   const [habitScheduleMonthDay, setHabitScheduleMonthDay] = useState("01-01");
@@ -1353,6 +1360,10 @@ export default function App() {
     const m = parseInt(parts[1], 10); // 1-12
     const d = parseInt(parts[2], 10); // 1-31
     const targetDate = new Date(y, m - 1, d);
+
+    if (freq === 'once') {
+      return habit.scheduleDate === targetDateStr;
+    }
 
     if (freq === 'weekly') {
       const dayOfWeek = targetDate.getDay(); // 0 = Sunday, 1 = Monday...
@@ -1761,7 +1772,9 @@ export default function App() {
 
     // تجهيز تفاصيل الجدولة والتكرار
     let scheduleDateVal = null;
-    if (habitFrequency === 'monthly') {
+    if (habitFrequency === 'once') {
+      scheduleDateVal = habitScheduleOnceDate;
+    } else if (habitFrequency === 'monthly') {
       scheduleDateVal = String(habitScheduleDayOfMonth);
     } else if (habitFrequency === 'yearly') {
       scheduleDateVal = habitScheduleMonthDay;
@@ -1790,6 +1803,7 @@ export default function App() {
     setHabitScheduleDays([0]);
     setHabitScheduleDayOfMonth(1);
     setHabitScheduleMonthDay("01-01");
+    setHabitScheduleOnceDate(realTodayStr);
     setHabitTime("");
     setHabitLocation("");
     handleCloseAdd();
@@ -2002,7 +2016,14 @@ export default function App() {
                 {habitFrequency !== 'daily' && (
                   <div className="pt-2 border-t border-black/5 dark:border-white/5 space-y-3">
                     {/* Frequency Sub-tabs */}
-                    <div className="flex bg-black/5 dark:bg-white/5 rounded-xl p-1">
+                    <div className="flex bg-black/5 dark:bg-white/5 rounded-xl p-1 gap-0.5">
+                      <button 
+                        type="button"
+                        onClick={() => setHabitFrequency('once')}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${habitFrequency === 'once' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-sm' : 'text-gray-500 dark:text-white/40'}`}
+                      >
+                        {t('once')}
+                      </button>
                       <button 
                         type="button"
                         onClick={() => setHabitFrequency('weekly')}
@@ -2025,6 +2046,19 @@ export default function App() {
                         {t('yearly')}
                       </button>
                     </div>
+
+                    {/* One-time Event Date Picker */}
+                    {habitFrequency === 'once' && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-gray-600 dark:text-white/60">{t('eventDate')}</span>
+                        <input
+                          type="date"
+                          value={habitScheduleOnceDate}
+                          onChange={(e) => setHabitScheduleOnceDate(e.target.value)}
+                          className="bg-white/80 dark:bg-black text-black dark:text-white px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 font-bold text-xs outline-none"
+                        />
+                      </div>
+                    )}
 
                     {/* Weekly Days Selector */}
                     {habitFrequency === 'weekly' && (
@@ -2191,7 +2225,7 @@ export default function App() {
                         <span className="text-sm font-medium text-black dark:text-white truncate">{h.name}</span>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <span className="text-[10px] text-gray-500 dark:text-white/40 font-mono font-bold uppercase tracking-wider">
-                            {h.frequency === 'weekly' ? t('weekly') : h.frequency === 'monthly' ? t('monthly') : h.frequency === 'yearly' ? t('yearly') : t('daily')}
+                            {h.frequency === 'once' ? `${t('once')} (${h.scheduleDate || ''})` : h.frequency === 'weekly' ? t('weekly') : h.frequency === 'monthly' ? t('monthly') : h.frequency === 'yearly' ? t('yearly') : t('daily')}
                           </span>
                           {(h.time || h.notifyTime) && (
                             <span className="text-[10px] text-gray-400 dark:text-white/30 flex items-center gap-1 font-mono">
