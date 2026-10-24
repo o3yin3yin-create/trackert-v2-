@@ -289,6 +289,8 @@ export async function POST(req) {
           ex.frequency !== (h.frequency || 'daily') ||
           !scheduleDaysMatch ||
           ex.scheduleDate !== (h.scheduleDate || null) ||
+          ex.time !== (h.time || null) ||
+          ex.location !== (h.location || null) ||
           ex.isNotifyEnabled !== (h.isNotifyEnabled || false) || 
           ex.notifyTime !== (h.notifyTime || null) || 
           ex.notifyBefore !== (h.notifyBefore ?? 0) ||
@@ -310,6 +312,8 @@ export async function POST(req) {
             frequency: h.frequency || 'daily',
             scheduleDays: h.scheduleDays || [],
             scheduleDate: h.scheduleDate || null,
+            time: h.time || null,
+            location: h.location || null,
             isNotifyEnabled: h.isNotifyEnabled || false,
             notifyTime: h.notifyTime || null,
             notifyBefore: h.notifyBefore ?? 0,
@@ -323,6 +327,8 @@ export async function POST(req) {
             frequency: h.frequency || 'daily',
             scheduleDays: h.scheduleDays || [],
             scheduleDate: h.scheduleDate || null,
+            time: h.time || null,
+            location: h.location || null,
             isNotifyEnabled: h.isNotifyEnabled || false,
             notifyTime: h.notifyTime || null,
             notifyBefore: h.notifyBefore ?? 0,

@@ -1,6 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar } from 'lucide-react';
-import { messaging, getToken, isSupported } from '../lib/firebase';
+import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -1314,12 +1313,9 @@ export default function App() {
   const [habitScheduleDayOfMonth, setHabitScheduleDayOfMonth] = useState(1);
   const [habitScheduleMonthDay, setHabitScheduleMonthDay] = useState("01-01");
 
-  // منبه وتنبيهات العادات
-  const [isNotifyEnabled, setIsNotifyEnabled] = useState(false);
-  const [habitNotifyHour, setHabitNotifyHour] = useState("08");
-  const [habitNotifyMinute, setHabitNotifyMinute] = useState("00");
-  const [habitNotifyPeriod, setHabitNotifyPeriod] = useState("PM");
-  const [habitNotifyBefore, setHabitNotifyBefore] = useState(0); // 0, 10, 30, 60, 1440 mins
+  // بيانات إضافية للعادة (الميعاد والمكان اختياري)
+  const [habitTime, setHabitTime] = useState("");
+  const [habitLocation, setHabitLocation] = useState("");
 
   // --- Emergency Cards Modal ---
   const [isCardsModalOpen, setIsCardsModalOpen] = useState(false);
@@ -1762,9 +1758,6 @@ export default function App() {
     if (!newHabitName.trim()) return;
     haptic('medium');
     markLocalMutation();
-    
-    // دمج الساعات والدقايق عشان السيرفر يقراهم صح
-    const formatted12hTime = `${habitNotifyHour}:${habitNotifyMinute} ${habitNotifyPeriod}`;
 
     // تجهيز تفاصيل الجدولة والتكرار
     let scheduleDateVal = null;
@@ -1782,10 +1775,8 @@ export default function App() {
       frequency: habitFrequency,
       scheduleDays: habitFrequency === 'weekly' ? habitScheduleDays : [],
       scheduleDate: scheduleDateVal,
-      isNotifyEnabled: isNotifyEnabled,
-      notifyTime: isNotifyEnabled ? formatted12hTime : null,
-      notifyBefore: isNotifyEnabled ? habitNotifyBefore : 0,
-      customMessage: isNotifyEnabled ? habitCustomMessage.trim() : null,
+      time: habitTime.trim() ? habitTime.trim() : null,
+      location: habitLocation.trim() ? habitLocation.trim() : null,
       updatedAt: Date.now()
     };
 
@@ -1799,12 +1790,8 @@ export default function App() {
     setHabitScheduleDays([0]);
     setHabitScheduleDayOfMonth(1);
     setHabitScheduleMonthDay("01-01");
-    setIsNotifyEnabled(false);
-    setHabitNotifyHour("08");
-    setHabitNotifyMinute("00");
-    setHabitNotifyPeriod("PM");
-    setHabitNotifyBefore(0);
-    setHabitCustomMessage("");
+    setHabitTime("");
+    setHabitLocation("");
     handleCloseAdd();
   };
 
@@ -1826,73 +1813,6 @@ export default function App() {
     const key = `${activeDateStr}-${habitId}`;
     setDailyData(prev => ({ ...prev, [key]: true }));
     setHabitCards(prev => ({ ...prev, [habitId]: cardsLeft - 1 }));
-  };
-
-  // --- تفعيل الإشعارات للمستخدم وسحب التوكن وحفظ جهاز فايربيز ---
-  const enableNotifications = async () => {
-    try {
-      if (typeof window === 'undefined' || !('Notification' in window)) {
-        alert(lang === 'ar' ? 'المتصفح لا يدعم الإشعارات.' : 'Notifications are not supported in this browser.');
-        return;
-      }
-
-      if (!user) {
-        alert(lang === 'ar' ? 'يرجى تسجيل الدخول أولاً لتفعيل الإشعارات.' : 'Please sign in first to enable notifications.');
-        return;
-      }
-
-      // Check current permission
-      if (Notification.permission === 'denied') {
-        alert(lang === 'ar' 
-          ? 'تم حظر الإشعارات مسبقاً في إعدادات المتصفح. يرجى تفعيلها من إعدادات الموقع في المتصفح.' 
-          : 'Notifications are blocked in your browser settings. Please enable them from site settings.');
-        return;
-      }
-
-      const permission = await Notification.requestPermission();
-      if (permission === 'granted') {
-        // Ensure service worker is registered
-        let swRegistration = null;
-        if ('serviceWorker' in navigator) {
-          try {
-            swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-          } catch (e) {
-            console.warn("SW register fallback:", e);
-          }
-        }
-
-        const isMessagingSupported = await isSupported().catch(() => false);
-        if (isMessagingSupported && messaging) {
-          try {
-            const token = await getToken(messaging, {
-              vapidKey: "BJtzqYQFPVZCM25fxtIQWuWIN8Q0WqnBPL1xxH2-ct9Wt8rbSPMBVUEWIaffCl4yJewzZMjZq8wibm31_igmvck",
-              serviceWorkerRegistration: swRegistration || undefined
-            });
-
-            if (token) {
-              const res = await apiFetch('/api/settings', {
-                method: 'POST',
-                body: JSON.stringify({ fcmToken: token })
-              });
-              const data = await res.json();
-              if (data.success) {
-                alert(lang === 'ar' ? 'تم تفعيل الإشعارات بنجاح!' : 'Notifications enabled successfully!');
-              }
-              return;
-            }
-          } catch (fcmErr) {
-            console.error("FCM Token error:", fcmErr);
-          }
-        }
-
-        alert(lang === 'ar' ? 'تم منح الإذن بالإشعارات بنجاح!' : 'Notification permission granted!');
-      } else {
-        alert(lang === 'ar' ? 'تم رفض إذن الإشعارات.' : 'Notification permission was denied.');
-      }
-    } catch (error) {
-      console.error("Error getting notification permission:", error);
-      alert(lang === 'ar' ? 'حدث خطأ أثناء طلب الإذن: ' + error.message : 'Error requesting permission: ' + error.message);
-    }
   };
 
   // --- Score Calculations (فقط للعادات المجدولة لليوم النشط) ---
@@ -2202,90 +2122,37 @@ export default function App() {
                 )}
               </div>
 
-              {/* ---------------- TIME & NOTIFICATIONS ---------------- */}
+              {/* ---------------- TIME & LOCATION (OPTIONAL) ---------------- */}
               <div className="mb-5 bg-white/20 dark:bg-black/40 p-4 rounded-2xl border border-black/5 dark:border-white/5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Bell size={16} className={isNotifyEnabled ? "text-black dark:text-white" : "text-gray-400 dark:text-white/30"} />
-                    <span className="text-xs font-bold text-black dark:text-white">{t('reminderTime')}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsNotifyEnabled(!isNotifyEnabled)}
-                    className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
-                      isNotifyEnabled ? 'bg-black dark:bg-white' : 'bg-black/10 dark:bg-white/10'
-                    }`}
-                  >
-                    <div className={`w-5 h-5 rounded-full transition-transform ${
-                      isNotifyEnabled 
-                        ? 'translate-x-5 bg-white dark:bg-black' 
-                        : 'translate-x-0 bg-white/80 dark:bg-white/40'
-                    }`} />
-                  </button>
-                </div>
+                <span className="text-xs font-bold tracking-wider text-gray-500 dark:text-white/40 uppercase">
+                  {lang === 'ar' ? 'تفاصيل إضافية (اختياري)' : 'Additional Details (Optional)'}
+                </span>
 
-                {isNotifyEnabled && (
-                  <div className="pt-2 border-t border-black/5 dark:border-white/5 space-y-3">
-                    {/* Time Picker */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-gray-500 dark:text-white/40">{t('reminderTime')}</span>
-                      <div className="flex gap-1.5 items-center">
-                        <select
-                          value={habitNotifyHour}
-                          onChange={(e) => setHabitNotifyHour(e.target.value)}
-                          className="bg-white/80 dark:bg-black text-black dark:text-white px-2.5 py-1.5 rounded-xl border border-black/10 dark:border-white/10 font-mono text-xs font-bold outline-none"
-                        >
-                          {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
-                            <option key={h} value={h}>{h}</option>
-                          ))}
-                        </select>
-                        <span className="font-bold">:</span>
-                        <select
-                          value={habitNotifyMinute}
-                          onChange={(e) => setHabitNotifyMinute(e.target.value)}
-                          className="bg-white/80 dark:bg-black text-black dark:text-white px-2.5 py-1.5 rounded-xl border border-black/10 dark:border-white/10 font-mono text-xs font-bold outline-none"
-                        >
-                          {['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map(m => (
-                            <option key={m} value={m}>{m}</option>
-                          ))}
-                        </select>
-                        <select
-                          value={habitNotifyPeriod}
-                          onChange={(e) => setHabitNotifyPeriod(e.target.value)}
-                          className="bg-white/80 dark:bg-black text-black dark:text-white px-2.5 py-1.5 rounded-xl border border-black/10 dark:border-white/10 text-xs font-bold outline-none"
-                        >
-                          <option value="AM">AM</option>
-                          <option value="PM">PM</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Notify Before Options */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-gray-500 dark:text-white/40">{t('notifyBeforeEvent')}</span>
-                      <select
-                        value={habitNotifyBefore}
-                        onChange={(e) => setHabitNotifyBefore(parseInt(e.target.value, 10))}
-                        className="bg-white/80 dark:bg-black text-black dark:text-white px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 font-bold text-xs outline-none"
-                      >
-                        <option value={0}>{t('atEventTime')}</option>
-                        <option value={10}>{t('tenMinsBefore')}</option>
-                        <option value={30}>{t('thirtyMinsBefore')}</option>
-                        <option value={60}>{t('oneHourBefore')}</option>
-                        <option value={1440}>{t('oneDayBefore')}</option>
-                      </select>
-                    </div>
-
-                    {/* Optional Custom Message */}
+                <div className="space-y-2">
+                  {/* Habit Time Input */}
+                  <div className="flex items-center gap-2 bg-white/60 dark:bg-black px-3 py-2.5 rounded-xl border border-black/10 dark:border-white/10">
+                    <Clock size={16} className="text-gray-400 dark:text-white/40 shrink-0" />
                     <input
                       type="text"
-                      placeholder={t('customMessagePrompt')}
-                      value={habitCustomMessage}
-                      onChange={(e) => setHabitCustomMessage(e.target.value)}
-                      className="w-full bg-white/50 dark:bg-black text-black dark:text-white px-3 py-2 rounded-xl outline-none border border-black/10 dark:border-white/10 text-xs placeholder:text-gray-400 dark:placeholder:text-white/20"
+                      placeholder={t('habitTimePlaceholder')}
+                      value={habitTime}
+                      onChange={(e) => setHabitTime(e.target.value)}
+                      className="w-full bg-transparent text-black dark:text-white text-xs outline-none font-medium placeholder:text-gray-400 dark:placeholder:text-white/25"
                     />
                   </div>
-                )}
+
+                  {/* Habit Location Input */}
+                  <div className="flex items-center gap-2 bg-white/60 dark:bg-black px-3 py-2.5 rounded-xl border border-black/10 dark:border-white/10">
+                    <MapPin size={16} className="text-gray-400 dark:text-white/40 shrink-0" />
+                    <input
+                      type="text"
+                      placeholder={t('habitLocationPlaceholder')}
+                      value={habitLocation}
+                      onChange={(e) => setHabitLocation(e.target.value)}
+                      className="w-full bg-transparent text-black dark:text-white text-xs outline-none font-medium placeholder:text-gray-400 dark:placeholder:text-white/25"
+                    />
+                  </div>
+                </div>
               </div>
 
               <button onClick={confirmAddHabit} className="w-full py-4 rounded-2xl font-bold text-md tracking-wide transition-all duration-200 active:scale-[0.97] shadow-lg shadow-black/20 dark:shadow-black/40" style={{backgroundColor: themeColor, color: '#000'}}>{t('createHabit')}</button>
@@ -2322,13 +2189,18 @@ export default function App() {
                     <div className="flex-1 bg-white/30 dark:bg-black px-4 py-3 rounded-2xl truncate flex items-center justify-between border border-black/5 dark:border-white/5 shadow-sm">
                       <div className="flex flex-col truncate pr-2">
                         <span className="text-sm font-medium text-black dark:text-white truncate">{h.name}</span>
-                        <div className="flex items-center gap-2 mt-0.5">
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <span className="text-[10px] text-gray-500 dark:text-white/40 font-mono font-bold uppercase tracking-wider">
                             {h.frequency === 'weekly' ? t('weekly') : h.frequency === 'monthly' ? t('monthly') : h.frequency === 'yearly' ? t('yearly') : t('daily')}
                           </span>
-                          {h.notifyTime && (
+                          {(h.time || h.notifyTime) && (
                             <span className="text-[10px] text-gray-400 dark:text-white/30 flex items-center gap-1 font-mono">
-                              <Bell size={10} /> {h.notifyTime}
+                              <Clock size={10} /> {h.time || h.notifyTime}
+                            </span>
+                          )}
+                          {h.location && (
+                            <span className="text-[10px] text-gray-400 dark:text-white/30 flex items-center gap-1">
+                              <MapPin size={10} /> {h.location}
                             </span>
                           )}
                         </div>
@@ -3613,18 +3485,32 @@ export default function App() {
                               </>
                             ) : null}
                           </span>
-                          {habit.notifyTime && (
-                            <span 
-                              className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${
-                                isAllChecked 
-                                  ? 'bg-black/10 text-black/70' 
-                                  : 'bg-black/10 dark:bg-white/10 text-gray-600 dark:text-white/60'
-                              }`}
-                            >
-                              <Bell size={8} />
-                              {habit.notifyTime}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {(habit.time || habit.notifyTime) && (
+                              <span 
+                                className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${
+                                  isAllChecked 
+                                    ? 'bg-black/10 text-black/70' 
+                                    : 'bg-black/10 dark:bg-white/10 text-gray-600 dark:text-white/60'
+                                }`}
+                              >
+                                <Clock size={8} />
+                                {habit.time || habit.notifyTime}
+                              </span>
+                            )}
+                            {habit.location && (
+                              <span 
+                                className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${
+                                  isAllChecked 
+                                    ? 'bg-black/10 text-black/70' 
+                                    : 'bg-black/10 dark:bg-white/10 text-gray-600 dark:text-white/60'
+                                }`}
+                              >
+                                <MapPin size={8} />
+                                {habit.location}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <span className="text-[15px] font-semibold tracking-tight leading-tight line-clamp-2">{habit.name}</span>
                         {isMulti && !isExpanded && (
@@ -3792,18 +3678,32 @@ export default function App() {
                                 </>
                               ) : null}
                             </span>
-                            {habit.notifyTime && (
-                              <span 
-                                className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${
-                                  isAllChecked 
-                                    ? 'bg-black/10 text-black/70' 
-                                    : 'bg-black/10 dark:bg-white/10 text-gray-600 dark:text-white/60'
-                                }`}
-                              >
-                                <Bell size={8} />
-                                {habit.notifyTime}
-                              </span>
-                            )}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {(habit.time || habit.notifyTime) && (
+                                <span 
+                                  className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${
+                                    isAllChecked 
+                                      ? 'bg-black/10 text-black/70' 
+                                      : 'bg-black/10 dark:bg-white/10 text-gray-600 dark:text-white/60'
+                                  }`}
+                                >
+                                  <Clock size={8} />
+                                  {habit.time || habit.notifyTime}
+                                </span>
+                              )}
+                              {habit.location && (
+                                <span 
+                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${
+                                    isAllChecked 
+                                      ? 'bg-black/10 text-black/70' 
+                                      : 'bg-black/10 dark:bg-white/10 text-gray-600 dark:text-white/60'
+                                  }`}
+                                >
+                                  <MapPin size={8} />
+                                  {habit.location}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <span className="text-[15px] font-semibold tracking-tight leading-tight line-clamp-2">{habit.name}</span>
                           {isMulti && !isExpanded && (
@@ -5213,9 +5113,6 @@ export default function App() {
                         setIsSettingsMenuOpen(false); 
                       }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-white">
                         <span className="w-4 h-4 flex items-center justify-center opacity-70">✨</span> {bgStyle === 'aurora' ? 'Solid Background' : 'Aurora Background'}
-                      </button>
-                      <button onClick={() => { enableNotifications(); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-white">
-                        <Bell size={16} /> {lang === 'en' ? 'Enable Notifications' : 'تفعيل الإشعارات'}
                       </button>
                       <button onClick={() => { setIsCardsModalOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-red-400">
                         <ShieldAlert size={16} /> {t('emergencyCards')}
