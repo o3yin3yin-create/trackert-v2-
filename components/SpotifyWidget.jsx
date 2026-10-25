@@ -41,7 +41,8 @@ export default function SpotifyWidget({
     async function checkNowPlaying(forcedToken) {
       try {
         const localToken = forcedToken || (typeof window !== 'undefined' ? localStorage.getItem('daybase_spotify_refresh_token') || '' : '');
-        const res = await apiFetch('/api/spotify/now-playing', {
+        const queryParam = localToken ? `?refresh_token=${encodeURIComponent(localToken)}` : '';
+        const res = await apiFetch(`/api/spotify/now-playing${queryParam}`, {
           headers: localToken ? { 'x-spotify-refresh-token': localToken } : {}
         });
         if (!res.ok) return;

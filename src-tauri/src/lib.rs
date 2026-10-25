@@ -172,9 +172,36 @@ fn run_auth_server(app_handle: tauri::AppHandle) -> u16 {
                     // Notify webview with query parameters
                     let _ = app_handle.emit("desktop-auth-callback", &query);
 
-                    // Focus window on macOS
+                    // Focus window on macOS and execute direct JS evaluation as bulletproof fallback
                     if let Some(window) = app_handle.get_webview_window("main") {
                         let _ = window.emit("desktop-auth-callback", &query);
+
+                        let eval_js = format!(
+                            r#"
+                            (function() {{
+                                try {{
+                                    var q = "{}";
+                                    var sp = new URLSearchParams(q);
+                                    var sToken = sp.get("spotify_token");
+                                    if (sToken) {{
+                                        localStorage.setItem("daybase_spotify_refresh_token", sToken);
+                                        window.dispatchEvent(new CustomEvent("spotify-token-updated", {{ detail: sToken }}));
+                                    }}
+                                    var uToken = sp.get("token");
+                                    var uStr = sp.get("user");
+                                    if (uToken) {{
+                                        localStorage.setItem("bokra_desktop_token", uToken);
+                                        if (uStr) localStorage.setItem("bokra_desktop_user", uStr);
+                                        window.dispatchEvent(new CustomEvent("bokra-desktop-auth-success", {{ detail: {{ token: uToken }} }}));
+                                    }}
+                                }} catch(e) {{
+                                    console.error("[bokra eval callback error]", e);
+                                }}
+                            }})();
+                            "#,
+                            query.replace('\\', "\\\\").replace('"', "\\\"")
+                        );
+                        let _ = window.eval(&eval_js);
                         let _ = window.set_focus();
                     }
                 }

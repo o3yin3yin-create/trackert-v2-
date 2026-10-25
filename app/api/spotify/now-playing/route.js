@@ -13,7 +13,9 @@ export async function OPTIONS(req) {
 export async function GET(req) {
   const corsHeaders = getCorsHeaders(req);
   try {
+    const { searchParams } = new URL(req.url);
     let refreshToken = 
+      searchParams.get('refresh_token') ||
       req.cookies.get('spotify_refresh_token')?.value || 
       req.headers.get('x-spotify-refresh-token');
 
@@ -63,6 +65,12 @@ export async function GET(req) {
         isConnected: true,
         spotifyRefreshToken: refreshToken,
         isPlaying: false,
+        title: '',
+        artist: '',
+        album: '',
+        albumArt: null,
+        progressMs: 0,
+        durationMs: 0,
         item: null,
       }, { headers: corsHeaders });
     }

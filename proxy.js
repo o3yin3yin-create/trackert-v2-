@@ -8,12 +8,14 @@ const handler = clerkMiddleware(async (auth, req) => {
   if (req.method === 'OPTIONS' && req.nextUrl.pathname.startsWith('/api')) {
     const preflightHeaders = {
       'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
-      'Access-Control-Allow-Headers': 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization',
+      'Access-Control-Allow-Headers': 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, x-spotify-refresh-token, Origin',
       'Access-Control-Max-Age': '86400',
     };
     if (origin) {
       preflightHeaders['Access-Control-Allow-Origin'] = origin;
       preflightHeaders['Access-Control-Allow-Credentials'] = 'true';
+    } else {
+      preflightHeaders['Access-Control-Allow-Origin'] = '*';
     }
     return new NextResponse(null, {
       status: 204,
@@ -26,9 +28,11 @@ const handler = clerkMiddleware(async (auth, req) => {
     if (origin) {
       response.headers.set('Access-Control-Allow-Origin', origin);
       response.headers.set('Access-Control-Allow-Credentials', 'true');
+    } else {
+      response.headers.set('Access-Control-Allow-Origin', '*');
     }
     response.headers.set('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-    response.headers.set('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+    response.headers.set('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, x-spotify-refresh-token, Origin');
   }
   return response;
 });
