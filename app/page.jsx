@@ -4825,24 +4825,6 @@ export default function App() {
             document.body
           )}
 
-          {/* --- HOW TO USE BUTTON --- */}
-          <div className="flex justify-center w-full relative z-50 mb-4 mt-8">
-            <button 
-              onClick={() => setIsHowToUseOpen(true)} 
-              className="px-5 py-2.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black/10 dark:border-white/10 rounded-full text-[10px] font-bold tracking-widest uppercase text-gray-700 dark:text-white/70 transition-all active:scale-95 flex items-center gap-2 shadow-lg"
-            >
-              <BookOpen size={14} />
-              {t('howToUse')}
-            </button>
-          </div>
-
-          {/* --- CREATOR SIGNATURE --- */}
-          <div className="flex justify-center items-center mb-8 opacity-40 hover:opacity-100 transition-opacity duration-300 w-full relative z-10 pb-[100px]">
-            <span className="text-[9px] font-bold tracking-widest uppercase select-none text-center text-gray-800 dark:text-white/50">
-              {t('creatorSignature')} <a href="https://www.instagram.com/jj3_xx?igsh=MWVkaGI5ZjNsb3Nreg%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" style={{ color: themeColor }} className="underline decoration-dashed underline-offset-4 font-bold">6afra</a>
-            </span>
-          </div>
-
           {/* --- DAILY TASKS PAGE (FULL SCREEN) --- */}
           {isTasksModalOpen && createPortal(
             <div className="fixed inset-0 z-[10000] bg-black overflow-y-auto">
@@ -4976,7 +4958,7 @@ export default function App() {
 
           {/* --- HOW TO USE PAGE (FULL SCREEN) --- */}
           {isHowToUseOpen && createPortal(
-            <div className="fixed inset-0 z-[10000] bg-black overflow-y-auto">
+            <div className="fixed inset-0 z-[10005] bg-black overflow-y-auto">
               <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
                 <div>
                   {/* Header */}
@@ -5475,7 +5457,16 @@ export default function App() {
                           <button onClick={() => { setIsSettingsMenuOpen(false); setIsAvatarModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
                             <div className="flex items-center gap-3">
                               <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center"><AvatarIcon name={isMounted ? avatar : 'user'} size={18} /></div>
-                              <span>Change Avatar</span>
+                              <span>{lang === 'ar' ? 'تغيير الأفاتار' : 'Change Avatar'}</span>
+                            </div>
+                            <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                          </button>
+
+                          {/* How to Use */}
+                          <button onClick={() => setIsHowToUseOpen(true)} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center"><BookOpen size={18} /></div>
+                              <span>{t('howToUse')}</span>
                             </div>
                             <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
                           </button>
@@ -5490,6 +5481,13 @@ export default function App() {
                               <ChevronRight size={18} className={`text-purple-400/60 ${lang === 'ar' ? 'rotate-180' : ''}`} />
                             </button>
                           )}
+                        </div>
+
+                        {/* Creator Signature / Footer */}
+                        <div className="flex justify-center items-center py-4 opacity-50 hover:opacity-100 transition-opacity">
+                          <span className="text-[10px] font-bold tracking-widest uppercase select-none text-center text-white/50">
+                            {t('creatorSignature')} <a href="https://www.instagram.com/jj3_xx?igsh=MWVkaGI5ZjNsb3Nreg%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" style={{ color: themeColor }} className="underline decoration-dashed underline-offset-4 font-bold">6afra</a>
+                          </span>
                         </div>
                       </div>
 
