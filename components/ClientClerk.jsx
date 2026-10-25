@@ -51,6 +51,12 @@ export const ClerkProvider = ({ children }) => {
               const params = new URLSearchParams(queryString);
               const token = params.get('token');
               const userStr = params.get('user');
+              const spotifyToken = params.get('spotify_token');
+
+              if (spotifyToken) {
+                localStorage.setItem('daybase_spotify_refresh_token', spotifyToken);
+                window.dispatchEvent(new CustomEvent('spotify-token-updated'));
+              }
 
               if (token) {
                 applyLoginData(token, userStr);
@@ -289,8 +295,8 @@ export const UserButton = ({ appearance }) => {
 
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute right-0 mt-2 w-64 bg-[#1C1C1E] border border-white/10 rounded-2xl shadow-2xl p-4 z-50 text-left animate-in fade-in slide-in-from-top-2">
+          <div className="fixed inset-0 z-[99999]" onClick={() => setIsOpen(false)} />
+          <div className="absolute right-0 mt-2 w-64 bg-[#1C1C1E] border border-white/10 rounded-2xl shadow-2xl p-4 z-[100000] text-left animate-in fade-in slide-in-from-top-2">
             <div className="flex items-center gap-3 mb-3 pb-3 border-b border-white/5">
               <div className="w-10 h-10 rounded-full bg-white/10 text-white font-bold flex items-center justify-center shrink-0 overflow-hidden border border-white/10">
                 {user?.avatar ? (

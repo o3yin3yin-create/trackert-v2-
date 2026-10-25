@@ -744,6 +744,9 @@ export default function App() {
             method: 'POST',
             body: JSON.stringify({ token })
           }).catch(() => {});
+          try {
+            fetch(`http://127.0.0.1:28282/callback?spotify_token=${encodeURIComponent(token)}`, { mode: 'no-cors' }).catch(() => {});
+          } catch (e) {}
           window.dispatchEvent(new CustomEvent('spotify-token-updated'));
           markLocalMutation();
         }
@@ -765,6 +768,19 @@ export default function App() {
       }
     }
   }, [lang]);
+
+  // Ensure local Spotify token is synced to database under the user's account
+  useEffect(() => {
+    if (typeof window !== 'undefined' && user) {
+      const localToken = localStorage.getItem('daybase_spotify_refresh_token');
+      if (localToken) {
+        apiFetch('/api/spotify/save-token', {
+          method: 'POST',
+          body: JSON.stringify({ token: localToken })
+        }).catch(() => {});
+      }
+    }
+  }, [user]);
 
   useEffect(() => {
     const interval = setInterval(() => {

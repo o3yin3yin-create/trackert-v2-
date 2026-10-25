@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, SkipForward, SkipBack, Radio, Disc } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, Radio, Disc, KeyRound } from 'lucide-react';
 import { apiFetch, getApiBaseUrl } from '@/lib/api';
 
 export default function SpotifyWidget({ 
@@ -266,14 +266,49 @@ export default function SpotifyWidget({
           </div>
         </div>
 
-        <a 
-          href={getSpotifyLoginUrl()}
-          target={typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') ? '_blank' : '_self'}
-          rel="noopener noreferrer"
-          className="px-4 py-1.5 rounded-full font-black text-xs bg-white text-black hover:bg-white/90 transition-all active:scale-95 shadow-sm"
-        >
-          {lang === 'ar' ? 'ربط' : 'Connect'}
-        </a>
+        <div className="flex items-center gap-2">
+          <button
+            type="button" 
+            onClick={async () => {
+              const pasted = prompt(lang === 'ar' ? 'أدخل رمز أو توكن Spotify (Refresh Token):' : 'Enter Spotify Refresh Token:');
+              if (pasted && pasted.trim()) {
+                const cleanToken = pasted.trim();
+                localStorage.setItem('daybase_spotify_refresh_token', cleanToken);
+                apiFetch('/api/spotify/save-token', {
+                  method: 'POST',
+                  body: JSON.stringify({ token: cleanToken })
+                }).catch(() => {});
+                window.dispatchEvent(new CustomEvent('spotify-token-updated'));
+              }
+            }}
+            className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white transition-all text-[10px] font-bold cursor-pointer"
+            title={lang === 'ar' ? 'ربط يدوي بالتوكن' : 'Manual Token Entry'}
+          >
+            <KeyRound size={13} />
+          </button>
+
+          <button
+            type="button" 
+            onClick={async () => {
+              const isDesktop = typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:');
+              const url = getSpotifyLoginUrl();
+              if (isDesktop) {
+                try {
+                  const { invoke } = await import('@tauri-apps/api/core');
+                  try { await invoke('start_auth_server'); } catch (err) {}
+                  await invoke('open_system_browser', { url });
+                  return;
+                } catch (err) {
+                  console.warn('Fallback opening browser:', err);
+                }
+              }
+              window.location.href = url;
+            }}
+            className="px-4 py-1.5 rounded-full font-black text-xs bg-white text-black hover:bg-white/90 transition-all active:scale-95 shadow-sm cursor-pointer"
+          >
+            {lang === 'ar' ? 'ربط' : 'Connect'}
+          </button>
+        </div>
       </div>
     );
   }
