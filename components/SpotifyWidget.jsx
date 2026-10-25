@@ -8,7 +8,8 @@ export default function SpotifyWidget({
   lang = 'ar', 
   theme = 'dark', 
   variant = 'card', // 'card' | 'compact'
-  className = ''
+  className = '',
+  userId = null
 }) {
   const [data, setData] = useState({
     isConnected: false,
@@ -66,9 +67,21 @@ export default function SpotifyWidget({
     const intervalMs = data.isPlaying ? 4000 : 12000;
     timer = setInterval(checkNowPlaying, intervalMs);
 
+    const onTokenSync = () => {
+      checkNowPlaying();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('spotify-token-updated', onTokenSync);
+      window.addEventListener('storage', onTokenSync);
+    }
+
     return () => {
       isMounted = false;
       if (timer) clearInterval(timer);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('spotify-token-updated', onTokenSync);
+        window.removeEventListener('storage', onTokenSync);
+      }
     };
   }, [data.isPlaying]);
 
@@ -220,11 +233,11 @@ export default function SpotifyWidget({
   const getSpotifyLoginUrl = () => {
     const isDesktop = typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:');
     const base = isDesktop ? 'https://bokra101.vercel.app/api/spotify/login' : '/api/spotify/login';
-    let uid = '';
-    if (typeof window !== 'undefined') {
+    let uid = userId || '';
+    if (!uid && typeof window !== 'undefined') {
       try {
-        const u = JSON.parse(localStorage.getItem('daybase_user') || '{}');
-        uid = u.id || localStorage.getItem('daybase_user_id') || '';
+        const u = JSON.parse(localStorage.getItem('bokra_desktop_user') || '{}');
+        uid = u.id || '';
       } catch (e) {}
     }
     return uid ? `${base}?uid=${encodeURIComponent(uid)}` : base;

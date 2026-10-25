@@ -99,7 +99,7 @@ export const ClerkProvider = ({ children }) => {
         console.warn('Tauri start_auth_server fallback to port 28282', e);
       }
 
-      const loginUrl = `https://trackert-v2.vercel.app/desktop-auth?port=${port}`;
+      const loginUrl = `https://bokra101.vercel.app/desktop-auth?port=${port}`;
 
       try {
         if (isTauri()) {

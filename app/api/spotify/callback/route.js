@@ -40,9 +40,14 @@ export async function GET(req) {
         userId = await getAuthUserId(req);
       }
       if (userId) {
-        await prisma.user.update({
+        await prisma.user.upsert({
           where: { id: userId },
-          data: { spotifyRefreshToken: refreshToken }
+          update: { spotifyRefreshToken: refreshToken },
+          create: {
+            id: userId,
+            email: `${userId}@bokra.app`,
+            spotifyRefreshToken: refreshToken
+          }
         });
       }
     } catch (dbErr) {

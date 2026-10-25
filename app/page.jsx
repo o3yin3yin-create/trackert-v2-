@@ -740,6 +740,11 @@ export default function App() {
         const token = params.get('spotify_token');
         if (token) {
           localStorage.setItem('daybase_spotify_refresh_token', token);
+          apiFetch('/api/spotify/save-token', {
+            method: 'POST',
+            body: JSON.stringify({ token })
+          }).catch(() => {});
+          window.dispatchEvent(new CustomEvent('spotify-token-updated'));
           markLocalMutation();
         }
         setSpotifyNotification({ 
@@ -1025,6 +1030,7 @@ export default function App() {
              const cur = localStorage.getItem('daybase_spotify_refresh_token');
              if (cur !== authoritative.spotifyRefreshToken) {
                localStorage.setItem('daybase_spotify_refresh_token', authoritative.spotifyRefreshToken);
+               window.dispatchEvent(new CustomEvent('spotify-token-updated'));
              }
           }
 
@@ -3746,7 +3752,7 @@ export default function App() {
 
                 {/* Spotify Mini Player in Pomodoro */}
                 <div className="mt-5 flex justify-center w-full">
-                  <SpotifyWidget lang={lang} theme={theme} themeColor={neon} variant="compact" />
+                  <SpotifyWidget lang={lang} theme={theme} themeColor={neon} variant="compact" userId={user?.id} />
                 </div>
               </div>
 
@@ -3975,32 +3981,20 @@ export default function App() {
               {/* Right: Account Avatar */}
               <div className="relative flex items-center justify-center shrink-0 window-no-drag" data-no-drag>
                 <Show when="signed-out">
-                  <button 
-                    onClick={() => {
-                      if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
-                        const fakeBtn = document.getElementById('desktop-login-trigger');
-                        if (fakeBtn) fakeBtn.click();
-                      } else {
-                        setAuthModal('sign-in');
-                      }
-                    }}
-                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95 border border-white/20 shadow-sm"
-                    title={!isOnline ? 'Offline' : isSyncing ? 'Syncing...' : 'Sign In'}
-                    aria-label="Account"
-                  >
-                    <User size={16} className="text-white/80" />
-                  </button>
-
-                  {/* Hidden Tauri triggers for desktop */}
-                  <div className="hidden">
-                    <SignInButton><span id="desktop-login-trigger"></span></SignInButton>
-                    <SignUpButton><span id="desktop-signup-trigger"></span></SignUpButton>
-                  </div>
+                  <SignInButton>
+                    <button 
+                      className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95 border border-white/20 shadow-sm"
+                      title={!isOnline ? 'Offline' : isSyncing ? 'Syncing...' : 'Sign In'}
+                      aria-label="Account"
+                    >
+                      <User size={16} className="text-white/80" />
+                    </button>
+                  </SignInButton>
                 </Show>
                 
                 <Show when="signed-in">
                   <div 
-                    className={`w-9 h-9 rounded-full flex items-center justify-center overflow-hidden transition-all duration-300 border ${
+                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 border ${
                       !isOnline 
                         ? 'border-white/10 opacity-70' 
                         : isSyncing 
@@ -4145,7 +4139,7 @@ export default function App() {
             )}
 
             {/* Mobile Spotify Slim Bar (Directly below Mission Card) */}
-            <SpotifyWidget lang={lang} theme={theme} themeColor={themeColor} variant="card" className="mt-0.5 mb-1" />
+            <SpotifyWidget lang={lang} theme={theme} themeColor={themeColor} variant="card" className="mt-0.5 mb-1" userId={user?.id} />
 
             {/* Mobile Habits Cards Grid */}
             <div className="grid grid-cols-2 gap-3 items-start w-full">
@@ -4324,7 +4318,7 @@ export default function App() {
               )}
 
               {/* Desktop Spotify Slim Bar (Directly below Mission Card) */}
-              <SpotifyWidget lang={lang} theme={theme} themeColor={themeColor} variant="card" className="mt-0.5" />
+              <SpotifyWidget lang={lang} theme={theme} themeColor={themeColor} variant="card" className="mt-0.5" userId={user?.id} />
 
               {/* Habits Cards Grid */}
               <div className="grid grid-cols-2 gap-3 mt-1 items-start w-full">
