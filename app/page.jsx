@@ -621,6 +621,15 @@ export default function App() {
     }
     return false;
   });
+  const [pomodoroSessionStep, setPomodoroSessionStep] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('daybase_pomodoro_session_step');
+        if (saved) return parseInt(saved, 10) || 1;
+      } catch (e) {}
+    }
+    return 2;
+  });
   const [isEmergencyCardsOpen, setIsEmergencyCardsOpen] = useState(false);
   const [isHowToUseOpen, setIsHowToUseOpen] = useState(false);
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
@@ -1770,6 +1779,11 @@ export default function App() {
           if (newT <= 0) {
             setIsTimerRunning(false); 
             haptic('heavy');
+            setPomodoroSessionStep(prev => {
+              const next = prev >= 4 ? 1 : prev + 1;
+              if (typeof window !== 'undefined') localStorage.setItem('daybase_pomodoro_session_step', next.toString());
+              return next;
+            });
             try {
               const ctx = getAudioCtx();
               if (ctx) {
@@ -2369,36 +2383,102 @@ export default function App() {
       const isRunning = !isPomodoroOpen && isTimerRunning;
       if (mode === 'auto' && !isRunning) return null;
 
+      const totalTime = pomodoroInitialTime || 25 * 60;
+      const currentRemaining = Math.max(0, pomodoroTime);
+      const progress = Math.min(1, Math.max(0, 1 - (currentRemaining / totalTime)));
+      const radius = 17;
+      const circumference = 2 * Math.PI * radius; // ~106.81
+      const strokeDashoffset = circumference - (progress * circumference);
+
+      const mins = String(Math.floor(pomodoroTime / 60)).padStart(2, '0');
+      const secs = String(pomodoroTime % 60).padStart(2, '0');
+
       return (
         <div 
           key="pomodoro-widget"
           onClick={() => setIsPomodoroOpen(true)} 
           data-no-day-swipe="true"
-          className="w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 shadow-lg active:scale-[0.99] transition-all duration-200 mt-1 mb-1 select-none"
+          className="w-full px-5 py-3.5 sm:px-6 sm:py-4 rounded-full bg-[#18181B] border border-white/10 shadow-2xl flex items-center justify-between cursor-pointer active:scale-[0.99] transition-all duration-200 mt-1 mb-1 select-none"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-black shrink-0">
-              <Timer size={14} strokeWidth={2.8} />
+          {/* Left: Progress Ring + Play/Pause button and Title + Session Dashes */}
+          <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
+            {/* Circular Progress Ring with Play/Pause button in center */}
+            <div 
+              onClick={(e) => {
+                e.stopPropagation();
+                haptic('light');
+                getAudioCtx();
+                setIsTimerRunning(!isTimerRunning);
+              }}
+              className="relative w-11 h-11 flex items-center justify-center shrink-0 cursor-pointer active:scale-90 transition-transform"
+              title={isTimerRunning ? (lang === 'ar' ? 'إيقاف مؤقت' : 'Pause') : (lang === 'ar' ? 'استئناف' : 'Resume')}
+            >
+              <svg className="w-11 h-11 -rotate-90 pointer-events-none" viewBox="0 0 44 44">
+                {/* Background track */}
+                <circle
+                  cx="22"
+                  cy="22"
+                  r={radius}
+                  stroke="rgba(255, 255, 255, 0.15)"
+                  strokeWidth="3.2"
+                  fill="none"
+                />
+                {/* Active progress arc */}
+                <circle
+                  cx="22"
+                  cy="22"
+                  r={radius}
+                  stroke="#ffffff"
+                  strokeWidth="3.2"
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  fill="none"
+                  className="transition-all duration-300 ease-linear"
+                />
+              </svg>
+              
+              {/* Center Pause/Play Icon */}
+              <div className="absolute inset-0 flex items-center justify-center text-white pointer-events-none">
+                {isTimerRunning ? (
+                  <Pause size={13} className="fill-white text-white" />
+                ) : (
+                  <Play size={13} className="fill-white text-white ml-0.5" />
+                )}
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-[13px] font-bold text-white tracking-tight">
-                {isRunning ? (activePomodoroTask?.name || (lang === 'ar' ? 'جلسة بومودورو' : 'Pomodoro Focus')) : (lang === 'ar' ? 'تركيز بومودورو' : 'Pomodoro Focus')}
+
+            {/* Title + Session Dashes */}
+            <div className="flex flex-col justify-center min-w-0">
+              <span className="text-white font-bold text-base sm:text-[17px] tracking-tight leading-none truncate">
+                {activePomodoroTask?.name || (lang === 'ar' ? 'تركيز' : 'Focus')}
               </span>
-              <span className="text-[10px] text-white/50 font-semibold">
-                {isRunning ? (lang === 'ar' ? 'جلسة تركيز نشطة • اضغط للفتح' : 'Active focus session • Tap to view') : (lang === 'ar' ? 'اضغط لبدء جلسة تركيز' : 'Tap to start focus timer')}
-              </span>
+              
+              {/* A2 · Session Dashes (Cycle Progress) */}
+              <div className="flex items-center gap-1.5 mt-2">
+                {[1, 2, 3, 4].map((step) => (
+                  <div
+                    key={step}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPomodoroSessionStep(step);
+                      if (typeof window !== 'undefined') localStorage.setItem('daybase_pomodoro_session_step', step.toString());
+                      haptic('light');
+                    }}
+                    className={`h-1 w-4 sm:w-5 rounded-full transition-all duration-300 ${
+                      step <= pomodoroSessionStep ? 'bg-white' : 'bg-white/20'
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {isRunning ? (
-              <span className="text-sm font-black font-mono px-3 py-1 rounded-full bg-white text-black shadow-sm tabular-nums">
-                {String(Math.floor(pomodoroTime / 60)).padStart(2, '0')}:{String(pomodoroTime % 60).padStart(2, '0')}
-              </span>
-            ) : (
-              <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/10 text-white/70 hover:bg-white/20">
-                {lang === 'ar' ? 'بدء' : 'Start'}
-              </span>
-            )}
+
+          {/* Right: Giant Minimalist Apple Monochrome Timer Readout */}
+          <div className="flex items-baseline font-black text-3xl sm:text-4xl tabular-nums tracking-tight font-sans shrink-0 pl-3">
+            <span className="text-white">{mins}</span>
+            <span className="text-white/40">:</span>
+            <span className="text-white/40">{secs}</span>
           </div>
         </div>
       );
