@@ -4624,7 +4624,7 @@ export default function App() {
 
           {/* --- ANALYTICS PAGE (FULL SCREEN) --- */}
           {isAnalyticsModalOpen && createPortal(
-            <div className="fixed inset-0 z-[10000] bg-black overflow-y-auto">
+            <div className="fixed inset-0 z-[10005] bg-black overflow-y-auto">
               <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
                 <div>
                   {/* Header */}
@@ -4688,37 +4688,6 @@ export default function App() {
                           <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{backgroundColor: themeColor}}/><span className="text-[10px] font-bold tracking-widest text-[#8E8E93] uppercase">SCORE</span></div>
                           <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-cyan-400"/><span className="text-[10px] font-bold tracking-widest text-[#8E8E93] uppercase">FOCUS</span></div>
                         </div>
-                      </div>
-
-                      {/* Focus Tasks Table */}
-                      <div className="bg-white/5 p-5 rounded-3xl border border-white/10 mb-6">
-                        <h4 className="text-xs font-bold text-white/50 uppercase tracking-widest mb-4">
-                          {activeDateStr === realTodayStr ? "Today's Focus Tasks" : "Focus Tasks"}
-                        </h4>
-                        
-                        {pomodoroTasksData[activeDateStr] && pomodoroTasksData[activeDateStr].filter(t => t && t.name && !t.name.includes('✈') && typeof t.timeSpent === 'number').length > 0 ? (
-                          <div className="flex flex-col gap-2.5 max-h-64 overflow-y-auto pr-1">
-                            {pomodoroTasksData[activeDateStr]
-                              .filter(t => t && t.name && !t.name.includes('✈') && typeof t.timeSpent === 'number')
-                              .sort((a, b) => (b.timeSpent || 0) - (a.timeSpent || 0))
-                              .map((task, idx) => {
-                                const mins = Math.max(1, Math.ceil((task.timeSpent || 0) / 60));
-                                return (
-                                  <div key={idx} className="flex justify-between items-center bg-white/5 px-3.5 py-3 rounded-2xl border border-white/5">
-                                    <div className="flex items-center gap-2.5">
-                                      <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: task.color || '#FF9F0A' }} />
-                                      <span className="text-sm font-bold text-white">{task.name}</span>
-                                    </div>
-                                    <span className="text-xs font-bold text-white/70">{mins} min</span>
-                                  </div>
-                                );
-                              })}
-                          </div>
-                        ) : (
-                          <div className="text-center text-xs font-bold text-white/30 py-6 opacity-60">
-                            {lang === 'ar' ? 'لا يوجد فترات تركيز مسجلة لليوم' : 'No focus tasks logged for this day'}
-                          </div>
-                        )}
                       </div>
 
                       {/* View Tickets History Button */}
@@ -5262,7 +5231,6 @@ export default function App() {
           <div className="w-full max-w-[428px] md:max-w-2xl lg:max-w-3xl px-6 flex justify-between items-center pointer-events-auto">
             <div className="bg-white/50 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border border-black/10 dark:border-white/5 rounded-full flex items-center p-1.5 gap-1.5 shadow-2xl dark:shadow-black/80">
               <button onClick={() => navTo('home')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white transition-all duration-200 active:scale-90"><Home size={18} /></button>
-              <button onClick={() => navTo('analytics')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><BarChart2 size={18} /></button>
               <button onClick={() => navTo('tasks')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
               {/* Focus Menu: Combines Pomodoro & Flight Focus */}
               <div className="relative">
@@ -5432,6 +5400,15 @@ export default function App() {
                             <div className="flex items-center gap-3">
                               <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center"><AvatarIcon name={isMounted ? avatar : 'user'} size={18} /></div>
                               <span>{lang === 'ar' ? 'تغيير الأفاتار' : 'Change Avatar'}</span>
+                            </div>
+                            <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                          </button>
+
+                          {/* Analytics */}
+                          <button onClick={() => setIsAnalyticsModalOpen(true)} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center"><BarChart2 size={18} /></div>
+                              <span>{t('analytics')}</span>
                             </div>
                             <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
                           </button>
