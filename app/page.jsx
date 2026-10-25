@@ -3732,66 +3732,58 @@ export default function App() {
                 )}
               </div>
 
-              {/* Right: Account Avatar with Dynamic White Glow */}
+              {/* Right: Account Avatar */}
               <div className="relative flex items-center justify-center shrink-0 window-no-drag" data-no-drag>
-                {/* Pure White Glow behind Avatar */}
-                <div 
-                  className={`absolute inset-0 rounded-full transition-all duration-500 pointer-events-none ${
-                    !isOnline
-                      ? 'opacity-0'
-                      : isSyncing
-                      ? 'bg-white/60 blur-[10px] animate-pulse opacity-100'
-                      : 'bg-white/30 blur-[8px] opacity-100'
-                  }`} 
-                />
+                <Show when="signed-out">
+                  <button 
+                    onClick={() => {
+                      if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
+                        const fakeBtn = document.getElementById('desktop-login-trigger');
+                        if (fakeBtn) fakeBtn.click();
+                      } else {
+                        setAuthModal('sign-in');
+                      }
+                    }}
+                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95 border border-white/20 shadow-sm"
+                    title={!isOnline ? 'Offline' : isSyncing ? 'Syncing...' : 'Sign In'}
+                    aria-label="Account"
+                  >
+                    <User size={16} className="text-white/80" />
+                  </button>
 
-                {/* Avatar Ring */}
-                <div className={`relative rounded-full p-[2px] transition-all duration-300 ${
-                  !isOnline 
-                    ? 'border border-white/10 opacity-70' 
-                    : isSyncing 
-                    ? 'border border-white/50 shadow-[0_0_14px_rgba(255,255,255,0.45)]' 
-                    : 'border border-white/30 shadow-[0_0_10px_rgba(255,255,255,0.2)]'
-                }`}>
-                  <Show when="signed-out">
-                    <button 
-                      onClick={() => {
-                        if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
-                          const fakeBtn = document.getElementById('desktop-login-trigger');
-                          if (fakeBtn) fakeBtn.click();
-                        } else {
-                          setAuthModal('sign-in');
-                        }
-                      }}
-                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95"
-                      title={!isOnline ? 'Offline' : isSyncing ? 'Syncing...' : 'Sign In'}
-                      aria-label="Account"
-                    >
-                      <User size={16} className="text-white/80" />
-                    </button>
-
-                    {/* Hidden Tauri triggers for desktop */}
-                    <div className="hidden">
-                      <SignInButton><span id="desktop-login-trigger"></span></SignInButton>
-                      <SignUpButton><span id="desktop-signup-trigger"></span></SignUpButton>
-                    </div>
-                  </Show>
-                  
-                  <Show when="signed-in">
-                    <div title={!isOnline ? 'Offline' : isSyncing ? 'Syncing...' : 'Online & Synced'}>
-                      <UserButton 
-                        appearance={{ 
-                          elements: { 
-                            avatarBox: "w-8 h-8 sm:w-9 sm:h-9",
-                            userButtonPopoverCard: "!bg-[#18181B] !border !border-white/10 !shadow-2xl !bg-none",
-                            userButtonPopoverFooter: "!bg-transparent !bg-none !border-t !border-white/10 !border-b-0",
-                            developmentModeBadge: "!hidden",
-                          } 
-                        }} 
-                      />
-                    </div>
-                  </Show>
-                </div>
+                  {/* Hidden Tauri triggers for desktop */}
+                  <div className="hidden">
+                    <SignInButton><span id="desktop-login-trigger"></span></SignInButton>
+                    <SignUpButton><span id="desktop-signup-trigger"></span></SignUpButton>
+                  </div>
+                </Show>
+                
+                <Show when="signed-in">
+                  <div 
+                    className={`w-9 h-9 rounded-full flex items-center justify-center overflow-hidden transition-all duration-300 border ${
+                      !isOnline 
+                        ? 'border-white/10 opacity-70' 
+                        : isSyncing 
+                        ? 'border-white/60 shadow-[0_0_10px_rgba(255,255,255,0.4)]' 
+                        : 'border-white/25 hover:border-white/50 shadow-sm'
+                    }`}
+                    title={!isOnline ? 'Offline' : isSyncing ? 'Syncing...' : 'Online & Synced'}
+                  >
+                    <UserButton 
+                      appearance={{ 
+                        elements: { 
+                          rootBox: "w-9 h-9 flex items-center justify-center",
+                          userButtonTrigger: "w-9 h-9 rounded-full p-0 border-0 outline-none focus:outline-none flex items-center justify-center overflow-hidden",
+                          avatarBox: "w-full h-full rounded-full overflow-hidden",
+                          userButtonAvatarImage: "w-full h-full object-cover rounded-full",
+                          userButtonPopoverCard: "!bg-[#18181B] !border !border-white/10 !shadow-2xl !bg-none",
+                          userButtonPopoverFooter: "!bg-transparent !bg-none !border-t !border-white/10 !border-b-0",
+                          developmentModeBadge: "!hidden",
+                        } 
+                      }} 
+                    />
+                  </div>
+                </Show>
               </div>
 
             </div>
@@ -3809,7 +3801,7 @@ export default function App() {
                 backgroundColor: theme === 'dark' ? `${themeColor}cc` : `${themeColor}aa`, 
                 borderRadius: '24px', 
                 color: '#000000',
-                boxShadow: `0 12px 40px -12px ${themeColor}aa` 
+                boxShadow: `0 0 24px -2px ${themeColor}66` 
               }}
             >
               <div className="flex items-center justify-between gap-2 mb-1 select-none">
@@ -3931,7 +3923,7 @@ export default function App() {
                   backgroundColor: theme === 'dark' ? `${themeColor}cc` : `${themeColor}aa`, 
                   borderRadius: '24px', 
                   color: '#000000',
-                  boxShadow: `0 12px 40px -12px ${themeColor}aa` 
+                  boxShadow: `0 0 24px -2px ${themeColor}66` 
                 }}
               >
                 <div className="flex items-center justify-between gap-2 mb-1 select-none">
