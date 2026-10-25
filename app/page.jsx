@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid } from 'lucide-react';
+import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -777,15 +777,16 @@ export default function App() {
   const [isTicketsHistoryViewOpen, setIsTicketsHistoryViewOpen] = useState(false);
   const [isFocusTasksViewOpen, setIsFocusTasksViewOpen] = useState(false);
   const [isWidgetsModalOpen, setIsWidgetsModalOpen] = useState(false);
+  const [isAppearanceModalOpen, setIsAppearanceModalOpen] = useState(false);
   const [spotifyNotification, setSpotifyNotification] = useState(null);
 
   // Dynamic Home Screen Widgets Config
   const [widgetsConfig, setWidgetsConfig] = useState(() => {
     const DEFAULT_WIDGETS = [
-      { id: 'pomodoro', mode: 'auto' },
-      { id: 'flight', mode: 'auto' },
-      { id: 'spotify', mode: 'auto' },
-      { id: 'friends', mode: 'hidden' },
+      { id: 'pomodoro', mode: 'auto', size: 'full' },
+      { id: 'flight', mode: 'auto', size: 'full' },
+      { id: 'spotify', mode: 'auto', size: 'full' },
+      { id: 'friends', mode: 'hidden', size: 'full' },
     ];
     if (typeof window !== 'undefined') {
       try {
@@ -795,7 +796,7 @@ export default function App() {
           if (Array.isArray(parsed) && parsed.length > 0) {
             const existingIds = new Set(parsed.map(w => w.id));
             const missing = DEFAULT_WIDGETS.filter(dw => !existingIds.has(dw.id));
-            return [...parsed, ...missing];
+            return [...parsed.map(w => ({ size: 'full', ...w })), ...missing];
           }
         }
       } catch (e) {}
@@ -1526,6 +1527,7 @@ export default function App() {
     setIsSettingsMenuOpen(false);
     setIsFocusMenuOpen(false);
     setIsWidgetsModalOpen(false);
+    setIsAppearanceModalOpen(false);
     if (!skipManage) {
       setIsManageVisible(false);
       setTimeout(() => setIsManageMounted(false), 300);
@@ -2425,7 +2427,7 @@ export default function App() {
     );
   };
 
-  const renderDynamicWidget = (widgetId, mode) => {
+  const renderDynamicWidget = (widgetId, mode, size = 'full') => {
     if (mode === 'hidden') return null;
 
     if (widgetId === 'pomodoro') {
@@ -2450,12 +2452,102 @@ export default function App() {
       const mins = String(Math.floor(pomodoroTime / 60)).padStart(2, '0');
       const secs = String(pomodoroTime % 60).padStart(2, '0');
 
+      // COMPACT VARIANT (Single Column / Half-Width / Matches Habit Card Height)
+      if (size === 'compact') {
+        return (
+          <div 
+            key="pomodoro-widget"
+            onClick={() => { recordPomodoroActivity(); setIsPomodoroOpen(true); }} 
+            data-no-day-swipe="true"
+            className="col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 dark:border-white/18 shadow-lg active:scale-[0.99] transition-all select-none min-h-[58px]"
+          >
+            {/* Left: Mini Ring + Play/Pause */}
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  recordPomodoroActivity();
+                  haptic('light');
+                  getAudioCtx();
+                  setIsTimerRunning(!isTimerRunning);
+                }}
+                className="relative w-8 h-8 flex items-center justify-center shrink-0 cursor-pointer active:scale-90 transition-transform"
+                title={isTimerRunning ? (lang === 'ar' ? 'إيقاف مؤقت' : 'Pause') : (lang === 'ar' ? 'استئناف' : 'Resume')}
+              >
+                <svg className="w-8 h-8 -rotate-90 pointer-events-none" viewBox="0 0 32 32">
+                  <circle
+                    cx="16"
+                    cy="16"
+                    r={12}
+                    stroke="rgba(255, 255, 255, 0.15)"
+                    strokeWidth="2.8"
+                    fill="none"
+                  />
+                  <circle
+                    cx="16"
+                    cy="16"
+                    r={12}
+                    stroke="#ffffff"
+                    strokeWidth="2.8"
+                    strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 12}
+                    strokeDashoffset={2 * Math.PI * 12 * (1 - progressFraction)}
+                    fill="none"
+                    className="transition-all duration-300 ease-linear"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center text-white pointer-events-none">
+                  {isTimerRunning ? (
+                    <Pause size={10} className="fill-white text-white" />
+                  ) : (
+                    <Play size={10} className="fill-white text-white ml-0.5" />
+                  )}
+                </div>
+              </div>
+
+              {/* Title & 4 Dots */}
+              <div className="flex flex-col min-w-0">
+                <span className="text-white font-bold text-[12px] tracking-tight leading-tight truncate">
+                  {activePomodoroTask?.name || (lang === 'ar' ? 'تركيز' : 'Focus')}
+                </span>
+                <div className="flex items-center gap-1 mt-1">
+                  {[0, 1, 2, 3].map((idx) => {
+                    const isFilled = progressFraction >= (idx + 1) * 0.25;
+                    const isCurrent = !isFilled && progressFraction >= idx * 0.25;
+                    return (
+                      <span
+                        key={idx}
+                        className={`w-1 h-1 rounded-full transition-all duration-300 ${
+                          isFilled
+                            ? 'bg-white shadow-[0_0_4px_rgba(255,255,255,0.7)]'
+                            : isCurrent
+                            ? (isTimerRunning ? 'bg-white animate-pulse' : 'bg-white/80')
+                            : 'bg-white/20'
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Timer */}
+            <div className="flex items-baseline font-black text-sm sm:text-base tabular-nums tracking-tight font-sans shrink-0 pl-1">
+              <span className="text-white">{mins}</span>
+              <span className="text-white/40">:</span>
+              <span className="text-white/40">{secs}</span>
+            </div>
+          </div>
+        );
+      }
+
+      // FULL-WIDTH BANNER VARIANT (col-span-2)
       return (
         <div 
           key="pomodoro-widget"
           onClick={() => { recordPomodoroActivity(); setIsPomodoroOpen(true); }} 
           data-no-day-swipe="true"
-          className="w-full px-4 sm:px-5 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 dark:border-white/18 shadow-lg active:scale-[0.99] transition-all duration-200 mt-1 mb-1 select-none"
+          className="col-span-2 w-full px-4 sm:px-5 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 dark:border-white/18 shadow-lg active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
         >
           {/* Left: Progress Ring + Play/Pause button and Title + 4 Progress Dots */}
           <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
@@ -2472,7 +2564,6 @@ export default function App() {
               title={isTimerRunning ? (lang === 'ar' ? 'إيقاف مؤقت' : 'Pause') : (lang === 'ar' ? 'استئناف' : 'Resume')}
             >
               <svg className="w-10 h-10 -rotate-90 pointer-events-none" viewBox="0 0 44 44">
-                {/* Background track */}
                 <circle
                   cx="22"
                   cy="22"
@@ -2481,7 +2572,6 @@ export default function App() {
                   strokeWidth="3.2"
                   fill="none"
                 />
-                {/* Active progress arc */}
                 <circle
                   cx="22"
                   cy="22"
@@ -2496,7 +2586,6 @@ export default function App() {
                 />
               </svg>
               
-              {/* Center Pause/Play Icon */}
               <div className="absolute inset-0 flex items-center justify-center text-white pointer-events-none">
                 {isTimerRunning ? (
                   <Pause size={12} className="fill-white text-white" />
@@ -2512,7 +2601,6 @@ export default function App() {
                 {activePomodoroTask?.name || (lang === 'ar' ? 'تركيز' : 'Focus')}
               </span>
               
-              {/* 4 Progress Dots (Quarter intervals of active session) */}
               <div className="flex items-center gap-1.5 mt-2">
                 {[0, 1, 2, 3].map((idx) => {
                   const isFilled = progressFraction >= (idx + 1) * 0.25;
@@ -2554,12 +2642,42 @@ export default function App() {
         return null;
       }
 
+      if (size === 'compact') {
+        return (
+          <div 
+            key="flight-widget"
+            onClick={() => { recordFlightActivity(); setIsFlightFocusOpen(true); }} 
+            data-no-day-swipe="true"
+            className="col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 dark:border-white/18 shadow-lg active:scale-[0.99] transition-all select-none min-h-[58px]"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-black shrink-0">
+                <Plane size={13} strokeWidth={2.8} />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[12px] font-bold text-white tracking-tight truncate leading-tight">
+                  {isRunning ? `${selectedFlight.origin} → ${selectedFlight.destination}` : (lang === 'ar' ? 'فلايت فوكس' : 'Flight')}
+                </span>
+                <span className="text-[10px] text-white/50 truncate leading-tight mt-0.5">
+                  {isRunning ? `${selectedFlight.callsign}` : (lang === 'ar' ? 'رحلة تركيز' : 'Focus flight')}
+                </span>
+              </div>
+            </div>
+            {isRunning && (
+              <span className="text-xs font-mono font-black text-white shrink-0 pl-1 tabular-nums">
+                {String(Math.floor((flightTimer % 3600) / 60)).padStart(2, '0')}:{String(flightTimer % 60).padStart(2, '0')}
+              </span>
+            )}
+          </div>
+        );
+      }
+
       return (
         <div 
           key="flight-widget"
-          onClick={() => setIsFlightFocusOpen(true)} 
+          onClick={() => { recordFlightActivity(); setIsFlightFocusOpen(true); }} 
           data-no-day-swipe="true"
-          className="w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 shadow-lg active:scale-[0.99] transition-all duration-200 mt-1 mb-1 select-none"
+          className="col-span-2 w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 shadow-lg active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
         >
           <div className="flex items-center gap-3">
             <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-black shrink-0">
@@ -2600,17 +2718,43 @@ export default function App() {
           className="mt-0.5 mb-1" 
           userId={user?.id}
           mode={mode}
+          size={size}
         />
       );
     }
 
     if (widgetId === 'friends') {
       if (mode === 'hidden') return null;
+
+      if (size === 'compact') {
+        return (
+          <div 
+            key="friends-widget"
+            data-no-day-swipe="true"
+            className="col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel flex items-center justify-between border border-white/10 dark:border-white/18 shadow-lg opacity-80 select-none min-h-[58px]"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white shrink-0">
+                <Users size={13} strokeWidth={2.5} />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[12px] font-bold text-white tracking-tight truncate leading-tight">
+                  {lang === 'ar' ? 'الأصدقاء' : 'Friends'}
+                </span>
+                <span className="text-[10px] text-white/40 truncate leading-tight mt-0.5">
+                  {lang === 'ar' ? 'قريباً' : 'Soon'}
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div 
           key="friends-widget"
           data-no-day-swipe="true"
-          className="w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between border border-white/10 shadow-lg mt-1 mb-1 select-none opacity-80"
+          className="col-span-2 w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between border border-white/10 shadow-lg select-none opacity-80 min-h-[58px]"
         >
           <div className="flex items-center gap-3">
             <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white shrink-0">
@@ -4418,7 +4562,9 @@ export default function App() {
             </div>
 
             {/* Dynamic Widgets (Under Mission Card) */}
-            {widgetsConfig.map((widget) => renderDynamicWidget(widget.id, widget.mode))}
+            <div className="grid grid-cols-2 gap-3 items-start w-full">
+              {widgetsConfig.map((widget) => renderDynamicWidget(widget.id, widget.mode, widget.size || 'full'))}
+            </div>
 
             {/* Mobile Habits Cards Grid */}
             <div className="grid grid-cols-2 gap-3 items-start w-full">
@@ -4541,7 +4687,9 @@ export default function App() {
               </div>
 
               {/* Dynamic Widgets (Under Mission Card) */}
-              {widgetsConfig.map((widget) => renderDynamicWidget(widget.id, widget.mode))}
+              <div className="grid grid-cols-2 gap-3 items-start w-full">
+                {widgetsConfig.map((widget) => renderDynamicWidget(widget.id, widget.mode, widget.size || 'full'))}
+              </div>
 
               {/* Habits Cards Grid */}
               <div className="grid grid-cols-2 gap-3 mt-1 items-start w-full">
@@ -5078,52 +5226,96 @@ export default function App() {
                           </div>
 
                           {/* Segmented Control for Visibility Mode */}
-                          <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-black/40 border border-white/10">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newConfig = widgetsConfig.map(w => w.id === widget.id ? { ...w, mode: 'auto' } : w);
-                                updateWidgetsConfig(newConfig);
-                                haptic('light');
-                              }}
-                              className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
-                                widget.mode === 'auto'
-                                  ? 'bg-white text-black shadow-md'
-                                  : 'text-white/50 hover:text-white/80'
-                              }`}
-                            >
-                              {lang === 'ar' ? 'تلقائي (ذكي)' : 'Auto'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newConfig = widgetsConfig.map(w => w.id === widget.id ? { ...w, mode: 'always' } : w);
-                                updateWidgetsConfig(newConfig);
-                                haptic('light');
-                              }}
-                              className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
-                                widget.mode === 'always'
-                                  ? 'bg-white text-black shadow-md'
-                                  : 'text-white/50 hover:text-white/80'
-                              }`}
-                            >
-                              {lang === 'ar' ? 'دائماً' : 'Always'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newConfig = widgetsConfig.map(w => w.id === widget.id ? { ...w, mode: 'hidden' } : w);
-                                updateWidgetsConfig(newConfig);
-                                haptic('light');
-                              }}
-                              className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
-                                widget.mode === 'hidden'
-                                  ? 'bg-white text-black shadow-md'
-                                  : 'text-white/50 hover:text-white/80'
-                              }`}
-                            >
-                              {lang === 'ar' ? 'مخفي' : 'Hidden'}
-                            </button>
+                          <div className="flex flex-col gap-1.5">
+                            <span className="text-[10px] font-bold text-white/40 px-1 uppercase tracking-wider">
+                              {lang === 'ar' ? 'الظهور في الرئيسية' : 'Visibility'}
+                            </span>
+                            <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-black/40 border border-white/10">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newConfig = widgetsConfig.map(w => w.id === widget.id ? { ...w, mode: 'auto' } : w);
+                                  updateWidgetsConfig(newConfig);
+                                  haptic('light');
+                                }}
+                                className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
+                                  widget.mode === 'auto'
+                                    ? 'bg-white text-black shadow-md'
+                                    : 'text-white/50 hover:text-white/80'
+                                }`}
+                              >
+                                {lang === 'ar' ? 'تلقائي (ذكي)' : 'Auto'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newConfig = widgetsConfig.map(w => w.id === widget.id ? { ...w, mode: 'always' } : w);
+                                  updateWidgetsConfig(newConfig);
+                                  haptic('light');
+                                }}
+                                className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
+                                  widget.mode === 'always'
+                                    ? 'bg-white text-black shadow-md'
+                                    : 'text-white/50 hover:text-white/80'
+                                }`}
+                              >
+                                {lang === 'ar' ? 'دائماً' : 'Always'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newConfig = widgetsConfig.map(w => w.id === widget.id ? { ...w, mode: 'hidden' } : w);
+                                  updateWidgetsConfig(newConfig);
+                                  haptic('light');
+                                }}
+                                className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
+                                  widget.mode === 'hidden'
+                                    ? 'bg-white text-black shadow-md'
+                                    : 'text-white/50 hover:text-white/80'
+                                }`}
+                              >
+                                {lang === 'ar' ? 'مخفي' : 'Hidden'}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Size Control: Full width vs Compact Habit size */}
+                          <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                            <span className="text-xs font-bold text-white/70">
+                              {lang === 'ar' ? 'حجم الويدجيت:' : 'Widget Size:'}
+                            </span>
+                            <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-black/40 border border-white/10 w-44">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newConfig = widgetsConfig.map(w => w.id === widget.id ? { ...w, size: 'full' } : w);
+                                  updateWidgetsConfig(newConfig);
+                                  haptic('light');
+                                }}
+                                className={`py-1 px-2 rounded-lg text-xs font-bold transition-all ${
+                                  (widget.size || 'full') === 'full'
+                                    ? 'bg-white text-black shadow-md'
+                                    : 'text-white/50 hover:text-white/80'
+                                }`}
+                              >
+                                {lang === 'ar' ? 'عريض (كامل)' : 'Full'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newConfig = widgetsConfig.map(w => w.id === widget.id ? { ...w, size: 'compact' } : w);
+                                  updateWidgetsConfig(newConfig);
+                                  haptic('light');
+                                }}
+                                className={`py-1 px-2 rounded-lg text-xs font-bold transition-all ${
+                                  widget.size === 'compact'
+                                    ? 'bg-white text-black shadow-md'
+                                    : 'text-white/50 hover:text-white/80'
+                                }`}
+                              >
+                                {lang === 'ar' ? 'مصغر (كارت)' : 'Compact'}
+                              </button>
+                            </div>
                           </div>
                         </div>
                       );
@@ -5138,6 +5330,204 @@ export default function App() {
                     className="w-full py-4 rounded-2xl bg-white text-black font-black text-sm tracking-wide transition-all active:scale-[0.98] shadow-xl hover:bg-white/90"
                   >
                     {lang === 'ar' ? 'حفظ وإغلاق' : 'Done'}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )}
+
+          {/* --- APPEARANCE & CUSTOMIZATION MODAL (FULL SCREEN) --- */}
+          {isAppearanceModalOpen && createPortal(
+            <div className="fixed inset-0 z-[10005] bg-black overflow-y-auto animate-in fade-in duration-200">
+              <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
+                <div>
+                  {/* Header */}
+                  <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => { setIsAppearanceModalOpen(false); setIsSettingsMenuOpen(true); }} 
+                        className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
+                        aria-label="Back"
+                      >
+                        <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                      </button>
+                      <div className="flex flex-col">
+                        <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                          <Palette size={22} className="text-purple-400" /> {lang === 'ar' ? 'المظهر والتخصيص' : 'Appearance'}
+                        </h2>
+                        <span className="text-white/40 text-xs font-semibold mt-0.5">
+                          {lang === 'ar' ? 'الخلفية، لون التمييز، الويدجيتس، والأفاتار' : 'Theme, accents, widgets & avatar'}
+                        </span>
+                      </div>
+                    </div>
+                    <button onClick={() => setIsAppearanceModalOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  {/* Appearance Options List */}
+                  <div className="flex flex-col gap-4 pb-8">
+
+                    {/* Section 1: Background Style (Aurora vs Solid) */}
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <Sparkles size={18} className="text-amber-400" />
+                          <span className="text-sm font-bold text-white">
+                            {lang === 'ar' ? 'نمط الخلفية' : 'Background Style'}
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-semibold text-white/40">
+                          {bgStyle === 'aurora' ? 'Aurora Glow' : 'Deep Solid'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 mt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBgStyle('aurora');
+                            if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', 'aurora');
+                            markLocalMutation();
+                            haptic('light');
+                          }}
+                          className={`p-3.5 rounded-xl border flex flex-col items-center gap-2 transition-all active:scale-95 ${
+                            bgStyle === 'aurora'
+                              ? 'bg-white/15 border-white text-white shadow-lg'
+                              : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <span className="text-xl">✨</span>
+                          <span className="text-xs font-bold">{lang === 'ar' ? 'أورورا حية' : 'Aurora'}</span>
+                          <span className="text-[10px] text-white/40 text-center">{lang === 'ar' ? 'توهج متدرج ناعم' : 'Ambient glow'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBgStyle('solid');
+                            if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', 'solid');
+                            markLocalMutation();
+                            haptic('light');
+                          }}
+                          className={`p-3.5 rounded-xl border flex flex-col items-center gap-2 transition-all active:scale-95 ${
+                            bgStyle === 'solid'
+                              ? 'bg-white/15 border-white text-white shadow-lg'
+                              : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <span className="text-xl">⬛</span>
+                          <span className="text-xs font-bold">{lang === 'ar' ? 'سادة عميق' : 'Solid'}</span>
+                          <span className="text-[10px] text-white/40 text-center">{lang === 'ar' ? 'سواد OLED هادئ' : 'Pure minimalist'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Section 2: Accent Color */}
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <SlidersHorizontal size={18} className="text-cyan-400" />
+                          <span className="text-sm font-bold text-white">
+                            {lang === 'ar' ? 'لون التمييز (Accent Color)' : 'Accent Color'}
+                          </span>
+                        </div>
+                        <div className="w-5 h-5 rounded-full border border-white/30 shadow-md" style={{ backgroundColor: themeColor }} />
+                      </div>
+
+                      {/* Preset Palette Circles + Custom Color Input */}
+                      <div className="flex items-center justify-between gap-2 pt-1">
+                        {['#FFFFFF', '#FF9F0A', '#00F0FF', '#30D158', '#BF5AF2', '#FF375F', '#FFD60A'].map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => {
+                              setThemeColor(c);
+                              if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', c);
+                              markLocalMutation();
+                              haptic('light');
+                            }}
+                            className={`w-8 h-8 rounded-full transition-transform active:scale-90 flex items-center justify-center ${
+                              themeColor.toLowerCase() === c.toLowerCase() ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-black' : 'hover:scale-105'
+                            }`}
+                            style={{ backgroundColor: c }}
+                          >
+                            {themeColor.toLowerCase() === c.toLowerCase() && (
+                              <Check size={14} className={c === '#FFFFFF' ? 'text-black' : 'text-white'} strokeWidth={3} />
+                            )}
+                          </button>
+                        ))}
+
+                        {/* Custom Picker */}
+                        <label className="relative w-8 h-8 rounded-full border border-white/20 hover:border-white/40 flex items-center justify-center cursor-pointer overflow-hidden bg-white/10 transition-all">
+                          <Plus size={14} className="text-white/60" />
+                          <input 
+                            type="color" 
+                            value={themeColor} 
+                            onChange={(e) => {
+                              setThemeColor(e.target.value);
+                              if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', e.target.value);
+                              markLocalMutation();
+                            }} 
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" 
+                          />
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Section 3: Customize & Reorder Widgets */}
+                    <button 
+                      onClick={() => { setIsAppearanceModalOpen(false); setIsWidgetsModalOpen(true); }} 
+                      className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center">
+                          <LayoutGrid size={20} />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-white">
+                            {lang === 'ar' ? 'تخصيص وترتيب وحجم الويدجيتس' : 'Widgets Order & Sizing'}
+                          </span>
+                          <span className="text-[11px] text-white/50 font-normal">
+                            {lang === 'ar' ? 'الترتيب، الظهور الذكي، والمقاس (عريض / كارت صغير)' : 'Reorder, smart auto & full/compact sizes'}
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {/* Section 4: Change Avatar */}
+                    <button 
+                      onClick={() => { setIsAppearanceModalOpen(false); setIsAvatarModalOpen(true); }} 
+                      className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                          <AvatarIcon name={isMounted ? avatar : 'user'} size={20} />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-white">
+                            {lang === 'ar' ? 'تغيير الأفاتار' : 'Change Avatar'}
+                          </span>
+                          <span className="text-[11px] text-white/50 font-normal">
+                            {lang === 'ar' ? 'اختر الشخصية المناسبة لك' : 'Pick your profile persona'}
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                    </button>
+
+                  </div>
+                </div>
+
+                {/* Bottom Done Action */}
+                <div className="pt-4 pb-2">
+                  <button 
+                    onClick={() => { setIsAppearanceModalOpen(false); setIsSettingsMenuOpen(true); }}
+                    className="w-full py-4 rounded-2xl bg-white text-black font-black text-sm tracking-wide transition-all active:scale-[0.98] shadow-xl hover:bg-white/90"
+                  >
+                    {lang === 'ar' ? 'تم وحفظ' : 'Done'}
                   </button>
                 </div>
               </div>
@@ -5714,134 +6104,148 @@ export default function App() {
                           </button>
                         </div>
 
-                        {/* Settings Options List */}
-                        <div className="flex flex-col gap-3 pb-8">
-                          {/* Language */}
-                          <button onClick={() => toggleLang()} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center"><Globe size={18} /></div>
-                              <span>{lang === 'en' ? 'Language / اللغة' : 'اللغة / Language'}</span>
-                            </div>
-                            <span className="text-xs bg-white/10 px-3 py-1.5 rounded-xl text-white/70 font-semibold">{lang === 'en' ? 'العربية' : 'English'}</span>
-                          </button>
+                        {/* Restructured Apple-style Grouped Settings */}
+                        <div className="flex flex-col gap-5 pb-8">
 
-                          {/* Background Style */}
-                          <button onClick={() => { 
-                            const newStyle = bgStyle === 'aurora' ? 'solid' : 'aurora';
-                            setBgStyle(newStyle);
-                            if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', newStyle);
-                            markLocalMutation();
-                          }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center"><span className="text-base">✨</span></div>
-                              <span>{lang === 'ar' ? 'نمط الخلفية' : 'Background Style'}</span>
-                            </div>
-                            <span className="text-xs bg-white/10 px-3 py-1.5 rounded-xl text-white/70 font-semibold">{bgStyle === 'aurora' ? 'Solid' : 'Aurora'}</span>
-                          </button>
-
-                          {/* Emergency Cards */}
-                          <button onClick={() => { setIsSettingsMenuOpen(false); setIsCardsModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 flex items-center justify-between text-base font-bold text-red-400 transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-red-500/15 flex items-center justify-center"><ShieldAlert size={18} /></div>
-                              <span>{t('emergencyCards')}</span>
-                            </div>
-                            <ChevronRight size={18} className={`text-red-400/60 ${lang === 'ar' ? 'rotate-180' : ''}`} />
-                          </button>
-
-                          {/* Accent Color */}
-                          <label className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold cursor-pointer relative text-white transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center"><SlidersHorizontal size={18} /></div>
-                              <span>Accent Color</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full border border-white/30 shadow-md" style={{ backgroundColor: themeColor }} />
-                              <input type="color" value={themeColor} onChange={(e) => {
-                                setThemeColor(e.target.value);
-                                if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', e.target.value);
-                                markLocalMutation();
-                              }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                            </div>
-                          </label>
-
-                          {/* Change Avatar */}
-                          <button onClick={() => { setIsSettingsMenuOpen(false); setIsAvatarModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center"><AvatarIcon name={isMounted ? avatar : 'user'} size={18} /></div>
-                              <span>{lang === 'ar' ? 'تغيير الأفاتار' : 'Change Avatar'}</span>
-                            </div>
-                            <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
-                          </button>
-
-                          {/* Analytics */}
-                          <button onClick={() => setIsAnalyticsModalOpen(true)} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center"><BarChart2 size={18} /></div>
-                              <span>{t('analytics')}</span>
-                            </div>
-                            <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
-                          </button>
-
-                          {/* How to Use */}
-                          <button onClick={() => setIsHowToUseOpen(true)} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center"><BookOpen size={18} /></div>
-                              <span>{t('howToUse')}</span>
-                            </div>
-                            <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
-                          </button>
-
-                          {/* Customize & Reorder Widgets */}
-                          <button onClick={() => { setIsSettingsMenuOpen(false); setIsWidgetsModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center">
-                                <LayoutGrid size={18} />
+                          {/* Profile Card / Header */}
+                          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
+                            <div className="flex items-center gap-3.5">
+                              <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
+                                <AvatarIcon name={isMounted ? avatar : 'user'} size={24} />
                               </div>
-                              <div className="flex flex-col">
-                                <span className="text-sm font-bold text-white">
-                                  {lang === 'ar' ? 'تخصيص وترتيب الويدجيتس' : 'Customize & Reorder Widgets'}
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-base font-bold text-white truncate">
+                                  {user?.fullName || user?.firstName || (lang === 'ar' ? 'المستخدم' : 'Explorer')}
                                 </span>
-                                <span className="text-[10px] text-white/50 font-normal">
-                                  {lang === 'ar' ? 'سبوتيفاي، بومودورو، فلايت فوكس...' : 'Spotify, Pomodoro, Flight Focus...'}
+                                <span className="text-xs text-white/40 truncate">
+                                  {user?.primaryEmailAddress?.emailAddress || 'bokra companion'}
                                 </span>
                               </div>
                             </div>
-                            <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
-                          </button>
-
-                          {/* Spotify Account Sync */}
-                          <div className="w-full text-left p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center">
-                                <Radio size={18} strokeWidth={2.5} />
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="text-sm font-bold text-white">Spotify</span>
-                                <span className="text-[10px] text-white/50 font-normal">
-                                  {lang === 'ar' ? 'ربط الموسيقى والتحكم المباشر' : 'Music playback & sync'}
-                                </span>
-                              </div>
-                            </div>
-                            <a 
-                              href={typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') ? 'https://bokra101.vercel.app/api/spotify/login' : '/api/spotify/login'}
-                              target={typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') ? '_blank' : '_self'}
-                              rel="noopener noreferrer"
-                              className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-white text-black hover:bg-white/90 transition-all active:scale-95 flex items-center gap-1.5 shadow-md"
+                            <button
+                              onClick={() => { setIsSettingsMenuOpen(false); setIsAvatarModalOpen(true); }}
+                              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-all active:scale-95"
                             >
-                              {lang === 'ar' ? 'ربط / تبديل' : 'Connect / Switch'}
-                            </a>
+                              {lang === 'ar' ? 'تعديل' : 'Edit'}
+                            </button>
                           </div>
 
-                          {/* Admin Dashboard */}
-                          {isAdmin && (
-                            <button onClick={() => { setIsSettingsMenuOpen(false); setIsAdminPanelOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 flex items-center justify-between text-base font-bold text-purple-400 transition-colors">
+                          {/* Group 1: Appearance & Customization (المظهر والتخصيص) */}
+                          <div className="flex flex-col gap-1.5">
+                            <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">
+                              {lang === 'ar' ? 'المظهر والتصميم' : 'Style & Appearance'}
+                            </span>
+                            <button 
+                              onClick={() => { setIsSettingsMenuOpen(false); setIsAppearanceModalOpen(true); }} 
+                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
+                            >
                               <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-purple-500/15 flex items-center justify-center"><Users size={18} /></div>
-                                <span>Admin Dashboard</span>
+                                <div className="w-10 h-10 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center">
+                                  <Palette size={20} />
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-white">
+                                    {lang === 'ar' ? 'المظهر والتخصيص' : 'Appearance & Style'}
+                                  </span>
+                                  <span className="text-[11px] text-white/50 font-normal">
+                                    {lang === 'ar' ? 'الخلفية، لون التمييز، تخصيص الويدجيتس، الأفاتار' : 'Aurora/Solid, Accent Color, Widgets, Avatar'}
+                                  </span>
+                                </div>
                               </div>
-                              <ChevronRight size={18} className={`text-purple-400/60 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                              <div className="flex items-center gap-2">
+                                <div className="w-3.5 h-3.5 rounded-full border border-white/30" style={{ backgroundColor: themeColor }} />
+                                <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                              </div>
                             </button>
-                          )}
+                          </div>
+
+                          {/* Group 2: Integrations (الربط والتكامل) */}
+                          <div className="flex flex-col gap-1.5">
+                            <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">
+                              {lang === 'ar' ? 'الربط الموسيقي' : 'Integrations'}
+                            </span>
+                            <div className="w-full text-left p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+                                  <Radio size={20} strokeWidth={2.5} />
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-white">Spotify</span>
+                                  <span className="text-[11px] text-white/50 font-normal">
+                                    {lang === 'ar' ? 'ربط الموسيقى والمزامنة المباشرة' : 'Music playback & sync'}
+                                  </span>
+                                </div>
+                              </div>
+                              <a 
+                                href={typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') ? 'https://bokra101.vercel.app/api/spotify/login' : '/api/spotify/login'}
+                                target={typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') ? '_blank' : '_self'}
+                                rel="noopener noreferrer"
+                                className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-white text-black hover:bg-white/90 transition-all active:scale-95 flex items-center gap-1.5 shadow-md"
+                              >
+                                {lang === 'ar' ? 'ربط / تبديل' : 'Connect'}
+                              </a>
+                            </div>
+                          </div>
+
+                          {/* Group 3: Tools & Utilities (الأدوات والمتابعة) */}
+                          <div className="flex flex-col gap-1.5">
+                            <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">
+                              {lang === 'ar' ? 'الأدوات والمتابعة' : 'Tools & Analytics'}
+                            </span>
+
+                            {/* Analytics */}
+                            <button onClick={() => { setIsSettingsMenuOpen(false); setIsAnalyticsModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center"><BarChart2 size={18} /></div>
+                                <span className="text-sm font-bold text-white">{t('analytics')}</span>
+                              </div>
+                              <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {/* Emergency Cards */}
+                            <button onClick={() => { setIsSettingsMenuOpen(false); setIsCardsModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 flex items-center justify-between text-base font-bold text-red-400 transition-colors">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-red-500/15 flex items-center justify-center"><ShieldAlert size={18} /></div>
+                                <span className="text-sm font-bold text-red-400">{t('emergencyCards')}</span>
+                              </div>
+                              <ChevronRight size={18} className={`text-red-400/60 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {/* How to Use */}
+                            <button onClick={() => { setIsSettingsMenuOpen(false); setIsHowToUseOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center"><BookOpen size={18} /></div>
+                                <span className="text-sm font-bold text-white">{t('howToUse')}</span>
+                              </div>
+                              <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {/* Admin Dashboard */}
+                            {isAdmin && (
+                              <button onClick={() => { setIsSettingsMenuOpen(false); setIsAdminPanelOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 flex items-center justify-between text-base font-bold text-purple-400 transition-colors">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-9 h-9 rounded-xl bg-purple-500/15 flex items-center justify-center"><Users size={18} /></div>
+                                  <span className="text-sm font-bold text-purple-400">Admin Dashboard</span>
+                                </div>
+                                <ChevronRight size={18} className={`text-purple-400/60 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Group 4: General Preferences (التفضيلات العامة) */}
+                          <div className="flex flex-col gap-1.5">
+                            <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">
+                              {lang === 'ar' ? 'عام' : 'General'}
+                            </span>
+                            <button onClick={() => toggleLang()} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center"><Globe size={18} /></div>
+                                <span className="text-sm font-bold text-white">{lang === 'en' ? 'Language / اللغة' : 'اللغة / Language'}</span>
+                              </div>
+                              <span className="text-xs bg-white/10 px-3 py-1.5 rounded-xl text-white/70 font-semibold">{lang === 'en' ? 'العربية' : 'English'}</span>
+                            </button>
+                          </div>
+
                         </div>
 
                         {/* Creator Signature / Footer */}

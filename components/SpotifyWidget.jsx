@@ -11,6 +11,7 @@ export default function SpotifyWidget({
   className = '',
   userId = null,
   mode = 'auto', // 'auto' | 'always' | 'hidden'
+  size = 'full', // 'full' | 'compact'
 }) {
   const [data, setData] = useState({
     isConnected: false,
@@ -322,6 +323,80 @@ export default function SpotifyWidget({
     }
   }
 
+  // COMPACT HALF-WIDTH VARIANT (Single Column / Matches Habit Card Size)
+  if (size === 'compact') {
+    if (!data.isConnected) {
+      if (variant === 'compact') return null;
+      return (
+        <div 
+          data-no-day-swipe="true"
+          className={`col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel spotify-widget flex items-center justify-between shadow-lg transition-all border border-white/10 min-h-[58px] ${className}`}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-black shrink-0">
+              <Radio size={14} strokeWidth={2.8} />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-[12px] font-bold text-white tracking-tight truncate">Spotify</span>
+              <span className="text-[10px] text-white/50 truncate">{lang === 'ar' ? 'غير متصل' : 'Connect'}</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div 
+        data-no-day-swipe="true"
+        onClick={() => {
+          recordActivity();
+          if (data.songUrl) {
+            window.open(data.songUrl, '_blank');
+          }
+        }}
+        className={`col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel spotify-widget flex items-center justify-between cursor-pointer border border-white/10 dark:border-white/18 shadow-lg active:scale-[0.99] transition-all select-none min-h-[58px] relative overflow-hidden ${className}`}
+        title={data.title ? `${data.title} - ${data.artist}` : 'Spotify'}
+      >
+        <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1.5">
+          <div className="relative w-8 h-8 rounded-xl bg-white/10 overflow-hidden flex items-center justify-center shrink-0 border border-white/10">
+            {data.albumArt ? (
+              <img 
+                src={data.albumArt} 
+                alt={data.title || 'Spotify'} 
+                className={`w-full h-full object-cover transition-transform duration-1000 ${data.isPlaying ? 'scale-105' : 'grayscale-[40%]'}`} 
+              />
+            ) : (
+              <Radio size={14} className="text-white" />
+            )}
+          </div>
+          <div className="flex flex-col min-w-0 flex-1">
+            <span className="text-[12px] font-bold text-white tracking-tight truncate leading-tight">
+              {data.title || 'Spotify'}
+            </span>
+            <span className="text-[10px] text-white/50 truncate leading-tight mt-0.5">
+              {data.artist || (data.isConnected ? (lang === 'ar' ? 'متصل' : 'Connected') : 'Spotify')}
+            </span>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            recordActivity();
+            triggerControl(data.isPlaying ? 'pause' : 'play');
+          }}
+          className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-white shrink-0 transition-all border border-white/10"
+        >
+          {data.isPlaying ? (
+            <Pause size={11} className="fill-white" />
+          ) : (
+            <Play size={11} className="fill-white ml-0.5" />
+          )}
+        </button>
+      </div>
+    );
+  }
+
   // If NOT connected, show sleek monochrome black & white bar
   if (!data.isConnected) {
     if (variant === 'compact') return null;
@@ -329,7 +404,7 @@ export default function SpotifyWidget({
     return (
       <div 
         data-no-day-swipe="true"
-        className={`w-full px-4 py-3 rounded-[20px] liquid-panel spotify-widget flex items-center justify-between shadow-lg transition-all duration-200 border border-white/10 ${className}`}
+        className={`col-span-2 w-full px-4 py-3 rounded-[20px] liquid-panel spotify-widget flex items-center justify-between shadow-lg transition-all duration-200 border border-white/10 ${className}`}
       >
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-black shrink-0">
@@ -455,7 +530,7 @@ export default function SpotifyWidget({
         }
       }}
       data-no-day-swipe="true"
-      className={`w-full px-3.5 py-2.5 rounded-[20px] liquid-panel spotify-widget flex items-center justify-between shadow-lg relative overflow-hidden select-none cursor-pointer active:scale-[0.99] border border-white/10 min-h-[58px] transition-transform ${className}`}
+      className={`col-span-2 w-full px-3.5 py-2.5 rounded-[20px] liquid-panel spotify-widget flex items-center justify-between shadow-lg relative overflow-hidden select-none cursor-pointer active:scale-[0.99] border border-white/10 min-h-[58px] transition-transform ${className}`}
       style={{
         transform: `translateX(${dragOffset}px)`,
         transition: isDraggingRef.current ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)'
