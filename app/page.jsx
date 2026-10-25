@@ -1930,19 +1930,19 @@ export default function App() {
     const gridClass = isFullWidth ? 'col-span-2' : 'col-span-1';
     const streak = getStreak(habit.id);
 
-    // High-contrast clean Apple styling: checked turns solid white/themeColor with black text
+    // High-contrast clean Apple styling: checked turns solid white/themeColor with black text, unchecked uses semi-transparent liquid glass
     const cardBg = isAllChecked 
       ? (themeColor || '#ffffff') 
-      : (theme === 'dark' ? '#18181b' : '#f4f4f5');
+      : (theme === 'dark' ? 'rgba(20, 20, 22, 0.25)' : 'rgba(255, 255, 255, 0.2)');
     const cardColor = isAllChecked 
       ? '#000000' 
       : (theme === 'dark' ? '#ffffff' : '#000000');
     const cardBorder = isAllChecked 
       ? '1px solid transparent' 
-      : (theme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)');
+      : (theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.18)' : '1px solid rgba(0, 0, 0, 0.1)');
     const cardShadow = isAllChecked 
       ? `0 10px 25px -8px ${themeColor}66` 
-      : 'none';
+      : '0 4px 20px rgba(0, 0, 0, 0.3)';
 
     return (
       <motion.div
@@ -1950,7 +1950,7 @@ export default function App() {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.2 }}
         key={habit.id}
-        className={`relative flex flex-col transition-all duration-200 ease-out active:scale-[0.99] ${gridClass}`}
+        className={`relative flex flex-col transition-all duration-200 ease-out active:scale-[0.99] ${gridClass} liquid-panel`}
         style={{ 
           borderRadius: '20px',
           backgroundColor: cardBg,
@@ -3849,9 +3849,7 @@ export default function App() {
             </div>
 
             {/* Mobile Sleep Logger Card */}
-            <div className={`w-full px-4 py-3 rounded-[20px] flex justify-between items-center shadow-lg mb-6 transition-all duration-200 ${
-              theme === 'dark' ? 'bg-[#18181b] border border-white/10' : 'bg-white border border-black/10'
-            }`}>
+            <div className="w-full px-4 py-3 rounded-[20px] flex justify-between items-center shadow-lg mb-6 transition-all duration-200 liquid-panel">
               <div className="flex items-center gap-2.5">
                 <Moon size={18} className={theme === 'dark' ? 'text-white/80' : 'text-black/80'} strokeWidth={2.2} />
                 <span className={`text-[15px] font-bold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>{t('sleep')}</span>
@@ -3976,9 +3974,7 @@ export default function App() {
             <div className="flex flex-col gap-6 w-full col-span-1 xl:col-start-2 xl:row-start-1">
               
               {/* Sleep Logger Card */}
-              <div className={`w-full px-4 py-3 rounded-[20px] flex justify-between items-center shadow-lg transition-all duration-200 ${
-                theme === 'dark' ? 'bg-[#18181b] border border-white/10' : 'bg-white border border-black/10'
-              }`}>
+              <div className="w-full px-4 py-3 rounded-[20px] flex justify-between items-center shadow-lg transition-all duration-200 liquid-panel">
                 <div className="flex items-center gap-2.5">
                   <Moon size={18} className={theme === 'dark' ? 'text-white/80' : 'text-black/80'} strokeWidth={2.2} />
                   <span className={`text-[15px] font-bold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>{t('sleep')}</span>
