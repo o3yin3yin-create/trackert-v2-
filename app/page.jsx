@@ -577,16 +577,11 @@ export default function App() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedLang = localStorage.getItem('daybase_lang') || 'en';
-      const savedTheme = localStorage.getItem('daybase_theme') || 'dark';
       const savedBg = localStorage.getItem('daybase_bgstyle') || 'aurora';
       setLang(savedLang);
-      setTheme(savedTheme);
+      setTheme('dark');
       setBgStyle(savedBg);
-      if (savedTheme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
+      document.documentElement.classList.add('dark');
     }
     return () => {
       stopHumSynthesis();
@@ -2503,14 +2498,10 @@ export default function App() {
                   </button>
                 </div>
                 
-                {/* Language & Theme Controls */}
-                <div className="flex gap-2.5 mb-6">
-                  <button onClick={toggleLang} className="flex-1 py-3.5 rounded-2xl font-bold text-sm flex justify-center items-center gap-2 border border-white/10 bg-white/5 hover:bg-white/10 text-white transition-all duration-200 active:scale-[0.98]">
+                {/* Language Control */}
+                <div className="mb-6">
+                  <button onClick={toggleLang} className="w-full py-3.5 rounded-2xl font-bold text-sm flex justify-center items-center gap-2 border border-white/10 bg-white/5 hover:bg-white/10 text-white transition-all duration-200 active:scale-[0.98]">
                     <Globe size={16} /> {lang === 'en' ? 'عربي' : 'English'}
-                  </button>
-                  <button onClick={toggleTheme} className="flex-1 py-3.5 rounded-2xl font-bold text-sm flex justify-center items-center gap-2 border border-white/10 bg-white/5 hover:bg-white/10 text-white transition-all duration-200 active:scale-[0.98]">
-                    {theme === 'dark' ? <Sun size={16}/> : <Moon size={16}/>} 
-                    {theme === 'dark' ? t('lightMode') : t('darkMode')}
                   </button>
                 </div>
                 
@@ -5395,15 +5386,6 @@ export default function App() {
                               <span>{lang === 'en' ? 'Language / اللغة' : 'اللغة / Language'}</span>
                             </div>
                             <span className="text-xs bg-white/10 px-3 py-1.5 rounded-xl text-white/70 font-semibold">{lang === 'en' ? 'العربية' : 'English'}</span>
-                          </button>
-
-                          {/* Theme Mode */}
-                          <button onClick={() => toggleTheme()} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">{theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}</div>
-                              <span>{lang === 'ar' ? 'المظهر' : 'Appearance'}</span>
-                            </div>
-                            <span className="text-xs bg-white/10 px-3 py-1.5 rounded-xl text-white/70 font-semibold">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
                           </button>
 
                           {/* Background Style */}
