@@ -2,10 +2,16 @@ import { NextResponse } from 'next/server';
 import { refreshAccessToken, fetchCurrentlyPlaying } from '@/lib/spotify';
 import { getAuthUserId } from '@/lib/auth-server';
 import prisma from '@/lib/prisma';
+import { getCorsHeaders, handleCorsOptions } from '@/lib/cors';
 
 export const dynamic = 'force-dynamic';
 
+export async function OPTIONS(req) {
+  return handleCorsOptions(req);
+}
+
 export async function GET(req) {
+  const corsHeaders = getCorsHeaders(req);
   try {
     let refreshToken = 
       req.cookies.get('spotify_refresh_token')?.value || 
@@ -30,7 +36,7 @@ export async function GET(req) {
     }
 
     if (!refreshToken) {
-      return NextResponse.json({ isConnected: false, isPlaying: false });
+      return NextResponse.json({ isConnected: false, isPlaying: false }, { headers: corsHeaders });
     }
 
     // 1. Refresh access token
@@ -39,14 +45,14 @@ export async function GET(req) {
       tokenData = await refreshAccessToken(refreshToken);
     } catch (tokenErr) {
       console.warn('[Spotify] Refresh token expired or revoked:', tokenErr.message);
-      const res = NextResponse.json({ isConnected: false, isPlaying: false, error: 'Token expired' });
+      const res = NextResponse.json({ isConnected: false, isPlaying: false, error: 'Token expired' }, { headers: corsHeaders });
       res.cookies.delete('spotify_refresh_token');
       return res;
     }
 
     const accessToken = tokenData.access_token;
     if (!accessToken) {
-      return NextResponse.json({ isConnected: false, isPlaying: false });
+      return NextResponse.json({ isConnected: false, isPlaying: false }, { headers: corsHeaders });
     }
 
     // 2. Fetch playback state
@@ -58,7 +64,7 @@ export async function GET(req) {
         spotifyRefreshToken: refreshToken,
         isPlaying: false,
         item: null,
-      });
+      }, { headers: corsHeaders });
     }
 
     const item = rawData.item;
@@ -85,9 +91,9 @@ export async function GET(req) {
       durationMs,
       songUrl,
       deviceName,
-    });
+    }, { headers: corsHeaders });
   } catch (err) {
     console.error('[Spotify Now Playing Error]:', err);
-    return NextResponse.json({ isConnected: false, isPlaying: false, error: err.message }, { status: 500 });
+    return NextResponse.json({ isConnected: false, isPlaying: false, error: err.message }, { status: 500, headers: corsHeaders });
   }
 }

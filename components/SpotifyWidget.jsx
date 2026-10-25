@@ -38,9 +38,9 @@ export default function SpotifyWidget({
     let isMounted = true;
     let timer = null;
 
-    async function checkNowPlaying() {
+    async function checkNowPlaying(forcedToken) {
       try {
-        const localToken = typeof window !== 'undefined' ? localStorage.getItem('daybase_spotify_refresh_token') || '' : '';
+        const localToken = forcedToken || (typeof window !== 'undefined' ? localStorage.getItem('daybase_spotify_refresh_token') || '' : '');
         const res = await apiFetch('/api/spotify/now-playing', {
           headers: localToken ? { 'x-spotify-refresh-token': localToken } : {}
         });
@@ -58,7 +58,7 @@ export default function SpotifyWidget({
           }
         }
       } catch (e) {
-        // network error
+        console.warn('[SpotifyWidget checkNowPlaying error]:', e);
       }
     }
 
@@ -70,9 +70,34 @@ export default function SpotifyWidget({
     const onTokenSync = () => {
       checkNowPlaying();
     };
+
+    let unlistenTauri = null;
     if (typeof window !== 'undefined') {
       window.addEventListener('spotify-token-updated', onTokenSync);
       window.addEventListener('storage', onTokenSync);
+
+      if (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') {
+        import('@tauri-apps/api/event').then(({ listen }) => {
+          listen('desktop-auth-callback', (event) => {
+            try {
+              const rawQuery = event.payload || '';
+              const params = new URLSearchParams(rawQuery);
+              const token = params.get('spotify_token');
+              if (token) {
+                localStorage.setItem('daybase_spotify_refresh_token', token);
+                checkNowPlaying(token);
+                apiFetch('/api/spotify/save-token', {
+                  method: 'POST',
+                  body: JSON.stringify({ token })
+                }).catch(() => {});
+                window.dispatchEvent(new CustomEvent('spotify-token-updated'));
+              }
+            } catch (err) {
+              console.warn('[SpotifyWidget Tauri auth callback error]:', err);
+            }
+          }).then(fn => { unlistenTauri = fn; });
+        }).catch(() => {});
+      }
     }
 
     return () => {
@@ -82,6 +107,7 @@ export default function SpotifyWidget({
         window.removeEventListener('spotify-token-updated', onTokenSync);
         window.removeEventListener('storage', onTokenSync);
       }
+      if (unlistenTauri) unlistenTauri();
     };
   }, [data.isPlaying]);
 

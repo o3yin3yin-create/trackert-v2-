@@ -170,10 +170,11 @@ fn run_auth_server(app_handle: tauri::AppHandle) -> u16 {
 
                 if has_callback {
                     // Notify webview with query parameters
-                    let _ = app_handle.emit("desktop-auth-callback", query);
+                    let _ = app_handle.emit("desktop-auth-callback", &query);
 
                     // Focus window on macOS
                     if let Some(window) = app_handle.get_webview_window("main") {
+                        let _ = window.emit("desktop-auth-callback", &query);
                         let _ = window.set_focus();
                     }
                 }
