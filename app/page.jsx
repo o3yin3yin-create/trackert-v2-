@@ -1912,6 +1912,255 @@ export default function App() {
     );
   }
 
+  // Helper to render habit cards with slim Apple aesthetics and automatic full-width for multi/scheduled habits
+  const renderHabitCard = (habit) => {
+    const isMulti = habit.type === 'multi';
+    const isScheduled = (habit.frequency && habit.frequency !== 'daily') || !!habit.time || !!habit.location || (habit.frequency === 'once' && !!habit.scheduleDate);
+    const isExpanded = expandedHabits.includes(habit.id);
+    
+    let isAllChecked = false;
+    let checkedCount = 0;
+
+    if (isMulti) {
+      const subItems = habit.subItems || [];
+      checkedCount = subItems.filter(sub => dailyData[`${activeDateStr}-${habit.id}-${sub}`]).length;
+      isAllChecked = checkedCount === subItems.length && subItems.length > 0;
+    } else {
+      isAllChecked = !!dailyData[`${activeDateStr}-${habit.id}`];
+    }
+
+    // Full-width (بالطول) for multi habits and scheduled habits; 1 column for standard single habits
+    const isFullWidth = isMulti || isScheduled;
+    const gridClass = isFullWidth ? 'col-span-2' : 'col-span-1';
+    const streak = getStreak(habit.id);
+
+    // High-contrast clean Apple styling: checked turns solid white/themeColor with black text
+    const cardBg = isAllChecked 
+      ? (themeColor || '#ffffff') 
+      : (theme === 'dark' ? '#18181b' : '#f4f4f5');
+    const cardColor = isAllChecked 
+      ? '#000000' 
+      : (theme === 'dark' ? '#ffffff' : '#000000');
+    const cardBorder = isAllChecked 
+      ? '1px solid transparent' 
+      : (theme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)');
+    const cardShadow = isAllChecked 
+      ? `0 10px 25px -8px ${themeColor}66` 
+      : 'none';
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.2 }}
+        key={habit.id}
+        className={`relative flex flex-col transition-all duration-200 ease-out active:scale-[0.99] ${gridClass}`}
+        style={{ 
+          borderRadius: '20px',
+          backgroundColor: cardBg,
+          color: cardColor,
+          border: cardBorder,
+          boxShadow: cardShadow,
+          minHeight: isMulti && isExpanded ? 'auto' : '58px'
+        }}
+      >
+        {isMulti ? (
+          /* Multi-Step Habit (Full Width) */
+          <div className="flex flex-col w-full">
+            <div 
+              onClick={() => toggleExpand(habit.id)}
+              className="flex items-center justify-between px-4 py-3 h-full cursor-pointer select-none gap-3 w-full min-h-[56px]"
+            >
+              <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className={`text-[15px] font-bold tracking-tight truncate ${isAllChecked ? 'text-black' : (theme === 'dark' ? 'text-white' : 'text-black')}`}>
+                    {habit.name}
+                  </span>
+                  {streak > 0 && (
+                    <span className="text-[10px] font-bold flex items-center gap-0.5 shrink-0 opacity-80" style={{ color: isAllChecked ? 'rgba(0,0,0,0.6)' : themeColor }}>
+                      <Flame size={11} strokeWidth={2.5} className="shrink-0" />
+                      <span>{streak}</span>
+                    </span>
+                  )}
+                </div>
+                {(habit.time || habit.location) && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {habit.time && (
+                      <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
+                        isAllChecked ? 'bg-black/10 text-black/80' : (theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-black/5 text-black/70')
+                      }`}>
+                        <Clock size={9} />
+                        {habit.time}
+                      </span>
+                    )}
+                    {habit.location && (
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
+                        isAllChecked ? 'bg-black/10 text-black/80' : (theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-black/5 text-black/70')
+                      }`}>
+                        <MapPin size={9} />
+                        {habit.location}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Right: Dots indicator + count + chevron */}
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5">
+                  {(habit.subItems || []).map((sub, idx) => {
+                    const isSubDone = !!dailyData[`${activeDateStr}-${habit.id}-${sub}`];
+                    return (
+                      <span 
+                        key={idx} 
+                        className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                          isAllChecked 
+                            ? 'bg-black' 
+                            : (isSubDone 
+                                ? (theme === 'dark' ? 'bg-white' : 'bg-black') 
+                                : (theme === 'dark' ? 'bg-white/20' : 'bg-black/20'))
+                        }`} 
+                      />
+                    );
+                  })}
+                </div>
+                <span className={`text-xs font-bold font-mono tracking-wider ${isAllChecked ? 'text-black/60' : (theme === 'dark' ? 'text-white/40' : 'text-black/40')}`}>
+                  {checkedCount}/{(habit.subItems || []).length}
+                </span>
+                <ChevronDown 
+                  size={16} 
+                  className={`transition-transform duration-300 ${isAllChecked ? 'text-black/60' : (theme === 'dark' ? 'text-white/40' : 'text-black/40')} ${isExpanded ? 'rotate-180' : ''}`} 
+                />
+              </div>
+            </div>
+
+            {/* Expanded sub-items */}
+            {isExpanded && (
+              <div className="flex flex-col gap-2 px-4 pb-4 pt-1 border-t border-black/5 dark:border-white/10 transition-all duration-300 animate-fadeIn">
+                {(habit.subItems || []).map((sub, idx) => {
+                  const isSubChecked = !!dailyData[`${activeDateStr}-${habit.id}-${sub}`];
+                  return (
+                    <div 
+                      key={idx} 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleCheck(habit.id, sub);
+                      }}
+                      className="flex justify-between items-center p-3 rounded-xl cursor-pointer transition-all duration-200 active:scale-[0.99]"
+                      style={{ 
+                        backgroundColor: isAllChecked ? 'rgba(0,0,0,0.06)' : (theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'),
+                        border: theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)'
+                      }}
+                    >
+                      <span className={`text-sm font-semibold tracking-tight ${isAllChecked ? 'text-black' : (theme === 'dark' ? 'text-white/90' : 'text-black/90')}`}>{sub}</span>
+                      <div 
+                        className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border-2 transition-all duration-200 ${
+                          isSubChecked 
+                            ? (isAllChecked ? 'bg-black border-black text-white' : (theme === 'dark' ? 'bg-white border-white text-black' : 'bg-black border-black text-white'))
+                            : (theme === 'dark' ? 'border-white/20' : 'border-black/20')
+                        }`}
+                      >
+                        {isSubChecked && <Check size={11} strokeWidth={4} />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : isScheduled ? (
+          /* Scheduled Habit (Full Width, Single Check) */
+          <div 
+            onClick={() => toggleCheck(habit.id)}
+            className="flex items-center justify-between px-4 py-3 h-full cursor-pointer select-none gap-3 w-full min-h-[58px]"
+          >
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className={`text-[15px] font-bold tracking-tight truncate ${isAllChecked ? 'text-black' : (theme === 'dark' ? 'text-white' : 'text-black')}`}>
+                  {habit.name}
+                </span>
+                {streak > 0 && (
+                  <span className="text-[10px] font-bold flex items-center gap-0.5 shrink-0 opacity-80" style={{ color: isAllChecked ? 'rgba(0,0,0,0.6)' : themeColor }}>
+                    <Flame size={11} strokeWidth={2.5} className="shrink-0" />
+                    <span>{streak}</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Badges for time, location, frequency */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {habit.time && (
+                  <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                    isAllChecked ? 'bg-black/10 text-black/80' : (theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-black/5 text-black/70')
+                  }`}>
+                    <Clock size={9} />
+                    {habit.time}
+                  </span>
+                )}
+                {habit.location && (
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                    isAllChecked ? 'bg-black/10 text-black/80' : (theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-black/5 text-black/70')
+                  }`}>
+                    <MapPin size={9} />
+                    {habit.location}
+                  </span>
+                )}
+                {habit.frequency && habit.frequency !== 'daily' && (
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                    isAllChecked ? 'bg-black/10 text-black/80' : (theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-black/5 text-black/70')
+                  }`}>
+                    <Calendar size={9} />
+                    {habit.frequency === 'once' ? (habit.scheduleDate || t('once')) : t(habit.frequency)}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Apple-style Circle checkbox */}
+            <div 
+              className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all duration-200 ${
+                isAllChecked 
+                  ? 'bg-black text-white shadow-sm' 
+                  : (theme === 'dark' ? 'border-2 border-white/20 hover:border-white/40' : 'border-2 border-black/20 hover:border-black/40')
+              }`}
+            >
+              {isAllChecked && <Check size={14} strokeWidth={3.5} />}
+            </div>
+          </div>
+        ) : (
+          /* Standard Single Habit (col-span-1, side-by-side) */
+          <div 
+            onClick={() => toggleCheck(habit.id)}
+            className="flex items-center justify-between px-4 py-3 h-full cursor-pointer select-none gap-2 w-full min-h-[58px]"
+          >
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <span className={`text-[15px] font-bold tracking-tight truncate ${isAllChecked ? 'text-black' : (theme === 'dark' ? 'text-white' : 'text-black')}`}>
+                {habit.name}
+              </span>
+              {streak > 0 && (
+                <span className="text-[10px] font-bold flex items-center gap-0.5 shrink-0 opacity-80" style={{ color: isAllChecked ? 'rgba(0,0,0,0.6)' : themeColor }}>
+                  <Flame size={11} strokeWidth={2.5} className="shrink-0" />
+                  <span>{streak}</span>
+                </span>
+              )}
+            </div>
+
+            {/* Apple-style Circle checkbox */}
+            <div 
+              className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all duration-200 ${
+                isAllChecked 
+                  ? 'bg-black text-white shadow-sm' 
+                  : (theme === 'dark' ? 'border-2 border-white/20 hover:border-white/40' : 'border-2 border-black/20 hover:border-black/40')
+              }`}
+            >
+              {isAllChecked && <Check size={14} strokeWidth={3.5} />}
+            </div>
+          </div>
+        )}
+      </motion.div>
+    );
+  };
+
   return (
     <div dir={lang === 'ar' ? 'rtl' : 'ltr'} className={`min-h-screen text-black dark:text-white transition-colors duration-500 font-sans`}>
       <style>
@@ -3609,131 +3858,60 @@ export default function App() {
 
             {/* Mobile Habits Cards Grid */}
             <div className="grid grid-cols-2 gap-3 items-start w-full">
-              {activeScheduledHabits.map((habit) => {
-                const isMulti = habit.type === 'multi';
-                const isExpanded = expandedHabits.includes(habit.id);
-                
-                let isAllChecked = false;
-                let checkedCount = 0;
-
-                if (isMulti) {
-                  checkedCount = habit.subItems.filter(sub => dailyData[`${activeDateStr}-${habit.id}-${sub}`]).length;
-                  isAllChecked = checkedCount === habit.subItems.length && habit.subItems.length > 0;
-                } else {
-                  isAllChecked = dailyData[`${activeDateStr}-${habit.id}`];
-                }
-
-                const gridClass = (isMulti && isExpanded) ? 'col-span-2' : 'col-span-1';
-                
-                return (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3 }}
-                    key={habit.id}
-                    className={`relative flex flex-col transition-all duration-300 ease-out active:scale-[0.98] ${gridClass} liquid-panel`}
-                    style={{ 
-                      borderRadius: '24px',
-                      backgroundColor: isAllChecked ? themeColor : (theme === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.4)'),
-                      color: isAllChecked ? '#000000' : (theme === 'dark' ? '#FFFFFF' : '#000000'),
-                      height: (isMulti && isExpanded) ? 'auto' : '80px',
-                      border: isAllChecked ? '1px solid transparent' : '1px solid rgba(255,255,255,0.28)',
-                      boxShadow: isAllChecked ? `0 10px 25px -8px ${themeColor}88` : 'none' 
-                    }}
-                  >
-                    <div 
-                      onClick={() => isMulti ? toggleExpand(habit.id) : toggleCheck(habit.id)}
-                      className="flex items-center justify-between p-4 h-full cursor-pointer select-none"
-                    >
-                      <div className="flex flex-col flex-1 pr-2 overflow-hidden">
-                        <div className="flex justify-between items-start mb-2">
-                          <span className="text-[10px] font-bold flex items-center gap-0.5" style={{ color: isAllChecked ? 'rgba(0,0,0,0.5)' : themeColor }}>
-                            {getStreak(habit.id) > 0 ? (
-                              <>
-                                <Flame size={11} strokeWidth={2.5} className="shrink-0" />
-                                <span>{getStreak(habit.id)}</span>
-                              </>
-                            ) : null}
-                          </span>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {(habit.time || habit.notifyTime) && (
-                              <span 
-                                className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${
-                                  isAllChecked 
-                                    ? 'bg-black/10 text-black/70' 
-                                    : 'bg-black/10 dark:bg-white/10 text-gray-600 dark:text-white/60'
-                                }`}
-                              >
-                                <Clock size={8} />
-                                {habit.time || habit.notifyTime}
-                              </span>
-                            )}
-                            {habit.location && (
-                              <span 
-                                className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${
-                                  isAllChecked 
-                                    ? 'bg-black/10 text-black/70' 
-                                    : 'bg-black/10 dark:bg-white/10 text-gray-600 dark:text-white/60'
-                                }`}
-                              >
-                                <MapPin size={8} />
-                                {habit.location}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <span className="text-[15px] font-semibold tracking-tight leading-tight line-clamp-2">{habit.name}</span>
-                        {isMulti && !isExpanded && (
-                          <span className="text-[10px] opacity-50 mt-0.5 font-bold tracking-wider">{checkedCount}/{habit.subItems.length}</span>
-                        )}
-                      </div>
-                      
-                      {isMulti ? (
-                        <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-black/10 dark:bg-black/20 text-current transition-transform duration-300" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                          <ChevronDown size={14} strokeWidth={2.5} />
-                        </div>
-                      ) : (
-                        <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200" style={{ backgroundColor: isAllChecked ? 'rgba(0,0,0,0.08)' : (theme === 'dark' ? '#2C2C2E' : 'rgba(0,0,0,0.1)') }}>
-                          {isAllChecked ? <Check size={14} strokeWidth={3.5} style={{ color: '#000000' }} /> : <div className="w-1.5 h-1.5 bg-black/40 dark:bg-white/40 rounded-full" />}
-                        </div>
-                      )}
-                    </div>
-
-                    {isMulti && isExpanded && (
-                      <div className="flex flex-col gap-2 px-4 pb-4 pt-1 border-t border-black/5 transition-all duration-300 animate-fadeIn">
-                        {habit.subItems.map((sub, idx) => {
-                          const isSubChecked = dailyData[`${activeDateStr}-${habit.id}-${sub}`];
-                          return (
-                            <div 
-                              key={idx} 
-                              onClick={() => toggleCheck(habit.id, sub)}
-                              className="flex justify-between items-center p-3.5 rounded-xl cursor-pointer transition-all duration-200 active:scale-[0.99]"
-                              style={{ backgroundColor: isAllChecked ? 'rgba(0,0,0,0.04)' : '#2C2C2E' }}
-                            >
-                              <span className="text-sm font-medium tracking-tight opacity-90">{sub}</span>
-                              <div className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border-2 transition-all duration-200" style={{ borderColor: isSubChecked ? (isAllChecked ? '#000' : themeColor) : 'rgba(255,255,255,0.15)', backgroundColor: isSubChecked ? (isAllChecked ? '#000' : themeColor) : 'transparent' }}>
-                                {isSubChecked && <Check size={11} strokeWidth={4.5} style={{ color: isAllChecked ? themeColor : '#000' }} />}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </motion.div>
-                );
-              })}
+              {activeScheduledHabits.map((habit) => renderHabitCard(habit))}
+              {habits.length === 0 && (
+                <div className="col-span-2 text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-10 select-none">{t('noHabitsYet')}</div>
+              )}
             </div>
 
             {/* Mobile Sleep Logger Card */}
-            <div className="w-full p-4 liquid-panel rounded-[24px] flex justify-between items-center shadow-lg mb-6">
-              <div className="flex items-center gap-2">
-                <Moon size={18} className="text-indigo-500 dark:text-indigo-400" strokeWidth={2.5} />
-                <span className="text-sm font-bold tracking-widest uppercase text-gray-700 dark:text-white/80">{t('sleep')}</span>
+            <div className={`w-full px-4 py-3 rounded-[20px] flex justify-between items-center shadow-lg mb-6 transition-all duration-200 ${
+              theme === 'dark' ? 'bg-[#18181b] border border-white/10' : 'bg-white border border-black/10'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <Moon size={18} className={theme === 'dark' ? 'text-white/80' : 'text-black/80'} strokeWidth={2.2} />
+                <span className={`text-[15px] font-bold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>{t('sleep')}</span>
               </div>
-              <div className="flex gap-2">
-                <input type="number" placeholder="0" value={sleepInput} onChange={(e) => setSleepInput(e.target.value)} className="w-14 bg-white/50 dark:bg-black border border-black/10 dark:border-white/10 text-black dark:text-white px-2 py-1.5 rounded-xl outline-none text-center font-bold text-sm focus:border-black/30 dark:focus:border-white/30 transition-colors" />
-                <button onClick={logSleep} className="bg-black text-white dark:bg-white dark:text-black px-4 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 hover:bg-black/80 dark:hover:bg-white/90">{t('save')}</button>
+              <div className={`flex items-center rounded-full px-3 py-1 gap-2.5 ${
+                theme === 'dark' ? 'bg-white/10 border border-white/10' : 'bg-black/5 border border-black/10'
+              }`}>
+                <button 
+                  type="button" 
+                  onClick={() => setSleepInput(prev => {
+                    const val = Math.max(0, (parseFloat(prev) || 0) - 1);
+                    return val === 0 ? '' : String(val);
+                  })} 
+                  className={`font-bold text-base px-1 active:scale-90 select-none cursor-pointer ${
+                    theme === 'dark' ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black'
+                  }`}
+                >−</button>
+                <div className={`flex items-center font-mono text-sm font-bold tabular-nums ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                  <input 
+                    type="number" 
+                    step="0.5" 
+                    value={sleepInput} 
+                    onChange={(e) => setSleepInput(e.target.value)} 
+                    placeholder="0"
+                    className="w-8 bg-transparent text-center font-mono text-sm font-bold outline-none"
+                  />
+                  <span className={`text-xs ${theme === 'dark' ? 'text-white/50' : 'text-black/50'}`}>h</span>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => setSleepInput(prev => String((parseFloat(prev) || 0) + 1))} 
+                  className={`font-bold text-base px-1 active:scale-90 select-none cursor-pointer ${
+                    theme === 'dark' ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black'
+                  }`}
+                >+</button>
               </div>
+              <button 
+                onClick={logSleep} 
+                className={`px-5 py-2 rounded-full font-bold text-xs tracking-wide transition-all active:scale-95 shadow-sm cursor-pointer ${
+                  theme === 'dark' ? 'bg-white text-black hover:bg-white/90' : 'bg-black text-white hover:bg-black/90'
+                }`}
+              >
+                {t('save')}
+              </button>
             </div>
 
           </div>
@@ -3800,121 +3978,9 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Habits Cards Grid (Reverted back to the custom individual blocks, rendered neatly below Mission/Sleep) */}
+              {/* Habits Cards Grid */}
               <div className="grid grid-cols-2 gap-3 mt-1 items-start w-full">
-                {activeScheduledHabits.map((habit) => {
-                  const isMulti = habit.type === 'multi';
-                  const isExpanded = expandedHabits.includes(habit.id);
-                  
-                  let isAllChecked = false;
-                  let checkedCount = 0;
-
-                  if (isMulti) {
-                    checkedCount = habit.subItems.filter(sub => dailyData[`${activeDateStr}-${habit.id}-${sub}`]).length;
-                    isAllChecked = checkedCount === habit.subItems.length && habit.subItems.length > 0;
-                  } else {
-                    isAllChecked = dailyData[`${activeDateStr}-${habit.id}`];
-                  }
-
-                  const gridClass = (isMulti && isExpanded) ? 'col-span-2' : 'col-span-1';
-                  
-                  return (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3 }}
-                      key={habit.id}
-                      className={`relative flex flex-col transition-all duration-300 ease-out active:scale-[0.98] ${gridClass} liquid-panel`}
-                      style={{ 
-                        borderRadius: '24px',
-                        backgroundColor: isAllChecked ? themeColor : (theme === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.4)'),
-                        color: isAllChecked ? '#000000' : (theme === 'dark' ? '#FFFFFF' : '#000000'),
-                        height: (isMulti && isExpanded) ? 'auto' : '80px',
-                        border: isAllChecked ? '1px solid transparent' : '1px solid rgba(255,255,255,0.28)',
-                        boxShadow: isAllChecked ? `0 10px 25px -8px ${themeColor}88` : 'none' 
-                      }}
-                    >
-                      <div 
-                        onClick={() => isMulti ? toggleExpand(habit.id) : toggleCheck(habit.id)}
-                        className="flex items-center justify-between p-4 h-full cursor-pointer select-none"
-                      >
-                        <div className="flex flex-col flex-1 pr-2 overflow-hidden">
-                          <div className="flex justify-between items-start mb-2">
-                            <span className="text-[10px] font-bold flex items-center gap-0.5" style={{ color: isAllChecked ? 'rgba(0,0,0,0.5)' : themeColor }}>
-                              {getStreak(habit.id) > 0 ? (
-                                <>
-                                  <Flame size={11} strokeWidth={2.5} className="shrink-0" />
-                                  <span>{getStreak(habit.id)}</span>
-                                </>
-                              ) : null}
-                            </span>
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {(habit.time || habit.notifyTime) && (
-                                <span 
-                                  className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${
-                                    isAllChecked 
-                                      ? 'bg-black/10 text-black/70' 
-                                      : 'bg-black/10 dark:bg-white/10 text-gray-600 dark:text-white/60'
-                                  }`}
-                                >
-                                  <Clock size={8} />
-                                  {habit.time || habit.notifyTime}
-                                </span>
-                              )}
-                              {habit.location && (
-                                <span 
-                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 ${
-                                    isAllChecked 
-                                      ? 'bg-black/10 text-black/70' 
-                                      : 'bg-black/10 dark:bg-white/10 text-gray-600 dark:text-white/60'
-                                  }`}
-                                >
-                                  <MapPin size={8} />
-                                  {habit.location}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <span className="text-[15px] font-semibold tracking-tight leading-tight line-clamp-2">{habit.name}</span>
-                          {isMulti && !isExpanded && (
-                            <span className="text-[10px] opacity-50 mt-0.5 font-bold tracking-wider">{checkedCount}/{habit.subItems.length}</span>
-                          )}
-                        </div>
-                        
-                        {isMulti ? (
-                          <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-black/10 dark:bg-black/20 text-current transition-transform duration-300" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                            <ChevronDown size={14} strokeWidth={2.5} />
-                          </div>
-                        ) : (
-                          <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200" style={{ backgroundColor: isAllChecked ? 'rgba(0,0,0,0.08)' : (theme === 'dark' ? '#2C2C2E' : 'rgba(0,0,0,0.1)') }}>
-                            {isAllChecked ? <Check size={14} strokeWidth={3.5} style={{ color: '#000000' }} /> : <div className="w-1.5 h-1.5 bg-black/40 dark:bg-white/40 rounded-full" />}
-                          </div>
-                        )}
-                      </div>
-
-                      {isMulti && isExpanded && (
-                        <div className="flex flex-col gap-2 px-4 pb-4 pt-1 border-t border-black/5 transition-all duration-300 animate-fadeIn">
-                          {habit.subItems.map((sub, idx) => {
-                            const isSubChecked = dailyData[`${activeDateStr}-${habit.id}-${sub}`];
-                            return (
-                              <div 
-                                key={idx} 
-                                onClick={() => toggleCheck(habit.id, sub)}
-                                className="flex justify-between items-center p-3.5 rounded-xl cursor-pointer transition-all duration-200 active:scale-[0.99]"
-                                style={{ backgroundColor: isAllChecked ? 'rgba(0,0,0,0.04)' : '#2C2C2E' }}
-                              >
-                                <span className="text-sm font-medium tracking-tight opacity-90">{sub}</span>
-                                <div className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border-2 transition-all duration-200" style={{ borderColor: isSubChecked ? (isAllChecked ? '#000' : themeColor) : 'rgba(255,255,255,0.15)', backgroundColor: isSubChecked ? (isAllChecked ? '#000' : themeColor) : 'transparent' }}>
-                                  {isSubChecked && <Check size={11} strokeWidth={4.5} style={{ color: isAllChecked ? themeColor : '#000' }} />}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </motion.div>
-                  );
-                })}
+                {activeScheduledHabits.map((habit) => renderHabitCard(habit))}
                 {habits.length === 0 && (
                   <div className="col-span-2 text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-10 select-none">{t('noHabitsYet')}</div>
                 )}
@@ -3926,15 +3992,53 @@ export default function App() {
             <div className="flex flex-col gap-6 w-full col-span-1 xl:col-start-2 xl:row-start-1">
               
               {/* Sleep Logger Card */}
-              <div className="w-full p-5 liquid-panel rounded-3xl flex justify-between items-center shadow-lg">
-                <div className="flex items-center gap-2 select-none">
-                  <Moon size={18} className="text-indigo-500 dark:text-indigo-400" strokeWidth={2.5} />
-                  <span className="text-xs font-bold tracking-widest uppercase text-gray-700 dark:text-white/80">{t('sleep')}</span>
+              <div className={`w-full px-4 py-3 rounded-[20px] flex justify-between items-center shadow-lg transition-all duration-200 ${
+                theme === 'dark' ? 'bg-[#18181b] border border-white/10' : 'bg-white border border-black/10'
+              }`}>
+                <div className="flex items-center gap-2.5">
+                  <Moon size={18} className={theme === 'dark' ? 'text-white/80' : 'text-black/80'} strokeWidth={2.2} />
+                  <span className={`text-[15px] font-bold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>{t('sleep')}</span>
                 </div>
-                <div className="flex gap-2">
-                  <input type="number" placeholder="0" value={sleepInput} onChange={(e) => setSleepInput(e.target.value)} className="w-14 bg-white/50 dark:bg-black/30 border border-black/10 dark:border-white/10 text-black dark:text-white px-2 py-1.5 rounded-xl outline-none text-center font-bold text-sm focus:border-black/30 dark:focus:border-white/30 transition-colors" />
-                  <button onClick={logSleep} className="bg-black text-white dark:bg-white dark:text-black px-4 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 hover:bg-black/80 dark:hover:bg-white/90">{t('save')}</button>
+                <div className={`flex items-center rounded-full px-3 py-1 gap-2.5 ${
+                  theme === 'dark' ? 'bg-white/10 border border-white/10' : 'bg-black/5 border border-black/10'
+                }`}>
+                  <button 
+                    type="button" 
+                    onClick={() => setSleepInput(prev => {
+                      const val = Math.max(0, (parseFloat(prev) || 0) - 1);
+                      return val === 0 ? '' : String(val);
+                    })} 
+                    className={`font-bold text-base px-1 active:scale-90 select-none cursor-pointer ${
+                      theme === 'dark' ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black'
+                    }`}
+                  >−</button>
+                  <div className={`flex items-center font-mono text-sm font-bold tabular-nums ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                    <input 
+                      type="number" 
+                      step="0.5" 
+                      value={sleepInput} 
+                      onChange={(e) => setSleepInput(e.target.value)} 
+                      placeholder="0"
+                      className="w-8 bg-transparent text-center font-mono text-sm font-bold outline-none"
+                    />
+                    <span className={`text-xs ${theme === 'dark' ? 'text-white/50' : 'text-black/50'}`}>h</span>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => setSleepInput(prev => String((parseFloat(prev) || 0) + 1))} 
+                    className={`font-bold text-base px-1 active:scale-90 select-none cursor-pointer ${
+                      theme === 'dark' ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black'
+                    }`}
+                  >+</button>
                 </div>
+                <button 
+                  onClick={logSleep} 
+                  className={`px-5 py-2 rounded-full font-bold text-xs tracking-wide transition-all active:scale-95 shadow-sm cursor-pointer ${
+                    theme === 'dark' ? 'bg-white text-black hover:bg-white/90' : 'bg-black text-white hover:bg-black/90'
+                  }`}
+                >
+                  {t('save')}
+                </button>
               </div>
 
               {/* Daily Tasks Checklist Widget */}
