@@ -2491,41 +2491,6 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* Quick Preset Chips */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 mb-3">
-                    {[
-                      { labelAr: '7 ص', labelEn: '7 AM', hour: 7, minute: '00', period: 'AM' },
-                      { labelAr: '9 ص', labelEn: '9 AM', hour: 9, minute: '00', period: 'AM' },
-                      { labelAr: '12 م', labelEn: '12 PM', hour: 12, minute: '00', period: 'PM' },
-                      { labelAr: '4 م', labelEn: '4 PM', hour: 4, minute: '00', period: 'PM' },
-                      { labelAr: '7 م', labelEn: '7 PM', hour: 7, minute: '00', period: 'PM' },
-                      { labelAr: '10 م', labelEn: '10 PM', hour: 10, minute: '00', period: 'PM' },
-                    ].map((chip, idx) => {
-                      const chipFormatted = `${String(chip.hour).padStart(2, '0')}:${chip.minute} ${chip.period}`;
-                      const isChipActive = habitTime === chipFormatted;
-                      return (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => {
-                            setSelectedTimeHour(chip.hour);
-                            setSelectedTimeMinute(chip.minute);
-                            setSelectedTimePeriod(chip.period);
-                            setHabitTime(chipFormatted);
-                            haptic('light');
-                          }}
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold font-mono shrink-0 transition-all ${
-                            isChipActive
-                              ? 'bg-white text-black shadow-sm'
-                              : 'bg-black/30 text-white/60 hover:text-white border border-white/10'
-                          }`}
-                        >
-                          {lang === 'ar' ? chip.labelAr : chip.labelEn}
-                        </button>
-                      );
-                    })}
-                  </div>
-
                   {/* 12-Hour Grid (Apple Style) */}
                   <div className="grid grid-cols-6 gap-1.5 mb-3">
                     {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => {
