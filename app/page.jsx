@@ -3596,10 +3596,20 @@ export default function App() {
           transition={{ duration: 0.4 }} 
           className={`w-full max-w-[428px] md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto h-full flex flex-col px-5 md:px-10 relative z-10 pt-[calc(env(safe-area-inset-top,0px)+1.25rem)] md:pt-4 pb-36 md:pb-40 ${(typeof window !== 'undefined' && window.__TAURI_INTERNALS__) ? 'pt-9 md:pt-10' : ''}`}
           onTouchStart={(e) => {
+            if (e.target && e.target.closest && (e.target.closest('[data-no-day-swipe]') || e.target.closest('.spotify-widget'))) {
+              touchStartXRef.current = null;
+              touchStartYRef.current = null;
+              return;
+            }
             touchStartXRef.current = e.touches[0].clientX;
             touchStartYRef.current = e.touches[0].clientY;
           }}
           onTouchEnd={(e) => {
+            if (e.target && e.target.closest && (e.target.closest('[data-no-day-swipe]') || e.target.closest('.spotify-widget'))) {
+              touchStartXRef.current = null;
+              touchStartYRef.current = null;
+              return;
+            }
             if (touchStartXRef.current === null || touchStartYRef.current === null) return;
             const diffX = e.changedTouches[0].clientX - touchStartXRef.current;
             const diffY = e.changedTouches[0].clientY - touchStartYRef.current;

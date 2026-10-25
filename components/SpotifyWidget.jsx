@@ -125,12 +125,14 @@ export default function SpotifyWidget({
 
   // Touch handlers
   const handleTouchStart = (e) => {
+    if (e?.stopPropagation) e.stopPropagation();
     startXRef.current = e.touches[0].clientX;
     startYRef.current = e.touches[0].clientY;
     isDraggingRef.current = false;
   };
 
   const handleTouchMove = (e) => {
+    if (e?.stopPropagation) e.stopPropagation();
     if (startXRef.current === null) return;
     const currentX = e.touches[0].clientX;
     const currentY = e.touches[0].clientY;
@@ -145,7 +147,8 @@ export default function SpotifyWidget({
     }
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e) => {
+    if (e?.stopPropagation) e.stopPropagation();
     if (startXRef.current === null) return;
 
     if (dragOffset < -40) {
@@ -167,12 +170,14 @@ export default function SpotifyWidget({
 
   // Mouse drag handlers for desktop
   const handleMouseDown = (e) => {
+    if (e?.stopPropagation) e.stopPropagation();
     startXRef.current = e.clientX;
     startYRef.current = e.clientY;
     isDraggingRef.current = false;
   };
 
   const handleMouseMove = (e) => {
+    if (e?.stopPropagation) e.stopPropagation();
     if (startXRef.current === null) return;
     const diffX = e.clientX - startXRef.current;
     if (Math.abs(diffX) > 8) {
@@ -181,7 +186,8 @@ export default function SpotifyWidget({
     }
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e) => {
+    if (e?.stopPropagation) e.stopPropagation();
     if (startXRef.current === null) return;
 
     if (dragOffset < -40) {
@@ -211,7 +217,10 @@ export default function SpotifyWidget({
     if (variant === 'compact') return null;
 
     return (
-      <div className={`w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between shadow-lg transition-all duration-200 border border-white/10 ${className}`}>
+      <div 
+        data-no-day-swipe="true"
+        className={`w-full px-4 py-3 rounded-[20px] liquid-panel spotify-widget flex items-center justify-between shadow-lg transition-all duration-200 border border-white/10 ${className}`}
+      >
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-black shrink-0">
             <Radio size={14} strokeWidth={2.8} />
@@ -296,7 +305,8 @@ export default function SpotifyWidget({
           setDragOffset(0);
         }
       }}
-      className={`w-full px-3.5 py-2.5 rounded-[20px] liquid-panel flex items-center justify-between shadow-lg relative overflow-hidden select-none cursor-pointer active:scale-[0.99] border border-white/10 min-h-[58px] transition-transform ${className}`}
+      data-no-day-swipe="true"
+      className={`w-full px-3.5 py-2.5 rounded-[20px] liquid-panel spotify-widget flex items-center justify-between shadow-lg relative overflow-hidden select-none cursor-pointer active:scale-[0.99] border border-white/10 min-h-[58px] transition-transform ${className}`}
       style={{
         transform: `translateX(${dragOffset}px)`,
         transition: isDraggingRef.current ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)'
