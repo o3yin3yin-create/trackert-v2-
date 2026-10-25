@@ -5544,7 +5544,7 @@ export default function App() {
                           {/* Spotify Account Sync */}
                           <div className="w-full text-left p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
                             <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-[#1DB954]/20 text-[#1DB954] flex items-center justify-center">
+                              <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center">
                                 <Radio size={18} strokeWidth={2.5} />
                               </div>
                               <div className="flex flex-col">
@@ -5556,7 +5556,7 @@ export default function App() {
                             </div>
                             <a 
                               href="/api/spotify/login" 
-                              className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-[#1DB954] text-black hover:bg-[#1ed760] transition-all active:scale-95 flex items-center gap-1.5 shadow-md shadow-[#1DB954]/20"
+                              className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-white text-black hover:bg-white/90 transition-all active:scale-95 flex items-center gap-1.5 shadow-md"
                             >
                               {lang === 'ar' ? 'ربط / تبديل' : 'Connect / Switch'}
                             </a>
