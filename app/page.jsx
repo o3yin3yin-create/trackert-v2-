@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid } from 'lucide-react';
+import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import MinimalTimer from '../components/MinimalTimer';
 import { translations } from '../lib/translations';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 
 const MapComponent = dynamic(() => import('../components/MapComponent'), {
   ssr: false,
@@ -5718,6 +5719,15 @@ export default function App() {
                         </button>
                       </div>
 
+                      <Link
+                        href="/guide"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-all cursor-pointer border border-white/10"
+                        title={guideLang === 'ar' ? 'فتح صفحة الدليل المستقلة' : 'Open standalone page'}
+                      >
+                        <ExternalLink size={13} />
+                        <span className="hidden sm:inline">{guideLang === 'ar' ? 'صفحة مستقلة' : 'Share Link'}</span>
+                      </Link>
+
                       <button 
                         onClick={() => setIsHowToUseOpen(false)} 
                         className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all cursor-pointer"
@@ -6282,14 +6292,18 @@ export default function App() {
                               <ChevronRight size={18} className={`text-white/40 `} />
                             </button>
 
-                            {/* How to Use */}
-                            <button onClick={() => { setIsSettingsMenuOpen(false); setIsHowToUseOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
+                            {/* How to Use / Guide */}
+                            <a 
+                              href="/guide" 
+                              onClick={() => setIsSettingsMenuOpen(false)} 
+                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
+                            >
                               <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><BookOpen size={18} /></div>
                                 <span className="text-sm font-bold text-white">{t('howToUse')}</span>
                               </div>
-                              <ChevronRight size={18} className={`text-white/40 `} />
-                            </button>
+                              <ChevronRight size={18} className="text-white/40" />
+                            </a>
 
                             {/* Admin Dashboard */}
                             {isAdmin && (
