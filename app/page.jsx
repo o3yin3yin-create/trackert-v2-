@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin } from 'lucide-react';
+import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -22,6 +22,7 @@ import WindowSeat from '../components/WindowSeat';
 import SeatSelection from '../components/SeatSelection';
 import AdminPanel from '../components/AdminPanel';
 import AvatarIcon, { AVATAR_OPTIONS } from '../components/AvatarIcon';
+import SpotifyWidget from '../components/SpotifyWidget';
 
 let globalAudioCtx = null;
 const getAudioCtx = () => {
@@ -670,6 +671,30 @@ export default function App() {
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [isTicketsHistoryViewOpen, setIsTicketsHistoryViewOpen] = useState(false);
   const [isFocusTasksViewOpen, setIsFocusTasksViewOpen] = useState(false);
+  const [spotifyNotification, setSpotifyNotification] = useState(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('spotify_connected') === 'true') {
+        setSpotifyNotification({ 
+          type: 'success', 
+          message: lang === 'ar' ? 'تم ربط حساب Spotify بنجاح! 🎵' : 'Spotify connected successfully! 🎵' 
+        });
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, '', cleanUrl);
+        setTimeout(() => setSpotifyNotification(null), 5000);
+      } else if (params.get('spotify_error')) {
+        setSpotifyNotification({ 
+          type: 'error', 
+          message: lang === 'ar' ? 'فشل ربط Spotify، يرجى المحاولة مرة أخرى' : 'Failed to connect Spotify, please try again' 
+        });
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, '', cleanUrl);
+        setTimeout(() => setSpotifyNotification(null), 5000);
+      }
+    }
+  }, [lang]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -3499,6 +3524,11 @@ export default function App() {
                 <div style={{ marginTop: '24px', fontSize: '13px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: '0.06em' }}>
                   Today&apos;s focus: <span style={{ color: neon }}>{Math.floor((focusTimeData[getFormatDateStr(new Date())] || 0) / 60)} min</span>
                 </div>
+
+                {/* Spotify Mini Player in Pomodoro */}
+                <div className="mt-5 flex justify-center w-full">
+                  <SpotifyWidget lang={lang} theme={theme} themeColor={neon} variant="compact" />
+                </div>
               </div>
 
               {/* Bottom Done Action */}
@@ -3532,6 +3562,14 @@ export default function App() {
         </div>
 
         <div ref={topRef} className="absolute top-0" /> 
+
+        {/* Floating Spotify Toast Notification */}
+        {spotifyNotification && (
+          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100000] px-5 py-3 rounded-2xl liquid-panel border border-white/20 shadow-2xl flex items-center gap-3 text-white text-xs font-black animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className={`w-2.5 h-2.5 rounded-full ${spotifyNotification.type === 'success' ? 'bg-[#1DB954] shadow-[0_0_10px_#1DB954]' : 'bg-red-500'}`} />
+            <span>{spotifyNotification.message}</span>
+          </div>
+        )} 
 
         {/* macOS Desktop Window Drag Region (Handles grabbing next to traffic lights) */}
         <div 
@@ -3895,6 +3933,9 @@ export default function App() {
                 {t('save')}
               </button>
             </div>
+
+            {/* Mobile Spotify Now Playing Card */}
+            <SpotifyWidget lang={lang} theme={theme} themeColor={themeColor} variant="card" className="mb-6" />
 
           </div>
 
@@ -4615,6 +4656,9 @@ export default function App() {
                   </div>
                 )}
               </div>
+
+              {/* Desktop Spotify Now Playing Card */}
+              <SpotifyWidget lang={lang} theme={theme} themeColor={themeColor} variant="card" className="mt-6" />
             </div>
 
           </div>
@@ -5496,6 +5540,27 @@ export default function App() {
                             </div>
                             <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
                           </button>
+
+                          {/* Spotify Account Sync */}
+                          <div className="w-full text-left p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-[#1DB954]/20 text-[#1DB954] flex items-center justify-center">
+                                <Radio size={18} strokeWidth={2.5} />
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-bold text-white">Spotify</span>
+                                <span className="text-[10px] text-white/50 font-normal">
+                                  {lang === 'ar' ? 'ربط الموسيقى والتحكم المباشر' : 'Music playback & sync'}
+                                </span>
+                              </div>
+                            </div>
+                            <a 
+                              href="/api/spotify/login" 
+                              className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-[#1DB954] text-black hover:bg-[#1ed760] transition-all active:scale-95 flex items-center gap-1.5 shadow-md shadow-[#1DB954]/20"
+                            >
+                              {lang === 'ar' ? 'ربط / تبديل' : 'Connect / Switch'}
+                            </a>
+                          </div>
 
                           {/* Admin Dashboard */}
                           {isAdmin && (
