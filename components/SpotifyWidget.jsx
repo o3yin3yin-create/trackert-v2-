@@ -230,7 +230,7 @@ export default function SpotifyWidget({
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
   };
 
-  const getSpotifyLoginUrl = () => {
+  const getSpotifyLoginUrl = (desktopPort) => {
     const isDesktop = typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:');
     const base = isDesktop ? 'https://bokra101.vercel.app/api/spotify/login' : '/api/spotify/login';
     let uid = userId || '';
@@ -240,7 +240,14 @@ export default function SpotifyWidget({
         uid = u.id || '';
       } catch (e) {}
     }
-    return uid ? `${base}?uid=${encodeURIComponent(uid)}` : base;
+    const params = new URLSearchParams();
+    if (uid) params.set('uid', uid);
+    if (isDesktop) {
+      params.set('from', 'desktop');
+      params.set('port', String(desktopPort || 28282));
+    }
+    const qs = params.toString();
+    return qs ? `${base}?${qs}` : base;
   };
 
   // If NOT connected, show sleek monochrome black & white bar
@@ -291,17 +298,21 @@ export default function SpotifyWidget({
             type="button" 
             onClick={async () => {
               const isDesktop = typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:');
-              const url = getSpotifyLoginUrl();
+              let port = 28282;
               if (isDesktop) {
                 try {
                   const { invoke } = await import('@tauri-apps/api/core');
-                  try { await invoke('start_auth_server'); } catch (err) {}
+                  try { 
+                    port = await invoke('start_auth_server'); 
+                  } catch (err) {}
+                  const url = getSpotifyLoginUrl(port);
                   await invoke('open_system_browser', { url });
                   return;
                 } catch (err) {
                   console.warn('Fallback opening browser:', err);
                 }
               }
+              const url = getSpotifyLoginUrl();
               window.location.href = url;
             }}
             className="px-4 py-1.5 rounded-full font-black text-xs bg-white text-black hover:bg-white/90 transition-all active:scale-95 shadow-sm cursor-pointer"

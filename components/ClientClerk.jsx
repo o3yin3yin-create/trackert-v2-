@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { isTauri, invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { LogOut, ExternalLink, KeyRound } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
 
 const AuthContext = createContext({
   user: null,
@@ -55,6 +56,10 @@ export const ClerkProvider = ({ children }) => {
 
               if (spotifyToken) {
                 localStorage.setItem('daybase_spotify_refresh_token', spotifyToken);
+                apiFetch('/api/spotify/save-token', {
+                  method: 'POST',
+                  body: JSON.stringify({ token: spotifyToken })
+                }).catch(() => {});
                 window.dispatchEvent(new CustomEvent('spotify-token-updated'));
               }
 

@@ -752,11 +752,12 @@ export default function App() {
         }
         setSpotifyNotification({ 
           type: 'success', 
-          message: lang === 'ar' ? 'تم ربط حساب Spotify بنجاح! 🎵' : 'Spotify connected successfully! 🎵' 
+          message: lang === 'ar' ? 'تم ربط حساب Spotify بنجاح! 🎵' : 'Spotify connected successfully! 🎵',
+          desktopUrl: token ? `http://127.0.0.1:28282/callback?spotify_token=${encodeURIComponent(token)}` : null
         });
         const cleanUrl = window.location.pathname;
         window.history.replaceState({}, '', cleanUrl);
-        setTimeout(() => setSpotifyNotification(null), 5000);
+        setTimeout(() => setSpotifyNotification(null), 8000);
       } else if (params.get('spotify_error')) {
         setSpotifyNotification({ 
           type: 'error', 
@@ -3809,6 +3810,14 @@ export default function App() {
           <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100000] px-5 py-3 rounded-2xl liquid-panel border border-white/20 shadow-2xl flex items-center gap-3 text-white text-xs font-black animate-in fade-in slide-in-from-top-4 duration-300">
             <div className={`w-2.5 h-2.5 rounded-full ${spotifyNotification.type === 'success' ? 'bg-[#1DB954] shadow-[0_0_10px_#1DB954]' : 'bg-red-500'}`} />
             <span>{spotifyNotification.message}</span>
+            {spotifyNotification.desktopUrl && (
+              <a 
+                href={spotifyNotification.desktopUrl}
+                className="ml-2 px-3 py-1 rounded-full bg-white text-black text-[11px] font-bold hover:bg-white/90 transition-all shadow-sm flex items-center gap-1 shrink-0"
+              >
+                <span>{lang === 'ar' ? 'نقل لتطبيق الماك' : 'Open in Mac App'}</span>
+              </a>
+            )}
           </div>
         )} 
 

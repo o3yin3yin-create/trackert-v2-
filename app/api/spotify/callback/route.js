@@ -13,8 +13,24 @@ export async function GET(req) {
     ? `${req.headers.get('x-forwarded-proto') || 'https'}://${req.headers.get('x-forwarded-host')}`
     : new URL(req.url).origin;
 
+  let fromDesktop = false;
+  let desktopPort = '28282';
+  let userId = null;
+
+  if (stateParam) {
+    try {
+      const decoded = JSON.parse(Buffer.from(stateParam, 'base64url').toString('utf-8'));
+      if (decoded?.u) userId = decoded.u;
+      if (decoded?.f === 'desktop') fromDesktop = true;
+      if (decoded?.p) desktopPort = decoded.p;
+    } catch (e) {}
+  }
+
   if (error || !code) {
     console.warn('[Spotify Auth] Access denied or error:', error);
+    if (fromDesktop) {
+      return NextResponse.redirect(`http://127.0.0.1:${desktopPort}/callback?spotify_error=${encodeURIComponent(error || 'no_code')}`);
+    }
     return NextResponse.redirect(`${origin}/?spotify_error=${encodeURIComponent(error || 'no_code')}`);
   }
 
@@ -29,13 +45,6 @@ export async function GET(req) {
 
     // Try saving to database for authenticated user
     try {
-      let userId = null;
-      if (stateParam) {
-        try {
-          const decoded = JSON.parse(Buffer.from(stateParam, 'base64url').toString('utf-8'));
-          if (decoded?.u) userId = decoded.u;
-        } catch (e) {}
-      }
       if (!userId) {
         userId = await getAuthUserId(req);
       }
@@ -54,8 +63,12 @@ export async function GET(req) {
       console.warn('[Spotify DB save skipped]:', dbErr.message);
     }
 
-    // Pass token so desktop app and offline storage can persist it
-    const response = NextResponse.redirect(`${origin}/?spotify_connected=true&spotify_token=${encodeURIComponent(refreshToken)}`);
+    // Direct redirect to Desktop loopback listener if request initiated from Desktop app
+    const targetUrl = fromDesktop 
+      ? `http://127.0.0.1:${desktopPort}/callback?spotify_token=${encodeURIComponent(refreshToken)}`
+      : `${origin}/?spotify_connected=true&spotify_token=${encodeURIComponent(refreshToken)}`;
+
+    const response = NextResponse.redirect(targetUrl);
     
     // Store refresh token in secure HTTP-only cookie (1 year expiry)
     response.cookies.set('spotify_refresh_token', refreshToken, {
@@ -69,6 +82,9 @@ export async function GET(req) {
     return response;
   } catch (err) {
     console.error('[Spotify Auth Error]:', err);
+    if (fromDesktop) {
+      return NextResponse.redirect(`http://127.0.0.1:${desktopPort}/callback?spotify_error=token_exchange_failed`);
+    }
     return NextResponse.redirect(`${origin}/?spotify_error=token_exchange_failed`);
   }
 }

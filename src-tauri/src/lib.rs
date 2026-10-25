@@ -1,6 +1,9 @@
 use std::net::TcpListener;
 use std::io::{Read, Write};
+use std::sync::atomic::{AtomicU16, Ordering};
 use tauri::{Emitter, Manager};
+
+static ACTIVE_PORT: AtomicU16 = AtomicU16::new(0);
 
 #[tauri::command]
 fn open_system_browser(url: String) -> Result<(), String> {
@@ -18,32 +21,50 @@ fn open_system_browser(url: String) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
-async fn start_auth_server(app: tauri::AppHandle) -> Result<u16, String> {
-    // Try preferred port 28282 first, fallback to random available OS port (0)
-    let listener = TcpListener::bind("127.0.0.1:28282")
-        .or_else(|_| TcpListener::bind("127.0.0.1:0"))
-        .map_err(|e| e.to_string())?;
+fn run_auth_server(app_handle: tauri::AppHandle) -> u16 {
+    let current = ACTIVE_PORT.load(Ordering::SeqCst);
+    if current != 0 {
+        return current;
+    }
 
-    let port = listener.local_addr().map_err(|e| e.to_string())?.port();
-    let app_handle = app.clone();
+    let listener = match TcpListener::bind("127.0.0.1:28282") {
+        Ok(l) => l,
+        Err(_) => match TcpListener::bind("127.0.0.1:0") {
+            Ok(l) => l,
+            Err(e) => {
+                eprintln!("[bokra auth server error] Failed to bind: {}", e);
+                return 0;
+            }
+        }
+    };
+
+    let port = match listener.local_addr() {
+        Ok(addr) => addr.port(),
+        Err(_) => 28282,
+    };
+
+    ACTIVE_PORT.store(port, Ordering::SeqCst);
 
     std::thread::spawn(move || {
-        if let Ok((mut stream, _)) = listener.accept() {
+        while let Ok((mut stream, _)) = listener.accept() {
             let mut buffer = [0; 8192];
             if let Ok(size) = stream.read(&mut buffer) {
                 let request = String::from_utf8_lossy(&buffer[..size]);
                 
                 // Extract query string from GET request line
                 let mut query = String::new();
+                let mut has_callback = false;
                 if let Some(first_line) = request.lines().next() {
                     if let Some(start_pos) = first_line.find("/callback?") {
+                        has_callback = true;
                         let sub = &first_line[start_pos + 10..];
                         if let Some(end_pos) = sub.find(' ') {
                             query = sub[..end_pos].to_string();
                         } else {
                             query = sub.to_string();
                         }
+                    } else if first_line.contains("/callback") {
+                        has_callback = true;
                     }
                 }
 
@@ -51,7 +72,7 @@ async fn start_auth_server(app: tauri::AppHandle) -> Result<u16, String> {
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>bokra — Successfully Signed In</title>
+    <title>bokra — Successfully Connected</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
@@ -131,8 +152,8 @@ async fn start_auth_server(app: tauri::AppHandle) -> Result<u16, String> {
                 <circle cx="62" cy="50" r="16" fill="white" filter="drop-shadow(0 0 12px rgba(255,255,255,0.9))"/>
             </svg>
         </div>
-        <h1>Successfully Signed In</h1>
-        <p>Your account is now linked to bokra for Mac. You can close this tab and return to the application.</p>
+        <h1>Successfully Connected</h1>
+        <p>Your connection to bokra for Mac was successful. You can close this tab and return to the application.</p>
         <div class="badge"><span class="dot"></span> Connected</div>
     </div>
 </body>
@@ -147,18 +168,30 @@ async fn start_auth_server(app: tauri::AppHandle) -> Result<u16, String> {
                 let _ = stream.write_all(response.as_bytes());
                 let _ = stream.flush();
 
-                // Notify webview with query parameters
-                let _ = app_handle.emit("desktop-auth-callback", query);
+                if has_callback {
+                    // Notify webview with query parameters
+                    let _ = app_handle.emit("desktop-auth-callback", query);
 
-                // Focus window on macOS
-                if let Some(window) = app_handle.get_webview_window("main") {
-                    let _ = window.set_focus();
+                    // Focus window on macOS
+                    if let Some(window) = app_handle.get_webview_window("main") {
+                        let _ = window.set_focus();
+                    }
                 }
             }
         }
     });
 
-    Ok(port)
+    port
+}
+
+#[tauri::command]
+async fn start_auth_server(app: tauri::AppHandle) -> Result<u16, String> {
+    let port = run_auth_server(app);
+    if port == 0 {
+        Err("Failed to start auth server".into())
+    } else {
+        Ok(port)
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -166,6 +199,9 @@ pub fn run() {
   tauri::Builder::default()
     .invoke_handler(tauri::generate_handler![open_system_browser, start_auth_server])
     .setup(|app| {
+      let app_handle = app.handle().clone();
+      run_auth_server(app_handle);
+
       if cfg!(debug_assertions) {
         app.handle().plugin(
           tauri_plugin_log::Builder::default()

@@ -14,8 +14,11 @@ export async function GET(req) {
     } catch (e) {}
   }
 
+  const from = searchParams.get('from') || '';
+  const port = searchParams.get('port') || '';
+
   const nonce = Math.random().toString(36).substring(2, 10);
-  const stateObj = { n: nonce, u: uid };
+  const stateObj = { n: nonce, u: uid, f: from, p: port };
   const state = Buffer.from(JSON.stringify(stateObj)).toString('base64url');
   
   const params = new URLSearchParams({
