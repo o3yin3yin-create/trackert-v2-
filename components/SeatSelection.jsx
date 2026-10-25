@@ -19,7 +19,7 @@ const SeatSelection = ({ onSelectSeat, lang }) => {
       className="flex flex-col items-center bg-black/40 backdrop-blur-md rounded-[2rem] p-6 border border-white/10 w-full max-w-md shadow-2xl"
     >
       <h3 className="text-white font-bold tracking-widest uppercase mb-6 text-sm">
-        {lang === 'ar' ? 'اختر مقعدك' : 'Select Your Seat'}
+        'Select Your Seat'
       </h3>
 
       <div className="flex flex-col gap-3 w-full items-center bg-white/5 p-6 rounded-3xl">
@@ -81,7 +81,7 @@ const SeatSelection = ({ onSelectSeat, lang }) => {
           selected ? 'bg-white hover:bg-white/90 text-black shadow-xl active:scale-95' : 'bg-white/5 text-white/20 cursor-not-allowed'
         }`}
       >
-        {lang === 'ar' ? 'تأكيد المقعد' : 'Confirm Seat'}
+        'Confirm Seat'
       </button>
     </motion.div>
   );

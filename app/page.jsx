@@ -61,7 +61,7 @@ const playAirportChime = () => {
     osc.stop(startTime + duration);
   };
   
-  // Classic E5, C5, G4 chime (تن تن تن)
+  // Classic E5, C5, G4 chime
   playNote(659.25, t, 1.5);
   playNote(523.25, t + 0.6, 1.5);
   playNote(392.00, t + 1.2, 2.0);
@@ -489,7 +489,7 @@ export default function App() {
     if (typeof window !== 'undefined') return JSON.parse(localStorage.getItem('daybase_cards_v4') || "{}");
     return {};
   });
-  // State عشان نمنع اليوزر من الغش (ياخد كارت واحد بس كل 7 أيام للعادة الواحدة)
+  // Anti-cheat: 1 card per habit per 7 days streak
   const [grantedCardsLog, setGrantedCardsLog] = useState(() => {
     if (typeof window !== 'undefined') return JSON.parse(localStorage.getItem('daybase_granted_cards_log_v4') || "{}");
     return {};
@@ -682,7 +682,7 @@ export default function App() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedLang = localStorage.getItem('daybase_lang') || 'en';
+      const savedLang = 'en';
       const savedBg = localStorage.getItem('daybase_bgstyle') || 'aurora';
       setLang(savedLang);
       setTheme('dark');
@@ -694,12 +694,7 @@ export default function App() {
     };
   }, []);
 
-  const toggleLang = () => {
-    const newLang = lang === 'en' ? 'ar' : 'en';
-    setLang(newLang);
-    if (typeof window !== 'undefined') localStorage.setItem('daybase_lang', newLang);
-    markLocalMutation();
-  };
+  const toggleLang = () => {};
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -740,7 +735,7 @@ export default function App() {
     return {};
   });
 
-  // --- ستيتس مراقبة وحالة الإنترنت والمزامنة ---
+  // --- Sync & Network Status ---
   const [isOnline, setIsOnline] = useState(typeof window !== 'undefined' ? navigator.onLine : true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isCloudLoaded, setIsCloudLoaded] = useState(false);
@@ -830,7 +825,7 @@ export default function App() {
         }
         setSpotifyNotification({ 
           type: 'success', 
-          message: lang === 'ar' ? 'تم ربط حساب Spotify بنجاح!' : 'Spotify connected successfully!',
+          message: 'Spotify connected successfully!',
           desktopUrl: token ? `http://127.0.0.1:28282/callback?spotify_token=${encodeURIComponent(token)}` : null
         });
         const cleanUrl = window.location.pathname;
@@ -839,7 +834,7 @@ export default function App() {
       } else if (params.get('spotify_error')) {
         setSpotifyNotification({ 
           type: 'error', 
-          message: lang === 'ar' ? 'فشل ربط Spotify، يرجى المحاولة مرة أخرى' : 'Failed to connect Spotify, please try again' 
+          message: 'Failed to connect Spotify, please try again' 
         });
         const cleanUrl = window.location.pathname;
         window.history.replaceState({}, '', cleanUrl);
@@ -871,7 +866,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [baseDate]);
 
-  const dayName = baseDate.toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'long' });
+  const dayName = baseDate.toLocaleString('en-US', { weekday: 'long' });
   const dayNum = String(baseDate.getDate()).padStart(2, '0'); 
 
   // --- Pomodoro Tasks Tracking ---
@@ -1490,7 +1485,7 @@ export default function App() {
   const [isEditingMission, setIsEditingMission] = useState(false);
   const [missionInput, setMissionInput] = useState(mission);
   
-  // ─── منطق الأنيميشن الصح للـ Modals ───
+  // ─── Modal Animations ───
   const [isAddMounted, setIsAddMounted] = useState(false);
   const [isAddVisible, setIsAddVisible] = useState(false);
   const [isManageMounted, setIsManageMounted] = useState(false);
@@ -1548,7 +1543,7 @@ export default function App() {
   const [newHabitType, setNewHabitType] = useState('single');
   const [newHabitSubItems, setNewHabitSubItems] = useState(['', '']);
 
-  // جدولة وتكرار العادات
+  // Habit frequency & scheduling
   const [habitFrequency, setHabitFrequency] = useState('daily'); // 'daily' | 'once' | 'weekly' | 'monthly' | 'yearly'
   const [habitScheduleOnceDate, setHabitScheduleOnceDate] = useState(() => {
     const d = new Date();
@@ -1561,7 +1556,7 @@ export default function App() {
   const [habitScheduleDayOfMonth, setHabitScheduleDayOfMonth] = useState(1);
   const [habitScheduleMonthDay, setHabitScheduleMonthDay] = useState("01-01");
 
-  // بيانات إضافية للعادة (الميعاد والمكان اختياري)
+  // Additional habit data (time & location)
   const [habitTime, setHabitTime] = useState("");
   const [habitLocation, setHabitLocation] = useState("");
   const [selectedTimeHour, setSelectedTimeHour] = useState(4);
@@ -1591,7 +1586,7 @@ export default function App() {
   tomorrowObj.setDate(tomorrowObj.getDate() + 1);
   const tomorrowStr = getFormatDateStr(tomorrowObj);
 
-  // --- Helper: دالة فحص هل العادة أو الميعاد مجدول لتاريخ معين ---
+  // Helper: check if habit is scheduled for date
   const isHabitScheduledForDate = (habit, targetDateStr) => {
     if (!habit) return false;
     const freq = habit.frequency || 'daily';
@@ -1627,7 +1622,7 @@ export default function App() {
     return true;
   };
 
-  // العادات المجدولة لتاريخ اليوم النشط
+  // Habits scheduled for active date
   const activeScheduledHabits = useMemo(() => {
     return habits.filter(h => isHabitScheduledForDate(h, activeDateStr));
   }, [habits, activeDateStr]);
@@ -1722,7 +1717,7 @@ export default function App() {
     for (let i = 0; i < 60; i++) {
       const dateStr = getFormatDateStr(date);
       
-      // لو العادة مش مجدولة في اليوم ده، نتخطى اليوم بدون كسر الستريك
+      // If not scheduled for this day, skip without breaking streak
       if (!isHabitScheduledForDate(habit, dateStr)) {
         date.setDate(date.getDate() - 1);
         continue;
@@ -1736,7 +1731,7 @@ export default function App() {
         streak++;
         date.setDate(date.getDate() - 1);
       } else if (i === 0 && !isCompleted && dateStr === realTodayStr) {
-        // لو النهاردة لسه مخلصهاش، منكسرش الستريك وندي فرصة لبقية اليوم
+        // If not done yet today, preserve streak
         date.setDate(date.getDate() - 1);
       } else {
         break;
@@ -1745,7 +1740,7 @@ export default function App() {
     return streak;
   };
 
-  // --- Card Minting Engine (توليد الكروت أوتوماتيك كل 7 أيام) ---
+  // --- Card Minting Engine (automatic every 7 streak days) ---
   useEffect(() => {
     if (!isMounted) return;
     let newCardsGranted = false;
@@ -1754,10 +1749,10 @@ export default function App() {
 
     habits.forEach(habit => {
       const streak = getStreak(habit.id);
-      // لو الستريك مضاعفات الـ 7 (7, 14, 21...)
+      // If streak is multiple of 7
       if (streak > 0 && streak % 7 === 0) {
         const grantKey = `${habit.id}-streak-${streak}`;
-        // لو مكسبش الكارت بتاع الستريك ده قبل كده، إديله واحد
+        // Mint card if not already minted for this milestone
         if (!newLog[grantKey]) {
           newLog[grantKey] = true;
           const currentCards = newCards[habit.id] ?? 1;
@@ -1886,7 +1881,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isTimerRunning, activePomodoroTask]);
 
-  // ─── موتور المزامنة الهجين (Sync Engine) ───
+  // ─── Sync Engine ───
   useEffect(() => {
     const updateOnlineStatus = () => setIsOnline(navigator.onLine);
     window.addEventListener('online', updateOnlineStatus);
@@ -2038,7 +2033,7 @@ export default function App() {
     haptic('medium');
     markLocalMutation();
 
-    // تجهيز تفاصيل الجدولة والتكرار
+    // Habit scheduling setup
     let scheduleDateVal = null;
     if (habitFrequency === 'once') {
       scheduleDateVal = habitScheduleOnceDate;
@@ -2098,7 +2093,7 @@ export default function App() {
     setHabitCards(prev => ({ ...prev, [habitId]: cardsLeft - 1 }));
   };
 
-  // --- Score Calculations (فقط للعادات المجدولة لليوم النشط) ---
+  // --- Score Calculations ---
   let totalPossible = 0;
   let totalCompleted = 0;
 
@@ -2169,11 +2164,9 @@ export default function App() {
     return (
       <div className="min-h-screen bg-[#0c0c0e] flex flex-col items-center justify-center p-6 text-center">
         <ShieldAlert size={64} className="text-red-500 mb-6 mx-auto" />
-        <h1 className="text-3xl font-black text-white mb-4 uppercase tracking-widest">{lang === 'ar' ? 'حساب محظور' : 'Account Blocked'}</h1>
+        <h1 className="text-3xl font-black text-white mb-4 uppercase tracking-widest">{'Account Blocked'}</h1>
         <p className="text-white/60 font-bold max-w-sm mx-auto">
-          {lang === 'ar' 
-            ? 'تم حظر حسابك بسبب انتهاك شروط الاستخدام. لا يمكنك استخدام التطبيق حالياً.' 
-            : 'Your account has been blocked due to a violation of our terms. You can no longer use this application.'}
+          {'Your account has been blocked due to a violation of our terms. You can no longer use this application.'}
         </p>
       </div>
     );
@@ -2196,7 +2189,7 @@ export default function App() {
       isAllChecked = !!dailyData[`${activeDateStr}-${habit.id}`];
     }
 
-    // Full-width (بالطول) for multi habits and scheduled habits; 1 column for standard single habits
+    // Full-width for multi habits and scheduled habits; 1 column for standard single habits
     const isFullWidth = isMulti || isScheduled;
     const gridClass = isFullWidth ? 'col-span-2' : 'col-span-1';
     const streak = getStreak(habit.id);
@@ -2473,7 +2466,7 @@ export default function App() {
                   setIsTimerRunning(!isTimerRunning);
                 }}
                 className="relative w-8 h-8 flex items-center justify-center shrink-0 cursor-pointer active:scale-90 transition-transform"
-                title={isTimerRunning ? (lang === 'ar' ? 'إيقاف مؤقت' : 'Pause') : (lang === 'ar' ? 'استئناف' : 'Resume')}
+                title={isTimerRunning ? ('Pause') : ('Resume')}
               >
                 <svg className="w-8 h-8 -rotate-90 pointer-events-none" viewBox="0 0 32 32">
                   <circle
@@ -2509,7 +2502,7 @@ export default function App() {
               {/* Title & 4 Dots */}
               <div className="flex flex-col min-w-0">
                 <span className="text-white font-bold text-[12px] tracking-tight leading-tight truncate">
-                  {activePomodoroTask?.name || (lang === 'ar' ? 'تركيز' : 'Focus')}
+                  {activePomodoroTask?.name || ('Focus')}
                 </span>
                 <div className="flex items-center gap-1 mt-1">
                   {[0, 1, 2, 3].map((idx) => {
@@ -2562,7 +2555,7 @@ export default function App() {
                 setIsTimerRunning(!isTimerRunning);
               }}
               className="relative w-10 h-10 flex items-center justify-center shrink-0 cursor-pointer active:scale-90 transition-transform"
-              title={isTimerRunning ? (lang === 'ar' ? 'إيقاف مؤقت' : 'Pause') : (lang === 'ar' ? 'استئناف' : 'Resume')}
+              title={isTimerRunning ? ('Pause') : ('Resume')}
             >
               <svg className="w-10 h-10 -rotate-90 pointer-events-none" viewBox="0 0 44 44">
                 <circle
@@ -2599,7 +2592,7 @@ export default function App() {
             {/* Title + 4 Progress Dots */}
             <div className="flex flex-col justify-center min-w-0">
               <span className="text-white font-bold text-sm sm:text-[15px] tracking-tight leading-none truncate">
-                {activePomodoroTask?.name || (lang === 'ar' ? 'تركيز' : 'Focus')}
+                {activePomodoroTask?.name || ('Focus')}
               </span>
               
               <div className="flex items-center gap-1.5 mt-2">
@@ -2657,10 +2650,10 @@ export default function App() {
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-[12px] font-bold text-white tracking-tight truncate leading-tight">
-                  {isRunning ? `${selectedFlight.origin} → ${selectedFlight.destination}` : (lang === 'ar' ? 'فلايت فوكس' : 'Flight')}
+                  {isRunning ? `${selectedFlight.origin} → ${selectedFlight.destination}` : ('Flight')}
                 </span>
                 <span className="text-[10px] text-white/50 truncate leading-tight mt-0.5">
-                  {isRunning ? `${selectedFlight.callsign}` : (lang === 'ar' ? 'رحلة تركيز' : 'Focus flight')}
+                  {isRunning ? `${selectedFlight.callsign}` : ('Focus flight')}
                 </span>
               </div>
             </div>
@@ -2686,10 +2679,10 @@ export default function App() {
             </div>
             <div className="flex flex-col">
               <span className="text-[13px] font-bold text-white tracking-tight">
-                {isRunning ? `${selectedFlight.origin} → ${selectedFlight.destination}` : (lang === 'ar' ? 'فلايت فوكس' : 'Flight Focus')}
+                {isRunning ? `${selectedFlight.origin} → ${selectedFlight.destination}` : ('Flight Focus')}
               </span>
               <span className="text-[10px] text-white/50 font-semibold">
-                {isRunning ? `${selectedFlight.airline} ${selectedFlight.callsign}` : (lang === 'ar' ? 'انضم لرحلة حقيقية في السماء' : 'Join a real-world flight')}
+                {isRunning ? `${selectedFlight.airline} ${selectedFlight.callsign}` : ('Join a real-world flight')}
               </span>
             </div>
           </div>
@@ -2700,7 +2693,7 @@ export default function App() {
               </span>
             ) : (
               <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/10 text-white/70 hover:bg-white/20">
-                {lang === 'ar' ? 'رحلة' : 'Fly'}
+                {'Fly'}
               </span>
             )}
           </div>
@@ -2740,10 +2733,10 @@ export default function App() {
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-[12px] font-bold text-white tracking-tight truncate leading-tight">
-                  {lang === 'ar' ? 'الأصدقاء' : 'Friends'}
+                  {'Friends'}
                 </span>
                 <span className="text-[10px] text-white/40 truncate leading-tight mt-0.5">
-                  {lang === 'ar' ? 'قريباً' : 'Soon'}
+                  {'Soon'}
                 </span>
               </div>
             </div>
@@ -2764,14 +2757,14 @@ export default function App() {
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 <span className="text-[13px] font-bold text-white tracking-tight">
-                  {lang === 'ar' ? 'الأصدقاء والتحديات' : 'Friends & Activity'}
+                  {'Friends & Activity'}
                 </span>
                 <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-white/10 text-white/60 font-bold uppercase">
-                  {lang === 'ar' ? 'قريباً' : 'Soon'}
+                  {'Soon'}
                 </span>
               </div>
               <span className="text-[10px] text-white/40 font-semibold">
-                {lang === 'ar' ? 'مشاركة الإنجاز والتحفيز المشترك' : 'Social accountability & streaks'}
+                {'Social accountability & streaks'}
               </span>
             </div>
           </div>
@@ -2783,7 +2776,7 @@ export default function App() {
   };
 
   return (
-    <div dir={lang === 'ar' ? 'rtl' : 'ltr'} className={`min-h-screen text-black dark:text-white transition-colors duration-500 font-sans`}>
+    <div dir="ltr" className={`min-h-screen text-black dark:text-white transition-colors duration-500 font-sans`}>
       <style>
         {`
           body, html, #root {
@@ -2847,7 +2840,7 @@ export default function App() {
                       className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                       aria-label="Back"
                     >
-                      <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                      <ChevronLeft size={20} className={''} />
                     </button>
                     <h2 className="text-2xl font-black tracking-tight text-white">{t('newHabit')}</h2>
                   </div>
@@ -2859,7 +2852,7 @@ export default function App() {
                 {/* Habit Name */}
                 <div className="mb-5">
                   <label className="block text-xs font-bold tracking-wider text-white/50 uppercase mb-2">
-                    {lang === 'ar' ? 'اسم العادة أو الحدث' : 'Habit or Event Name'}
+                    {'Habit or Event Name'}
                   </label>
                   <input 
                     type="text" 
@@ -2964,13 +2957,13 @@ export default function App() {
                           <span className="text-[10px] font-bold tracking-wider text-white/50 uppercase">{t('selectDays')}</span>
                           <div className="grid grid-cols-7 gap-1.5">
                             {[
-                              { day: 0, labelEn: 'Su', labelAr: 'أحد' },
-                              { day: 1, labelEn: 'Mo', labelAr: 'إثن' },
-                              { day: 2, labelEn: 'Tu', labelAr: 'ثلا' },
-                              { day: 3, labelEn: 'We', labelAr: 'أرب' },
-                              { day: 4, labelEn: 'Th', labelAr: 'خمي' },
-                              { day: 5, labelEn: 'Fr', labelAr: 'جمع' },
-                              { day: 6, labelEn: 'Sa', labelAr: 'سبت' },
+                              { day: 0, labelEn: 'Su', },
+                              { day: 1, labelEn: 'Mo', },
+                              { day: 2, labelEn: 'Tu', },
+                              { day: 3, labelEn: 'We', },
+                              { day: 4, labelEn: 'Th', },
+                              { day: 5, labelEn: 'Fr', },
+                              { day: 6, labelEn: 'Sa', },
                             ].map(d => {
                               const isSelected = habitScheduleDays.includes(d.day);
                               return (
@@ -2992,7 +2985,7 @@ export default function App() {
                                       : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'
                                   }`}
                                 >
-                                  {lang === 'ar' ? d.labelAr : d.labelEn}
+                                  {d.labelEn}
                                 </button>
                               );
                             })}
@@ -3031,7 +3024,7 @@ export default function App() {
                               className="bg-white/10 text-white px-3 py-1.5 rounded-xl border border-white/20 font-bold text-xs outline-none"
                             >
                               {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                                <option key={m} value={m} className="bg-[#1C1C1E] text-white">{lang === 'ar' ? `شهر ${m}` : `Month ${m}`}</option>
+                                <option key={m} value={m} className="bg-[#1C1C1E] text-white">{`Month ${m}`}</option>
                               ))}
                             </select>
                             <select
@@ -3044,7 +3037,7 @@ export default function App() {
                               className="bg-white/10 text-white px-3 py-1.5 rounded-xl border border-white/20 font-bold text-xs outline-none"
                             >
                               {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                                <option key={d} value={d} className="bg-[#1C1C1E] text-white">{lang === 'ar' ? `يوم ${d}` : `Day ${d}`}</option>
+                                <option key={d} value={d} className="bg-[#1C1C1E] text-white">{`Day ${d}`}</option>
                               ))}
                             </select>
                           </div>
@@ -3061,7 +3054,7 @@ export default function App() {
                     <div className="flex items-center gap-2">
                       <Clock size={15} className="text-white/50" />
                       <span className="text-xs font-bold tracking-wider text-white/50 uppercase">
-                        {lang === 'ar' ? 'وقت العادة' : 'Habit Time'}
+                        {'Habit Time'}
                       </span>
                     </div>
                     {habitTime ? (
@@ -3074,12 +3067,12 @@ export default function App() {
                           onClick={() => { setHabitTime(""); haptic('light'); }}
                           className="text-[11px] font-bold text-white/40 hover:text-white transition-colors px-1.5 py-0.5 rounded"
                         >
-                          {lang === 'ar' ? 'إلغاء' : 'Clear'}
+                          {'Clear'}
                         </button>
                       </div>
                     ) : (
                       <span className="text-[11px] font-medium text-white/30">
-                        {lang === 'ar' ? 'اختياري' : 'Optional'}
+                        {'Optional'}
                       </span>
                     )}
                   </div>
@@ -3166,7 +3159,7 @@ export default function App() {
                   <div className="flex items-center gap-2 mb-2">
                     <MapPin size={15} className="text-white/50" />
                     <span className="text-xs font-bold tracking-wider text-white/50 uppercase">
-                      {lang === 'ar' ? 'الموقع أو المكان (اختياري)' : 'Location (Optional)'}
+                      {'Location (Optional)'}
                     </span>
                   </div>
                   <div className="flex items-center gap-2.5 bg-black/40 px-3.5 py-3 rounded-xl border border-white/10">
@@ -3209,7 +3202,7 @@ export default function App() {
                       className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                       aria-label="Back"
                     >
-                      <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                      <ChevronLeft size={20} className={''} />
                     </button>
                     <h2 className="text-2xl font-black tracking-tight text-white">{t('settings')}</h2>
                   </div>
@@ -3218,12 +3211,7 @@ export default function App() {
                   </button>
                 </div>
                 
-                {/* Language Control */}
-                <div className="mb-6">
-                  <button onClick={toggleLang} className="w-full py-3.5 rounded-2xl font-bold text-sm flex justify-center items-center gap-2 border border-white/10 bg-white/5 hover:bg-white/10 text-white transition-all duration-200 active:scale-[0.98]">
-                    <Globe size={16} /> {lang === 'en' ? 'عربي' : 'English'}
-                  </button>
-                </div>
+
                 
                 {/* Add New Habit Button inside Manage */}
                 <button onClick={() => {handleCloseManage(); handleOpenAdd();}} className="w-full py-4 mb-6 rounded-2xl font-black text-sm flex justify-center items-center gap-2 border border-white/15 bg-white text-black hover:bg-white/90 transition-all duration-200 active:scale-[0.98] shadow-lg">
@@ -3233,7 +3221,7 @@ export default function App() {
                 {/* List of Habits with Full Scroll */}
                 <div className="space-y-3 pb-8">
                   <span className="block text-xs font-bold tracking-wider text-white/40 uppercase mb-3">
-                    {lang === 'ar' ? 'العادات المسجلة' : 'Registered Habits'} ({habits.length})
+                    {'Registered Habits'} ({habits.length})
                   </span>
                   {habits.map(h => (
                     <div key={h.id} className="flex items-center gap-2 transition-all duration-200">
@@ -3271,7 +3259,7 @@ export default function App() {
                   onClick={handleCloseManage} 
                   className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
                 >
-                  {lang === 'ar' ? 'إغلاق' : 'Close'}
+                  {'Close'}
                 </button>
               </div>
             </div>
@@ -3287,7 +3275,7 @@ export default function App() {
           >
             <div className="w-full max-w-sm p-6 bg-[#1C1C1E] rounded-3xl border border-white/10 shadow-2xl">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-white">{lang === 'ar' ? 'ملاحظة اليوم' : 'Note for today'}</h3>
+                <h3 className="text-lg font-bold text-white">{'Note for today'}</h3>
                 <button onClick={() => setIsNoteModalOpen(false)} className="p-2 bg-white/5 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-colors">
                   <X size={16} />
                 </button>
@@ -3296,7 +3284,7 @@ export default function App() {
                 value={noteInput} 
                 onChange={(e) => setNoteInput(e.target.value)} 
                 className="w-full h-32 bg-black p-4 rounded-2xl outline-none border border-white/5 mb-4 text-white text-sm resize-none placeholder:text-white/20" 
-                placeholder={lang === 'ar' ? 'اكتب ملاحظتك هنا...' : 'Why did you miss it?'}
+                placeholder={'Why did you miss it?'}
               />
               <button 
                 onClick={() => { 
@@ -3305,7 +3293,7 @@ export default function App() {
                 }} 
                 className="w-full py-3 bg-white text-black font-bold rounded-xl transition-all active:scale-[0.98]"
               >
-                {lang === 'ar' ? 'حفظ' : 'Save'}
+                {'Save'}
               </button>
             </div>
           </div>
@@ -3324,7 +3312,7 @@ export default function App() {
                       className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                       aria-label="Back"
                     >
-                      <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                      <ChevronLeft size={20} className={''} />
                     </button>
                     <div className="flex flex-col">
                       <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
@@ -3413,7 +3401,7 @@ export default function App() {
                   onClick={() => setIsCardsModalOpen(false)} 
                   className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
                 >
-                  {lang === 'ar' ? 'إغلاق' : 'Close'}
+                  {'Close'}
                 </button>
               </div>
             </div>
@@ -3486,7 +3474,7 @@ export default function App() {
                       className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                       aria-label="Back"
                     >
-                      <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                      <ChevronLeft size={20} className={''} />
                     </button>
                     <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
                       <PlaneTakeoff size={24} className="text-cyan-400" /> {t('flightFocus')}
@@ -3509,7 +3497,7 @@ export default function App() {
               {!selectedFlight && flightDurationFilter === null ? (
                 <div className="flex flex-col gap-6 py-6 px-2 animate-in fade-in zoom-in-95 duration-300">
                   <p className="text-sm text-center text-gray-500 dark:text-white/60 font-bold tracking-widest uppercase mb-2">
-                    {lang === 'ar' ? 'مستعد لرحلة التركيز؟' : 'Ready for a focus flight?'}
+                    {'Ready for a focus flight?'}
                   </p>
                   
                   <div className="flex flex-col items-center gap-4 bg-black/5 dark:bg-white/5 p-6 rounded-3xl border border-black/5 dark:border-white/10">
@@ -3539,7 +3527,7 @@ export default function App() {
                         type="text" 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder={lang === 'ar' ? 'رقم الرحلة (مثال: EK1)' : 'Flight Number (e.g. EK1)'}
+                        placeholder={'Flight Number (e.g. EK1)'}
                         className="flex-1 min-w-0 bg-white dark:bg-black/40 text-black dark:text-white rounded-2xl px-4 py-4 text-sm font-bold border border-black/10 dark:border-white/10 outline-none focus:border-black/40 dark:focus:border-white/40 uppercase tracking-widest"
                       />
                       <button 
@@ -3561,7 +3549,7 @@ export default function App() {
                       className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-white dark:bg-white/5 text-black dark:text-white text-sm font-bold tracking-widest transition-all active:scale-95 shadow-sm border border-black/5 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10"
                     >
                       <Globe size={18} />
-                      {lang === 'ar' ? 'تصفح الرحلات الحالية' : 'Browse Live Flights'}
+                      {'Browse Live Flights'}
                     </button>
                   </div>
                 </div>
@@ -3692,7 +3680,7 @@ export default function App() {
                                 <button 
                                   onClick={toggleCabinHum}
                                   className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-lg backdrop-blur-md active:scale-95 transition-all select-none ${isCabinHumPlaying ? 'bg-white text-black border-white' : 'bg-black/60 dark:bg-black/75 text-white border-white/10'}`}
-                                  title={lang === 'ar' ? 'صوت كابينة الطائرة' : 'Cabin Noise'}
+                                  title={'Cabin Noise'}
                                 >
                                   {isCabinHumPlaying ? (
                                     <motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ repeat: Infinity, duration: 1.2 }}>
@@ -3713,28 +3701,28 @@ export default function App() {
                                 <button 
                                   onClick={() => setIsMapView(false)}
                                   className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
-                                  title={lang === 'ar' ? 'رادار الرحلة' : 'Radar View'}
+                                  title={'Radar View'}
                                 >
                                   <Compass size={12} className="animate-[spin_20s_linear_infinite]" />
                                 </button>
                                 <button 
                                   onClick={() => setIsCameraLocked(!isCameraLocked)}
                                   className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-lg backdrop-blur-md active:scale-95 transition-all select-none ${isCameraLocked ? 'bg-white text-black border-white' : 'bg-black/60 dark:bg-black/75 text-white border-white/10'}`}
-                                  title={lang === 'ar' ? 'قفل الكاميرا' : 'Camera Lock'}
+                                  title={'Camera Lock'}
                                 >
                                   <Navigation size={12} className={isCameraLocked ? 'fill-current rotate-45' : 'rotate-45'} />
                                 </button>
                                 <button 
                                   onClick={() => setIsCameraLocked(false)}
                                   className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
-                                  title={lang === 'ar' ? 'كامل مسار الرحلة' : 'Full Route'}
+                                  title={'Full Route'}
                                 >
                                   <Map size={12} />
                                 </button>
                                 <button 
                                   onClick={() => { haptic('light'); setIsWindowSeatOpen(true); }} 
                                   className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
-                                  title={lang === 'ar' ? 'شباك الطائرة' : 'Window Seat'}
+                                  title={'Window Seat'}
                                 >
                                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="3" width="14" height="18" rx="5" /><line x1="5" y1="15" x2="19" y2="15" opacity="0.4" /></svg>
                                 </button>
@@ -3744,7 +3732,7 @@ export default function App() {
                                     setIsScreensaverOpen(true);
                                   }}
                                   className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
-                                  title={lang === 'ar' ? 'شاشة التوقف المليئة بالبيانات' : 'Screensaver Mode'}
+                                  title={'Screensaver Mode'}
                                 >
                                   <Maximize size={12} />
                                 </button>
@@ -3753,11 +3741,11 @@ export default function App() {
                               {/* HUD Bottom Overlay */}
                               <div className="absolute bottom-2.5 left-3.5 right-3.5 flex justify-between items-end pointer-events-none select-none text-white drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.95)] z-[1000]">
                                 <div className="flex flex-col text-left">
-                                  <span className="text-[7.5px] font-black uppercase tracking-widest opacity-60 leading-none mb-0.5">{lang === 'ar' ? 'الوقت المتبقي' : 'TIME REMAINING'}</span>
+                                  <span className="text-[7.5px] font-black uppercase tracking-widest opacity-60 leading-none mb-0.5">{'TIME REMAINING'}</span>
                                   <span className="text-xs font-black tracking-tight leading-none">{timeRemainingStr}</span>
                                 </div>
                                 <div className="flex flex-col text-right">
-                                  <span className="text-[7.5px] font-black uppercase tracking-widest opacity-60 leading-none mb-0.5">{lang === 'ar' ? 'المسافة المتبقية' : 'DISTANCE REMAINING'}</span>
+                                  <span className="text-[7.5px] font-black uppercase tracking-widest opacity-60 leading-none mb-0.5">{'DISTANCE REMAINING'}</span>
                                   <span className="text-xs font-black tracking-tight leading-none">{distanceSim} km</span>
                                 </div>
                               </div>
@@ -3770,18 +3758,18 @@ export default function App() {
                             <button
                               onClick={() => { haptic('light'); setIsWindowSeatOpen(true); }}
                               className="px-2.5 py-1.5 rounded-xl bg-black/50 hover:bg-black/75 dark:bg-white/10 dark:hover:bg-white/20 border border-white/5 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 active:scale-95 select-none"
-                              title={lang === 'ar' ? 'شباك الطائرة' : 'Window Seat'}
+                              title={'Window Seat'}
                             >
                               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="3" width="14" height="18" rx="5" /><line x1="5" y1="15" x2="19" y2="15" opacity="0.4" /></svg>
-                              <span className="hidden sm:inline">{lang === 'ar' ? 'الشباك' : 'Window'}</span>
+                              <span className="hidden sm:inline">{'Window'}</span>
                             </button>
                             <button
                               onClick={() => setIsMapView(true)}
                               className="px-2.5 py-1.5 rounded-xl bg-black/50 hover:bg-black/75 dark:bg-white/10 dark:hover:bg-white/20 border border-white/5 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 active:scale-95 select-none"
-                              title={lang === 'ar' ? 'عرض خريطة لايف' : 'Live Map'}
+                              title={'Live Map'}
                             >
                               <Map size={11} className="text-white" />
-                              <span>{lang === 'ar' ? 'خريطة لايف' : 'Live Map'}</span>
+                              <span>{'Live Map'}</span>
                             </button>
                           </div>
                           
@@ -3874,7 +3862,7 @@ export default function App() {
                                 
                                 <div className="flex justify-between items-center mt-1 px-1 text-[9px] font-mono text-gray-400 dark:text-white/30 uppercase tracking-widest font-black">
                                   <span>{selectedFlight.origin}</span>
-                                  <span className="font-bold" style={{ color: themeColor }}>{Math.round(progress * 100)}% {lang === 'ar' ? 'اكتمل' : 'completed'}</span>
+                                  <span className="font-bold" style={{ color: themeColor }}>{Math.round(progress * 100)}% {'completed'}</span>
                                   <span>{selectedFlight.destination}</span>
                                 </div>
                               </div>
@@ -3891,11 +3879,11 @@ export default function App() {
                         return (
                           <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-gray-500 dark:text-white/40 border-t border-black/5 dark:border-white/5 pt-3">
                             <div className="flex flex-col">
-                              <span>{lang === 'ar' ? 'الارتفاع:' : 'ALTITUDE:'}</span>
+                              <span>{'ALTITUDE:'}</span>
                               <span className="font-black text-gray-800 dark:text-white/80">{altitude.toLocaleString()} FT</span>
                             </div>
                             <div className="flex flex-col text-right">
-                              <span>{lang === 'ar' ? 'السرعة:' : 'SPEED:'}</span>
+                              <span>{'SPEED:'}</span>
                               <span className="font-black text-gray-800 dark:text-white/80">{speed} KTS</span>
                             </div>
                           </div>
@@ -3908,16 +3896,16 @@ export default function App() {
                       
                       {/* Top status header for timer column */}
                       <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-white/40 px-1 select-none">
-                        <span>{lang === 'ar' ? 'حالة الرحلة:' : 'FLIGHT STATUS:'}</span>
+                        <span>{'FLIGHT STATUS:'}</span>
                         {isFlightTimerRunning ? (
                           <span className="text-black dark:text-white flex items-center gap-1 font-bold">
                             <span className="w-1.5 h-1.5 bg-black dark:bg-white rounded-full animate-ping" />
-                            {lang === 'ar' ? 'جاري التركيز' : 'FOCUS ACTIVE'}
+                            {'FOCUS ACTIVE'}
                           </span>
                         ) : (
                           <span className="flex items-center gap-1 font-bold animate-pulse" style={{ color: themeColor }}>
                             <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: themeColor }} />
-                            {lang === 'ar' ? 'في الطريق' : 'EN ROUTE'}
+                            {'EN ROUTE'}
                           </span>
                         )}
                       </div>
@@ -3938,7 +3926,7 @@ export default function App() {
                          
                          <div className="flex justify-between w-full mt-6 text-[9px] font-mono text-gray-500 dark:text-white/30 uppercase tracking-widest px-1">
                             <span>SYS: ACTIVE</span>
-                            <span>ETA: {new Date(selectedFlight.estimatedArrival * 1000).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span>ETA: {new Date(selectedFlight.estimatedArrival * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                          </div>
                       </div>
 
@@ -3985,7 +3973,7 @@ export default function App() {
                       }}
                       className="text-xs font-bold text-black/50 hover:text-black dark:text-white/50 dark:hover:text-white transition-colors"
                     >
-                      {lang === 'ar' ? 'بحث جديد' : 'New Search'}
+                      {'New Search'}
                     </button>
                   </div>
                   
@@ -4015,14 +4003,14 @@ export default function App() {
                     ))}
                     {flightOptions.length === 0 && (
                         <div className="text-center py-10 flex flex-col items-center gap-3">
-                          <span className="text-sm font-bold text-red-500/80 dark:text-red-400/80">{lang === 'ar' ? 'لم يتم العثور على رحلات' : 'No flights found'}</span>
+                          <span className="text-sm font-bold text-red-500/80 dark:text-red-400/80">{'No flights found'}</span>
                           <button 
                             onClick={() => {
                               fetchFlights(0);
                             }}
                             className="px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl text-xs font-bold transition-colors"
                           >
-                            {lang === 'ar' ? 'حاول مرة أخرى' : 'Try Again'}
+                            {'Try Again'}
                           </button>
                         </div>
                     )}
@@ -4054,7 +4042,7 @@ export default function App() {
                         className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                         aria-label="Back"
                       >
-                        <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                        <ChevronLeft size={20} className={''} />
                       </button>
                       <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
                         <Timer size={24} className="text-orange-400" /> {t('pomodoro')}
@@ -4233,7 +4221,7 @@ export default function App() {
                   onClick={() => setIsPomodoroOpen(false)} 
                   className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
                 >
-                  {lang === 'ar' ? 'إغلاق' : 'Close'}
+                  {'Close'}
                 </button>
               </div>
             </div>
@@ -4271,7 +4259,7 @@ export default function App() {
                 href={spotifyNotification.desktopUrl}
                 className="ml-2 px-3 py-1 rounded-full bg-white text-black text-[11px] font-bold hover:bg-white/90 transition-all shadow-sm flex items-center gap-1 shrink-0"
               >
-                <span>{lang === 'ar' ? 'نقل لتطبيق الماك' : 'Open in Mac App'}</span>
+                <span>{'Open in Mac App'}</span>
               </a>
             )}
           </div>
@@ -4317,9 +4305,9 @@ export default function App() {
             const diffY = e.changedTouches[0].clientY - touchStartYRef.current;
             if (Math.abs(diffX) > 60 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
               if (diffX > 0) {
-                if (lang === 'ar') handleNextDay(); else handlePrevDay();
+                handlePrevDay();
               } else {
-                if (lang === 'ar') handlePrevDay(); else handleNextDay();
+                handleNextDay();
               }
             }
             touchStartXRef.current = null;
@@ -4872,7 +4860,7 @@ export default function App() {
                         className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                         aria-label="Back"
                       >
-                        <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                        <ChevronLeft size={20} className={''} />
                       </button>
                       <h2 className="text-2xl font-black tracking-tight text-white">{t('analytics')}</h2>
                     </div>
@@ -4944,20 +4932,20 @@ export default function App() {
                               </div>
                               <div className="flex flex-col text-left">
                                 <span className="text-sm font-bold text-white tracking-wide">
-                                  {lang === 'ar' ? 'مهام وجلسات التركيز' : 'Focus Tasks & Sessions'}
+                                  {'Focus Tasks & Sessions'}
                                 </span>
                                 <span className="text-[11px] text-white/40">
-                                  {lang === 'ar' ? 'عرض فترات التركيز المسجلة' : 'View logged focus sessions'}
+                                  {'View logged focus sessions'}
                                 </span>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
                               {todayFocusTasks.length > 0 && (
                                 <span className="text-xs font-bold text-white/70 bg-white/10 px-2.5 py-0.5 rounded-full">
-                                  {todayFocusTasks.length} {lang === 'ar' ? 'مهام' : 'tasks'}
+                                  {todayFocusTasks.length} {'tasks'}
                                 </span>
                               )}
-                              <ChevronDown size={16} className={lang === 'ar' ? 'rotate-90 text-white/50' : '-rotate-90 text-white/50'} />
+                              <ChevronDown size={16} className={'-rotate-90 text-white/50'} />
                             </div>
                           </button>
 
@@ -4971,7 +4959,7 @@ export default function App() {
                                 <Plane size={18} />
                               </div>
                               <span className="text-sm font-bold text-white tracking-wide">
-                                {lang === 'ar' ? 'سجل تذاكر الرحلات' : 'Flight Tickets History'}
+                                {'Flight Tickets History'}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -4988,10 +4976,10 @@ export default function App() {
                         <div className="flex-1 w-full animate-in fade-in slide-in-from-right-4 duration-300 flex flex-col pb-8">
                           <div className="flex justify-between items-center mb-6">
                             <button onClick={() => setIsFocusTasksViewOpen(false)} className="text-white/70 hover:text-white transition flex items-center gap-2 text-sm font-bold cursor-pointer">
-                              <ChevronDown size={20} className={lang === 'ar' ? '-rotate-90' : 'rotate-90'} />
-                              {lang === 'ar' ? 'رجوع' : 'Back'}
+                              <ChevronDown size={20} className={'rotate-90'} />
+                              {'Back'}
                             </button>
-                            <h4 className="text-xs font-bold text-white/50 uppercase tracking-widest">{lang === 'ar' ? 'مهام التركيز' : 'Focus Tasks'}</h4>
+                            <h4 className="text-xs font-bold text-white/50 uppercase tracking-widest">{'Focus Tasks'}</h4>
                           </div>
 
                           {todayFocusTasks.length > 0 ? (
@@ -5015,7 +5003,7 @@ export default function App() {
                           ) : (
                             <div className="text-center text-xs font-bold text-white/40 py-16 flex flex-col items-center justify-center gap-3">
                               <Timer size={36} className="opacity-40 text-orange-400" />
-                              <span>{lang === 'ar' ? 'لا يوجد فترات تركيز مسجلة لليوم' : 'No focus tasks logged for this day'}</span>
+                              <span>{'No focus tasks logged for this day'}</span>
                             </div>
                           )}
                         </div>
@@ -5027,9 +5015,9 @@ export default function App() {
                         <div className="flex justify-between items-center mb-6">
                           <button onClick={() => setIsTicketsHistoryViewOpen(false)} className="text-white/70 hover:text-white transition flex items-center gap-2 text-sm font-bold">
                             <ChevronDown size={20} className="rotate-90" />
-                            {lang === 'ar' ? 'رجوع' : 'Back'}
+                            {'Back'}
                           </button>
-                          <h4 className="text-xs font-bold text-white/50 uppercase tracking-widest pr-4">{lang === 'ar' ? 'سجل التذاكر' : 'Tickets'}</h4>
+                          <h4 className="text-xs font-bold text-white/50 uppercase tracking-widest pr-4">{'Tickets'}</h4>
                         </div>
                         
                         {finishedTickets.length > 0 ? (
@@ -5070,7 +5058,7 @@ export default function App() {
                         ) : (
                           <div className="text-center text-xs font-bold text-white/40 py-16 flex flex-col items-center justify-center gap-3">
                             <Plane size={36} className="opacity-40" />
-                            {lang === 'ar' ? 'لا يوجد تذاكر مختومة بعد' : 'No stamped tickets yet'}
+                            {'No stamped tickets yet'}
                           </div>
                         )}
                       </div>
@@ -5084,7 +5072,7 @@ export default function App() {
                     onClick={() => { setIsAnalyticsModalOpen(false); setIsTicketsHistoryViewOpen(false); setIsFocusTasksViewOpen(false); }} 
                     className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
                   >
-                    {lang === 'ar' ? 'إغلاق' : 'Close'}
+                    {'Close'}
                   </button>
                 </div>
               </div>
@@ -5105,14 +5093,14 @@ export default function App() {
                         className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                         aria-label="Back"
                       >
-                        <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                        <ChevronLeft size={20} className={''} />
                       </button>
                       <div className="flex flex-col">
                         <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
-                          <LayoutGrid size={22} className="text-white/80" /> {lang === 'ar' ? 'تخصيص الويدجيتس' : 'Widgets Setup'}
+                          <LayoutGrid size={22} className="text-white/80" /> {'Widgets Setup'}
                         </h2>
                         <span className="text-white/40 text-xs font-semibold mt-0.5">
-                          {lang === 'ar' ? 'ترتيب وظهور الويدجيتس تحت كارت الميشن' : 'Order & visibility under Mission card'}
+                          {'Order & visibility under Mission card'}
                         </span>
                       </div>
                     </div>
@@ -5128,12 +5116,10 @@ export default function App() {
                     </div>
                     <div className="flex flex-col">
                       <span className="text-xs font-bold text-white mb-0.5">
-                        {lang === 'ar' ? 'الظهور الذكي (تلقائي)' : 'Smart Auto Visibility'}
+                        {'Smart Auto Visibility'}
                       </span>
                       <span className="text-[11px] text-white/60 leading-relaxed">
-                        {lang === 'ar' 
-                          ? 'بالوضع التلقائي، الويدجيت مش هيظهر غير لما يكون شغال أو في جلسة نشطة (زي بومودورو شغال، أو تراك سبوتيفاي شغال)، عشان الهوم سكرين تفضل نظيفة وهادية.' 
-                          : 'In Auto mode, widgets only appear when in active use (e.g. running Pomodoro or playing Spotify), keeping your home screen clutter-free.'}
+                        {'In Auto mode, widgets only appear when in active use (e.g. running Pomodoro or playing Spotify), keeping your home screen clutter-free.'}
                       </span>
                     </div>
                   </div>
@@ -5144,23 +5130,23 @@ export default function App() {
                       const meta = {
                         pomodoro: {
                           icon: <Timer size={18} strokeWidth={2.4} />,
-                          name: lang === 'ar' ? 'تركيز بومودورو' : 'Pomodoro Focus',
-                          desc: lang === 'ar' ? 'عداد التركيز وجلسات العمل' : 'Focus timer & work sessions'
+                          name: 'Pomodoro Focus',
+                          desc: 'Focus timer & work sessions'
                         },
                         flight: {
                           icon: <PlaneTakeoff size={18} strokeWidth={2.4} />,
-                          name: lang === 'ar' ? 'فلايت فوكس' : 'Flight Focus',
-                          desc: lang === 'ar' ? 'رحلات التركيز الجوية التفاعلية' : 'Virtual flight simulator'
+                          name: 'Flight Focus',
+                          desc: 'Virtual flight simulator'
                         },
                         spotify: {
                           icon: <Radio size={18} strokeWidth={2.4} />,
                           name: 'Spotify',
-                          desc: lang === 'ar' ? 'مشغل الموسيقى والمزامنة المباشرة' : 'Music playback & sync'
+                          desc: 'Music playback & sync'
                         },
                         friends: {
                           icon: <Users size={18} strokeWidth={2.4} />,
-                          name: lang === 'ar' ? 'الأصدقاء والتحديات' : 'Friends & Streaks',
-                          desc: lang === 'ar' ? 'متابعة الستريك المشترك (قريباً)' : 'Shared focus & streaks (Soon)'
+                          name: 'Friends & Streaks',
+                          desc: 'Shared focus & streaks (Soon)'
                         }
                       }[widget.id] || {
                         icon: <LayoutGrid size={18} />,
@@ -5203,7 +5189,7 @@ export default function App() {
                                   haptic('light');
                                 }}
                                 className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:hover:bg-transparent transition-all active:scale-90"
-                                title={lang === 'ar' ? 'تحريك لأعلى' : 'Move Up'}
+                                title={'Move Up'}
                               >
                                 <ChevronUp size={16} />
                               </button>
@@ -5220,7 +5206,7 @@ export default function App() {
                                   haptic('light');
                                 }}
                                 className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:hover:bg-transparent transition-all active:scale-90"
-                                title={lang === 'ar' ? 'تحريك لأسفل' : 'Move Down'}
+                                title={'Move Down'}
                               >
                                 <ChevronDown size={16} />
                               </button>
@@ -5230,7 +5216,7 @@ export default function App() {
                           {/* Segmented Control for Visibility Mode */}
                           <div className="flex flex-col gap-1.5">
                             <span className="text-[10px] font-bold text-white/40 px-1 uppercase tracking-wider">
-                              {lang === 'ar' ? 'الظهور في الرئيسية' : 'Visibility'}
+                              {'Visibility'}
                             </span>
                             <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-black/40 border border-white/10">
                               <button
@@ -5246,7 +5232,7 @@ export default function App() {
                                     : 'text-white/50 hover:text-white/80'
                                 }`}
                               >
-                                {lang === 'ar' ? 'تلقائي (ذكي)' : 'Auto'}
+                                {'Auto'}
                               </button>
                               <button
                                 type="button"
@@ -5261,7 +5247,7 @@ export default function App() {
                                     : 'text-white/50 hover:text-white/80'
                                 }`}
                               >
-                                {lang === 'ar' ? 'دائماً' : 'Always'}
+                                {'Always'}
                               </button>
                               <button
                                 type="button"
@@ -5276,7 +5262,7 @@ export default function App() {
                                     : 'text-white/50 hover:text-white/80'
                                 }`}
                               >
-                                {lang === 'ar' ? 'مخفي' : 'Hidden'}
+                                {'Hidden'}
                               </button>
                             </div>
                           </div>
@@ -5284,7 +5270,7 @@ export default function App() {
                           {/* Size Control: Full width vs Compact Habit size */}
                           <div className="flex items-center justify-between pt-2 border-t border-white/10">
                             <span className="text-xs font-bold text-white/70">
-                              {lang === 'ar' ? 'حجم الويدجيت:' : 'Widget Size:'}
+                              {'Widget Size:'}
                             </span>
                             <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-black/40 border border-white/10 w-44">
                               <button
@@ -5300,7 +5286,7 @@ export default function App() {
                                     : 'text-white/50 hover:text-white/80'
                                 }`}
                               >
-                                {lang === 'ar' ? 'عريض (كامل)' : 'Full'}
+                                {'Full'}
                               </button>
                               <button
                                 type="button"
@@ -5315,7 +5301,7 @@ export default function App() {
                                     : 'text-white/50 hover:text-white/80'
                                 }`}
                               >
-                                {lang === 'ar' ? 'مصغر (كارت)' : 'Compact'}
+                                {'Compact'}
                               </button>
                             </div>
                           </div>
@@ -5331,7 +5317,7 @@ export default function App() {
                     onClick={() => setIsWidgetsModalOpen(false)}
                     className="w-full py-4 rounded-2xl bg-white text-black font-black text-sm tracking-wide transition-all active:scale-[0.98] shadow-xl hover:bg-white/90"
                   >
-                    {lang === 'ar' ? 'حفظ وإغلاق' : 'Done'}
+                    {'Done'}
                   </button>
                 </div>
               </div>
@@ -5352,14 +5338,14 @@ export default function App() {
                         className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                         aria-label="Back"
                       >
-                        <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                        <ChevronLeft size={20} className={''} />
                       </button>
                       <div className="flex flex-col">
                         <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
-                          <Palette size={22} className="text-white" /> {lang === 'ar' ? 'المظهر والتخصيص' : 'Appearance'}
+                          <Palette size={22} className="text-white" /> {'Appearance'}
                         </h2>
                         <span className="text-white/40 text-xs font-semibold mt-0.5">
-                          {lang === 'ar' ? 'الخلفية، لون التمييز، الويدجيتس، والأفاتار' : 'Theme, accents, widgets & avatar'}
+                          {'Theme, accents, widgets & avatar'}
                         </span>
                       </div>
                     </div>
@@ -5377,7 +5363,7 @@ export default function App() {
                         <div className="flex items-center gap-2.5">
                           <Sparkles size={18} className="text-white/80" />
                           <span className="text-sm font-bold text-white">
-                            {lang === 'ar' ? 'نمط الخلفية' : 'Background Style'}
+                            {'Background Style'}
                           </span>
                         </div>
                         <span className="text-[11px] font-semibold text-white/40">
@@ -5401,8 +5387,8 @@ export default function App() {
                           }`}
                         >
                           <Sparkles size={20} className="text-white" />
-                          <span className="text-xs font-bold">{lang === 'ar' ? 'أورورا حية' : 'Aurora'}</span>
-                          <span className="text-[10px] text-white/40 text-center">{lang === 'ar' ? 'توهج متدرج ناعم' : 'Ambient glow'}</span>
+                          <span className="text-xs font-bold">{'Aurora'}</span>
+                          <span className="text-[10px] text-white/40 text-center">{'Ambient glow'}</span>
                         </button>
 
                         <button
@@ -5420,8 +5406,8 @@ export default function App() {
                           }`}
                         >
                           <Moon size={20} className="text-white" />
-                          <span className="text-xs font-bold">{lang === 'ar' ? 'سادة عميق' : 'Solid'}</span>
-                          <span className="text-[10px] text-white/40 text-center">{lang === 'ar' ? 'سواد OLED هادئ' : 'Pure minimalist'}</span>
+                          <span className="text-xs font-bold">{'Solid'}</span>
+                          <span className="text-[10px] text-white/40 text-center">{'Pure minimalist'}</span>
                         </button>
                       </div>
                     </div>
@@ -5432,7 +5418,7 @@ export default function App() {
                         <div className="flex items-center gap-2.5">
                           <SlidersHorizontal size={18} className="text-white/80" />
                           <span className="text-sm font-bold text-white">
-                            {lang === 'ar' ? 'لون التمييز (Accent Color)' : 'Accent Color'}
+                            {'Accent Color'}
                           </span>
                         </div>
                         <div className="w-5 h-5 rounded-full border border-white/30 shadow-md" style={{ backgroundColor: themeColor }} />
@@ -5489,14 +5475,14 @@ export default function App() {
                         </div>
                         <div className="flex flex-col">
                           <span className="text-sm font-bold text-white">
-                            {lang === 'ar' ? 'تخصيص وترتيب وحجم الويدجيتس' : 'Widgets Order & Sizing'}
+                            {'Widgets Order & Sizing'}
                           </span>
                           <span className="text-[11px] text-white/50 font-normal">
-                            {lang === 'ar' ? 'الترتيب، الظهور الذكي، والمقاس (عريض / كارت صغير)' : 'Reorder, smart auto & full/compact sizes'}
+                            {'Reorder, smart auto & full/compact sizes'}
                           </span>
                         </div>
                       </div>
-                      <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                      <ChevronRight size={18} className={`text-white/40 `} />
                     </button>
 
                     {/* Section 4: Change Avatar */}
@@ -5510,14 +5496,14 @@ export default function App() {
                         </div>
                         <div className="flex flex-col">
                           <span className="text-sm font-bold text-white">
-                            {lang === 'ar' ? 'تغيير الأفاتار' : 'Change Avatar'}
+                            {'Change Avatar'}
                           </span>
                           <span className="text-[11px] text-white/50 font-normal">
-                            {lang === 'ar' ? 'اختر الشخصية المناسبة لك' : 'Pick your profile persona'}
+                            {'Pick your profile persona'}
                           </span>
                         </div>
                       </div>
-                      <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                      <ChevronRight size={18} className={`text-white/40 `} />
                     </button>
 
                   </div>
@@ -5529,7 +5515,7 @@ export default function App() {
                     onClick={() => { setIsAppearanceModalOpen(false); setIsSettingsMenuOpen(true); }}
                     className="w-full py-4 rounded-2xl bg-white text-black font-black text-sm tracking-wide transition-all active:scale-[0.98] shadow-xl hover:bg-white/90"
                   >
-                    {lang === 'ar' ? 'تم وحفظ' : 'Done'}
+                    {'Done'}
                   </button>
                 </div>
               </div>
@@ -5550,7 +5536,7 @@ export default function App() {
                         className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                         aria-label="Back"
                       >
-                        <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                        <ChevronLeft size={20} className={''} />
                       </button>
                       <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
                         <ListChecks size={24} className="text-white/80" /> {t('todaysTasks')}
@@ -5660,7 +5646,7 @@ export default function App() {
                     onClick={() => setIsTasksModalOpen(false)} 
                     className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
                   >
-                    {lang === 'ar' ? 'إغلاق' : 'Close'}
+                    {'Close'}
                   </button>
                 </div>
               </div>
@@ -5681,7 +5667,7 @@ export default function App() {
                         className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                         aria-label="Back"
                       >
-                        <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                        <ChevronLeft size={20} className={''} />
                       </button>
                       <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
                         <BookOpen size={22} className="text-white/80" /> {t('howToUse')}
@@ -5730,7 +5716,7 @@ export default function App() {
                     onClick={() => setIsHowToUseOpen(false)} 
                     className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
                   >
-                    {lang === 'ar' ? 'إغلاق' : 'Close'}
+                    {'Close'}
                   </button>
                 </div>
               </div>
@@ -5885,7 +5871,7 @@ export default function App() {
                           setIsHudMenuOpen(!isHudMenuOpen);
                         }}
                         className={`w-11 h-11 md:w-12 md:h-12 rounded-2xl flex items-center justify-center border shadow-2xl backdrop-blur-xl active:scale-95 transition-all select-none duration-300 ${isHudMenuOpen ? 'bg-white text-black border-white' : 'bg-black/60 text-white border-white/15 hover:bg-black/80'}`}
-                        title={lang === 'ar' ? 'خيارات الشاشة' : 'Screensaver Options'}
+                        title={'Screensaver Options'}
                       >
                         <SlidersHorizontal size={18} className={isHudMenuOpen ? 'text-black' : 'text-white'} />
                       </button>
@@ -5903,7 +5889,7 @@ export default function App() {
                           >
                             <div className="flex items-center gap-3">
                               <Navigation size={16} className={`rotate-45 ${isCameraLocked ? 'text-white' : 'text-white/40'}`} />
-                              <span>{lang === 'ar' ? 'تتبع الطائرة' : 'Camera Lock'}</span>
+                              <span>{'Camera Lock'}</span>
                             </div>
                             <span className={`text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-md ${isCameraLocked ? 'bg-white/20 text-white' : 'bg-white/10 text-white/40'}`}>
                               {isCameraLocked ? 'ON' : 'OFF'}
@@ -5918,7 +5904,7 @@ export default function App() {
                                 className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity"
                               >
                                 {isCabinHumPlaying ? <Volume2 size={16} className="text-white" /> : <VolumeX size={16} className="text-white/40" />}
-                                <span>{lang === 'ar' ? 'صوت الكابينة' : 'Cabin Audio'}</span>
+                                <span>{'Cabin Audio'}</span>
                               </button>
                               <span className={`text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-md ${isCabinHumPlaying ? 'bg-white/20 text-white' : 'bg-white/10 text-white/40'}`}>
                                 {isCabinHumPlaying ? `${Math.round(audioVolume * 100)}%` : 'OFF'}
@@ -5939,7 +5925,7 @@ export default function App() {
                             className="flex items-center gap-3 p-3 rounded-2xl hover:bg-white/10 transition-colors text-left text-xs font-bold text-white/90"
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white"><rect x="5" y="3" width="14" height="18" rx="5" /><line x1="5" y1="15" x2="19" y2="15" opacity="0.4" /></svg>
-                            <span>{lang === 'ar' ? 'شباك الطائرة 3D' : '3D Window Seat'}</span>
+                            <span>{'3D Window Seat'}</span>
                           </button>
 
                           <div className="w-full h-[1px] bg-white/10 my-1" />
@@ -6035,10 +6021,10 @@ export default function App() {
                         </div>
                         <div className="flex flex-col min-w-0">
                           <span className="text-sm font-bold text-white group-hover:text-white transition-colors truncate">
-                            {lang === 'ar' ? 'تركيز بومودورو' : 'Pomodoro'}
+                            {'Pomodoro'}
                           </span>
                           <span className="text-[11px] text-white/50 truncate">
-                            {lang === 'ar' ? 'مؤقت فترات التركيز الكلاسيكي' : 'Classic interval focus timer'}
+                            {'Classic interval focus timer'}
                           </span>
                         </div>
                       </button>
@@ -6056,10 +6042,10 @@ export default function App() {
                         </div>
                         <div className="flex flex-col min-w-0">
                           <span className="text-sm font-bold text-white group-hover:text-white transition-colors truncate">
-                            {lang === 'ar' ? 'التركيز مع الطيران' : 'Flight Focus'}
+                            {'Flight Focus'}
                           </span>
                           <span className="text-[11px] text-white/50 truncate">
-                            {lang === 'ar' ? 'رادار حي وتذكرة صعود سينمائية' : 'Live radar & boarding pass'}
+                            {'Live radar & boarding pass'}
                           </span>
                         </div>
                       </button>
@@ -6094,7 +6080,7 @@ export default function App() {
                               className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                               aria-label="Back"
                             >
-                              <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                              <ChevronLeft size={20} className={''} />
                             </button>
                             <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
                               <Settings size={22} className="text-white/80" /> {t('settings')}
@@ -6116,7 +6102,7 @@ export default function App() {
                               </div>
                               <div className="flex flex-col min-w-0">
                                 <span className="text-base font-bold text-white truncate">
-                                  {user?.fullName || user?.firstName || (lang === 'ar' ? 'المستخدم' : 'Explorer')}
+                                  {user?.fullName || user?.firstName || ('Explorer')}
                                 </span>
                                 <span className="text-xs text-white/40 truncate">
                                   {user?.primaryEmailAddress?.emailAddress || 'bokra companion'}
@@ -6127,14 +6113,14 @@ export default function App() {
                               onClick={() => { setIsSettingsMenuOpen(false); setIsAvatarModalOpen(true); }}
                               className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-all active:scale-95"
                             >
-                              {lang === 'ar' ? 'تعديل' : 'Edit'}
+                              {'Edit'}
                             </button>
                           </div>
 
-                          {/* Group 1: Appearance & Customization (المظهر والتخصيص) */}
+                          {/* Group 1: Appearance & Customization */}
                           <div className="flex flex-col gap-1.5">
                             <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">
-                              {lang === 'ar' ? 'المظهر والتصميم' : 'Style & Appearance'}
+                              {'Style & Appearance'}
                             </span>
                             <button 
                               onClick={() => { setIsSettingsMenuOpen(false); setIsAppearanceModalOpen(true); }} 
@@ -6146,24 +6132,24 @@ export default function App() {
                                 </div>
                                 <div className="flex flex-col">
                                   <span className="text-sm font-bold text-white">
-                                    {lang === 'ar' ? 'المظهر والتخصيص' : 'Appearance & Style'}
+                                    {'Appearance & Style'}
                                   </span>
                                   <span className="text-[11px] text-white/50 font-normal">
-                                    {lang === 'ar' ? 'الخلفية، لون التمييز، تخصيص الويدجيتس، الأفاتار' : 'Aurora/Solid, Accent Color, Widgets, Avatar'}
+                                    {'Aurora/Solid, Accent Color, Widgets, Avatar'}
                                   </span>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
                                 <div className="w-3.5 h-3.5 rounded-full border border-white/30" style={{ backgroundColor: themeColor }} />
-                                <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                                <ChevronRight size={18} className={`text-white/40 `} />
                               </div>
                             </button>
                           </div>
 
-                          {/* Group 2: Integrations (الربط والتكامل) */}
+                          {/* Group 2: Integrations */}
                           <div className="flex flex-col gap-1.5">
                             <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">
-                              {lang === 'ar' ? 'الربط الموسيقي' : 'Integrations'}
+                              {'Integrations'}
                             </span>
                             <div className="w-full text-left p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
                               <div className="flex items-center gap-3">
@@ -6173,7 +6159,7 @@ export default function App() {
                                 <div className="flex flex-col">
                                   <span className="text-sm font-bold text-white">Spotify</span>
                                   <span className="text-[11px] text-white/50 font-normal">
-                                    {lang === 'ar' ? 'ربط الموسيقى والمزامنة المباشرة' : 'Music playback & sync'}
+                                    {'Music playback & sync'}
                                   </span>
                                 </div>
                               </div>
@@ -6183,15 +6169,15 @@ export default function App() {
                                 rel="noopener noreferrer"
                                 className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-white text-black hover:bg-white/90 transition-all active:scale-95 flex items-center gap-1.5 shadow-md"
                               >
-                                {lang === 'ar' ? 'ربط / تبديل' : 'Connect'}
+                                {'Connect'}
                               </a>
                             </div>
                           </div>
 
-                          {/* Group 3: Tools & Utilities (الأدوات والمتابعة) */}
+                          {/* Group 3: Tools & Utilities */}
                           <div className="flex flex-col gap-1.5">
                             <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">
-                              {lang === 'ar' ? 'الأدوات والمتابعة' : 'Tools & Analytics'}
+                              {'Tools & Analytics'}
                             </span>
 
                             {/* Analytics */}
@@ -6200,7 +6186,7 @@ export default function App() {
                                 <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><BarChart2 size={18} /></div>
                                 <span className="text-sm font-bold text-white">{t('analytics')}</span>
                               </div>
-                              <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                              <ChevronRight size={18} className={`text-white/40 `} />
                             </button>
 
                             {/* Emergency Cards */}
@@ -6209,7 +6195,7 @@ export default function App() {
                                 <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><ShieldAlert size={18} /></div>
                                 <span className="text-sm font-bold text-white">{t('emergencyCards')}</span>
                               </div>
-                              <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                              <ChevronRight size={18} className={`text-white/40 `} />
                             </button>
 
                             {/* How to Use */}
@@ -6218,7 +6204,7 @@ export default function App() {
                                 <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><BookOpen size={18} /></div>
                                 <span className="text-sm font-bold text-white">{t('howToUse')}</span>
                               </div>
-                              <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                              <ChevronRight size={18} className={`text-white/40 `} />
                             </button>
 
                             {/* Admin Dashboard */}
@@ -6228,24 +6214,12 @@ export default function App() {
                                   <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><Users size={18} /></div>
                                   <span className="text-sm font-bold text-white">Admin Dashboard</span>
                                 </div>
-                                <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                                <ChevronRight size={18} className={`text-white/40 `} />
                               </button>
                             )}
                           </div>
 
-                          {/* Group 4: General Preferences (التفضيلات العامة) */}
-                          <div className="flex flex-col gap-1.5">
-                            <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">
-                              {lang === 'ar' ? 'عام' : 'General'}
-                            </span>
-                            <button onClick={() => toggleLang()} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center"><Globe size={18} /></div>
-                                <span className="text-sm font-bold text-white">{lang === 'en' ? 'Language / اللغة' : 'اللغة / Language'}</span>
-                              </div>
-                              <span className="text-xs bg-white/10 px-3 py-1.5 rounded-xl text-white/70 font-semibold">{lang === 'en' ? 'العربية' : 'English'}</span>
-                            </button>
-                          </div>
+
 
                         </div>
 
@@ -6263,7 +6237,7 @@ export default function App() {
                           onClick={() => setIsSettingsMenuOpen(false)} 
                           className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
                         >
-                          {lang === 'ar' ? 'إغلاق' : 'Close'}
+                          {'Close'}
                         </button>
                       </div>
                     </div>
@@ -6285,7 +6259,7 @@ export default function App() {
                             className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                             aria-label="Back"
                           >
-                            <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                            <ChevronLeft size={20} className={''} />
                           </button>
                           <h2 className="text-2xl font-black tracking-tight text-white">Choose Avatar</h2>
                         </div>
@@ -6326,7 +6300,7 @@ export default function App() {
                         onClick={() => setIsAvatarModalOpen(false)} 
                         className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
                       >
-                        {lang === 'ar' ? 'إغلاق' : 'Close'}
+                        {'Close'}
                       </button>
                     </div>
                   </div>
@@ -6363,7 +6337,7 @@ export default function App() {
               onClose={() => setIsAdminPanelOpen(false)}
               lang={lang}
               themeColor={themeColor}
-              isRtl={lang === 'ar'}
+              isRtl={false}
             />,
             document.body
           )}

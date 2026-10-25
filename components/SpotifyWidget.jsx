@@ -5,7 +5,7 @@ import { Play, Pause, SkipForward, SkipBack, Radio, Disc, KeyRound } from 'lucid
 import { apiFetch, getApiBaseUrl } from '@/lib/api';
 
 export default function SpotifyWidget({ 
-  lang = 'ar', 
+  lang = 'en', 
   theme = 'dark', 
   variant = 'card', // 'card' | 'compact'
   className = '',
@@ -195,42 +195,53 @@ export default function SpotifyWidget({
     }
   };
 
-  // Touch handlers
-  const handleTouchStart = (e) => {
-    if (e?.stopPropagation) e.stopPropagation();
-    startXRef.current = e.touches[0].clientX;
-    startYRef.current = e.touches[0].clientY;
+  // Unified Pointer & Touch Gesture Engine (Mouse, Trackpad, Touchscreen)
+  const handlePointerDown = (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    if (e.target && e.target.closest && e.target.closest('button')) return;
+    if (e.stopPropagation) e.stopPropagation();
+
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (err) {}
+
+    startXRef.current = e.clientX;
+    startYRef.current = e.clientY;
     isDraggingRef.current = false;
   };
 
-  const handleTouchMove = (e) => {
-    if (e?.stopPropagation) e.stopPropagation();
+  const handlePointerMove = (e) => {
     if (startXRef.current === null) return;
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
-    const diffX = currentX - startXRef.current;
-    const diffY = currentY - startYRef.current;
+    if (e.stopPropagation) e.stopPropagation();
 
-    // Check if horizontal intent
-    if (Math.abs(diffX) > Math.abs(diffY)) {
+    const diffX = e.clientX - startXRef.current;
+    const diffY = e.clientY - (startYRef.current ?? e.clientY);
+
+    if (Math.abs(diffX) > 6 && Math.abs(diffX) > Math.abs(diffY)) {
       isDraggingRef.current = true;
-      // Clamp drag offset for nice resistance feel
-      setDragOffset(Math.max(-80, Math.min(80, diffX * 0.7)));
+      const maxClamp = size === 'compact' ? 55 : 85;
+      setDragOffset(Math.max(-maxClamp, Math.min(maxClamp, diffX * 0.75)));
     }
   };
 
-  const handleTouchEnd = (e) => {
-    if (e?.stopPropagation) e.stopPropagation();
+  const handlePointerUp = (e) => {
     if (startXRef.current === null) return;
+    if (e.stopPropagation) e.stopPropagation();
 
-    if (dragOffset < -40) {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (err) {}
+
+    const threshold = size === 'compact' ? 22 : 35;
+
+    if (dragOffset < -threshold) {
       // Swiped Left -> Next Track
       triggerControl('next');
-    } else if (dragOffset > 40) {
+    } else if (dragOffset > threshold) {
       // Swiped Right -> Previous Track
       triggerControl('previous');
-    } else if (!isDraggingRef.current || Math.abs(dragOffset) < 10) {
-      // Single tap -> Toggle Play / Pause!
+    } else if (!isDraggingRef.current || Math.abs(dragOffset) < 8) {
+      // Tap / Click -> Toggle Play/Pause
       triggerControl(data.isPlaying ? 'pause' : 'play');
     }
 
@@ -240,38 +251,12 @@ export default function SpotifyWidget({
     setDragOffset(0);
   };
 
-  // Mouse drag handlers for desktop
-  const handleMouseDown = (e) => {
-    if (e?.stopPropagation) e.stopPropagation();
-    startXRef.current = e.clientX;
-    startYRef.current = e.clientY;
-    isDraggingRef.current = false;
-  };
-
-  const handleMouseMove = (e) => {
-    if (e?.stopPropagation) e.stopPropagation();
-    if (startXRef.current === null) return;
-    const diffX = e.clientX - startXRef.current;
-    if (Math.abs(diffX) > 8) {
-      isDraggingRef.current = true;
-      setDragOffset(Math.max(-80, Math.min(80, diffX * 0.7)));
-    }
-  };
-
-  const handleMouseUp = (e) => {
-    if (e?.stopPropagation) e.stopPropagation();
-    if (startXRef.current === null) return;
-
-    if (dragOffset < -40) {
-      triggerControl('next');
-    } else if (dragOffset > 40) {
-      triggerControl('previous');
-    } else if (!isDraggingRef.current || Math.abs(dragOffset) < 10) {
-      // Single Click -> Toggle Play / Pause
-      triggerControl(data.isPlaying ? 'pause' : 'play');
-    }
-
+  const handlePointerCancel = (e) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (err) {}
     startXRef.current = null;
+    startYRef.current = null;
     isDraggingRef.current = false;
     setDragOffset(0);
   };
@@ -338,7 +323,7 @@ export default function SpotifyWidget({
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-[12px] font-bold text-white tracking-tight truncate">Spotify</span>
-              <span className="text-[10px] text-white/50 truncate">{lang === 'ar' ? 'غير متصل' : 'Connect'}</span>
+              <span className="text-[10px] text-white/50 truncate">Connect</span>
             </div>
           </div>
         </div>
@@ -347,17 +332,41 @@ export default function SpotifyWidget({
 
     return (
       <div 
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
         data-no-day-swipe="true"
-        onClick={() => {
-          recordActivity();
-          if (data.songUrl) {
-            window.open(data.songUrl, '_blank');
-          }
+        className={`col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel spotify-widget flex items-center justify-between cursor-pointer border border-white/10 dark:border-white/18 shadow-lg active:scale-[0.99] select-none min-h-[58px] relative overflow-hidden transition-transform touch-none ${className}`}
+        style={{
+          transform: `translateX(${dragOffset}px)`,
+          transition: isDraggingRef.current ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)'
         }}
-        className={`col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel spotify-widget flex items-center justify-between cursor-pointer border border-white/10 dark:border-white/18 shadow-lg active:scale-[0.99] transition-all select-none min-h-[58px] relative overflow-hidden ${className}`}
-        title={data.title ? `${data.title} - ${data.artist}` : 'Spotify'}
+        title="Swipe left/right to skip • Tap to play/pause"
       >
-        <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1.5">
+        {/* Swipe Feedback Overlay */}
+        {dragOffset !== 0 && (
+          <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-between px-3 bg-black/40 backdrop-blur-xs transition-opacity">
+            <div className={`transition-all duration-150 ${dragOffset > 15 ? 'opacity-100 scale-110 text-white' : 'opacity-20 text-white/40'}`}>
+              <SkipBack size={14} />
+            </div>
+            <div className={`transition-all duration-150 ${dragOffset < -15 ? 'opacity-100 scale-110 text-white' : 'opacity-20 text-white/40'}`}>
+              <SkipForward size={14} />
+            </div>
+          </div>
+        )}
+
+        {/* Action Pop Confirmation (when skipped or paused) */}
+        {feedbackAction && (
+          <div className="absolute inset-0 z-30 pointer-events-none flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-150 text-white">
+            {feedbackAction === 'next' && <SkipForward size={18} />}
+            {feedbackAction === 'previous' && <SkipBack size={18} />}
+            {feedbackAction === 'play' && <Play size={18} fill="white" />}
+            {feedbackAction === 'pause' && <Pause size={18} fill="white" />}
+          </div>
+        )}
+
+        <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1.5 pointer-events-none">
           <div className="relative w-8 h-8 rounded-xl bg-white/10 overflow-hidden flex items-center justify-center shrink-0 border border-white/10">
             {data.albumArt ? (
               <img 
@@ -374,10 +383,11 @@ export default function SpotifyWidget({
               {data.title || 'Spotify'}
             </span>
             <span className="text-[10px] text-white/50 truncate leading-tight mt-0.5">
-              {data.artist || (data.isConnected ? (lang === 'ar' ? 'متصل' : 'Connected') : 'Spotify')}
+              {data.artist || (data.isConnected ? 'Connected' : 'Spotify')}
             </span>
           </div>
         </div>
+
         <button
           type="button"
           onClick={(e) => {
@@ -415,7 +425,7 @@ export default function SpotifyWidget({
               Spotify
             </span>
             <span className="text-[10px] text-white/50 font-semibold">
-              {lang === 'ar' ? 'اربط حسابك لعرض الأغاني والتحكم' : 'Connect account to sync player'}
+              'Connect account to sync player'
             </span>
           </div>
         </div>
@@ -424,7 +434,7 @@ export default function SpotifyWidget({
           <button
             type="button" 
             onClick={async () => {
-              const pasted = prompt(lang === 'ar' ? 'أدخل رمز أو توكن Spotify (Refresh Token):' : 'Enter Spotify Refresh Token:');
+              const pasted = prompt('Enter Spotify Refresh Token:');
               if (pasted && pasted.trim()) {
                 const cleanToken = pasted.trim();
                 localStorage.setItem('daybase_spotify_refresh_token', cleanToken);
@@ -436,7 +446,7 @@ export default function SpotifyWidget({
               }
             }}
             className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white transition-all text-[10px] font-bold cursor-pointer"
-            title={lang === 'ar' ? 'ربط يدوي بالتوكن' : 'Manual Token Entry'}
+            title='Manual Token Entry'
           >
             <KeyRound size={13} />
           </button>
@@ -464,7 +474,7 @@ export default function SpotifyWidget({
             }}
             className="px-4 py-1.5 rounded-full font-black text-xs bg-white text-black hover:bg-white/90 transition-all active:scale-95 shadow-sm cursor-pointer"
           >
-            {lang === 'ar' ? 'ربط' : 'Connect'}
+            Connect
           </button>
         </div>
       </div>
@@ -482,7 +492,7 @@ export default function SpotifyWidget({
       return (
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full liquid-panel border border-white/10 text-white/50 text-[11px] font-bold">
           <Radio size={12} className="text-white" />
-          <span>{lang === 'ar' ? 'لا يوجد موسيقى شغالة' : 'No music playing'}</span>
+          <span>No music playing</span>
         </div>
       );
     }
@@ -516,26 +526,17 @@ export default function SpotifyWidget({
   // MONOCHROME GESTURE BAR (Swipe to Skip, Tap to Play/Pause)
   return (
     <div 
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={() => {
-        if (startXRef.current !== null) {
-          startXRef.current = null;
-          isDraggingRef.current = false;
-          setDragOffset(0);
-        }
-      }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
       data-no-day-swipe="true"
-      className={`col-span-2 w-full px-3.5 py-2.5 rounded-[20px] liquid-panel spotify-widget flex items-center justify-between shadow-lg relative overflow-hidden select-none cursor-pointer active:scale-[0.99] border border-white/10 min-h-[58px] transition-transform ${className}`}
+      className={`col-span-2 w-full px-3.5 py-2.5 rounded-[20px] liquid-panel spotify-widget flex items-center justify-between shadow-lg relative overflow-hidden select-none cursor-pointer active:scale-[0.99] border border-white/10 min-h-[58px] transition-transform touch-none ${className}`}
       style={{
         transform: `translateX(${dragOffset}px)`,
         transition: isDraggingRef.current ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)'
       }}
-      title={lang === 'ar' ? 'اسحب يمين أو شمال للتقليب • اضغط للإيقاف أو التشغيل' : 'Swipe left/right to skip • Tap to play/pause'}
+      title="Swipe left/right to skip • Tap to play/pause"
     >
       {/* Background Ambient Glow from Album Art (Subtle Monochrome) */}
       {data.albumArt && (
@@ -607,7 +608,7 @@ export default function SpotifyWidget({
           ) : (
             <div className="flex items-center gap-2 text-xs font-bold text-white/50">
               <Radio size={13} className="text-white" />
-              <span>{lang === 'ar' ? 'مفيش حاجة شغالة حالياً' : 'No track active'}</span>
+              <span>No track active</span>
             </div>
           )}
         </div>
