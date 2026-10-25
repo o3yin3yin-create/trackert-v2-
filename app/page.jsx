@@ -500,10 +500,41 @@ export default function App() {
   // --- Flight Focus States ---
   const [isFlightFocusOpen, setIsFlightFocusOpen] = useState(false);
   const [flightOptions, setFlightOptions] = useState([]);
-  const [selectedFlight, setSelectedFlight] = useState(null);
+  const [selectedFlight, setSelectedFlight] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = JSON.parse(localStorage.getItem('daybase_active_flight') || 'null');
+        if (saved?.flight && saved.flight.estimatedArrival > Math.floor(Date.now() / 1000)) {
+          return saved.flight;
+        }
+      } catch (e) {}
+    }
+    return null;
+  });
   const [flightLoading, setFlightLoading] = useState(false);
-  const [flightTimer, setFlightTimer] = useState(0);
-  const [isFlightTimerRunning, setIsFlightTimerRunning] = useState(false);
+  const [flightTimer, setFlightTimer] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = JSON.parse(localStorage.getItem('daybase_active_flight') || 'null');
+        if (saved?.flight?.estimatedArrival) {
+          const rem = saved.flight.estimatedArrival - Math.floor(Date.now() / 1000);
+          if (rem > 0) return rem;
+        }
+      } catch (e) {}
+    }
+    return 0;
+  });
+  const [isFlightTimerRunning, setIsFlightTimerRunning] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = JSON.parse(localStorage.getItem('daybase_active_flight') || 'null');
+        if (saved?.flight?.estimatedArrival && saved.flight.estimatedArrival > Math.floor(Date.now() / 1000)) {
+          return true;
+        }
+      } catch (e) {}
+    }
+    return false;
+  });
   const [liveTelemetry, setLiveTelemetry] = useState(null);
   const [isMapView, setIsMapView] = useState(false);
   const [isCameraLocked, setIsCameraLocked] = useState(true);
@@ -558,9 +589,38 @@ export default function App() {
   const [isPomodoroOpen, setIsPomodoroOpen] = useState(false);
   const [isEditingPomodoro, setIsEditingPomodoro] = useState(false);
   const [editMinutes, setEditMinutes] = useState(25);
-  const [pomodoroInitialTime, setPomodoroInitialTime] = useState(25 * 60);
-  const [pomodoroTime, setPomodoroTime] = useState(25 * 60);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [pomodoroInitialTime, setPomodoroInitialTime] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = JSON.parse(localStorage.getItem('daybase_active_pomodoro') || 'null');
+        if (saved?.initialTime) return saved.initialTime;
+      } catch (e) {}
+    }
+    return 25 * 60;
+  });
+  const [pomodoroTime, setPomodoroTime] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = JSON.parse(localStorage.getItem('daybase_active_pomodoro') || 'null');
+        if (saved?.endTime) {
+          const rem = saved.endTime - Math.floor(Date.now() / 1000);
+          if (rem > 0) return rem;
+        }
+      } catch (e) {}
+    }
+    return 25 * 60;
+  });
+  const [isTimerRunning, setIsTimerRunning] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = JSON.parse(localStorage.getItem('daybase_active_pomodoro') || 'null');
+        if (saved?.endTime && saved.endTime > Math.floor(Date.now() / 1000)) {
+          return true;
+        }
+      } catch (e) {}
+    }
+    return false;
+  });
   const [isEmergencyCardsOpen, setIsEmergencyCardsOpen] = useState(false);
   const [isHowToUseOpen, setIsHowToUseOpen] = useState(false);
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
@@ -680,6 +740,7 @@ export default function App() {
         const token = params.get('spotify_token');
         if (token) {
           localStorage.setItem('daybase_spotify_refresh_token', token);
+          markLocalMutation();
         }
         setSpotifyNotification({ 
           type: 'success', 
@@ -714,7 +775,15 @@ export default function App() {
   const dayNum = String(baseDate.getDate()).padStart(2, '0'); 
 
   // --- Pomodoro Tasks Tracking ---
-  const [activePomodoroTask, setActivePomodoroTask] = useState({ name: '', color: '#FF9F0A' });
+  const [activePomodoroTask, setActivePomodoroTask] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = JSON.parse(localStorage.getItem('daybase_active_pomodoro') || 'null');
+        if (saved?.taskName) return { name: saved.taskName, color: '#FF9F0A' };
+      } catch (e) {}
+    }
+    return { name: '', color: '#FF9F0A' };
+  });
   const [pomodoroTasksData, setPomodoroTasksData] = useState(() => {
     if (typeof window !== 'undefined') {
       return JSON.parse(localStorage.getItem('daybase_pomodoro_tasks_v1') || '{}');
@@ -952,38 +1021,67 @@ export default function App() {
              if (typeof window !== 'undefined') localStorage.setItem('daybase_granted_cards_log_v4', JSON.stringify(authoritative.grantedCardsLog));
           }
 
+          if (authoritative.spotifyRefreshToken && typeof window !== 'undefined') {
+             const cur = localStorage.getItem('daybase_spotify_refresh_token');
+             if (cur !== authoritative.spotifyRefreshToken) {
+               localStorage.setItem('daybase_spotify_refresh_token', authoritative.spotifyRefreshToken);
+             }
+          }
+
           // Cache authoritative server state into IndexedDB
           saveLocalOfflineState(authoritative);
           setTimeout(() => {
             isApplyingRemoteRef.current = false;
           }, 300);
 
-          // Restore Active Session (only on initial load or if user not in active session)
-          if (!isSilent) {
-            if (state.activeSessionType === 'pomodoro' && state.activeSessionData) {
-               const now = Math.floor(Date.now() / 1000);
-               const remaining = state.activeSessionData.endTime - now;
-               if (remaining > 0) {
-                  setPomodoroInitialTime(state.activeSessionData.initialTime);
-                  setPomodoroTime(remaining);
-                  setActivePomodoroTask({ name: state.activeSessionData.taskName || '' });
-                  setIsTimerRunning(true);
+          // Sync Active Focus Session across devices
+          const now = Math.floor(Date.now() / 1000);
+          if (authoritative.activeSessionType === 'pomodoro' && authoritative.activeSessionData) {
+             const remaining = authoritative.activeSessionData.endTime - now;
+             if (remaining > 0) {
+                setPomodoroInitialTime(authoritative.activeSessionData.initialTime || 25 * 60);
+                setPomodoroTime(remaining);
+                if (authoritative.activeSessionData.taskName) {
+                  setActivePomodoroTask(prev => ({ ...prev, name: authoritative.activeSessionData.taskName }));
+                }
+                setIsTimerRunning(true);
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem('daybase_active_pomodoro', JSON.stringify(authoritative.activeSessionData));
+                }
+                if (!isSilent && !isTimerRunning) {
                   setIsPomodoroOpen(true);
-               } else {
-                  apiFetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
-               }
-            } else if (state.activeSessionType === 'flight' && state.activeSessionData) {
-               const now = Math.floor(Date.now() / 1000);
-               const remaining = state.activeSessionData.flight.estimatedArrival - now;
-               if (remaining > 0) {
-                  setSelectedFlight(state.activeSessionData.flight);
-                  setFlightTimer(remaining);
-                  setIsFlightTimerRunning(true);
+                }
+             } else {
+                if (typeof window !== 'undefined') localStorage.removeItem('daybase_active_pomodoro');
+                setIsTimerRunning(false);
+             }
+          } else if (authoritative.activeSessionType === 'flight' && authoritative.activeSessionData) {
+             const remaining = authoritative.activeSessionData.flight.estimatedArrival - now;
+             if (remaining > 0) {
+                setSelectedFlight(authoritative.activeSessionData.flight);
+                setFlightTimer(remaining);
+                setIsFlightTimerRunning(true);
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem('daybase_active_flight', JSON.stringify(authoritative.activeSessionData));
+                }
+                if (!isSilent && !isFlightTimerRunning) {
                   setIsFlightFocusOpen(true);
-               } else {
-                  apiFetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
+                }
+             } else {
+                if (typeof window !== 'undefined') localStorage.removeItem('daybase_active_flight');
+                setIsFlightTimerRunning(false);
+                setSelectedFlight(null);
+             }
+          } else if (authoritative.activeSessionType === null) {
+             if (typeof window !== 'undefined') {
+               if (!localStorage.getItem('daybase_active_pomodoro') && isTimerRunning) {
+                 setIsTimerRunning(false);
                }
-            }
+               if (!localStorage.getItem('daybase_active_flight') && isFlightTimerRunning) {
+                 setIsFlightTimerRunning(false);
+                 setSelectedFlight(null);
+               }
+             }
           }
           
           // Re-apply theme class
@@ -1435,6 +1533,7 @@ export default function App() {
     habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
     theme, bgStyle, lang, focusTimeData, pomodoroTasksData: activePomodoroTasks,
     emergencyCards: habitCards, finishedTickets, mission, deletedHabitIds: Array.from(deletedHabitIdsRef.current),
+    spotifyRefreshToken: typeof window !== 'undefined' ? localStorage.getItem('daybase_spotify_refresh_token') || null : null,
     targetDates: syncTargetDates,
     activeDateStr
   };
@@ -1679,37 +1778,55 @@ export default function App() {
 
 
 
-  // --- Sync Active Focus Sessions Across Devices ---
-  useEffect(() => {
-    if (!isCloudLoaded || !isMounted) return;
-    if (isTimerRunning) {
-      const endTime = Math.floor(Date.now() / 1000) + pomodoroTime;
-      apiFetch('/api/session', { 
-        method: 'POST', 
-        body: JSON.stringify({ 
-          type: 'pomodoro', 
-          data: { endTime, initialTime: pomodoroInitialTime, taskName: activePomodoroTask.name } 
-        }) 
-      }).catch(() => {});
-    } else {
-      apiFetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
-    }
-  }, [isTimerRunning, isCloudLoaded, isMounted]);
+  // --- Sync Active Focus Sessions Across Devices (Safe & Persistent) ---
+  const syncSessionRef = useRef({ lastSyncedType: null });
 
   useEffect(() => {
-    if (!isCloudLoaded || !isMounted) return;
-    if (isFlightTimerRunning && selectedFlight) {
+    if (!isMounted) return;
+    if (isTimerRunning) {
+      const endTime = Math.floor(Date.now() / 1000) + pomodoroTime;
+      const data = { endTime, initialTime: pomodoroInitialTime, taskName: activePomodoroTask?.name || '' };
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('daybase_active_pomodoro', JSON.stringify(data));
+      }
+      syncSessionRef.current.lastSyncedType = 'pomodoro';
       apiFetch('/api/session', { 
         method: 'POST', 
-        body: JSON.stringify({ 
-          type: 'flight', 
-          data: { flight: selectedFlight } 
-        }) 
+        body: JSON.stringify({ type: 'pomodoro', data }) 
       }).catch(() => {});
-    } else if (!isFlightTimerRunning) {
-      apiFetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
+    } else {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('daybase_active_pomodoro');
+      }
+      if (syncSessionRef.current.lastSyncedType === 'pomodoro') {
+        syncSessionRef.current.lastSyncedType = null;
+        apiFetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
+      }
     }
-  }, [isFlightTimerRunning, isCloudLoaded, isMounted]);
+  }, [isTimerRunning, isMounted]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    if (isFlightTimerRunning && selectedFlight) {
+      const data = { flight: selectedFlight };
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('daybase_active_flight', JSON.stringify(data));
+      }
+      syncSessionRef.current.lastSyncedType = 'flight';
+      apiFetch('/api/session', { 
+        method: 'POST', 
+        body: JSON.stringify({ type: 'flight', data }) 
+      }).catch(() => {});
+    } else {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('daybase_active_flight');
+      }
+      if (syncSessionRef.current.lastSyncedType === 'flight') {
+        syncSessionRef.current.lastSyncedType = null;
+        apiFetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
+      }
+    }
+  }, [isFlightTimerRunning, selectedFlight, isMounted]);
 
   // --- Date Nav Functions ---
   const handlePrevDay = () => {
@@ -3725,25 +3842,6 @@ export default function App() {
           
           {/* Header with Navigation */}
           <header className="flex flex-col gap-2 mb-4 sm:mb-6 w-full">
-            {/* Live Activity Widgets */}
-
-            {(!isPomodoroOpen && isTimerRunning) && (
-              <div onClick={() => setIsPomodoroOpen(true)} className="mb-2 liquid-panel rounded-full px-4 py-3 flex items-center justify-between cursor-pointer animate-in fade-in slide-in-from-top-2 border-[1.5px] window-no-drag" style={{ borderColor: `${activePomodoroTask.color}40` }}>
-                <div className="flex items-center gap-3">
-                   <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: `${activePomodoroTask.color}20` }}>
-                      <Timer size={16} color={activePomodoroTask.color} />
-                   </div>
-                   <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-gray-500 dark:text-white/50 uppercase">{activePomodoroTask.name || t('pomodoro')}</span>
-                      <span className="text-xs font-bold text-black dark:text-white">Focus Session</span>
-                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                   <span className="text-sm font-bold" style={{ color: activePomodoroTask.color }}>{String(Math.floor(pomodoroTime/60)).padStart(2,'0')}:{String(pomodoroTime%60).padStart(2,'0')}</span>
-                </div>
-              </div>
-            )}
-
             {/* Clean Minimal Apple Header: Day & Date on Left, Glowing Status Account Avatar on Right */}
             <div 
               data-tauri-drag-region 
@@ -3990,6 +4088,62 @@ export default function App() {
               </div>
             </div>
 
+            {/* Active Pomodoro Widget (Under Mission Card) */}
+            {(!isPomodoroOpen && isTimerRunning) && (
+              <div 
+                onClick={() => setIsPomodoroOpen(true)} 
+                data-no-day-swipe="true"
+                className="w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 shadow-lg active:scale-[0.99] transition-all duration-200 mt-1 mb-1 select-none"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-black shrink-0">
+                    <Timer size={14} strokeWidth={2.8} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[13px] font-bold text-white tracking-tight">
+                      {activePomodoroTask?.name || (lang === 'ar' ? 'جلسة بومودورو' : 'Pomodoro Focus')}
+                    </span>
+                    <span className="text-[10px] text-white/50 font-semibold">
+                      {lang === 'ar' ? 'جلسة تركيز نشطة • اضغط للفتح' : 'Active focus session • Tap to view'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-black font-mono px-3 py-1 rounded-full bg-white text-black shadow-sm tabular-nums">
+                    {String(Math.floor(pomodoroTime / 60)).padStart(2, '0')}:{String(pomodoroTime % 60).padStart(2, '0')}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Active Flight Focus Widget (Under Mission Card) */}
+            {(!isFlightFocusOpen && isFlightTimerRunning && selectedFlight) && (
+              <div 
+                onClick={() => setIsFlightFocusOpen(true)} 
+                data-no-day-swipe="true"
+                className="w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 shadow-lg active:scale-[0.99] transition-all duration-200 mt-1 mb-1 select-none"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-black shrink-0">
+                    <Plane size={14} strokeWidth={2.8} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[13px] font-bold text-white tracking-tight">
+                      {selectedFlight.origin} → {selectedFlight.destination}
+                    </span>
+                    <span className="text-[10px] text-white/50 font-semibold">
+                      {selectedFlight.airline} {selectedFlight.callsign}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-black font-mono px-3 py-1 rounded-full bg-white text-black shadow-sm tabular-nums">
+                    {String(Math.floor(flightTimer / 3600)).padStart(2, '0')}:{String(Math.floor((flightTimer % 3600) / 60)).padStart(2, '0')}:{String(flightTimer % 60).padStart(2, '0')}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Mobile Spotify Slim Bar (Directly below Mission Card) */}
             <SpotifyWidget lang={lang} theme={theme} themeColor={themeColor} variant="card" className="mt-0.5 mb-1" />
 
@@ -4112,6 +4266,62 @@ export default function App() {
                   </div>
                 </div>
               </div>
+
+              {/* Active Pomodoro Widget (Under Mission Card) */}
+              {(!isPomodoroOpen && isTimerRunning) && (
+                <div 
+                  onClick={() => setIsPomodoroOpen(true)} 
+                  data-no-day-swipe="true"
+                  className="w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 shadow-lg active:scale-[0.99] transition-all duration-200 mt-1 mb-1 select-none"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-black shrink-0">
+                      <Timer size={14} strokeWidth={2.8} />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[13px] font-bold text-white tracking-tight">
+                        {activePomodoroTask?.name || (lang === 'ar' ? 'جلسة بومودورو' : 'Pomodoro Focus')}
+                      </span>
+                      <span className="text-[10px] text-white/50 font-semibold">
+                        {lang === 'ar' ? 'جلسة تركيز نشطة • اضغط للفتح' : 'Active focus session • Tap to view'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-black font-mono px-3 py-1 rounded-full bg-white text-black shadow-sm tabular-nums">
+                      {String(Math.floor(pomodoroTime / 60)).padStart(2, '0')}:{String(pomodoroTime % 60).padStart(2, '0')}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Active Flight Focus Widget (Under Mission Card) */}
+              {(!isFlightFocusOpen && isFlightTimerRunning && selectedFlight) && (
+                <div 
+                  onClick={() => setIsFlightFocusOpen(true)} 
+                  data-no-day-swipe="true"
+                  className="w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 shadow-lg active:scale-[0.99] transition-all duration-200 mt-1 mb-1 select-none"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-black shrink-0">
+                      <Plane size={14} strokeWidth={2.8} />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[13px] font-bold text-white tracking-tight">
+                        {selectedFlight.origin} → {selectedFlight.destination}
+                      </span>
+                      <span className="text-[10px] text-white/50 font-semibold">
+                        {selectedFlight.airline} {selectedFlight.callsign}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-black font-mono px-3 py-1 rounded-full bg-white text-black shadow-sm tabular-nums">
+                      {String(Math.floor(flightTimer / 3600)).padStart(2, '0')}:{String(Math.floor((flightTimer % 3600) / 60)).padStart(2, '0')}:{String(flightTimer % 60).padStart(2, '0')}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Desktop Spotify Slim Bar (Directly below Mission Card) */}
               <SpotifyWidget lang={lang} theme={theme} themeColor={themeColor} variant="card" className="mt-0.5" />

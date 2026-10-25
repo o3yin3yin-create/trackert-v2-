@@ -55,6 +55,7 @@ export async function GET(req) {
     if (!rawData || !rawData.item) {
       return NextResponse.json({
         isConnected: true,
+        spotifyRefreshToken: refreshToken,
         isPlaying: false,
         item: null,
       });
@@ -74,6 +75,7 @@ export async function GET(req) {
 
     return NextResponse.json({
       isConnected: true,
+      spotifyRefreshToken: refreshToken,
       isPlaying,
       title,
       artist,

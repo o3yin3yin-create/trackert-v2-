@@ -1,8 +1,26 @@
 import { NextResponse } from 'next/server';
 import { getAuthUserId } from '@/lib/auth-server';
-import { PrismaClient } from '@prisma/client';
+import prisma from '@/lib/prisma';
 
-const prisma = new PrismaClient();
+export const dynamic = 'force-dynamic';
+
+export async function GET(req) {
+  const userId = await getAuthUserId(req);
+  if (!userId) return NextResponse.json({ activeSessionType: null, activeSessionData: null });
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { activeSessionType: true, activeSessionData: true }
+    });
+    return NextResponse.json({
+      activeSessionType: user?.activeSessionType || null,
+      activeSessionData: user?.activeSessionData || null
+    });
+  } catch (e) {
+    return NextResponse.json({ activeSessionType: null, activeSessionData: null });
+  }
+}
 
 export async function POST(req) {
   const userId = await getAuthUserId(req);

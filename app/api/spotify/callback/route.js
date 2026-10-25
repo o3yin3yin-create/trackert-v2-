@@ -7,6 +7,7 @@ export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get('code');
   const error = searchParams.get('error');
+  const stateParam = searchParams.get('state');
 
   const origin = req.headers?.get?.('x-forwarded-host') 
     ? `${req.headers.get('x-forwarded-proto') || 'https'}://${req.headers.get('x-forwarded-host')}`
@@ -28,7 +29,16 @@ export async function GET(req) {
 
     // Try saving to database for authenticated user
     try {
-      const userId = await getAuthUserId(req);
+      let userId = null;
+      if (stateParam) {
+        try {
+          const decoded = JSON.parse(Buffer.from(stateParam, 'base64url').toString('utf-8'));
+          if (decoded?.u) userId = decoded.u;
+        } catch (e) {}
+      }
+      if (!userId) {
+        userId = await getAuthUserId(req);
+      }
       if (userId) {
         await prisma.user.update({
           where: { id: userId },

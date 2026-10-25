@@ -156,6 +156,7 @@ export async function GET(req) {
       pomodoroTasksData: {},
       activeSessionType: user.activeSessionType,
       activeSessionData: user.activeSessionData,
+      spotifyRefreshToken: user.spotifyRefreshToken || null,
       updatedAt: user.updatedAt ? new Date(user.updatedAt).getTime() : Date.now(),
     };
 
@@ -257,6 +258,7 @@ export async function POST(req) {
         finishedTickets: state.finishedTickets || [],
         activeSessionType: state.activeSessionType || null,
         activeSessionData: state.activeSessionData || null,
+        spotifyRefreshToken: state.spotifyRefreshToken || null,
       },
       update: {
         theme: state.theme,
@@ -269,6 +271,7 @@ export async function POST(req) {
         updatedAt: new Date(),
         ...(state.activeSessionType !== undefined && { activeSessionType: state.activeSessionType }),
         ...(state.activeSessionData !== undefined && { activeSessionData: state.activeSessionData }),
+        ...(state.spotifyRefreshToken !== undefined && { spotifyRefreshToken: state.spotifyRefreshToken }),
       }
     });
 

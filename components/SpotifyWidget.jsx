@@ -45,6 +45,11 @@ export default function SpotifyWidget({
         });
         if (!res.ok) return;
         const json = await res.json();
+        if (json.spotifyRefreshToken && typeof window !== 'undefined') {
+          if (localStorage.getItem('daybase_spotify_refresh_token') !== json.spotifyRefreshToken) {
+            localStorage.setItem('daybase_spotify_refresh_token', json.spotifyRefreshToken);
+          }
+        }
         if (isMounted) {
           setData(json);
           if (json.progressMs !== undefined) {
@@ -212,6 +217,19 @@ export default function SpotifyWidget({
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
   };
 
+  const getSpotifyLoginUrl = () => {
+    const isDesktop = typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:');
+    const base = isDesktop ? 'https://bokra101.vercel.app/api/spotify/login' : '/api/spotify/login';
+    let uid = '';
+    if (typeof window !== 'undefined') {
+      try {
+        const u = JSON.parse(localStorage.getItem('daybase_user') || '{}');
+        uid = u.id || localStorage.getItem('daybase_user_id') || '';
+      } catch (e) {}
+    }
+    return uid ? `${base}?uid=${encodeURIComponent(uid)}` : base;
+  };
+
   // If NOT connected, show sleek monochrome black & white bar
   if (!data.isConnected) {
     if (variant === 'compact') return null;
@@ -236,7 +254,7 @@ export default function SpotifyWidget({
         </div>
 
         <a 
-          href={typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') ? 'https://bokra101.vercel.app/api/spotify/login' : '/api/spotify/login'}
+          href={getSpotifyLoginUrl()}
           target={typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') ? '_blank' : '_self'}
           rel="noopener noreferrer"
           className="px-4 py-1.5 rounded-full font-black text-xs bg-white text-black hover:bg-white/90 transition-all active:scale-95 shadow-sm"
