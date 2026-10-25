@@ -2383,12 +2383,13 @@ export default function App() {
       const isRunning = !isPomodoroOpen && isTimerRunning;
       if (mode === 'auto' && !isRunning) return null;
 
-      const totalTime = pomodoroInitialTime || 25 * 60;
+      const totalTime = pomodoroInitialTime || (25 * 60);
       const currentRemaining = Math.max(0, pomodoroTime);
-      const progress = Math.min(1, Math.max(0, 1 - (currentRemaining / totalTime)));
+      const elapsed = Math.max(0, totalTime - currentRemaining);
+      const progressFraction = totalTime > 0 ? (elapsed / totalTime) : 0;
       const radius = 17;
       const circumference = 2 * Math.PI * radius; // ~106.81
-      const strokeDashoffset = circumference - (progress * circumference);
+      const strokeDashoffset = circumference - (progressFraction * circumference);
 
       const mins = String(Math.floor(pomodoroTime / 60)).padStart(2, '0');
       const secs = String(pomodoroTime % 60).padStart(2, '0');
@@ -2398,9 +2399,9 @@ export default function App() {
           key="pomodoro-widget"
           onClick={() => setIsPomodoroOpen(true)} 
           data-no-day-swipe="true"
-          className="w-full px-5 py-3.5 sm:px-6 sm:py-4 rounded-full bg-[#18181B] border border-white/10 shadow-2xl flex items-center justify-between cursor-pointer active:scale-[0.99] transition-all duration-200 mt-1 mb-1 select-none"
+          className="w-full px-4 sm:px-5 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 dark:border-white/18 shadow-lg active:scale-[0.99] transition-all duration-200 mt-1 mb-1 select-none"
         >
-          {/* Left: Progress Ring + Play/Pause button and Title + Session Dashes */}
+          {/* Left: Progress Ring + Play/Pause button and Title + 4 Progress Dots */}
           <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
             {/* Circular Progress Ring with Play/Pause button in center */}
             <div 
@@ -2410,10 +2411,10 @@ export default function App() {
                 getAudioCtx();
                 setIsTimerRunning(!isTimerRunning);
               }}
-              className="relative w-11 h-11 flex items-center justify-center shrink-0 cursor-pointer active:scale-90 transition-transform"
+              className="relative w-10 h-10 flex items-center justify-center shrink-0 cursor-pointer active:scale-90 transition-transform"
               title={isTimerRunning ? (lang === 'ar' ? 'إيقاف مؤقت' : 'Pause') : (lang === 'ar' ? 'استئناف' : 'Resume')}
             >
-              <svg className="w-11 h-11 -rotate-90 pointer-events-none" viewBox="0 0 44 44">
+              <svg className="w-10 h-10 -rotate-90 pointer-events-none" viewBox="0 0 44 44">
                 {/* Background track */}
                 <circle
                   cx="22"
@@ -2441,41 +2442,43 @@ export default function App() {
               {/* Center Pause/Play Icon */}
               <div className="absolute inset-0 flex items-center justify-center text-white pointer-events-none">
                 {isTimerRunning ? (
-                  <Pause size={13} className="fill-white text-white" />
+                  <Pause size={12} className="fill-white text-white" />
                 ) : (
-                  <Play size={13} className="fill-white text-white ml-0.5" />
+                  <Play size={12} className="fill-white text-white ml-0.5" />
                 )}
               </div>
             </div>
 
-            {/* Title + Session Dashes */}
+            {/* Title + 4 Progress Dots */}
             <div className="flex flex-col justify-center min-w-0">
-              <span className="text-white font-bold text-base sm:text-[17px] tracking-tight leading-none truncate">
+              <span className="text-white font-bold text-sm sm:text-[15px] tracking-tight leading-none truncate">
                 {activePomodoroTask?.name || (lang === 'ar' ? 'تركيز' : 'Focus')}
               </span>
               
-              {/* A2 · Session Dashes (Cycle Progress) */}
+              {/* 4 Progress Dots (Quarter intervals of active session) */}
               <div className="flex items-center gap-1.5 mt-2">
-                {[1, 2, 3, 4].map((step) => (
-                  <div
-                    key={step}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPomodoroSessionStep(step);
-                      if (typeof window !== 'undefined') localStorage.setItem('daybase_pomodoro_session_step', step.toString());
-                      haptic('light');
-                    }}
-                    className={`h-1 w-4 sm:w-5 rounded-full transition-all duration-300 ${
-                      step <= pomodoroSessionStep ? 'bg-white' : 'bg-white/20'
-                    }`}
-                  />
-                ))}
+                {[0, 1, 2, 3].map((idx) => {
+                  const isFilled = progressFraction >= (idx + 1) * 0.25;
+                  const isCurrent = !isFilled && progressFraction >= idx * 0.25;
+                  return (
+                    <span
+                      key={idx}
+                      className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                        isFilled
+                          ? 'bg-white shadow-[0_0_6px_rgba(255,255,255,0.7)]'
+                          : isCurrent
+                          ? (isTimerRunning ? 'bg-white animate-pulse' : 'bg-white/80')
+                          : 'bg-white/20'
+                      }`}
+                    />
+                  );
+                })}
               </div>
             </div>
           </div>
 
           {/* Right: Giant Minimalist Apple Monochrome Timer Readout */}
-          <div className="flex items-baseline font-black text-3xl sm:text-4xl tabular-nums tracking-tight font-sans shrink-0 pl-3">
+          <div className="flex items-baseline font-black text-2xl sm:text-3xl tabular-nums tracking-tight font-sans shrink-0 pl-3">
             <span className="text-white">{mins}</span>
             <span className="text-white/40">:</span>
             <span className="text-white/40">{secs}</span>
