@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, SkipForward, SkipBack, Music, ExternalLink, Disc, Radio, Check, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Play, Pause, SkipForward, SkipBack, ExternalLink, Disc, Radio } from 'lucide-react';
 
 export default function SpotifyWidget({ 
   lang = 'ar', 
   theme = 'dark', 
   themeColor = '#1DB954',
-  variant = 'card', // 'card' | 'compact' | 'bar'
+  variant = 'card', // 'card' | 'compact'
   className = ''
 }) {
   const [data, setData] = useState({
@@ -24,7 +24,6 @@ export default function SpotifyWidget({
   });
   const [localProgress, setLocalProgress] = useState(0);
   const [loadingAction, setLoadingAction] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
 
   // Poll Spotify API
   useEffect(() => {
@@ -50,7 +49,7 @@ export default function SpotifyWidget({
     // initial check
     checkNowPlaying();
 
-    // interval: 4 seconds if playing, 12 seconds if idle/paused
+    // interval: 4s if playing, 12s if idle
     const intervalMs = data.isPlaying ? 4000 : 12000;
     timer = setInterval(checkNowPlaying, intervalMs);
 
@@ -90,7 +89,6 @@ export default function SpotifyWidget({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action })
       });
-      // refresh shortly after control
       setTimeout(async () => {
         try {
           const res = await fetch('/api/spotify/now-playing');
@@ -107,44 +105,31 @@ export default function SpotifyWidget({
     }
   };
 
-  const formatTime = (ms) => {
-    if (!ms || isNaN(ms)) return '0:00';
-    const totalSeconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-  };
-
-  // If NOT connected, show sleek connect prompt card
+  // If NOT connected, show sleek ultra-slim connect bar
   if (!data.isConnected) {
-    if (variant === 'compact') return null; // don't clutter compact bar
+    if (variant === 'compact') return null;
 
     return (
-      <div className={`liquid-panel p-5 rounded-[24px] flex flex-col justify-between transition-all duration-300 border border-white/10 ${className}`}>
-        <div className="flex items-center justify-between mb-3 select-none">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-[#1DB954] flex items-center justify-center text-black">
-              <Radio size={13} strokeWidth={2.8} />
-            </div>
-            <span className="text-xs font-black tracking-widest text-white/80 uppercase">
-              {lang === 'ar' ? 'سبوتيفاي' : 'SPOTIFY'}
+      <div className={`w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between shadow-lg transition-all duration-200 border border-white/10 ${className}`}>
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-full bg-[#1DB954] flex items-center justify-center text-black shrink-0">
+            <Radio size={14} strokeWidth={2.8} />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[13px] font-bold text-white tracking-tight">
+              Spotify
+            </span>
+            <span className="text-[10px] text-white/50 font-semibold">
+              {lang === 'ar' ? 'اربط حسابك لعرض الأغاني والتحكم' : 'Connect account to sync player'}
             </span>
           </div>
-          <span className="text-[10px] font-mono text-white/40">Offline</span>
         </div>
-
-        <p className="text-xs text-white/60 mb-4 font-bold leading-relaxed">
-          {lang === 'ar' 
-            ? 'اربط حسابك بـ Spotify لعرض الأغاني اللي بتسمعها والتحكم فيها وأنت مركز.' 
-            : 'Connect your Spotify account to see what you are listening to and control playback.'}
-        </p>
 
         <a 
           href="/api/spotify/login" 
-          className="w-full py-3 px-4 rounded-xl font-black text-xs flex items-center justify-center gap-2 bg-[#1DB954] text-black hover:bg-[#1ed760] transition-all active:scale-95 shadow-lg shadow-[#1DB954]/20"
+          className="px-4 py-1.5 rounded-full font-black text-xs bg-[#1DB954] text-black hover:bg-[#1ed760] transition-all active:scale-95 shadow-sm"
         >
-          <Radio size={14} strokeWidth={3} />
-          {lang === 'ar' ? 'ربط حساب Spotify' : 'Connect Spotify'}
+          {lang === 'ar' ? 'ربط' : 'Connect'}
         </a>
       </div>
     );
@@ -155,7 +140,7 @@ export default function SpotifyWidget({
     ? Math.min(100, Math.max(0, (localProgress / data.durationMs) * 100)) 
     : 0;
 
-  // COMPACT / BAR VARIANT (For Focus mode or dynamic pill)
+  // COMPACT VARIANT (For Focus / Pomodoro Modal)
   if (variant === 'compact') {
     if (!data.title) {
       return (
@@ -167,42 +152,38 @@ export default function SpotifyWidget({
     }
 
     return (
-      <div className="flex items-center gap-3 px-3.5 py-2 rounded-full liquid-panel border border-white/10 shadow-lg text-white">
+      <div className="flex items-center gap-3 px-3.5 py-1.5 rounded-full liquid-panel border border-white/10 shadow-lg text-white">
         {data.albumArt ? (
           <img 
             src={data.albumArt} 
             alt={data.title} 
-            className={`w-7 h-7 rounded-full object-cover shadow-sm ${data.isPlaying ? 'animate-spin' : ''}`}
+            className={`w-6 h-6 rounded-full object-cover shadow-sm ${data.isPlaying ? 'animate-spin' : ''}`}
             style={{ animationDuration: '6s' }} 
           />
         ) : (
-          <Disc size={18} className="text-[#1DB954]" />
+          <Disc size={16} className="text-[#1DB954]" />
         )}
-        <div className="flex flex-col min-w-0 max-w-[130px]">
+        <div className="flex flex-col min-w-0 max-w-[120px]">
           <span className="text-xs font-black truncate">{data.title}</span>
           <span className="text-[10px] text-white/50 font-bold truncate">{data.artist}</span>
         </div>
         <button 
           onClick={(e) => handleControl(e, data.isPlaying ? 'pause' : 'play')}
-          className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full active:scale-90 transition-all text-white"
+          className="p-1 bg-white/10 hover:bg-white/20 rounded-full active:scale-90 transition-all text-white"
         >
-          {data.isPlaying ? <Pause size={12} /> : <Play size={12} />}
+          {data.isPlaying ? <Pause size={11} /> : <Play size={11} />}
         </button>
       </div>
     );
   }
 
-  // FULL CARD VARIANT (Home Screen & Focus Cockpit)
+  // SLIM BAR CARD (Under Mission Card in Home Screen)
   return (
-    <div 
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className={`liquid-panel p-5 rounded-[24px] flex flex-col justify-between relative overflow-hidden transition-all duration-300 border border-white/10 shadow-xl ${className}`}
-    >
-      {/* Background Ambient Glow */}
+    <div className={`w-full px-3.5 py-2.5 rounded-[20px] liquid-panel flex items-center justify-between shadow-lg relative overflow-hidden transition-all duration-300 border border-white/10 min-h-[58px] ${className}`}>
+      {/* Background Ambient Glow from Album Art */}
       {data.albumArt && (
         <div 
-          className="absolute inset-0 opacity-15 pointer-events-none blur-3xl scale-125"
+          className="absolute inset-0 opacity-20 pointer-events-none blur-2xl scale-150"
           style={{
             backgroundImage: `url(${data.albumArt})`,
             backgroundPosition: 'center',
@@ -211,101 +192,67 @@ export default function SpotifyWidget({
         />
       )}
 
-      {/* Top Header */}
-      <div className="flex items-center justify-between mb-4 select-none relative z-10">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-full bg-[#1DB954] flex items-center justify-center text-black">
-            <Radio size={11} strokeWidth={3} />
-          </div>
-          <span className="text-[11px] font-black tracking-widest text-white/80 uppercase">
-            {lang === 'ar' ? 'مشغل الموسيقى' : 'NOW PLAYING'}
-          </span>
+      {/* Left: Album Thumbnail + Title + Artist */}
+      <div className="flex items-center gap-3 min-w-0 flex-1 relative z-10 pr-2">
+        <div className="relative shrink-0">
+          {data.albumArt ? (
+            <img 
+              src={data.albumArt} 
+              alt={data.title || 'Album Art'} 
+              className="w-10 h-10 rounded-xl object-cover shadow-md border border-white/10"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-[#1DB954]">
+              <Radio size={16} />
+            </div>
+          )}
           {data.isPlaying && (
-            <div className="flex items-center gap-0.5 ml-1">
-              <span className="w-0.5 h-2 bg-[#1DB954] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="w-0.5 h-3 bg-[#1DB954] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="w-0.5 h-2 bg-[#1DB954] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[#1DB954] rounded-full border border-black flex items-center justify-center">
+              <span className="w-1 h-1 bg-black rounded-full" />
             </div>
           )}
         </div>
 
-        {data.songUrl && (
-          <a 
-            href={data.songUrl} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="p-1.5 rounded-full bg-white/5 hover:bg-white/15 text-white/50 hover:text-white transition-all"
-            title="Open in Spotify"
-          >
-            <ExternalLink size={12} />
-          </a>
-        )}
+        <div className="flex flex-col min-w-0 flex-1 justify-center">
+          {data.title ? (
+            <>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[13px] font-bold text-white truncate tracking-tight">
+                  {data.title}
+                </span>
+                {data.isPlaying && (
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <span className="w-0.5 h-2 bg-[#1DB954] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-0.5 h-3 bg-[#1DB954] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-0.5 h-2 bg-[#1DB954] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-[10px] text-white/50 font-medium truncate">
+                <span className="truncate">{data.artist}</span>
+                {data.deviceName && (
+                  <span className="text-white/30 shrink-0 font-mono hidden sm:inline">
+                    • {data.deviceName}
+                  </span>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 text-xs font-bold text-white/50">
+              <Radio size={13} className="text-[#1DB954]" />
+              <span>{lang === 'ar' ? 'مفيش حاجة شغالة حالياً' : 'No track active'}</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Track Info & Artwork */}
-      {data.title ? (
-        <div className="flex items-center gap-4 mb-4 relative z-10">
-          {/* Album Cover / Spinning Vinyl on hover or play */}
-          <div className="relative group shrink-0">
-            {data.albumArt ? (
-              <img 
-                src={data.albumArt} 
-                alt={data.album || data.title} 
-                className={`w-14 h-14 rounded-2xl object-cover shadow-lg border border-white/10 transition-transform duration-500 ${
-                  data.isPlaying ? 'shadow-[#1DB954]/20' : ''
-                }`}
-              />
-            ) : (
-              <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40">
-                <Music size={22} />
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-col min-w-0 flex-1">
-            <h4 className="text-sm font-black text-white truncate tracking-tight">
-              {data.title}
-            </h4>
-            <p className="text-xs font-bold text-white/60 truncate mt-0.5">
-              {data.artist}
-            </p>
-            {data.deviceName && (
-              <span className="text-[9px] font-mono font-bold text-white/40 truncate mt-1">
-                🎧 {data.deviceName}
-              </span>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="py-6 text-center text-xs font-bold text-white/40 relative z-10 flex flex-col items-center gap-2">
-          <Disc size={28} className="opacity-40 animate-pulse" />
-          <span>{lang === 'ar' ? 'مفيش حاجة شغالة حالياً على Spotify' : 'No track currently active'}</span>
-        </div>
-      )}
-
-      {/* Progress Bar & Time */}
-      {data.title && (
-        <div className="w-full flex flex-col gap-1.5 mb-3 relative z-10">
-          <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-[#1DB954] to-[#1ed760] rounded-full transition-all duration-300 ease-linear"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-          <div className="flex justify-between items-center text-[10px] font-mono font-bold text-white/40">
-            <span>{formatTime(localProgress)}</span>
-            <span>{formatTime(data.durationMs)}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Controls Bar */}
-      <div className="flex items-center justify-center gap-4 pt-1 relative z-10">
+      {/* Right: Previous, Play/Pause, Next Controls */}
+      <div className="flex items-center gap-1 shrink-0 relative z-10">
         <button 
           type="button"
           onClick={(e) => handleControl(e, 'previous')}
           disabled={!data.title}
-          className="p-2.5 rounded-full bg-white/5 hover:bg-white/15 text-white/70 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-90"
+          className="p-1.5 rounded-full text-white/60 hover:text-white disabled:opacity-20 disabled:pointer-events-none transition-all active:scale-90"
           title="Previous"
         >
           <SkipBack size={15} />
@@ -315,26 +262,48 @@ export default function SpotifyWidget({
           type="button"
           onClick={(e) => handleControl(e, data.isPlaying ? 'pause' : 'play')}
           disabled={!data.title}
-          className={`p-3.5 rounded-full font-black flex items-center justify-center transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:pointer-events-none ${
+          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 disabled:opacity-30 disabled:pointer-events-none ${
             data.isPlaying 
-              ? 'bg-[#1DB954] text-black shadow-lg shadow-[#1DB954]/30' 
-              : 'bg-white text-black hover:bg-white/90 shadow-md'
+              ? 'bg-[#1DB954] text-black shadow-md shadow-[#1DB954]/30' 
+              : 'bg-white text-black hover:bg-white/90'
           }`}
           title={data.isPlaying ? 'Pause' : 'Play'}
         >
-          {data.isPlaying ? <Pause size={17} strokeWidth={2.8} /> : <Play size={17} strokeWidth={2.8} className="translate-x-0.5" />}
+          {data.isPlaying ? <Pause size={13} strokeWidth={3} /> : <Play size={13} strokeWidth={3} className="translate-x-0.5" />}
         </button>
 
         <button 
           type="button"
           onClick={(e) => handleControl(e, 'next')}
           disabled={!data.title}
-          className="p-2.5 rounded-full bg-white/5 hover:bg-white/15 text-white/70 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-90"
+          className="p-1.5 rounded-full text-white/60 hover:text-white disabled:opacity-20 disabled:pointer-events-none transition-all active:scale-90"
           title="Next"
         >
           <SkipForward size={15} />
         </button>
+
+        {data.songUrl && (
+          <a 
+            href={data.songUrl} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="p-1.5 rounded-full text-white/30 hover:text-white transition-all ml-0.5"
+            title="Open in Spotify"
+          >
+            <ExternalLink size={12} />
+          </a>
+        )}
       </div>
+
+      {/* Bottom Ultra-Thin Edge Progress Bar */}
+      {data.title && (
+        <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-white/10 overflow-hidden">
+          <div 
+            className="h-full bg-[#1DB954] transition-all duration-300 ease-linear"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 }

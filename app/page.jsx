@@ -3878,6 +3878,9 @@ export default function App() {
               </div>
             </div>
 
+            {/* Mobile Spotify Slim Bar (Directly below Mission Card) */}
+            <SpotifyWidget lang={lang} theme={theme} themeColor={themeColor} variant="card" className="mt-0.5 mb-1" />
+
             {/* Mobile Habits Cards Grid */}
             <div className="grid grid-cols-2 gap-3 items-start w-full">
               {activeScheduledHabits.map((habit) => renderHabitCard(habit))}
@@ -3933,9 +3936,6 @@ export default function App() {
                 {t('save')}
               </button>
             </div>
-
-            {/* Mobile Spotify Now Playing Card */}
-            <SpotifyWidget lang={lang} theme={theme} themeColor={themeColor} variant="card" className="mb-6" />
 
           </div>
 
@@ -4000,6 +4000,9 @@ export default function App() {
                   </div>
                 </div>
               </div>
+
+              {/* Desktop Spotify Slim Bar (Directly below Mission Card) */}
+              <SpotifyWidget lang={lang} theme={theme} themeColor={themeColor} variant="card" className="mt-0.5" />
 
               {/* Habits Cards Grid */}
               <div className="grid grid-cols-2 gap-3 mt-1 items-start w-full">
@@ -4656,9 +4659,6 @@ export default function App() {
                   </div>
                 )}
               </div>
-
-              {/* Desktop Spotify Now Playing Card */}
-              <SpotifyWidget lang={lang} theme={theme} themeColor={themeColor} variant="card" className="mt-6" />
             </div>
 
           </div>
