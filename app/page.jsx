@@ -1285,6 +1285,8 @@ export default function App() {
     setIsPomodoroOpen(false);
     setIsFlightFocusOpen(false);
     setIsHowToUseOpen(false);
+    setIsCardsModalOpen(false);
+    setIsAvatarModalOpen(false);
     setIsSettingsMenuOpen(false);
     setIsFocusMenuOpen(false);
     if (!skipManage) {
@@ -1962,289 +1964,355 @@ export default function App() {
         `}
       </style>
       
-        {/* ---------------- ADD HABIT MODAL ---------------- */}
+        {/* ---------------- ADD HABIT PAGE (FULL SCREEN) ---------------- */}
         {isAddMounted && (
-          <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-xl transition-opacity duration-300 ease-out ${isAddVisible ? 'opacity-100' : 'opacity-0'}`}>
-            <div className={`relative w-full max-w-sm p-6 liquid-panel rounded-[2.5rem] max-h-[90vh] overflow-y-auto transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isAddVisible ? 'translate-y-0 scale-100' : '-translate-y-4 scale-95 opacity-0'}`}>
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold tracking-tight">{t('newHabit')}</h2>
-                <button onClick={handleCloseAdd} className="p-2 bg-black/5 dark:bg-white/5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-gray-500 dark:text-white/50 hover:text-black dark:hover:text-white transition-all duration-200"><X size={18} /></button>
-              </div>
-              
-              <input type="text" placeholder={t('habitNamePlaceholder')} value={newHabitName} onChange={(e) => setNewHabitName(e.target.value)} className="w-full bg-white/50 dark:bg-black/50 text-black dark:text-white px-4 py-4 rounded-2xl outline-none border border-black/5 dark:border-white/5 focus:border-black/20 dark:focus:border-white/20 mb-4 font-medium placeholder:text-gray-500 dark:placeholder:text-white/20 transition-all duration-200" />
-              
-              <div className="flex bg-white/30 dark:bg-black rounded-2xl p-1 mb-5 border border-black/5 dark:border-white/5">
-                <button onClick={() => setNewHabitType('single')} className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${newHabitType === 'single' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-md' : 'text-gray-600 dark:text-white/40 hover:text-black dark:hover:text-white/60'}`}>{t('single')}</button>
-                <button onClick={() => setNewHabitType('multi')} className={`flex-1 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 ${newHabitType === 'multi' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-md' : 'text-gray-600 dark:text-white/40 hover:text-black dark:hover:text-white/60'}`}><ListChecks size={16}/> {t('checklist')}</button>
-              </div>
-
-              {newHabitType === 'multi' && (
-                <div className="space-y-2.5 mb-5 bg-white/20 dark:bg-black/30 p-4 rounded-2xl border border-black/5 dark:border-white/5 transition-all duration-300">
-                  <p className="text-xs font-bold tracking-widest text-gray-500 dark:text-white/30 uppercase mb-1">{t('checklistItems')}</p>
-                  {newHabitSubItems.map((sub, idx) => (
-                    <div key={idx} className="flex gap-2 transition-all duration-200">
-                      <input type="text" placeholder={`${t('task')} ${idx + 1}...`} value={sub} onChange={(e) => updateSubItem(idx, e.target.value)} className="flex-1 bg-white/50 dark:bg-black text-black dark:text-white px-4 py-3 rounded-xl outline-none border border-black/5 dark:border-white/5 focus:border-black/20 dark:focus:border-white/20 text-sm placeholder:text-gray-400 dark:placeholder:text-white/20" />
-                      <button onClick={() => removeSubItem(idx)} className="p-3 bg-red-500/10 text-red-500 dark:text-red-400 rounded-xl hover:bg-red-500/20 transition-colors duration-200"><X size={16} /></button>
-                    </div>
-                  ))}
-                  <button onClick={handleAddSubItem} className="w-full py-3 border border-dashed border-black/20 dark:border-white/10 rounded-xl text-gray-500 dark:text-white/40 hover:text-black dark:hover:text-white hover:border-black/40 dark:hover:border-white/20 text-xs font-semibold transition-colors duration-200">{t('addItem')}</button>
-                </div>
-              )}
-
-              {/* ---------------- FREQUENCY & SCHEDULING ---------------- */}
-              <div className="mb-5 bg-white/20 dark:bg-black/40 p-4 rounded-2xl border border-black/5 dark:border-white/5">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold tracking-wider text-gray-500 dark:text-white/40 uppercase">{t('frequency')}</span>
-                  <div className="flex bg-black/5 dark:bg-white/5 rounded-xl p-0.5">
+          <div className={`fixed inset-0 z-[10000] bg-black/95 backdrop-blur-3xl overflow-y-auto transition-opacity duration-300 ease-out ${isAddVisible ? 'opacity-100' : 'opacity-0'}`}>
+            <div className={`min-h-screen w-full max-w-lg mx-auto px-5 py-8 flex flex-col justify-between transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isAddVisible ? 'translate-y-0 scale-100' : 'translate-y-4 scale-95 opacity-0'}`}>
+              <div>
+                {/* Header */}
+                <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3">
                     <button 
-                      type="button"
-                      onClick={() => setHabitFrequency('daily')} 
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${habitFrequency === 'daily' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-sm' : 'text-gray-500 dark:text-white/40'}`}
+                      onClick={handleCloseAdd} 
+                      className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
+                      aria-label="Back"
                     >
-                      {t('daily')}
+                      <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
                     </button>
-                    <button 
-                      type="button"
-                      onClick={() => setHabitFrequency('weekly')} 
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${habitFrequency !== 'daily' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-sm' : 'text-gray-500 dark:text-white/40'}`}
-                    >
-                      {t('scheduled')}
-                    </button>
+                    <h2 className="text-2xl font-black tracking-tight text-white">{t('newHabit')}</h2>
                   </div>
+                  <button onClick={handleCloseAdd} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                    <X size={18} />
+                  </button>
+                </div>
+                
+                {/* Habit Name */}
+                <div className="mb-5">
+                  <label className="block text-xs font-bold tracking-wider text-white/50 uppercase mb-2">
+                    {lang === 'ar' ? 'اسم العادة أو الحدث' : 'Habit or Event Name'}
+                  </label>
+                  <input 
+                    type="text" 
+                    placeholder={t('habitNamePlaceholder')} 
+                    value={newHabitName} 
+                    onChange={(e) => setNewHabitName(e.target.value)} 
+                    className="w-full bg-white/10 text-white text-base px-4 py-4 rounded-2xl outline-none border border-white/10 focus:border-white/30 font-medium placeholder:text-white/30 transition-all duration-200" 
+                  />
+                </div>
+                
+                {/* Single vs Checklist */}
+                <div className="flex bg-white/5 rounded-2xl p-1.5 mb-6 border border-white/10">
+                  <button onClick={() => setNewHabitType('single')} className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all duration-200 ${newHabitType === 'single' ? 'bg-white text-black shadow-md' : 'text-white/50 hover:text-white'}`}>{t('single')}</button>
+                  <button onClick={() => setNewHabitType('multi')} className={`flex-1 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all duration-200 ${newHabitType === 'multi' ? 'bg-white text-black shadow-md' : 'text-white/50 hover:text-white'}`}><ListChecks size={16}/> {t('checklist')}</button>
                 </div>
 
-                {habitFrequency !== 'daily' && (
-                  <div className="pt-2 border-t border-black/5 dark:border-white/5 space-y-3">
-                    {/* Frequency Sub-tabs */}
-                    <div className="flex bg-black/5 dark:bg-white/5 rounded-xl p-1 gap-0.5">
-                      <button 
-                        type="button"
-                        onClick={() => setHabitFrequency('once')}
-                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${habitFrequency === 'once' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-sm' : 'text-gray-500 dark:text-white/40'}`}
-                      >
-                        {t('once')}
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => setHabitFrequency('weekly')}
-                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${habitFrequency === 'weekly' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-sm' : 'text-gray-500 dark:text-white/40'}`}
-                      >
-                        {t('weekly')}
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => setHabitFrequency('monthly')}
-                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${habitFrequency === 'monthly' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-sm' : 'text-gray-500 dark:text-white/40'}`}
-                      >
-                        {t('monthly')}
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => setHabitFrequency('yearly')}
-                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${habitFrequency === 'yearly' ? 'bg-white dark:bg-[#1C1C1E] text-black dark:text-white shadow-sm' : 'text-gray-500 dark:text-white/40'}`}
-                      >
-                        {t('yearly')}
-                      </button>
-                    </div>
-
-                    {/* One-time Event Date Picker */}
-                    {habitFrequency === 'once' && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-gray-600 dark:text-white/60">{t('eventDate')}</span>
-                        <input
-                          type="date"
-                          value={habitScheduleOnceDate}
-                          onChange={(e) => setHabitScheduleOnceDate(e.target.value)}
-                          className="bg-white/80 dark:bg-black text-black dark:text-white px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 font-bold text-xs outline-none"
-                        />
+                {newHabitType === 'multi' && (
+                  <div className="space-y-3 mb-6 bg-white/5 p-4 rounded-2xl border border-white/10 transition-all duration-300">
+                    <p className="text-xs font-bold tracking-widest text-white/40 uppercase mb-2">{t('checklistItems')}</p>
+                    {newHabitSubItems.map((sub, idx) => (
+                      <div key={idx} className="flex gap-2 transition-all duration-200">
+                        <input type="text" placeholder={`${t('task')} ${idx + 1}...`} value={sub} onChange={(e) => updateSubItem(idx, e.target.value)} className="flex-1 bg-white/10 text-white px-4 py-3 rounded-xl outline-none border border-white/10 focus:border-white/30 text-sm placeholder:text-white/30" />
+                        <button onClick={() => removeSubItem(idx)} className="p-3 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500/20 transition-colors duration-200"><X size={16} /></button>
                       </div>
-                    )}
-
-                    {/* Weekly Days Selector */}
-                    {habitFrequency === 'weekly' && (
-                      <div className="space-y-1.5">
-                        <span className="text-[10px] font-bold tracking-wider text-gray-500 dark:text-white/40 uppercase">{t('selectDays')}</span>
-                        <div className="grid grid-cols-7 gap-1">
-                          {[
-                            { day: 0, labelEn: 'Su', labelAr: 'أحد' },
-                            { day: 1, labelEn: 'Mo', labelAr: 'إثن' },
-                            { day: 2, labelEn: 'Tu', labelAr: 'ثلا' },
-                            { day: 3, labelEn: 'We', labelAr: 'أرب' },
-                            { day: 4, labelEn: 'Th', labelAr: 'خمي' },
-                            { day: 5, labelEn: 'Fr', labelAr: 'جمع' },
-                            { day: 6, labelEn: 'Sa', labelAr: 'سبت' },
-                          ].map(d => {
-                            const isSelected = habitScheduleDays.includes(d.day);
-                            return (
-                              <button
-                                key={d.day}
-                                type="button"
-                                onClick={() => {
-                                  if (isSelected) {
-                                    if (habitScheduleDays.length > 1) {
-                                      setHabitScheduleDays(habitScheduleDays.filter(x => x !== d.day));
-                                    }
-                                  } else {
-                                    setHabitScheduleDays([...habitScheduleDays, d.day]);
-                                  }
-                                }}
-                                className={`py-2 rounded-xl text-xs font-bold transition-all ${
-                                  isSelected 
-                                    ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm' 
-                                    : 'bg-black/5 dark:bg-white/5 text-gray-500 dark:text-white/40 hover:bg-black/10 dark:hover:bg-white/10'
-                                }`}
-                              >
-                                {lang === 'ar' ? d.labelAr : d.labelEn}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Monthly Day Selector */}
-                    {habitFrequency === 'monthly' && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-gray-600 dark:text-white/60">{t('dayOfMonth')}</span>
-                        <select
-                          value={habitScheduleDayOfMonth}
-                          onChange={(e) => setHabitScheduleDayOfMonth(parseInt(e.target.value, 10))}
-                          className="bg-white/80 dark:bg-black text-black dark:text-white px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 font-bold text-xs outline-none"
-                        >
-                          {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                            <option key={day} value={day}>{day}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    {/* Yearly Date Selector */}
-                    {habitFrequency === 'yearly' && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-gray-600 dark:text-white/60">{t('dateOfYear')}</span>
-                        <div className="flex gap-2">
-                          <select
-                            value={parseInt(habitScheduleMonthDay.split('-')[0], 10)}
-                            onChange={(e) => {
-                              const m = String(e.target.value).padStart(2, '0');
-                              const d = habitScheduleMonthDay.split('-')[1] || '01';
-                              setHabitScheduleMonthDay(`${m}-${d}`);
-                            }}
-                            className="bg-white/80 dark:bg-black text-black dark:text-white px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 font-bold text-xs outline-none"
-                          >
-                            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                              <option key={m} value={m}>{lang === 'ar' ? `شهر ${m}` : `Month ${m}`}</option>
-                            ))}
-                          </select>
-                          <select
-                            value={parseInt(habitScheduleMonthDay.split('-')[1], 10)}
-                            onChange={(e) => {
-                              const m = habitScheduleMonthDay.split('-')[0] || '01';
-                              const d = String(e.target.value).padStart(2, '0');
-                              setHabitScheduleMonthDay(`${m}-${d}`);
-                            }}
-                            className="bg-white/80 dark:bg-black text-black dark:text-white px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 font-bold text-xs outline-none"
-                          >
-                            {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                              <option key={d} value={d}>{lang === 'ar' ? `يوم ${d}` : `Day ${d}`}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    )}
+                    ))}
+                    <button onClick={handleAddSubItem} className="w-full py-3 border border-dashed border-white/20 rounded-xl text-white/50 hover:text-white hover:border-white/40 text-xs font-semibold transition-colors duration-200">{t('addItem')}</button>
                   </div>
                 )}
-              </div>
 
-              {/* ---------------- TIME & LOCATION (OPTIONAL) ---------------- */}
-              <div className="mb-5 bg-white/20 dark:bg-black/40 p-4 rounded-2xl border border-black/5 dark:border-white/5 space-y-3">
-                <span className="text-xs font-bold tracking-wider text-gray-500 dark:text-white/40 uppercase">
-                  {lang === 'ar' ? 'تفاصيل إضافية (اختياري)' : 'Additional Details (Optional)'}
-                </span>
-
-                <div className="space-y-2">
-                  {/* Habit Time Input */}
-                  <div className="flex items-center gap-2 bg-white/60 dark:bg-black px-3 py-2.5 rounded-xl border border-black/10 dark:border-white/10">
-                    <Clock size={16} className="text-gray-400 dark:text-white/40 shrink-0" />
-                    <input
-                      type="text"
-                      placeholder={t('habitTimePlaceholder')}
-                      value={habitTime}
-                      onChange={(e) => setHabitTime(e.target.value)}
-                      className="w-full bg-transparent text-black dark:text-white text-xs outline-none font-medium placeholder:text-gray-400 dark:placeholder:text-white/25"
-                    />
+                {/* ---------------- FREQUENCY & SCHEDULING ---------------- */}
+                <div className="mb-6 bg-white/5 p-4 sm:p-5 rounded-2xl border border-white/10">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-bold tracking-wider text-white/50 uppercase">{t('frequency')}</span>
+                    <div className="flex bg-black/40 rounded-xl p-1 border border-white/10">
+                      <button 
+                        type="button"
+                        onClick={() => setHabitFrequency('daily')} 
+                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${habitFrequency === 'daily' ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'}`}
+                      >
+                        {t('daily')}
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setHabitFrequency('weekly')} 
+                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${habitFrequency !== 'daily' ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'}`}
+                      >
+                        {t('scheduled')}
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Habit Location Input */}
-                  <div className="flex items-center gap-2 bg-white/60 dark:bg-black px-3 py-2.5 rounded-xl border border-black/10 dark:border-white/10">
-                    <MapPin size={16} className="text-gray-400 dark:text-white/40 shrink-0" />
-                    <input
-                      type="text"
-                      placeholder={t('habitLocationPlaceholder')}
-                      value={habitLocation}
-                      onChange={(e) => setHabitLocation(e.target.value)}
-                      className="w-full bg-transparent text-black dark:text-white text-xs outline-none font-medium placeholder:text-gray-400 dark:placeholder:text-white/25"
-                    />
+                  {habitFrequency !== 'daily' && (
+                    <div className="pt-3 border-t border-white/10 space-y-4">
+                      {/* Frequency Sub-tabs */}
+                      <div className="flex bg-black/40 rounded-xl p-1 gap-1 border border-white/10">
+                        <button 
+                          type="button"
+                          onClick={() => setHabitFrequency('once')}
+                          className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${habitFrequency === 'once' ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'}`}
+                        >
+                          {t('once')}
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => setHabitFrequency('weekly')}
+                          className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${habitFrequency === 'weekly' ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'}`}
+                        >
+                          {t('weekly')}
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => setHabitFrequency('monthly')}
+                          className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${habitFrequency === 'monthly' ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'}`}
+                        >
+                          {t('monthly')}
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => setHabitFrequency('yearly')}
+                          className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${habitFrequency === 'yearly' ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'}`}
+                        >
+                          {t('yearly')}
+                        </button>
+                      </div>
+
+                      {/* One-time Event Date Picker */}
+                      {habitFrequency === 'once' && (
+                        <div className="flex items-center justify-between bg-black/30 p-3 rounded-xl border border-white/10">
+                          <span className="text-xs font-bold text-white/70">{t('eventDate')}</span>
+                          <input
+                            type="date"
+                            value={habitScheduleOnceDate}
+                            onChange={(e) => setHabitScheduleOnceDate(e.target.value)}
+                            className="bg-white/10 text-white px-3 py-1.5 rounded-xl border border-white/20 font-bold text-xs outline-none"
+                          />
+                        </div>
+                      )}
+
+                      {/* Weekly Days Selector */}
+                      {habitFrequency === 'weekly' && (
+                        <div className="space-y-2">
+                          <span className="text-[10px] font-bold tracking-wider text-white/50 uppercase">{t('selectDays')}</span>
+                          <div className="grid grid-cols-7 gap-1.5">
+                            {[
+                              { day: 0, labelEn: 'Su', labelAr: 'أحد' },
+                              { day: 1, labelEn: 'Mo', labelAr: 'إثن' },
+                              { day: 2, labelEn: 'Tu', labelAr: 'ثلا' },
+                              { day: 3, labelEn: 'We', labelAr: 'أرب' },
+                              { day: 4, labelEn: 'Th', labelAr: 'خمي' },
+                              { day: 5, labelEn: 'Fr', labelAr: 'جمع' },
+                              { day: 6, labelEn: 'Sa', labelAr: 'سبت' },
+                            ].map(d => {
+                              const isSelected = habitScheduleDays.includes(d.day);
+                              return (
+                                <button
+                                  key={d.day}
+                                  type="button"
+                                  onClick={() => {
+                                    if (isSelected) {
+                                      if (habitScheduleDays.length > 1) {
+                                        setHabitScheduleDays(habitScheduleDays.filter(x => x !== d.day));
+                                      }
+                                    } else {
+                                      setHabitScheduleDays([...habitScheduleDays, d.day]);
+                                    }
+                                  }}
+                                  className={`py-2.5 rounded-xl text-xs font-bold transition-all ${
+                                    isSelected 
+                                      ? 'bg-white text-black shadow-sm' 
+                                      : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'
+                                  }`}
+                                >
+                                  {lang === 'ar' ? d.labelAr : d.labelEn}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Monthly Day Selector */}
+                      {habitFrequency === 'monthly' && (
+                        <div className="flex items-center justify-between bg-black/30 p-3 rounded-xl border border-white/10">
+                          <span className="text-xs font-bold text-white/70">{t('dayOfMonth')}</span>
+                          <select
+                            value={habitScheduleDayOfMonth}
+                            onChange={(e) => setHabitScheduleDayOfMonth(parseInt(e.target.value, 10))}
+                            className="bg-white/10 text-white px-3 py-1.5 rounded-xl border border-white/20 font-bold text-xs outline-none"
+                          >
+                            {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                              <option key={day} value={day} className="bg-[#1C1C1E] text-white">{day}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Yearly Date Selector */}
+                      {habitFrequency === 'yearly' && (
+                        <div className="flex items-center justify-between bg-black/30 p-3 rounded-xl border border-white/10">
+                          <span className="text-xs font-bold text-white/70">{t('dateOfYear')}</span>
+                          <div className="flex gap-2">
+                            <select
+                              value={parseInt(habitScheduleMonthDay.split('-')[0], 10)}
+                              onChange={(e) => {
+                                const m = String(e.target.value).padStart(2, '0');
+                                const d = habitScheduleMonthDay.split('-')[1] || '01';
+                                setHabitScheduleMonthDay(`${m}-${d}`);
+                              }}
+                              className="bg-white/10 text-white px-3 py-1.5 rounded-xl border border-white/20 font-bold text-xs outline-none"
+                            >
+                              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                                <option key={m} value={m} className="bg-[#1C1C1E] text-white">{lang === 'ar' ? `شهر ${m}` : `Month ${m}`}</option>
+                              ))}
+                            </select>
+                            <select
+                              value={parseInt(habitScheduleMonthDay.split('-')[1], 10)}
+                              onChange={(e) => {
+                                const m = habitScheduleMonthDay.split('-')[0] || '01';
+                                const d = String(e.target.value).padStart(2, '0');
+                                setHabitScheduleMonthDay(`${m}-${d}`);
+                              }}
+                              className="bg-white/10 text-white px-3 py-1.5 rounded-xl border border-white/20 font-bold text-xs outline-none"
+                            >
+                              {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                <option key={d} value={d} className="bg-[#1C1C1E] text-white">{lang === 'ar' ? `يوم ${d}` : `Day ${d}`}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* ---------------- TIME & LOCATION (OPTIONAL) ---------------- */}
+                <div className="mb-8 bg-white/5 p-4 sm:p-5 rounded-2xl border border-white/10 space-y-3">
+                  <span className="text-xs font-bold tracking-wider text-white/50 uppercase">
+                    {lang === 'ar' ? 'تفاصيل إضافية (اختياري)' : 'Additional Details (Optional)'}
+                  </span>
+
+                  <div className="space-y-3">
+                    {/* Habit Time Input */}
+                    <div className="flex items-center gap-2.5 bg-black/40 px-3.5 py-3 rounded-xl border border-white/10">
+                      <Clock size={16} className="text-white/40 shrink-0" />
+                      <input
+                        type="text"
+                        placeholder={t('habitTimePlaceholder')}
+                        value={habitTime}
+                        onChange={(e) => setHabitTime(e.target.value)}
+                        className="w-full bg-transparent text-white text-xs sm:text-sm outline-none font-medium placeholder:text-white/30"
+                      />
+                    </div>
+
+                    {/* Habit Location Input */}
+                    <div className="flex items-center gap-2.5 bg-black/40 px-3.5 py-3 rounded-xl border border-white/10">
+                      <MapPin size={16} className="text-white/40 shrink-0" />
+                      <input
+                        type="text"
+                        placeholder={t('habitLocationPlaceholder')}
+                        value={habitLocation}
+                        onChange={(e) => setHabitLocation(e.target.value)}
+                        className="w-full bg-transparent text-white text-xs sm:text-sm outline-none font-medium placeholder:text-white/30"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <button onClick={confirmAddHabit} className="w-full py-4 rounded-2xl font-bold text-md tracking-wide transition-all duration-200 active:scale-[0.97] shadow-lg shadow-black/20 dark:shadow-black/40" style={{backgroundColor: themeColor, color: '#000'}}>{t('createHabit')}</button>
+              {/* Bottom Submit Action Button */}
+              <div className="pt-4 pb-6">
+                <button 
+                  onClick={confirmAddHabit} 
+                  className="w-full py-4 rounded-2xl font-black text-base tracking-wide transition-all duration-200 active:scale-[0.98] shadow-2xl" 
+                  style={{ backgroundColor: themeColor, color: '#000000' }}
+                >
+                  {t('createHabit')}
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* ---------------- MANAGE HABITS MODAL ---------------- */}
+        {/* ---------------- MANAGE HABITS PAGE (FULL SCREEN) ---------------- */}
         {isManageMounted && (
-          <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-xl transition-opacity duration-300 ease-out ${isManageVisible ? 'opacity-100' : 'opacity-0'}`}>
-            <div className={`relative w-full max-w-sm p-6 liquid-panel rounded-[2rem] transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isManageVisible ? 'translate-y-0 scale-100' : '-translate-y-4 scale-95 opacity-0'}`}>
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold tracking-tight">{t('settings')}</h2>
-                <button onClick={handleCloseManage} className="p-2 bg-black/5 dark:bg-white/5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-gray-500 dark:text-white/50 hover:text-black dark:hover:text-white transition-all duration-200"><X size={18} /></button>
-              </div>
-              
-              <div className="flex gap-2 mb-4">
-                <button onClick={toggleLang} className="flex-1 py-3 rounded-2xl font-bold text-sm flex justify-center items-center gap-2 border border-black/10 dark:border-white/5 bg-white/20 dark:bg-white/5 hover:bg-white/40 dark:hover:bg-white/10 transition-all duration-200 active:scale-[0.98]">
-                  {lang === 'en' ? 'عربي' : 'English'}
-                </button>
-                <button onClick={toggleTheme} className="flex-1 py-3 rounded-2xl font-bold text-sm flex justify-center items-center gap-2 border border-black/10 dark:border-white/5 bg-white/20 dark:bg-white/5 hover:bg-white/40 dark:hover:bg-white/10 transition-all duration-200 active:scale-[0.98]">
-                  {theme === 'dark' ? <Sun size={16}/> : <Moon size={16}/>} 
-                  {theme === 'dark' ? t('lightMode') : t('darkMode')}
-                </button>
-              </div>
-              
-              <button onClick={() => {handleCloseManage(); handleOpenAdd();}} className="w-full py-4 mb-6 rounded-2xl font-bold flex justify-center items-center gap-2 border border-black/10 dark:border-white/5 bg-white/20 dark:bg-white/5 hover:bg-white/40 dark:hover:bg-white/10 transition-all duration-200 active:scale-[0.98]">
-                <Plus size={18}/> {t('addNewHabit')}
-              </button>
-
-              <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
-                {habits.map(h => (
-                  <div key={h.id} className="flex items-center gap-2 transition-all duration-200">
-                    <div className="flex-1 bg-white/30 dark:bg-black px-4 py-3 rounded-2xl truncate flex items-center justify-between border border-black/5 dark:border-white/5 shadow-sm">
-                      <div className="flex flex-col truncate pr-2">
-                        <span className="text-sm font-medium text-black dark:text-white truncate">{h.name}</span>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <span className="text-[10px] text-gray-500 dark:text-white/40 font-mono font-bold uppercase tracking-wider">
-                            {h.frequency === 'once' ? `${t('once')} (${h.scheduleDate || ''})` : h.frequency === 'weekly' ? t('weekly') : h.frequency === 'monthly' ? t('monthly') : h.frequency === 'yearly' ? t('yearly') : t('daily')}
-                          </span>
-                          {(h.time || h.notifyTime) && (
-                            <span className="text-[10px] text-gray-400 dark:text-white/30 flex items-center gap-1 font-mono">
-                              <Clock size={10} /> {h.time || h.notifyTime}
-                            </span>
-                          )}
-                          {h.location && (
-                            <span className="text-[10px] text-gray-400 dark:text-white/30 flex items-center gap-1">
-                              <MapPin size={10} /> {h.location}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      {h.type === 'multi' && <span className="text-[10px] bg-black/10 dark:bg-white/10 px-2 py-1 rounded-xl text-gray-700 dark:text-white/60 font-semibold shrink-0">{h.subItems.length} {t('items')}</span>}
-                    </div>
-                    <button onClick={() => deleteHabit(h.id)} className="p-3 bg-red-500/10 text-red-500 dark:text-red-400 rounded-2xl hover:bg-red-500/20 transition-colors duration-200"><Trash2 size={16} /></button>
+          <div className={`fixed inset-0 z-[10000] bg-black/95 backdrop-blur-3xl overflow-y-auto transition-opacity duration-300 ease-out ${isManageVisible ? 'opacity-100' : 'opacity-0'}`}>
+            <div className={`min-h-screen w-full max-w-lg mx-auto px-5 py-8 flex flex-col justify-between transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isManageVisible ? 'translate-y-0 scale-100' : 'translate-y-4 scale-95 opacity-0'}`}>
+              <div>
+                {/* Header */}
+                <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={handleCloseManage} 
+                      className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
+                      aria-label="Back"
+                    >
+                      <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                    </button>
+                    <h2 className="text-2xl font-black tracking-tight text-white">{t('settings')}</h2>
                   </div>
-                ))}
-                {habits.length === 0 && <p className="text-center text-gray-500 dark:text-white/30 py-6 text-sm">{t('noHabitsYet')}</p>}
+                  <button onClick={handleCloseManage} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                    <X size={18} />
+                  </button>
+                </div>
+                
+                {/* Language & Theme Controls */}
+                <div className="flex gap-2.5 mb-6">
+                  <button onClick={toggleLang} className="flex-1 py-3.5 rounded-2xl font-bold text-sm flex justify-center items-center gap-2 border border-white/10 bg-white/5 hover:bg-white/10 text-white transition-all duration-200 active:scale-[0.98]">
+                    <Globe size={16} /> {lang === 'en' ? 'عربي' : 'English'}
+                  </button>
+                  <button onClick={toggleTheme} className="flex-1 py-3.5 rounded-2xl font-bold text-sm flex justify-center items-center gap-2 border border-white/10 bg-white/5 hover:bg-white/10 text-white transition-all duration-200 active:scale-[0.98]">
+                    {theme === 'dark' ? <Sun size={16}/> : <Moon size={16}/>} 
+                    {theme === 'dark' ? t('lightMode') : t('darkMode')}
+                  </button>
+                </div>
+                
+                {/* Add New Habit Button inside Manage */}
+                <button onClick={() => {handleCloseManage(); handleOpenAdd();}} className="w-full py-4 mb-6 rounded-2xl font-black text-sm flex justify-center items-center gap-2 border border-white/15 bg-white text-black hover:bg-white/90 transition-all duration-200 active:scale-[0.98] shadow-lg">
+                  <Plus size={18} strokeWidth={3}/> {t('addNewHabit')}
+                </button>
+
+                {/* List of Habits with Full Scroll */}
+                <div className="space-y-3 pb-8">
+                  <span className="block text-xs font-bold tracking-wider text-white/40 uppercase mb-3">
+                    {lang === 'ar' ? 'العادات المسجلة' : 'Registered Habits'} ({habits.length})
+                  </span>
+                  {habits.map(h => (
+                    <div key={h.id} className="flex items-center gap-2 transition-all duration-200">
+                      <div className="flex-1 bg-white/5 hover:bg-white/10 px-4 py-3.5 rounded-2xl truncate flex items-center justify-between border border-white/10 shadow-sm">
+                        <div className="flex flex-col truncate pr-2">
+                          <span className="text-sm font-bold text-white truncate">{h.name}</span>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <span className="text-[10px] text-white/50 font-mono font-bold uppercase tracking-wider bg-white/5 px-1.5 py-0.5 rounded">
+                              {h.frequency === 'once' ? `${t('once')} (${h.scheduleDate || ''})` : h.frequency === 'weekly' ? t('weekly') : h.frequency === 'monthly' ? t('monthly') : h.frequency === 'yearly' ? t('yearly') : t('daily')}
+                            </span>
+                            {(h.time || h.notifyTime) && (
+                              <span className="text-[10px] text-white/40 flex items-center gap-1 font-mono">
+                                <Clock size={10} /> {h.time || h.notifyTime}
+                              </span>
+                            )}
+                            {h.location && (
+                              <span className="text-[10px] text-white/40 flex items-center gap-1">
+                                <MapPin size={10} /> {h.location}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {h.type === 'multi' && <span className="text-[10px] bg-white/10 px-2 py-1 rounded-xl text-white/70 font-semibold shrink-0">{h.subItems.length} {t('items')}</span>}
+                      </div>
+                      <button onClick={() => deleteHabit(h.id)} className="p-3.5 bg-red-500/10 text-red-400 rounded-2xl hover:bg-red-500/20 transition-colors duration-200" title="Delete Habit"><Trash2 size={16} /></button>
+                    </div>
+                  ))}
+                  {habits.length === 0 && <p className="text-center text-white/40 py-12 text-sm">{t('noHabitsYet')}</p>}
+                </div>
+              </div>
+
+              {/* Bottom Done Action Button */}
+              <div className="pt-4 pb-6">
+                <button 
+                  onClick={handleCloseManage} 
+                  className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                >
+                  {lang === 'ar' ? 'إغلاق' : 'Close'}
+                </button>
               </div>
             </div>
           </div>
@@ -2261,110 +2329,109 @@ export default function App() {
           </div>
         )}
 
-        {/* ---------------- EMERGENCY CARDS MODAL — Portal on body ---------------- */}
+        {/* ---------------- EMERGENCY CARDS PAGE (FULL SCREEN) ---------------- */}
         {isCardsModalOpen && createPortal(
-          <div style={{
-            position: 'fixed', inset: 0, zIndex: 9999,
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-            background: 'rgba(0,0,0,0.6)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            padding: '0 0 24px 0',
-          }} onClick={() => setIsCardsModalOpen(false)}>
-            <div
-              className="liquid-panel shadow-2xl"
-              onClick={e => e.stopPropagation()}
-              style={{
-                width: '100%', maxWidth: '428px',
-                borderRadius: '32px 32px 24px 24px',
-                overflow: 'hidden',
-                maxHeight: '80vh',
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-            >
-              {/* Header */}
-              <div style={{ padding: '20px 20px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  <span className="text-black dark:text-white" style={{ fontSize: '17px', fontWeight: 800, letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <ShieldAlert size={18} color={themeColor} /> {t('emergencyCards')}
-                  </span>
-                  <span className="text-gray-500 dark:text-white/30" style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em' }}>{t('streakRule')}</span>
+          <div className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-3xl overflow-y-auto">
+            <div className="min-h-screen w-full max-w-lg mx-auto px-5 py-8 flex flex-col justify-between">
+              <div>
+                {/* Header */}
+                <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => setIsCardsModalOpen(false)} 
+                      className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
+                      aria-label="Back"
+                    >
+                      <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                    </button>
+                    <div className="flex flex-col">
+                      <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                        <ShieldAlert size={22} color={themeColor} /> {t('emergencyCards')}
+                      </h2>
+                      <span className="text-white/40 text-xs font-semibold mt-0.5">{t('streakRule')}</span>
+                    </div>
+                  </div>
+                  <button onClick={() => setIsCardsModalOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                    <X size={18} />
+                  </button>
                 </div>
-                <button onClick={() => setIsCardsModalOpen(false)} style={{ background: 'rgba(128,128,128,0.2)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', color: 'rgba(128,128,128,0.8)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <X size={16} className="text-black dark:text-white" />
-                </button>
-              </div>
 
-              {/* Cards list */}
-              <div style={{ overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {habits.filter(h => h.type === 'single').length === 0 ? (
-                  <p className="text-gray-400 dark:text-white/20" style={{ textAlign: 'center', padding: '32px 0', fontSize: '14px' }}>{t('noSingleHabits')}</p>
-                ) : (
-                  habits.filter(h => h.type === 'single').map(h => {
-                    const cards = habitCards[h.id] ?? 1;
-                    const streak = getStreak(h.id);
-                    const hasCards = cards > 0;
-                    const isChecked = !!dailyData[`${activeDateStr}-${h.id}`];
-                    const canUseCard = hasCards && !isChecked;
-                    return (
-                      <div key={h.id} style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '16px 18px', borderRadius: '20px',
-                        background: hasCards
-                          ? (theme === 'dark' ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #1a1a2e 100%)' : 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 40%, #a5b4fc 70%, #e0e7ff 100%)')
-                          : (theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'),
-                        border: hasCards ? `1px solid ${themeColor}44` : (theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)'),
-                        boxShadow: hasCards ? `0 0 20px ${themeColor}22, inset 0 1px 0 rgba(255,255,255,0.08)` : 'none',
-                        position: 'relative', overflow: 'hidden',
-                      }}>
-                        {hasCards && (
-                          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.05) 50%, transparent 70%)', pointerEvents: 'none' }} />
-                        )}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', zIndex: 1, flex: 1, minWidth: 0, paddingRight: '8px' }}>
-                          <span className={hasCards ? 'opacity-80' : 'opacity-50'} style={{ fontSize: '11px', fontWeight: 600, color: hasCards ? (theme === 'dark' ? `${themeColor}cc` : '#3b82f6') : 'inherit', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            {streak > 0 ? (
-                              <>
-                                <Flame size={12} strokeWidth={2.5} className="shrink-0" />
-                                <span>{streak} {t('dayStreak')}</span>
-                              </>
-                            ) : t('noActiveStreak')}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', zIndex: 1, flexShrink: 0 }}>
-                          {canUseCard && (
-                            <button
-                              onClick={() => { haptic('medium'); consumeEmergencyCard(h.id); }}
-                              className="px-3 py-1.5 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all active:scale-95"
-                              style={{ backgroundColor: themeColor, color: '#000', boxShadow: `0 4px 12px ${themeColor}66` }}
-                            >
-                              {t('use')}
-                            </button>
-                          )}
-                          <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                            {hasCards ? (
-                              Array.from({ length: Math.min(cards, 3) }).map((_, i) => (
-                                <div key={i} style={{
-                                  width: '26px', height: '38px', borderRadius: '6px',
-                                  background: `linear-gradient(135deg, ${themeColor}cc, ${themeColor}66, rgba(255,255,255,0.3), ${themeColor}88)`,
-                                  border: `1px solid ${themeColor}88`,
-                                  boxShadow: `0 0 14px ${themeColor}66, inset 0 1px 0 rgba(255,255,255,0.4)`,
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  transform: `rotate(${(i - 1) * 6}deg)`,
-                                }}>
-                                  <ShieldAlert size={12} color="rgba(255,255,255,0.9)" />
-                                </div>
-                              ))
-                            ) : (
-                              <span className="text-gray-400 dark:text-white/20" style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('noCards')}</span>
+                {/* Cards list */}
+                <div className="flex flex-col gap-3 pb-8">
+                  {habits.filter(h => h.type === 'single').length === 0 ? (
+                    <p className="text-white/30 text-center py-16 text-sm">{t('noSingleHabits')}</p>
+                  ) : (
+                    habits.filter(h => h.type === 'single').map(h => {
+                      const cards = habitCards[h.id] ?? 1;
+                      const streak = getStreak(h.id);
+                      const hasCards = cards > 0;
+                      const isChecked = !!dailyData[`${activeDateStr}-${h.id}`];
+                      const canUseCard = hasCards && !isChecked;
+                      return (
+                        <div 
+                          key={h.id} 
+                          className={`flex items-center justify-between p-4 sm:p-5 rounded-2xl border transition-all ${
+                            hasCards
+                              ? 'bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] border-white/20 shadow-xl'
+                              : 'bg-white/5 border-white/5'
+                          }`}
+                        >
+                          <div className="flex flex-col gap-1 flex-1 min-w-0 pr-3">
+                            <span className="text-base font-bold text-white truncate">{h.name}</span>
+                            <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider flex items-center gap-1.5">
+                              {streak > 0 ? (
+                                <>
+                                  <Flame size={12} strokeWidth={2.5} className="shrink-0 text-orange-400" />
+                                  <span>{streak} {t('dayStreak')}</span>
+                                </>
+                              ) : t('noActiveStreak')}
+                            </span>
+                          </div>
+                          <div className="flex gap-3 items-center shrink-0">
+                            {canUseCard && (
+                              <button
+                                onClick={() => { haptic('medium'); consumeEmergencyCard(h.id); }}
+                                className="px-4 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all active:scale-95 shadow-lg"
+                                style={{ backgroundColor: themeColor, color: '#000' }}
+                              >
+                                {t('use')}
+                              </button>
                             )}
-                            {cards > 3 && <span style={{ fontSize: '12px', fontWeight: 800, color: themeColor }}>+{cards - 3}</span>}
+                            <div className="flex gap-1.5 items-center">
+                              {hasCards ? (
+                                Array.from({ length: Math.min(cards, 3) }).map((_, i) => (
+                                  <div 
+                                    key={i} 
+                                    className="w-7 h-10 rounded-lg flex items-center justify-center shadow-md border border-white/30"
+                                    style={{
+                                      background: `linear-gradient(135deg, ${themeColor}cc, ${themeColor}66, rgba(255,255,255,0.3), ${themeColor}88)`,
+                                      transform: `rotate(${(i - 1) * 6}deg)`
+                                    }}
+                                  >
+                                    <ShieldAlert size={14} color="#ffffff" />
+                                  </div>
+                                ))
+                              ) : (
+                                <span className="text-white/30 text-xs font-bold uppercase tracking-wider">{t('noCards')}</span>
+                              )}
+                              {cards > 3 && <span className="text-xs font-black" style={{ color: themeColor }}>+{cards - 3}</span>}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })
-                )}
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Bottom Done Button */}
+              <div className="pt-4 pb-6">
+                <button 
+                  onClick={() => setIsCardsModalOpen(false)} 
+                  className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                >
+                  {lang === 'ar' ? 'إغلاق' : 'Close'}
+                </button>
               </div>
             </div>
           </div>,
@@ -4399,183 +4466,187 @@ export default function App() {
 
           </div>
 
-          {/* --- ANALYTICS MODAL --- */}
+          {/* --- ANALYTICS PAGE (FULL SCREEN) --- */}
           {isAnalyticsModalOpen && createPortal(
-            <div style={{
-              position: 'fixed', inset: 0, zIndex: 9999,
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              padding: '24px',
-              background: 'rgba(0,0,0,0.6)',
-              backdropFilter: 'blur(32px)',
-              WebkitBackdropFilter: 'blur(32px)',
-            }}>
-              <div className="liquid-panel shadow-2xl mb-24" style={{
-                width: '100%', maxWidth: '380px',
-                borderRadius: '32px',
-                padding: '36px 24px',
-                position: 'relative',
-              }}>
-                <button onClick={() => { setIsAnalyticsModalOpen(false); setIsTicketsHistoryViewOpen(false); }} style={{
-                  position: 'absolute', top: '16px', right: '16px',
-                  background: 'rgba(128,128,128,0.2)', border: 'none',
-                  borderRadius: '50%', width: '32px', height: '32px',
-                  color: 'rgba(128,128,128,0.8)', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}><X size={16} className="text-black dark:text-white" /></button>
-
-                {!isTicketsHistoryViewOpen ? (
-                  <div className="w-full flex flex-col">
-                <h3 className="text-sm font-bold tracking-widest text-gray-500 dark:text-white/50 uppercase mb-6 select-none text-center">{t('analytics')}</h3>
-                
-                <div className="w-full h-48 mb-6 relative">
-                  <svg style={{ height: 0, width: 0, position: 'absolute' }}>
-                    <defs>
-                      <linearGradient id="cursorGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#2C2C2E" stopOpacity={0.8}/>
-                        <stop offset="100%" stopColor="#2C2C2E" stopOpacity={0.0}/>
-                      </linearGradient>
-                    </defs>
-                  </svg>
-
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={sleepChartData} barGap={2} barCategoryGap={8}>
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8E8E93', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em' }} dy={10} />
-                      <YAxis yAxisId="sleep" orientation="left" hide domain={[0, 24]} />
-                      <YAxis yAxisId="score" orientation="right" hide domain={[0, 100]} />
-                      <YAxis yAxisId="focus" orientation="right" hide domain={[0, 180]} />
-                      
-                      <Tooltip 
-                        cursor={<CustomCursor />} 
-                        contentStyle={{ backgroundColor: '#1C1C1E', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', color: '#FFFFFF', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
-                        itemStyle={{ color: '#FFFFFF', fontWeight: 600, fontSize: '12px' }} 
-                        formatter={(value, name) => { 
-                          if (name === "Sleep") return [`${value} hrs`, "Sleep"];
-                          if (name === "Focus") return [`${value} min`, "Focus"];
-                          return [`${value.toFixed(0)}%`, "Score"]; 
-                        }} 
-                      />
-                      
-                      <Bar yAxisId="sleep" dataKey="sleep" fill="#FFFFFF" radius={[3, 3, 3, 3]} barSize={4} name="Sleep" />
-                      <Bar yAxisId="score" dataKey="score" fill={themeColor} radius={[3, 3, 3, 3]} barSize={4} name="Score" />
-                      <Bar yAxisId="focus" dataKey="focus" fill="#22d3ee" radius={[3, 3, 3, 3]} barSize={4} name="Focus" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                
-                <div className="flex flex-col gap-3 select-none">
-                  <div className="flex items-center justify-center gap-6">
-                    <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-white"/><span className="text-[9px] font-bold tracking-widest text-[#8E8E93] uppercase">SLEEP</span></div>
-                    <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: themeColor}}/><span className="text-[9px] font-bold tracking-widest text-[#8E8E93] uppercase">SCORE</span></div>
-                    <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-cyan-400"/><span className="text-[9px] font-bold tracking-widest text-[#8E8E93] uppercase">FOCUS</span></div>
+            <div className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-3xl overflow-y-auto">
+              <div className="min-h-screen w-full max-w-lg mx-auto px-5 py-8 flex flex-col justify-between">
+                <div>
+                  {/* Header */}
+                  <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => { setIsAnalyticsModalOpen(false); setIsTicketsHistoryViewOpen(false); }} 
+                        className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
+                        aria-label="Back"
+                      >
+                        <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                      </button>
+                      <h2 className="text-2xl font-black tracking-tight text-white">{t('analytics')}</h2>
+                    </div>
+                    <button onClick={() => { setIsAnalyticsModalOpen(false); setIsTicketsHistoryViewOpen(false); }} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                      <X size={18} />
+                    </button>
                   </div>
-                </div>
 
-                {/* Pomodoro Tasks Table */}
-                <div className="mt-6 border-t border-black/10 dark:border-white/10 pt-4 w-full">
-                  <h4 className="text-[10px] font-bold text-black/50 dark:text-white/50 uppercase tracking-widest mb-3 text-center">{activeDateStr === realTodayStr ? "Today's Focus Tasks" : "Focus Tasks"}</h4>
-                  
-                  {pomodoroTasksData[activeDateStr] && pomodoroTasksData[activeDateStr].filter(t => !t.name?.includes('✈')).length > 0 ? (
-                    <div className="flex flex-col gap-2 max-h-32 overflow-y-auto pr-1">
-                      {pomodoroTasksData[activeDateStr]
-                        .filter(t => !t.name?.includes('✈'))
-                        .sort((a, b) => b.timeSpent - a.timeSpent)
-                        .map((task, idx) => (
-                        <div key={idx} className="flex justify-between items-center bg-black/5 dark:bg-white/5 px-3 py-2 rounded-xl">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: task.color }} />
-                            <span className="text-sm font-bold text-black dark:text-white">{task.name}</span>
-                          </div>
-                          <span className="text-xs font-bold text-black/70 dark:text-white/70">{Math.ceil(task.timeSpent / 60)} min</span>
+                  {!isTicketsHistoryViewOpen ? (
+                    <div className="w-full flex flex-col pb-8">
+                      {/* Chart Card */}
+                      <div className="bg-white/5 p-5 rounded-3xl border border-white/10 mb-6">
+                        <div className="w-full h-56 mb-4 relative">
+                          <svg style={{ height: 0, width: 0, position: 'absolute' }}>
+                            <defs>
+                              <linearGradient id="cursorGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#2C2C2E" stopOpacity={0.8}/>
+                                <stop offset="100%" stopColor="#2C2C2E" stopOpacity={0.0}/>
+                              </linearGradient>
+                            </defs>
+                          </svg>
+
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={sleepChartData} barGap={2} barCategoryGap={8}>
+                              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8E8E93', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em' }} dy={10} />
+                              <YAxis yAxisId="sleep" orientation="left" hide domain={[0, 24]} />
+                              <YAxis yAxisId="score" orientation="right" hide domain={[0, 100]} />
+                              <YAxis yAxisId="focus" orientation="right" hide domain={[0, 180]} />
+                              
+                              <Tooltip 
+                                cursor={<CustomCursor />} 
+                                contentStyle={{ backgroundColor: '#1C1C1E', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', color: '#FFFFFF', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
+                                itemStyle={{ color: '#FFFFFF', fontWeight: 600, fontSize: '12px' }} 
+                                formatter={(value, name) => { 
+                                  if (name === "Sleep") return [`${value} hrs`, "Sleep"];
+                                  if (name === "Focus") return [`${value} min`, "Focus"];
+                                  return [`${value.toFixed(0)}%`, "Score"]; 
+                                }} 
+                              />
+                              
+                              <Bar yAxisId="sleep" dataKey="sleep" fill="#FFFFFF" radius={[3, 3, 3, 3]} barSize={5} name="Sleep" />
+                              <Bar yAxisId="score" dataKey="score" fill={themeColor} radius={[3, 3, 3, 3]} barSize={5} name="Score" />
+                              <Bar yAxisId="focus" dataKey="focus" fill="#22d3ee" radius={[3, 3, 3, 3]} barSize={5} name="Focus" />
+                            </BarChart>
+                          </ResponsiveContainer>
                         </div>
-                      ))}
+                        
+                        <div className="flex items-center justify-center gap-6 select-none pt-2 border-t border-white/5">
+                          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-white"/><span className="text-[10px] font-bold tracking-widest text-[#8E8E93] uppercase">SLEEP</span></div>
+                          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{backgroundColor: themeColor}}/><span className="text-[10px] font-bold tracking-widest text-[#8E8E93] uppercase">SCORE</span></div>
+                          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-cyan-400"/><span className="text-[10px] font-bold tracking-widest text-[#8E8E93] uppercase">FOCUS</span></div>
+                        </div>
+                      </div>
+
+                      {/* Focus Tasks Table */}
+                      <div className="bg-white/5 p-5 rounded-3xl border border-white/10 mb-6">
+                        <h4 className="text-xs font-bold text-white/50 uppercase tracking-widest mb-4">
+                          {activeDateStr === realTodayStr ? "Today's Focus Tasks" : "Focus Tasks"}
+                        </h4>
+                        
+                        {pomodoroTasksData[activeDateStr] && pomodoroTasksData[activeDateStr].filter(t => !t.name?.includes('✈')).length > 0 ? (
+                          <div className="flex flex-col gap-2.5 max-h-64 overflow-y-auto pr-1">
+                            {pomodoroTasksData[activeDateStr]
+                              .filter(t => !t.name?.includes('✈'))
+                              .sort((a, b) => b.timeSpent - a.timeSpent)
+                              .map((task, idx) => (
+                              <div key={idx} className="flex justify-between items-center bg-white/5 px-3.5 py-3 rounded-2xl border border-white/5">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: task.color }} />
+                                  <span className="text-sm font-bold text-white">{task.name}</span>
+                                </div>
+                                <span className="text-xs font-bold text-white/70">{Math.ceil(task.timeSpent / 60)} min</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center text-xs font-bold text-white/30 py-6 opacity-60">
+                            {lang === 'ar' ? 'لا يوجد فترات تركيز مسجلة لليوم' : 'No focus tasks logged for this day'}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* View Tickets History Button */}
+                      <button 
+                        onClick={() => setIsTicketsHistoryViewOpen(true)}
+                        className="w-full py-4 px-5 bg-white/5 hover:bg-white/10 transition-colors rounded-3xl flex justify-between items-center border border-white/10 shadow-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white">
+                            <Plane size={18} />
+                          </div>
+                          <span className="text-sm font-bold text-white tracking-wide">
+                            {lang === 'ar' ? 'سجل تذاكر الرحلات' : 'Flight Tickets History'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-white/50 bg-white/10 px-2 py-0.5 rounded-full">{finishedTickets.length}</span>
+                          <ChevronDown size={16} className="-rotate-90 text-white/50" />
+                        </div>
+                      </button>
                     </div>
                   ) : (
-                    <div className="text-center text-xs font-bold text-gray-500 py-4 opacity-50">
-                      {lang === 'ar' ? 'لا يوجد رحلات مسجلة بعد' : 'No focus tasks yet'}
+                    <div className="flex-1 w-full animate-in fade-in slide-in-from-right-4 duration-300 flex flex-col pb-8">
+                      <div className="flex justify-between items-center mb-6">
+                        <button onClick={() => setIsTicketsHistoryViewOpen(false)} className="text-white/70 hover:text-white transition flex items-center gap-2 text-sm font-bold">
+                          <ChevronDown size={20} className="rotate-90" />
+                          {lang === 'ar' ? 'رجوع' : 'Back'}
+                        </button>
+                        <h4 className="text-xs font-bold text-white/50 uppercase tracking-widest pr-4">{lang === 'ar' ? 'سجل التذاكر' : 'Tickets'}</h4>
+                      </div>
+                      
+                      {finishedTickets.length > 0 ? (
+                        <div className="flex flex-col gap-3 w-full pb-10">
+                          {finishedTickets.map((ticket, idx) => {
+                            const isExpanded = expandedTicketIndex === idx;
+                            return (
+                              <div 
+                                key={idx} 
+                                onClick={() => {
+                                  if (isExpanded) {
+                                    setSelectedFlight(ticket);
+                                    setSelectedSeat(ticket.seat);
+                                    setFlightTimer(0);
+                                    setIsBoardingPassOpen(true);
+                                    setIsAnalyticsModalOpen(false);
+                                    setIsTicketsHistoryViewOpen(false);
+                                  } else {
+                                    setExpandedTicketIndex(idx);
+                                  }
+                                }} 
+                                className="w-full flex flex-col cursor-pointer transition-all duration-300 rounded-[2rem]"
+                              >
+                                <BoardingPassCard 
+                                  flight={ticket} 
+                                  seat={ticket.seat} 
+                                  date={ticket.date} 
+                                  isArrived={true} 
+                                  lang={lang} 
+                                  isExpanded={isExpanded}
+                                  onToggleExpand={() => setExpandedTicketIndex(isExpanded ? null : idx)}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-center text-xs font-bold text-white/40 py-16 flex flex-col items-center justify-center gap-3">
+                          <Plane size={36} className="opacity-40" />
+                          {lang === 'ar' ? 'لا يوجد تذاكر مختومة بعد' : 'No stamped tickets yet'}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-                {/* View Tickets History Button */}
-                <div className="mt-6 border-t border-black/10 dark:border-white/10 pt-4 w-full">
+
+                {/* Bottom Done Button */}
+                <div className="pt-4 pb-6">
                   <button 
-                    onClick={() => setIsTicketsHistoryViewOpen(true)}
-                    className="w-full py-4 px-4 bg-white/5 hover:bg-white/10 transition-colors rounded-2xl flex justify-between items-center"
+                    onClick={() => { setIsAnalyticsModalOpen(false); setIsTicketsHistoryViewOpen(false); }} 
+                    className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white">
-                        <Plane size={16} />
-                      </div>
-                      <span className="text-sm font-bold text-white tracking-wide">
-                        {lang === 'ar' ? 'سجل تذاكر الرحلات' : 'Flight Tickets History'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-white/50">{finishedTickets.length}</span>
-                      <ChevronDown size={16} className="-rotate-90 text-white/50" />
-                    </div>
+                    {lang === 'ar' ? 'إغلاق' : 'Close'}
                   </button>
                 </div>
-                </div>
-                ) : (
-                <div className="flex-1 w-full animate-in fade-in slide-in-from-right-4 duration-300 flex flex-col">
-                  <div className="flex justify-between items-center mb-6">
-                    <button onClick={() => setIsTicketsHistoryViewOpen(false)} className="text-black/50 hover:text-black dark:text-white/50 dark:hover:text-white transition flex items-center gap-2 text-sm font-bold">
-                      <ChevronDown size={20} className="rotate-90" />
-                      {lang === 'ar' ? 'رجوع' : 'Back'}
-                    </button>
-                    <h4 className="text-[10px] font-bold text-black/50 dark:text-white/50 uppercase tracking-widest text-center pr-8">{lang === 'ar' ? 'سجل التذاكر' : 'Tickets'}</h4>
-                  </div>
-                  
-                  {finishedTickets.length > 0 ? (
-                      <div className="flex flex-col gap-3 w-full max-h-[60vh] overflow-y-auto pr-2 scrollbar-hide pb-10">
-                        {finishedTickets.map((ticket, idx) => {
-                          const isExpanded = expandedTicketIndex === idx;
-                          
-                          return (
-                          <div 
-                            key={idx} 
-                            onClick={() => {
-                              if (isExpanded) {
-                                setSelectedFlight(ticket);
-                                setSelectedSeat(ticket.seat);
-                                setFlightTimer(0);
-                                setIsBoardingPassOpen(true);
-                                setIsAnalyticsModalOpen(false);
-                                setIsTicketsHistoryViewOpen(false);
-                              } else {
-                                setExpandedTicketIndex(idx);
-                              }
-                            }} 
-                            style={{
-                               boxShadow: isExpanded ? '0 10px 30px -10px rgba(0,0,0,0.5)' : '0 4px 12px -4px rgba(0,0,0,0.3)',
-                            }}
-                            className="w-full flex flex-col cursor-pointer transition-all duration-300 rounded-[2rem]"
-                          >
-                             <BoardingPassCard 
-                               flight={ticket} 
-                               seat={ticket.seat} 
-                               date={ticket.date} 
-                               isArrived={true} 
-                               lang={lang} 
-                               isExpanded={isExpanded}
-                               onToggleExpand={() => setExpandedTicketIndex(isExpanded ? null : idx)}
-                             />
-                          </div>
-                        )})}
-                      </div>
-                  ) : (
-                    <div className="text-center text-xs font-bold text-gray-500 py-10 opacity-50 flex flex-col items-center justify-center gap-3 h-48">
-                      <Plane size={32} className="opacity-50" />
-                      {lang === 'ar' ? 'لا يوجد تذاكر مختومة بعد' : 'No stamped tickets yet'}
-                    </div>
-                  )}
-                </div>
-                )}
-
-
               </div>
-            </div>, document.body
+            </div>, 
+            document.body
           )}
 
           {/* --- HOW TO USE BUTTON --- */}
@@ -4596,189 +4667,205 @@ export default function App() {
             </span>
           </div>
 
-          {/* --- DAILY TASKS MODAL --- */}
+          {/* --- DAILY TASKS PAGE (FULL SCREEN) --- */}
           {isTasksModalOpen && createPortal(
-            <div style={{
-              position: 'fixed', inset: 0, zIndex: 9999,
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              padding: '24px',
-              background: 'rgba(0,0,0,0.6)',
-              backdropFilter: 'blur(32px)',
-              WebkitBackdropFilter: 'blur(32px)',
-            }}>
-              <div className="liquid-panel shadow-2xl" style={{
-                width: '100%', maxWidth: '380px',
-                borderRadius: '32px',
-                padding: '36px 24px',
-                position: 'relative',
-              }}>
-                <button onClick={() => setIsTasksModalOpen(false)} style={{
-                  position: 'absolute', top: '16px', right: '16px',
-                  background: 'rgba(128,128,128,0.2)', border: 'none',
-                  borderRadius: '50%', width: '32px', height: '32px',
-                  color: 'rgba(128,128,128,0.8)', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}><X size={16} className="text-black dark:text-white" /></button>
-
-                <div className="flex items-center gap-2 mb-6">
-                  <ListChecks size={20} className="text-gray-700 dark:text-white/80" />
-                  <h3 className="text-sm font-bold tracking-widest text-gray-700 dark:text-white/80 uppercase select-none">{t('todaysTasks')}</h3>
-                </div>
-
-                <div className="flex flex-col gap-3 mb-6 max-h-[300px] overflow-y-auto pr-2">
-                  {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).map((task, idx) => {
-                    const isOverdue = task.rolledOver && !task.completed;
-                    return (
-                      <div 
-                        key={task.text + idx} 
-                        className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-200 ${
-                          isOverdue 
-                            ? 'bg-rose-500/10 border-rose-500/30 dark:bg-rose-950/30 dark:border-rose-500/40 shadow-sm shadow-rose-950/20' 
-                            : 'bg-white/30 dark:bg-[#1C1C1E] border border-black/5 dark:border-white/5'
-                        }`}
+            <div className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-3xl overflow-y-auto">
+              <div className="min-h-screen w-full max-w-lg mx-auto px-5 py-8 flex flex-col justify-between">
+                <div>
+                  {/* Header */}
+                  <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => setIsTasksModalOpen(false)} 
+                        className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
+                        aria-label="Back"
                       >
-                        <div 
-                          className="flex items-center gap-3 cursor-pointer flex-1 min-w-0" 
-                          onClick={() => {
-                            haptic('light');
-                            updateDailyTasks(prev => prev.map(t => t.text === task.text ? { ...t, completed: !t.completed } : t));
-                          }}
-                        >
-                          <div 
-                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
-                              task.completed 
-                                ? 'bg-black dark:bg-white border-transparent' 
-                                : isOverdue 
-                                  ? 'border-rose-500 dark:border-rose-400 bg-rose-500/15' 
-                                  : 'border-black/20 dark:border-white/20'
-                            }`} 
-                            style={{ borderColor: task.completed ? themeColor : undefined }}
-                          >
-                            {task.completed && <Check size={12} strokeWidth={4} style={{ color: theme === 'dark' ? themeColor : '#fff' }} />}
-                          </div>
-                          <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-                            <span className={`text-sm font-semibold truncate transition-all ${
-                              task.completed 
-                                ? 'text-gray-400 dark:text-white/30 line-through' 
-                                : isOverdue
-                                  ? 'text-rose-900 dark:text-rose-200 font-bold'
-                                  : 'text-black dark:text-white/90'
-                            }`}>
-                              {task.text}
-                            </span>
-                            {isOverdue && (
-                              <span className="text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-500/30 uppercase select-none flex items-center gap-1 shrink-0">
-                                <Clock size={10} strokeWidth={2.5} />
-                                {t('overdueTask')}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <button 
-                          onClick={() => updateDailyTasks(prev => prev.filter(t => t.text !== task.text))} 
-                          className="text-gray-400 dark:text-white/20 hover:text-red-500 dark:hover:text-red-400 p-1 transition-colors shrink-0"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    );
-                  })}
-                  {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).length === 0 && (
-                    <div className="text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-8">{t('noTasks')}</div>
-                  )}
-                </div>
+                        <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                      </button>
+                      <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                        <ListChecks size={24} className="text-white/80" /> {t('todaysTasks')}
+                      </h2>
+                    </div>
+                    <button onClick={() => setIsTasksModalOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                      <X size={18} />
+                    </button>
+                  </div>
 
-                <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    placeholder={t('addTaskPlaceholder')}
-                    value={newTaskInput}
-                    onChange={(e) => setNewTaskInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && newTaskInput.trim() !== '') {
+                  {/* Add New Task Input Card */}
+                  <div className="flex gap-2 mb-6">
+                    <input 
+                      type="text" 
+                      placeholder={t('addTaskPlaceholder')}
+                      value={newTaskInput}
+                      onChange={(e) => setNewTaskInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newTaskInput.trim() !== '') {
+                          haptic('light');
+                          updateDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
+                          setNewTaskInput("");
+                        }
+                      }}
+                      className="flex-1 bg-white/10 border border-white/10 text-white px-4 py-3.5 rounded-2xl outline-none text-sm font-semibold focus:border-white/30 transition-colors placeholder:text-white/30" 
+                    />
+                    <button onClick={() => {
+                      if (newTaskInput.trim() !== '') {
                         haptic('light');
                         updateDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
                         setNewTaskInput("");
                       }
-                    }}
-                    className="flex-1 bg-white/50 dark:bg-[#1C1C1E] border border-black/10 dark:border-white/10 text-black dark:text-white px-4 py-3 rounded-2xl outline-none text-sm font-semibold focus:border-black/30 dark:focus:border-white/30 transition-colors placeholder:text-gray-400 dark:placeholder:text-white/30" 
-                  />
-                  <button onClick={() => {
-                    if (newTaskInput.trim() !== '') {
-                      haptic('light');
-                      updateDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
-                      setNewTaskInput("");
-                    }
-                  }} className="bg-black text-white dark:bg-white dark:text-black px-4 py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 hover:bg-black/80 dark:hover:bg-white/90">
-                    <Plus size={18} strokeWidth={3} />
+                    }} className="bg-white text-black px-5 py-3.5 rounded-2xl font-black text-sm transition-all active:scale-95 hover:bg-white/90 shrink-0">
+                      <Plus size={20} strokeWidth={3} />
+                    </button>
+                  </div>
+
+                  {/* Task Items List */}
+                  <div className="flex flex-col gap-3 pb-8">
+                    {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).map((task, idx) => {
+                      const isOverdue = task.rolledOver && !task.completed;
+                      return (
+                        <div 
+                          key={task.text + idx} 
+                          className={`flex items-center justify-between p-4 rounded-2xl border transition-all duration-200 ${
+                            isOverdue 
+                              ? 'bg-rose-950/30 border-rose-500/40 shadow-sm' 
+                              : 'bg-white/5 border-white/10'
+                          }`}
+                        >
+                          <div 
+                            className="flex items-center gap-3.5 cursor-pointer flex-1 min-w-0" 
+                            onClick={() => {
+                              haptic('light');
+                              updateDailyTasks(prev => prev.map(t => t.text === task.text ? { ...t, completed: !t.completed } : t));
+                            }}
+                          >
+                            <div 
+                              className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+                                task.completed 
+                                  ? 'bg-white border-transparent' 
+                                  : isOverdue 
+                                    ? 'border-rose-400 bg-rose-500/20' 
+                                    : 'border-white/30 hover:border-white'
+                              }`} 
+                              style={{ borderColor: task.completed ? themeColor : undefined }}
+                            >
+                              {task.completed && <Check size={14} strokeWidth={4} style={{ color: theme === 'dark' ? themeColor : '#000' }} />}
+                            </div>
+                            <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
+                              <span className={`text-sm font-bold truncate transition-all ${
+                                task.completed 
+                                  ? 'text-white/30 line-through' 
+                                  : isOverdue
+                                    ? 'text-rose-200 font-bold'
+                                    : 'text-white'
+                              }`}>
+                                {task.text}
+                              </span>
+                              {isOverdue && (
+                                <span className="text-[9px] font-extrabold tracking-wider px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30 uppercase select-none flex items-center gap-1 shrink-0">
+                                  <Clock size={10} strokeWidth={2.5} />
+                                  {t('overdueTask')}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => updateDailyTasks(prev => prev.filter(t => t.text !== task.text))} 
+                            className="text-white/30 hover:text-red-400 p-2 transition-colors shrink-0"
+                            title="Delete Task"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).length === 0 && (
+                      <div className="text-center text-white/30 text-xs font-bold uppercase tracking-widest py-16">{t('noTasks')}</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bottom Done Button */}
+                <div className="pt-4 pb-6">
+                  <button 
+                    onClick={() => setIsTasksModalOpen(false)} 
+                    className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                  >
+                    {lang === 'ar' ? 'إغلاق' : 'Close'}
                   </button>
                 </div>
               </div>
-            </div>, document.body
+            </div>, 
+            document.body
           )}
 
-          {/* --- HOW TO USE MODAL --- */}
+          {/* --- HOW TO USE PAGE (FULL SCREEN) --- */}
           {isHowToUseOpen && createPortal(
-            <div style={{
-              position: 'fixed', inset: 0, zIndex: 9999,
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              padding: '24px', background: 'rgba(0,0,0,0.6)',
-              backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
-            }}>
-              <div className="liquid-panel shadow-2xl" style={{
-                width: '100%', maxWidth: '400px', maxHeight: '80vh',
-                borderRadius: '32px',
-                padding: '36px 24px', position: 'relative',
-                display: 'flex', flexDirection: 'column'
-              }}>
-                <button onClick={() => setIsHowToUseOpen(false)} style={{
-                  position: 'absolute', top: '16px', right: '16px',
-                  background: 'rgba(128,128,128,0.2)', border: 'none',
-                  borderRadius: '50%', width: '32px', height: '32px',
-                  color: 'rgba(128,128,128,0.8)', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  zIndex: 10
-                }}><X size={16} className="text-black dark:text-white" /></button>
+            <div className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-3xl overflow-y-auto">
+              <div className="min-h-screen w-full max-w-lg mx-auto px-5 py-8 flex flex-col justify-between">
+                <div>
+                  {/* Header */}
+                  <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => setIsHowToUseOpen(false)} 
+                        className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
+                        aria-label="Back"
+                      >
+                        <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                      </button>
+                      <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                        <BookOpen size={22} className="text-white/80" /> {t('howToUse')}
+                      </h2>
+                    </div>
+                    <button onClick={() => setIsHowToUseOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                      <X size={18} />
+                    </button>
+                  </div>
 
-                <div className="flex items-center gap-2 mb-6 justify-center">
-                  <BookOpen size={20} className="text-gray-700 dark:text-white/80" />
-                  <h3 className="text-sm font-bold tracking-widest text-gray-700 dark:text-white/80 uppercase select-none">{t('howToUse')}</h3>
+                  <div className="flex flex-col gap-5 pb-8 text-sm text-white/80">
+                    <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                      <h4 className="font-bold text-white mb-1.5 flex items-center gap-2 text-base"><Target size={18} style={{color: themeColor}}/> {t('htu_mission_title')}</h4>
+                      <p className="text-xs text-white/60 leading-relaxed">{t('htu_mission_desc')}</p>
+                    </div>
+                    <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                      <h4 className="font-bold text-white mb-1.5 flex items-center gap-2 text-base"><div className="w-3.5 h-3.5 rounded-sm bg-white/30"/> {t('htu_habits_title')}</h4>
+                      <p className="text-xs text-white/60 leading-relaxed">{t('htu_habits_desc')}</p>
+                    </div>
+                    <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                      <h4 className="font-bold text-white mb-1.5 flex items-center gap-2 text-base"><PlaneTakeoff size={18} className="text-cyan-400"/> {t('htu_flight_title')}</h4>
+                      <p className="text-xs text-white/60 leading-relaxed">{t('htu_flight_desc')}</p>
+                    </div>
+                    <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                      <h4 className="font-bold text-white mb-1.5 flex items-center gap-2 text-base"><Timer size={18} className="text-orange-400"/> {t('htu_pomodoro_title')}</h4>
+                      <p className="text-xs text-white/60 leading-relaxed">{t('htu_pomodoro_desc')}</p>
+                    </div>
+                    <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                      <h4 className="font-bold text-white mb-1.5 flex items-center gap-2 text-base"><ShieldAlert size={18} className="text-red-400"/> {t('htu_emergency_title')}</h4>
+                      <p className="text-xs text-white/60 leading-relaxed">{t('htu_emergency_desc')}</p>
+                    </div>
+                    <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                      <h4 className="font-bold text-white mb-1.5 flex items-center gap-2 text-base"><ListChecks size={18} className="text-purple-400"/> {t('htu_tasks_title')}</h4>
+                      <p className="text-xs text-white/60 leading-relaxed">{t('htu_tasks_desc')}</p>
+                    </div>
+                    <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                      <h4 className="font-bold text-white mb-1.5 flex items-center gap-2 text-base"><BarChart2 size={18} className="text-green-400"/> {t('htu_analytics_title')}</h4>
+                      <p className="text-xs text-white/60 leading-relaxed">{t('htu_analytics_desc')}</p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex flex-col gap-6 overflow-y-auto pr-2 pb-4 text-sm text-gray-800 dark:text-white/70">
-                  <div>
-                    <h4 className="font-bold text-black dark:text-white mb-2 flex items-center gap-2"><Target size={16} style={{color: themeColor}}/> {t('htu_mission_title')}</h4>
-                    <p className="text-xs leading-relaxed">{t('htu_mission_desc')}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-black dark:text-white mb-2 flex items-center gap-2"><div className="w-3 h-3 rounded-sm bg-black/20 dark:bg-white/20"/> {t('htu_habits_title')}</h4>
-                    <p className="text-xs leading-relaxed">{t('htu_habits_desc')}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-black dark:text-white mb-2 flex items-center gap-2"><PlaneTakeoff size={16} className="text-black dark:text-white"/> {t('htu_flight_title')}</h4>
-                    <p className="text-xs leading-relaxed">{t('htu_flight_desc')}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-black dark:text-white mb-2 flex items-center gap-2"><Timer size={16} className="text-green-500 dark:text-green-400"/> {t('htu_pomodoro_title')}</h4>
-                    <p className="text-xs leading-relaxed">{t('htu_pomodoro_desc')}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-black dark:text-white mb-2 flex items-center gap-2"><ShieldAlert size={16} className="text-red-500 dark:text-red-400"/> {t('htu_emergency_title')}</h4>
-                    <p className="text-xs leading-relaxed">{t('htu_emergency_desc')}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-black dark:text-white mb-2 flex items-center gap-2"><ListChecks size={16} className="text-purple-500 dark:text-purple-400"/> {t('htu_tasks_title')}</h4>
-                    <p className="text-xs leading-relaxed">{t('htu_tasks_desc')}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-black dark:text-white mb-2 flex items-center gap-2"><BarChart2 size={16} className="text-orange-500 dark:text-orange-400"/> {t('htu_analytics_title')}</h4>
-                    <p className="text-xs leading-relaxed">{t('htu_analytics_desc')}</p>
-                  </div>
+                {/* Bottom Done Button */}
+                <div className="pt-4 pb-6">
+                  <button 
+                    onClick={() => setIsHowToUseOpen(false)} 
+                    className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                  >
+                    {lang === 'ar' ? 'إغلاق' : 'Close'}
+                  </button>
                 </div>
               </div>
-            </div>, document.body
+            </div>, 
+            document.body
           )}
 
           {/* --- FLIGHT MODE ADVICE MODAL --- */}
@@ -5172,37 +5259,62 @@ export default function App() {
                 )}
               </div>
 
-              {/* Avatar Picker Modal */}
+              {/* Avatar Picker Page (Full Screen) */}
               {isAvatarModalOpen && createPortal(
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                  <div className="liquid-panel rounded-[32px] p-8 w-full max-w-md animate-in fade-in zoom-in duration-300 relative border border-white/10">
-                    <button onClick={() => setIsAvatarModalOpen(false)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-black dark:text-white transition-colors">
-                      <X size={20} />
-                    </button>
-                    
-                    <div className="flex flex-col items-center gap-2 mb-8">
-                      <div className="w-16 h-16 rounded-full bg-[#1A1A1A] flex items-center justify-center mb-2 shadow-xl border border-white/10 text-white">
-                        <AvatarIcon name={isMounted ? avatar : 'user'} size={32} />
+                <div className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-3xl overflow-y-auto">
+                  <div className="min-h-screen w-full max-w-lg mx-auto px-5 py-8 flex flex-col justify-between">
+                    <div>
+                      {/* Header */}
+                      <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
+                        <div className="flex items-center gap-3">
+                          <button 
+                            onClick={() => setIsAvatarModalOpen(false)} 
+                            className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
+                            aria-label="Back"
+                          >
+                            <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                          </button>
+                          <h2 className="text-2xl font-black tracking-tight text-white">Choose Avatar</h2>
+                        </div>
+                        <button onClick={() => setIsAvatarModalOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                          <X size={18} />
+                        </button>
                       </div>
-                      <h2 className="text-2xl font-black text-black dark:text-white text-center">Choose Your Avatar</h2>
-                      <p className="text-sm font-semibold text-black/50 dark:text-white/50 text-center">Select your profile icon.</p>
+                      
+                      <div className="flex flex-col items-center gap-2 mb-8">
+                        <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center mb-2 shadow-2xl border-2 border-white/20 text-white">
+                          <AvatarIcon name={isMounted ? avatar : 'user'} size={40} />
+                        </div>
+                        <h3 className="text-lg font-black text-white text-center">Current Avatar</h3>
+                        <p className="text-xs font-semibold text-white/50 text-center">Select your profile icon.</p>
+                      </div>
+
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 mb-6 pb-8">
+                        {AVATAR_OPTIONS.map(av => (
+                          <button
+                            key={av}
+                            onClick={() => {
+                              setAvatar(av);
+                              if (typeof window !== 'undefined') localStorage.setItem('daybase_avatar_v1', av);
+                              markLocalMutation();
+                              setIsAvatarModalOpen(false);
+                            }}
+                            className={`relative aspect-square rounded-2xl flex items-center justify-center border-2 transition-all duration-200 active:scale-95 bg-white/5 text-white ${avatar === av ? 'border-[#FF9F0A] shadow-[0_0_20px_rgba(255,159,10,0.3)] text-[#FF9F0A]' : 'border-white/10 hover:border-white/30'}`}
+                          >
+                            <AvatarIcon name={av} size={32} />
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4 mb-6">
-                      {AVATAR_OPTIONS.map(av => (
-                        <button
-                          key={av}
-                          onClick={() => {
-                            setAvatar(av);
-                            if (typeof window !== 'undefined') localStorage.setItem('daybase_avatar_v1', av);
-                            markLocalMutation();
-                            setIsAvatarModalOpen(false);
-                          }}
-                          className={`relative aspect-square rounded-2xl flex items-center justify-center border-2 transition-all duration-200 active:scale-95 bg-black/5 dark:bg-[#1A1A1A] text-black dark:text-white ${avatar === av ? 'border-[#FF9F0A] shadow-[0_0_20px_rgba(255,159,10,0.3)] text-[#FF9F0A] dark:text-[#FF9F0A]' : 'border-transparent hover:border-black/10 dark:hover:border-white/20'}`}
-                        >
-                          <AvatarIcon name={av} size={28} />
-                        </button>
-                      ))}
+                    {/* Bottom Done Button */}
+                    <div className="pt-4 pb-6">
+                      <button 
+                        onClick={() => setIsAvatarModalOpen(false)} 
+                        className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                      >
+                        {lang === 'ar' ? 'إغلاق' : 'Close'}
+                      </button>
                     </div>
                   </div>
                 </div>,
