@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { exchangeCodeForTokens, getRedirectUri } from '@/lib/spotify';
+import { getAuthUserId } from '@/lib/auth-server';
+import prisma from '@/lib/prisma';
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
@@ -24,7 +26,21 @@ export async function GET(req) {
       throw new Error('No refresh token received from Spotify');
     }
 
-    const response = NextResponse.redirect(`${origin}/?spotify_connected=true`);
+    // Try saving to database for authenticated user
+    try {
+      const userId = await getAuthUserId(req);
+      if (userId) {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { spotifyRefreshToken: refreshToken }
+        });
+      }
+    } catch (dbErr) {
+      console.warn('[Spotify DB save skipped]:', dbErr.message);
+    }
+
+    // Pass token so desktop app and offline storage can persist it
+    const response = NextResponse.redirect(`${origin}/?spotify_connected=true&spotify_token=${encodeURIComponent(refreshToken)}`);
     
     // Store refresh token in secure HTTP-only cookie (1 year expiry)
     response.cookies.set('spotify_refresh_token', refreshToken, {

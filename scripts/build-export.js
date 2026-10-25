@@ -52,8 +52,12 @@ try {
 
   // 3. Clear old .next cache to ensure fresh static export
   const nextCacheDir = path.join(rootDir, '.next');
-  if (fs.existsSync(nextCacheDir)) {
-    fs.rmSync(nextCacheDir, { recursive: true, force: true });
+  try {
+    if (fs.existsSync(nextCacheDir)) {
+      execSync(`rm -rf "${nextCacheDir}"`);
+    }
+  } catch (e) {
+    console.warn('Notice: .next cleanup notice:', e.message);
   }
 
   // 4. Run Next.js static build

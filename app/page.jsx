@@ -677,6 +677,10 @@ export default function App() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.get('spotify_connected') === 'true') {
+        const token = params.get('spotify_token');
+        if (token) {
+          localStorage.setItem('daybase_spotify_refresh_token', token);
+        }
         setSpotifyNotification({ 
           type: 'success', 
           message: lang === 'ar' ? 'تم ربط حساب Spotify بنجاح! 🎵' : 'Spotify connected successfully! 🎵' 
@@ -5555,7 +5559,9 @@ export default function App() {
                               </div>
                             </div>
                             <a 
-                              href="/api/spotify/login" 
+                              href={typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') ? 'https://bokra101.vercel.app/api/spotify/login' : '/api/spotify/login'}
+                              target={typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') ? '_blank' : '_self'}
+                              rel="noopener noreferrer"
                               className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-white text-black hover:bg-white/90 transition-all active:scale-95 flex items-center gap-1.5 shadow-md"
                             >
                               {lang === 'ar' ? 'ربط / تبديل' : 'Connect / Switch'}

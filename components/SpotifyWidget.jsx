@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, SkipForward, SkipBack, Radio, Disc } from 'lucide-react';
+import { apiFetch, getApiBaseUrl } from '@/lib/api';
 
 export default function SpotifyWidget({ 
   lang = 'ar', 
@@ -38,7 +39,10 @@ export default function SpotifyWidget({
 
     async function checkNowPlaying() {
       try {
-        const res = await fetch('/api/spotify/now-playing');
+        const localToken = typeof window !== 'undefined' ? localStorage.getItem('daybase_spotify_refresh_token') || '' : '';
+        const res = await apiFetch('/api/spotify/now-playing', {
+          headers: localToken ? { 'x-spotify-refresh-token': localToken } : {}
+        });
         if (!res.ok) return;
         const json = await res.json();
         if (isMounted) {
@@ -91,15 +95,21 @@ export default function SpotifyWidget({
     if (action === 'play') setData(prev => ({ ...prev, isPlaying: true }));
 
     try {
-      await fetch('/api/spotify/control', {
+      const localToken = typeof window !== 'undefined' ? localStorage.getItem('daybase_spotify_refresh_token') || '' : '';
+      await apiFetch('/api/spotify/control', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localToken ? { 'x-spotify-refresh-token': localToken } : {})
+        },
         body: JSON.stringify({ action })
       });
 
       setTimeout(async () => {
         try {
-          const res = await fetch('/api/spotify/now-playing');
+          const res = await apiFetch('/api/spotify/now-playing', {
+            headers: localToken ? { 'x-spotify-refresh-token': localToken } : {}
+          });
           if (res.ok) {
             const json = await res.json();
             setData(json);
@@ -217,7 +227,9 @@ export default function SpotifyWidget({
         </div>
 
         <a 
-          href="/api/spotify/login" 
+          href={typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') ? 'https://bokra101.vercel.app/api/spotify/login' : '/api/spotify/login'}
+          target={typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') ? '_blank' : '_self'}
+          rel="noopener noreferrer"
           className="px-4 py-1.5 rounded-full font-black text-xs bg-white text-black hover:bg-white/90 transition-all active:scale-95 shadow-sm"
         >
           {lang === 'ar' ? 'ربط' : 'Connect'}

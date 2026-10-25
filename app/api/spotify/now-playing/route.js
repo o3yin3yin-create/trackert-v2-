@@ -1,13 +1,33 @@
 import { NextResponse } from 'next/server';
 import { refreshAccessToken, fetchCurrentlyPlaying } from '@/lib/spotify';
+import { getAuthUserId } from '@/lib/auth-server';
+import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req) {
   try {
-    const refreshToken = 
+    let refreshToken = 
       req.cookies.get('spotify_refresh_token')?.value || 
       req.headers.get('x-spotify-refresh-token');
+
+    // If no token from cookie/header, check user in database (handles desktop app sync)
+    if (!refreshToken) {
+      try {
+        const userId = await getAuthUserId(req);
+        if (userId) {
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { spotifyRefreshToken: true }
+          });
+          if (user?.spotifyRefreshToken) {
+            refreshToken = user.spotifyRefreshToken;
+          }
+        }
+      } catch (authErr) {
+        // Continue
+      }
+    }
 
     if (!refreshToken) {
       return NextResponse.json({ isConnected: false, isPlaying: false });

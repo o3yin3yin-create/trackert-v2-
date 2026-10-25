@@ -23,6 +23,7 @@ model User {
   activeSessionType String? // "pomodoro" or "flight"
   activeSessionData Json?   // Session details
   avatar         String?    @default("boy1") // boy1, boy2, boy3, girl1, girl2, girl3
+  spotifyRefreshToken String? // توكن سبوتيفاي للمزامنة بين الويب والديسكتوب
   isAdmin        Boolean    @default(false)
   isBlocked      Boolean    @default(false)
   createdAt      DateTime   @default(now())
