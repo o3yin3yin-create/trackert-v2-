@@ -9,7 +9,8 @@ export default function SpotifyWidget({
   theme = 'dark', 
   variant = 'card', // 'card' | 'compact'
   className = '',
-  userId = null
+  userId = null,
+  mode = 'auto', // 'auto' | 'always' | 'hidden'
 }) {
   const [data, setData] = useState({
     isConnected: false,
@@ -276,6 +277,16 @@ export default function SpotifyWidget({
     const qs = params.toString();
     return qs ? `${base}?${qs}` : base;
   };
+
+  // If hidden by user settings, don't render on home screen
+  if (variant !== 'compact' && mode === 'hidden') {
+    return null;
+  }
+
+  // If in 'auto' smart mode, only show when a track is actively playing!
+  if (variant !== 'compact' && mode === 'auto' && (!data.isConnected || !data.isPlaying || !data.title)) {
+    return null;
+  }
 
   // If NOT connected, show sleek monochrome black & white bar
   if (!data.isConnected) {

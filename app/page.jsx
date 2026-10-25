@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music } from 'lucide-react';
+import { Bell, SlidersHorizontal, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -731,7 +731,39 @@ export default function App() {
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [isTicketsHistoryViewOpen, setIsTicketsHistoryViewOpen] = useState(false);
   const [isFocusTasksViewOpen, setIsFocusTasksViewOpen] = useState(false);
+  const [isWidgetsModalOpen, setIsWidgetsModalOpen] = useState(false);
   const [spotifyNotification, setSpotifyNotification] = useState(null);
+
+  // Dynamic Home Screen Widgets Config
+  const [widgetsConfig, setWidgetsConfig] = useState(() => {
+    const DEFAULT_WIDGETS = [
+      { id: 'pomodoro', mode: 'auto' },
+      { id: 'flight', mode: 'auto' },
+      { id: 'spotify', mode: 'auto' },
+      { id: 'friends', mode: 'hidden' },
+    ];
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('bokra_widgets_config');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const existingIds = new Set(parsed.map(w => w.id));
+            const missing = DEFAULT_WIDGETS.filter(dw => !existingIds.has(dw.id));
+            return [...parsed, ...missing];
+          }
+        }
+      } catch (e) {}
+    }
+    return DEFAULT_WIDGETS;
+  });
+
+  const updateWidgetsConfig = (newConfig) => {
+    setWidgetsConfig(newConfig);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bokra_widgets_config', JSON.stringify(newConfig));
+    }
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -1435,6 +1467,7 @@ export default function App() {
     setIsAvatarModalOpen(false);
     setIsSettingsMenuOpen(false);
     setIsFocusMenuOpen(false);
+    setIsWidgetsModalOpen(false);
     if (!skipManage) {
       setIsManageVisible(false);
       setTimeout(() => setIsManageMounted(false), 300);
@@ -2327,6 +2360,135 @@ export default function App() {
         )}
       </motion.div>
     );
+  };
+
+  const renderDynamicWidget = (widgetId, mode) => {
+    if (mode === 'hidden') return null;
+
+    if (widgetId === 'pomodoro') {
+      const isRunning = !isPomodoroOpen && isTimerRunning;
+      if (mode === 'auto' && !isRunning) return null;
+
+      return (
+        <div 
+          key="pomodoro-widget"
+          onClick={() => setIsPomodoroOpen(true)} 
+          data-no-day-swipe="true"
+          className="w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 shadow-lg active:scale-[0.99] transition-all duration-200 mt-1 mb-1 select-none"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-black shrink-0">
+              <Timer size={14} strokeWidth={2.8} />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[13px] font-bold text-white tracking-tight">
+                {isRunning ? (activePomodoroTask?.name || (lang === 'ar' ? 'جلسة بومودورو' : 'Pomodoro Focus')) : (lang === 'ar' ? 'تركيز بومودورو' : 'Pomodoro Focus')}
+              </span>
+              <span className="text-[10px] text-white/50 font-semibold">
+                {isRunning ? (lang === 'ar' ? 'جلسة تركيز نشطة • اضغط للفتح' : 'Active focus session • Tap to view') : (lang === 'ar' ? 'اضغط لبدء جلسة تركيز' : 'Tap to start focus timer')}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {isRunning ? (
+              <span className="text-sm font-black font-mono px-3 py-1 rounded-full bg-white text-black shadow-sm tabular-nums">
+                {String(Math.floor(pomodoroTime / 60)).padStart(2, '0')}:{String(pomodoroTime % 60).padStart(2, '0')}
+              </span>
+            ) : (
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/10 text-white/70 hover:bg-white/20">
+                {lang === 'ar' ? 'بدء' : 'Start'}
+              </span>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (widgetId === 'flight') {
+      const isRunning = !isFlightFocusOpen && isFlightTimerRunning && selectedFlight;
+      if (mode === 'auto' && !isRunning) return null;
+
+      return (
+        <div 
+          key="flight-widget"
+          onClick={() => setIsFlightFocusOpen(true)} 
+          data-no-day-swipe="true"
+          className="w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 shadow-lg active:scale-[0.99] transition-all duration-200 mt-1 mb-1 select-none"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-black shrink-0">
+              <Plane size={14} strokeWidth={2.8} />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[13px] font-bold text-white tracking-tight">
+                {isRunning ? `${selectedFlight.origin} → ${selectedFlight.destination}` : (lang === 'ar' ? 'فلايت فوكس' : 'Flight Focus')}
+              </span>
+              <span className="text-[10px] text-white/50 font-semibold">
+                {isRunning ? `${selectedFlight.airline} ${selectedFlight.callsign}` : (lang === 'ar' ? 'انضم لرحلة حقيقية في السماء' : 'Join a real-world flight')}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {isRunning ? (
+              <span className="text-sm font-black font-mono px-3 py-1 rounded-full bg-white text-black shadow-sm tabular-nums">
+                {String(Math.floor(flightTimer / 3600)).padStart(2, '0')}:{String(Math.floor((flightTimer % 3600) / 60)).padStart(2, '0')}:{String(flightTimer % 60).padStart(2, '0')}
+              </span>
+            ) : (
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/10 text-white/70 hover:bg-white/20">
+                {lang === 'ar' ? 'رحلة' : 'Fly'}
+              </span>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (widgetId === 'spotify') {
+      return (
+        <SpotifyWidget 
+          key="spotify-widget"
+          lang={lang} 
+          theme={theme} 
+          themeColor={themeColor} 
+          variant="card" 
+          className="mt-0.5 mb-1" 
+          userId={user?.id}
+          mode={mode}
+        />
+      );
+    }
+
+    if (widgetId === 'friends') {
+      if (mode === 'hidden') return null;
+      return (
+        <div 
+          key="friends-widget"
+          data-no-day-swipe="true"
+          className="w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between border border-white/10 shadow-lg mt-1 mb-1 select-none opacity-80"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white shrink-0">
+              <Users size={14} strokeWidth={2.5} />
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[13px] font-bold text-white tracking-tight">
+                  {lang === 'ar' ? 'الأصدقاء والتحديات' : 'Friends & Activity'}
+                </span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-white/10 text-white/60 font-bold uppercase">
+                  {lang === 'ar' ? 'قريباً' : 'Soon'}
+                </span>
+              </div>
+              <span className="text-[10px] text-white/40 font-semibold">
+                {lang === 'ar' ? 'مشاركة الإنجاز والتحفيز المشترك' : 'Social accountability & streaks'}
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -3790,6 +3952,8 @@ export default function App() {
         )}
 
 
+
+
       <div className="min-h-screen bg-transparent text-white font-sans flex justify-center w-full selection:bg-white/20 pb-28 overflow-x-hidden relative">
         
         {/* Animated Aurora Background or Solid */}
@@ -4107,64 +4271,8 @@ export default function App() {
               </div>
             </div>
 
-            {/* Active Pomodoro Widget (Under Mission Card) */}
-            {(!isPomodoroOpen && isTimerRunning) && (
-              <div 
-                onClick={() => setIsPomodoroOpen(true)} 
-                data-no-day-swipe="true"
-                className="w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 shadow-lg active:scale-[0.99] transition-all duration-200 mt-1 mb-1 select-none"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-black shrink-0">
-                    <Timer size={14} strokeWidth={2.8} />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[13px] font-bold text-white tracking-tight">
-                      {activePomodoroTask?.name || (lang === 'ar' ? 'جلسة بومودورو' : 'Pomodoro Focus')}
-                    </span>
-                    <span className="text-[10px] text-white/50 font-semibold">
-                      {lang === 'ar' ? 'جلسة تركيز نشطة • اضغط للفتح' : 'Active focus session • Tap to view'}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-black font-mono px-3 py-1 rounded-full bg-white text-black shadow-sm tabular-nums">
-                    {String(Math.floor(pomodoroTime / 60)).padStart(2, '0')}:{String(pomodoroTime % 60).padStart(2, '0')}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Active Flight Focus Widget (Under Mission Card) */}
-            {(!isFlightFocusOpen && isFlightTimerRunning && selectedFlight) && (
-              <div 
-                onClick={() => setIsFlightFocusOpen(true)} 
-                data-no-day-swipe="true"
-                className="w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 shadow-lg active:scale-[0.99] transition-all duration-200 mt-1 mb-1 select-none"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-black shrink-0">
-                    <Plane size={14} strokeWidth={2.8} />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[13px] font-bold text-white tracking-tight">
-                      {selectedFlight.origin} → {selectedFlight.destination}
-                    </span>
-                    <span className="text-[10px] text-white/50 font-semibold">
-                      {selectedFlight.airline} {selectedFlight.callsign}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-black font-mono px-3 py-1 rounded-full bg-white text-black shadow-sm tabular-nums">
-                    {String(Math.floor(flightTimer / 3600)).padStart(2, '0')}:{String(Math.floor((flightTimer % 3600) / 60)).padStart(2, '0')}:{String(flightTimer % 60).padStart(2, '0')}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Mobile Spotify Slim Bar (Directly below Mission Card) */}
-            <SpotifyWidget lang={lang} theme={theme} themeColor={themeColor} variant="card" className="mt-0.5 mb-1" userId={user?.id} />
+            {/* Dynamic Widgets (Under Mission Card) */}
+            {widgetsConfig.map((widget) => renderDynamicWidget(widget.id, widget.mode))}
 
             {/* Mobile Habits Cards Grid */}
             <div className="grid grid-cols-2 gap-3 items-start w-full">
@@ -4286,64 +4394,8 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Active Pomodoro Widget (Under Mission Card) */}
-              {(!isPomodoroOpen && isTimerRunning) && (
-                <div 
-                  onClick={() => setIsPomodoroOpen(true)} 
-                  data-no-day-swipe="true"
-                  className="w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 shadow-lg active:scale-[0.99] transition-all duration-200 mt-1 mb-1 select-none"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-black shrink-0">
-                      <Timer size={14} strokeWidth={2.8} />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[13px] font-bold text-white tracking-tight">
-                        {activePomodoroTask?.name || (lang === 'ar' ? 'جلسة بومودورو' : 'Pomodoro Focus')}
-                      </span>
-                      <span className="text-[10px] text-white/50 font-semibold">
-                        {lang === 'ar' ? 'جلسة تركيز نشطة • اضغط للفتح' : 'Active focus session • Tap to view'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-black font-mono px-3 py-1 rounded-full bg-white text-black shadow-sm tabular-nums">
-                      {String(Math.floor(pomodoroTime / 60)).padStart(2, '0')}:{String(pomodoroTime % 60).padStart(2, '0')}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Active Flight Focus Widget (Under Mission Card) */}
-              {(!isFlightFocusOpen && isFlightTimerRunning && selectedFlight) && (
-                <div 
-                  onClick={() => setIsFlightFocusOpen(true)} 
-                  data-no-day-swipe="true"
-                  className="w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 shadow-lg active:scale-[0.99] transition-all duration-200 mt-1 mb-1 select-none"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-black shrink-0">
-                      <Plane size={14} strokeWidth={2.8} />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[13px] font-bold text-white tracking-tight">
-                        {selectedFlight.origin} → {selectedFlight.destination}
-                      </span>
-                      <span className="text-[10px] text-white/50 font-semibold">
-                        {selectedFlight.airline} {selectedFlight.callsign}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-black font-mono px-3 py-1 rounded-full bg-white text-black shadow-sm tabular-nums">
-                      {String(Math.floor(flightTimer / 3600)).padStart(2, '0')}:{String(Math.floor((flightTimer % 3600) / 60)).padStart(2, '0')}:{String(flightTimer % 60).padStart(2, '0')}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Desktop Spotify Slim Bar (Directly below Mission Card) */}
-              <SpotifyWidget lang={lang} theme={theme} themeColor={themeColor} variant="card" className="mt-0.5" userId={user?.id} />
+              {/* Dynamic Widgets (Under Mission Card) */}
+              {widgetsConfig.map((widget) => renderDynamicWidget(widget.id, widget.mode))}
 
               {/* Habits Cards Grid */}
               <div className="grid grid-cols-2 gap-3 mt-1 items-start w-full">
@@ -4741,6 +4793,209 @@ export default function App() {
                 </div>
               </div>
             </div>, 
+            document.body
+          )}
+
+          {/* --- WIDGETS CUSTOMIZATION MODAL (FULL SCREEN) --- */}
+          {isWidgetsModalOpen && createPortal(
+            <div className="fixed inset-0 z-[10005] bg-black overflow-y-auto animate-in fade-in duration-200">
+              <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
+                <div>
+                  {/* Header */}
+                  <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => { setIsWidgetsModalOpen(false); setIsSettingsMenuOpen(true); }} 
+                        className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
+                        aria-label="Back"
+                      >
+                        <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                      </button>
+                      <div className="flex flex-col">
+                        <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                          <LayoutGrid size={22} className="text-white/80" /> {lang === 'ar' ? 'تخصيص الويدجيتس' : 'Widgets Setup'}
+                        </h2>
+                        <span className="text-white/40 text-xs font-semibold mt-0.5">
+                          {lang === 'ar' ? 'ترتيب وظهور الويدجيتس تحت كارت الميشن' : 'Order & visibility under Mission card'}
+                        </span>
+                      </div>
+                    </div>
+                    <button onClick={() => setIsWidgetsModalOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  {/* Smart Auto Explainer Banner */}
+                  <div className="mb-5 p-4 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0 mt-0.5 text-white text-sm">
+                      ✨
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-white mb-0.5">
+                        {lang === 'ar' ? 'الظهور الذكي (تلقائي)' : 'Smart Auto Visibility'}
+                      </span>
+                      <span className="text-[11px] text-white/60 leading-relaxed">
+                        {lang === 'ar' 
+                          ? 'بالوضع التلقائي، الويدجيت مش هيظهر غير لما يكون شغال أو في جلسة نشطة (زي بومودورو شغال، أو تراك سبوتيفاي شغال)، عشان الهوم سكرين تفضل نظيفة وهادية.' 
+                          : 'In Auto mode, widgets only appear when in active use (e.g. running Pomodoro or playing Spotify), keeping your home screen clutter-free.'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Widgets List */}
+                  <div className="flex flex-col gap-3 pb-8">
+                    {widgetsConfig.map((widget, index) => {
+                      const meta = {
+                        pomodoro: {
+                          icon: <Timer size={18} strokeWidth={2.4} />,
+                          name: lang === 'ar' ? 'تركيز بومودورو' : 'Pomodoro Focus',
+                          desc: lang === 'ar' ? 'عداد التركيز وجلسات العمل' : 'Focus timer & work sessions'
+                        },
+                        flight: {
+                          icon: <PlaneTakeoff size={18} strokeWidth={2.4} />,
+                          name: lang === 'ar' ? 'فلايت فوكس' : 'Flight Focus',
+                          desc: lang === 'ar' ? 'رحلات التركيز الجوية التفاعلية' : 'Virtual flight simulator'
+                        },
+                        spotify: {
+                          icon: <Radio size={18} strokeWidth={2.4} />,
+                          name: 'Spotify',
+                          desc: lang === 'ar' ? 'مشغل الموسيقى والمزامنة المباشرة' : 'Music playback & sync'
+                        },
+                        friends: {
+                          icon: <Users size={18} strokeWidth={2.4} />,
+                          name: lang === 'ar' ? 'الأصدقاء والتحديات' : 'Friends & Streaks',
+                          desc: lang === 'ar' ? 'متابعة الستريك المشترك (قريباً)' : 'Shared focus & streaks (Soon)'
+                        }
+                      }[widget.id] || {
+                        icon: <LayoutGrid size={18} />,
+                        name: widget.id,
+                        desc: ''
+                      };
+
+                      const isFirst = index === 0;
+                      const isLast = index === widgetsConfig.length - 1;
+
+                      return (
+                        <div 
+                          key={widget.id}
+                          className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-3.5 transition-all"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            {/* Left: Icon + Name */}
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center shrink-0">
+                                {meta.icon}
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-sm font-bold text-white truncate">{meta.name}</span>
+                                <span className="text-[11px] text-white/50 truncate">{meta.desc}</span>
+                              </div>
+                            </div>
+
+                            {/* Right: Reorder Up / Down Buttons */}
+                            <div className="flex items-center gap-1 shrink-0 bg-white/5 p-1 rounded-xl border border-white/10">
+                              <button
+                                type="button"
+                                disabled={isFirst}
+                                onClick={() => {
+                                  if (isFirst) return;
+                                  const newConfig = [...widgetsConfig];
+                                  const temp = newConfig[index - 1];
+                                  newConfig[index - 1] = newConfig[index];
+                                  newConfig[index] = temp;
+                                  updateWidgetsConfig(newConfig);
+                                  haptic('light');
+                                }}
+                                className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:hover:bg-transparent transition-all active:scale-90"
+                                title={lang === 'ar' ? 'تحريك لأعلى' : 'Move Up'}
+                              >
+                                <ChevronUp size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isLast}
+                                onClick={() => {
+                                  if (isLast) return;
+                                  const newConfig = [...widgetsConfig];
+                                  const temp = newConfig[index + 1];
+                                  newConfig[index + 1] = newConfig[index];
+                                  newConfig[index] = temp;
+                                  updateWidgetsConfig(newConfig);
+                                  haptic('light');
+                                }}
+                                className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:hover:bg-transparent transition-all active:scale-90"
+                                title={lang === 'ar' ? 'تحريك لأسفل' : 'Move Down'}
+                              >
+                                <ChevronDown size={16} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Segmented Control for Visibility Mode */}
+                          <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-black/40 border border-white/10">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newConfig = widgetsConfig.map(w => w.id === widget.id ? { ...w, mode: 'auto' } : w);
+                                updateWidgetsConfig(newConfig);
+                                haptic('light');
+                              }}
+                              className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
+                                widget.mode === 'auto'
+                                  ? 'bg-white text-black shadow-md'
+                                  : 'text-white/50 hover:text-white/80'
+                              }`}
+                            >
+                              {lang === 'ar' ? 'تلقائي (ذكي)' : 'Auto'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newConfig = widgetsConfig.map(w => w.id === widget.id ? { ...w, mode: 'always' } : w);
+                                updateWidgetsConfig(newConfig);
+                                haptic('light');
+                              }}
+                              className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
+                                widget.mode === 'always'
+                                  ? 'bg-white text-black shadow-md'
+                                  : 'text-white/50 hover:text-white/80'
+                              }`}
+                            >
+                              {lang === 'ar' ? 'دائماً' : 'Always'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newConfig = widgetsConfig.map(w => w.id === widget.id ? { ...w, mode: 'hidden' } : w);
+                                updateWidgetsConfig(newConfig);
+                                haptic('light');
+                              }}
+                              className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
+                                widget.mode === 'hidden'
+                                  ? 'bg-white text-black shadow-md'
+                                  : 'text-white/50 hover:text-white/80'
+                              }`}
+                            >
+                              {lang === 'ar' ? 'مخفي' : 'Hidden'}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Bottom Done Action */}
+                <div className="pt-4 pb-2">
+                  <button 
+                    onClick={() => setIsWidgetsModalOpen(false)}
+                    className="w-full py-4 rounded-2xl bg-white text-black font-black text-sm tracking-wide transition-all active:scale-[0.98] shadow-xl hover:bg-white/90"
+                  >
+                    {lang === 'ar' ? 'حفظ وإغلاق' : 'Done'}
+                  </button>
+                </div>
+              </div>
+            </div>,
             document.body
           )}
 
@@ -5386,6 +5641,24 @@ export default function App() {
                             <div className="flex items-center gap-3">
                               <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center"><BookOpen size={18} /></div>
                               <span>{t('howToUse')}</span>
+                            </div>
+                            <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                          </button>
+
+                          {/* Customize & Reorder Widgets */}
+                          <button onClick={() => { setIsSettingsMenuOpen(false); setIsWidgetsModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center">
+                                <LayoutGrid size={18} />
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-bold text-white">
+                                  {lang === 'ar' ? 'تخصيص وترتيب الويدجيتس' : 'Customize & Reorder Widgets'}
+                                </span>
+                                <span className="text-[10px] text-white/50 font-normal">
+                                  {lang === 'ar' ? 'سبوتيفاي، بومودورو، فلايت فوكس...' : 'Spotify, Pomodoro, Flight Focus...'}
+                                </span>
+                              </div>
                             </div>
                             <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
                           </button>
