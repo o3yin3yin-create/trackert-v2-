@@ -1966,8 +1966,8 @@ export default function App() {
       
         {/* ---------------- ADD HABIT PAGE (FULL SCREEN) ---------------- */}
         {isAddMounted && (
-          <div className={`fixed inset-0 z-[10000] bg-black/95 backdrop-blur-3xl overflow-y-auto transition-opacity duration-300 ease-out ${isAddVisible ? 'opacity-100' : 'opacity-0'}`}>
-            <div className={`min-h-screen w-full max-w-lg mx-auto px-5 py-8 flex flex-col justify-between transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isAddVisible ? 'translate-y-0 scale-100' : 'translate-y-4 scale-95 opacity-0'}`}>
+          <div className={`fixed inset-0 z-[10000] bg-black overflow-y-auto transition-opacity duration-300 ease-out ${isAddVisible ? 'opacity-100' : 'opacity-0'}`}>
+            <div className={`min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isAddVisible ? 'translate-y-0 scale-100' : 'translate-y-4 scale-95 opacity-0'}`}>
               <div>
                 {/* Header */}
                 <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
@@ -2234,8 +2234,8 @@ export default function App() {
 
         {/* ---------------- MANAGE HABITS PAGE (FULL SCREEN) ---------------- */}
         {isManageMounted && (
-          <div className={`fixed inset-0 z-[10000] bg-black/95 backdrop-blur-3xl overflow-y-auto transition-opacity duration-300 ease-out ${isManageVisible ? 'opacity-100' : 'opacity-0'}`}>
-            <div className={`min-h-screen w-full max-w-lg mx-auto px-5 py-8 flex flex-col justify-between transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isManageVisible ? 'translate-y-0 scale-100' : 'translate-y-4 scale-95 opacity-0'}`}>
+          <div className={`fixed inset-0 z-[10000] bg-black overflow-y-auto transition-opacity duration-300 ease-out ${isManageVisible ? 'opacity-100' : 'opacity-0'}`}>
+            <div className={`min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isManageVisible ? 'translate-y-0 scale-100' : 'translate-y-4 scale-95 opacity-0'}`}>
               <div>
                 {/* Header */}
                 <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
@@ -2320,19 +2320,40 @@ export default function App() {
 
         {/* ---------------- NOTE MODAL ---------------- */}
         {isNoteModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xl">
-            <div className="w-full max-w-sm p-6 bg-[#1C1C1E] rounded-3xl border border-white/10">
-              <h3 className="text-lg font-bold mb-4">Note for today</h3>
-              <textarea value={noteInput} onChange={(e) => setNoteInput(e.target.value)} className="w-full h-32 bg-black p-4 rounded-2xl outline-none border border-white/5 mb-4 text-white text-sm resize-none placeholder:text-white/20" placeholder="Why did you miss it?"></textarea>
-              <button onClick={() => { setHabitNotes(prev => ({ ...prev, [`${activeDateStr}-${activeNoteHabit}`]: noteInput })); setIsNoteModalOpen(false); }} className="w-full py-3 bg-white text-black font-bold rounded-xl transition-all active:scale-[0.98]">Save</button>
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xl"
+            onClick={(e) => { if (e.target === e.currentTarget) setIsNoteModalOpen(false); }}
+          >
+            <div className="w-full max-w-sm p-6 bg-[#1C1C1E] rounded-3xl border border-white/10 shadow-2xl">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-white">{lang === 'ar' ? 'ملاحظة اليوم' : 'Note for today'}</h3>
+                <button onClick={() => setIsNoteModalOpen(false)} className="p-2 bg-white/5 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-colors">
+                  <X size={16} />
+                </button>
+              </div>
+              <textarea 
+                value={noteInput} 
+                onChange={(e) => setNoteInput(e.target.value)} 
+                className="w-full h-32 bg-black p-4 rounded-2xl outline-none border border-white/5 mb-4 text-white text-sm resize-none placeholder:text-white/20" 
+                placeholder={lang === 'ar' ? 'اكتب ملاحظتك هنا...' : 'Why did you miss it?'}
+              />
+              <button 
+                onClick={() => { 
+                  setHabitNotes(prev => ({ ...prev, [`${activeDateStr}-${activeNoteHabit}`]: noteInput })); 
+                  setIsNoteModalOpen(false); 
+                }} 
+                className="w-full py-3 bg-white text-black font-bold rounded-xl transition-all active:scale-[0.98]"
+              >
+                {lang === 'ar' ? 'حفظ' : 'Save'}
+              </button>
             </div>
           </div>
         )}
 
         {/* ---------------- EMERGENCY CARDS PAGE (FULL SCREEN) ---------------- */}
         {isCardsModalOpen && createPortal(
-          <div className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-3xl overflow-y-auto">
-            <div className="min-h-screen w-full max-w-lg mx-auto px-5 py-8 flex flex-col justify-between">
+          <div className="fixed inset-0 z-[10000] bg-black overflow-y-auto">
+            <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
               <div>
                 {/* Header */}
                 <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
@@ -2471,7 +2492,7 @@ export default function App() {
 
         {/* ---------------- SEAT SELECTION MODAL ---------------- */}
         {isSeatSelectionOpen && createPortal(
-          <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md">
+          <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md overflow-y-auto">
             <SeatSelection 
               lang={lang}
               onSelectSeat={(seat) => {
@@ -2484,22 +2505,44 @@ export default function App() {
           document.body
         )}
 
-        {/* ---------------- FLIGHT FOCUS MODAL ---------------- */}
+        {/* ---------------- FLIGHT FOCUS PAGE (FULL SCREEN) ---------------- */}
         {isFlightFocusOpen && createPortal(
-          <div className="fixed inset-0 z-[99999] overflow-y-auto bg-black/60 backdrop-blur-3xl flex items-center justify-center p-4 sm:p-6 md:p-10">
-            {/* Modal Box */}
-            <div className="w-full max-w-sm landscape:max-w-4xl md:max-w-4xl relative liquid-panel rounded-[32px] p-5 sm:p-8 shadow-2xl flex flex-col my-auto transition-all duration-300">
-              <button onClick={() => { 
-                setIsFlightFocusOpen(false); 
-                if (!isFlightTimerRunning) {
-                  setSelectedFlight(null);
-                  setFlightDurationFilter(null);
-                }
-              }} className="absolute top-4 right-4 bg-gray-500/10 hover:bg-gray-500/20 border-none rounded-full w-8 h-8 text-black dark:text-white cursor-pointer flex items-center justify-center transition-colors z-[100]">
-                {isFlightTimerRunning ? <ChevronDown size={18} /> : <X size={16} />}
-              </button>
-
-              <h3 className="text-sm font-bold tracking-widest text-gray-500 dark:text-white/50 uppercase mb-4 select-none text-center">{t('flightFocus')} ✈️</h3>
+          <div className="fixed inset-0 z-[10000] overflow-y-auto bg-black animate-in fade-in duration-200">
+            <div className="min-h-screen w-full max-w-4xl mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
+              <div>
+                {/* Header */}
+                <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => { 
+                        setIsFlightFocusOpen(false); 
+                        if (!isFlightTimerRunning) {
+                          setSelectedFlight(null);
+                          setFlightDurationFilter(null);
+                        }
+                      }} 
+                      className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
+                      aria-label="Back"
+                    >
+                      <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                    </button>
+                    <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                      <PlaneTakeoff size={24} className="text-cyan-400" /> {t('flightFocus')}
+                    </h2>
+                  </div>
+                  <button 
+                    onClick={() => { 
+                      setIsFlightFocusOpen(false); 
+                      if (!isFlightTimerRunning) {
+                        setSelectedFlight(null);
+                        setFlightDurationFilter(null);
+                      }
+                    }} 
+                    className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all"
+                  >
+                    {isFlightTimerRunning ? <ChevronDown size={20} /> : <X size={18} />}
+                  </button>
+                </div>
 
               {!selectedFlight && flightDurationFilter === null ? (
                 <div className="flex flex-col gap-6 py-6 px-2 animate-in fade-in zoom-in-95 duration-300">
@@ -3024,6 +3067,7 @@ export default function App() {
                   </div>
                 </div>
               )}
+              </div>
             </div>
           </div>, document.body
         )}
@@ -3038,42 +3082,55 @@ export default function App() {
             const neon = themeColor;
 
             return (
-              <div style={{
-                position: 'fixed', inset: 0, zIndex: 9999,
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center',
-                padding: '24px',
-                background: 'rgba(0,0,0,0.95)',
-                backdropFilter: 'blur(32px)',
-                WebkitBackdropFilter: 'blur(32px)',
-              }}>
-                {/* Preset Buttons */}
-                {!isTimerRunning && (
-                  <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                    {PRESETS.map(m => {
-                      const isActive = pomodoroInitialTime === m * 60;
-                      return (
-                        <button key={m} onClick={() => {
-                          haptic('light');
-                          const secs = m * 60;
-                          setPomodoroInitialTime(secs);
-                          setPomodoroTime(secs);
-                        }} style={{
-                          padding: '8px 18px',
-                          borderRadius: '999px',
-                          fontWeight: 700,
-                          fontSize: '13px',
-                          cursor: 'pointer',
-                          border: isActive ? `1.5px solid ${neon}` : '1.5px solid rgba(255,255,255,0.12)',
-                          background: isActive ? `${neon}22` : 'rgba(255,255,255,0.04)',
-                          color: isActive ? neon : 'rgba(255,255,255,0.5)',
-                          boxShadow: isActive ? `0 0 12px ${neon}55` : 'none',
-                          transition: 'all 0.2s ease',
-                        }}>{m} mins</button>
-                      );
-                    })}
+              <div className="fixed inset-0 z-[10000] bg-black overflow-y-auto animate-in fade-in duration-200">
+                <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between items-center">
+                  {/* Header */}
+                  <div className="w-full flex justify-between items-center mb-6 pb-4 border-b border-white/10">
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => setIsPomodoroOpen(false)} 
+                        className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
+                        aria-label="Back"
+                      >
+                        <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                      </button>
+                      <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                        <Timer size={24} className="text-orange-400" /> {t('pomodoro')}
+                      </h2>
+                    </div>
+                    <button onClick={() => setIsPomodoroOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                      <X size={18} />
+                    </button>
                   </div>
-                )}
+
+                  <div className="flex flex-col items-center justify-center my-auto w-full">
+                    {/* Preset Buttons */}
+                    {!isTimerRunning && (
+                      <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                        {PRESETS.map(m => {
+                          const isActive = pomodoroInitialTime === m * 60;
+                          return (
+                            <button key={m} onClick={() => {
+                              haptic('light');
+                              const secs = m * 60;
+                              setPomodoroInitialTime(secs);
+                              setPomodoroTime(secs);
+                            }} style={{
+                              padding: '8px 18px',
+                              borderRadius: '999px',
+                              fontWeight: 700,
+                              fontSize: '13px',
+                              cursor: 'pointer',
+                              border: isActive ? `1.5px solid ${neon}` : '1.5px solid rgba(255,255,255,0.12)',
+                              background: isActive ? `${neon}22` : 'rgba(255,255,255,0.04)',
+                              color: isActive ? neon : 'rgba(255,255,255,0.5)',
+                              boxShadow: isActive ? `0 0 12px ${neon}55` : 'none',
+                              transition: 'all 0.2s ease',
+                            }}>{m} mins</button>
+                          );
+                        })}
+                      </div>
+                    )}
 
                 {/* Main Card — Horizontal */}
                 <div className="w-full max-w-[360px] liquid-panel rounded-[32px] p-9 flex flex-col items-center relative shadow-2xl mb-24" style={{ gap: '32px' }}>
@@ -3198,11 +3255,23 @@ export default function App() {
                 </div>
 
                 {/* Today focus time badge */}
-                <div style={{ marginTop: '16px', fontSize: '12px', color: 'rgba(255,255,255,0.3)', fontWeight: 600, letterSpacing: '0.06em' }}>
+                <div style={{ marginTop: '24px', fontSize: '13px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: '0.06em' }}>
                   Today&apos;s focus: <span style={{ color: neon }}>{Math.floor((focusTimeData[getFormatDateStr(new Date())] || 0) / 60)} min</span>
                 </div>
               </div>
-            );
+
+              {/* Bottom Done Action */}
+              <div className="w-full pt-4 pb-6">
+                <button 
+                  onClick={() => setIsPomodoroOpen(false)} 
+                  className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                >
+                  {lang === 'ar' ? 'إغلاق' : 'Close'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
           })(),
           document.body
         )}
@@ -4468,8 +4537,8 @@ export default function App() {
 
           {/* --- ANALYTICS PAGE (FULL SCREEN) --- */}
           {isAnalyticsModalOpen && createPortal(
-            <div className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-3xl overflow-y-auto">
-              <div className="min-h-screen w-full max-w-lg mx-auto px-5 py-8 flex flex-col justify-between">
+            <div className="fixed inset-0 z-[10000] bg-black overflow-y-auto">
+              <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
                 <div>
                   {/* Header */}
                   <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
@@ -4540,20 +4609,23 @@ export default function App() {
                           {activeDateStr === realTodayStr ? "Today's Focus Tasks" : "Focus Tasks"}
                         </h4>
                         
-                        {pomodoroTasksData[activeDateStr] && pomodoroTasksData[activeDateStr].filter(t => !t.name?.includes('✈')).length > 0 ? (
+                        {pomodoroTasksData[activeDateStr] && pomodoroTasksData[activeDateStr].filter(t => t && t.name && !t.name.includes('✈') && typeof t.timeSpent === 'number').length > 0 ? (
                           <div className="flex flex-col gap-2.5 max-h-64 overflow-y-auto pr-1">
                             {pomodoroTasksData[activeDateStr]
-                              .filter(t => !t.name?.includes('✈'))
-                              .sort((a, b) => b.timeSpent - a.timeSpent)
-                              .map((task, idx) => (
-                              <div key={idx} className="flex justify-between items-center bg-white/5 px-3.5 py-3 rounded-2xl border border-white/5">
-                                <div className="flex items-center gap-2.5">
-                                  <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: task.color }} />
-                                  <span className="text-sm font-bold text-white">{task.name}</span>
-                                </div>
-                                <span className="text-xs font-bold text-white/70">{Math.ceil(task.timeSpent / 60)} min</span>
-                              </div>
-                            ))}
+                              .filter(t => t && t.name && !t.name.includes('✈') && typeof t.timeSpent === 'number')
+                              .sort((a, b) => (b.timeSpent || 0) - (a.timeSpent || 0))
+                              .map((task, idx) => {
+                                const mins = Math.max(1, Math.ceil((task.timeSpent || 0) / 60));
+                                return (
+                                  <div key={idx} className="flex justify-between items-center bg-white/5 px-3.5 py-3 rounded-2xl border border-white/5">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: task.color || '#FF9F0A' }} />
+                                      <span className="text-sm font-bold text-white">{task.name}</span>
+                                    </div>
+                                    <span className="text-xs font-bold text-white/70">{mins} min</span>
+                                  </div>
+                                );
+                              })}
                           </div>
                         ) : (
                           <div className="text-center text-xs font-bold text-white/30 py-6 opacity-60">
@@ -4669,8 +4741,8 @@ export default function App() {
 
           {/* --- DAILY TASKS PAGE (FULL SCREEN) --- */}
           {isTasksModalOpen && createPortal(
-            <div className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-3xl overflow-y-auto">
-              <div className="min-h-screen w-full max-w-lg mx-auto px-5 py-8 flex flex-col justify-between">
+            <div className="fixed inset-0 z-[10000] bg-black overflow-y-auto">
+              <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
                 <div>
                   {/* Header */}
                   <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
@@ -4800,8 +4872,8 @@ export default function App() {
 
           {/* --- HOW TO USE PAGE (FULL SCREEN) --- */}
           {isHowToUseOpen && createPortal(
-            <div className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-3xl overflow-y-auto">
-              <div className="min-h-screen w-full max-w-lg mx-auto px-5 py-8 flex flex-col justify-between">
+            <div className="fixed inset-0 z-[10000] bg-black overflow-y-auto">
+              <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
                 <div>
                   {/* Header */}
                   <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
@@ -5213,56 +5285,129 @@ export default function App() {
                   <Settings size={18} />
                 </button>
 
-                {isSettingsMenuOpen && (
-                  <>
-                    <div 
-                      className="fixed inset-0 z-[10000] bg-transparent" 
-                      onClick={() => setIsSettingsMenuOpen(false)} 
-                    />
-                    <div className="absolute right-0 bottom-full mb-3 w-56 bg-[#18181b]/95 backdrop-blur-2xl rounded-2xl p-2 flex flex-col gap-1 shadow-[0_20px_50px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in-95 duration-200 z-[10001] border border-white/10">
-                      <button onClick={() => { toggleLang(); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-white">
-                        <Globe size={16} /> {lang === 'en' ? 'العربية' : 'English'}
-                      </button>
-                      <button onClick={() => { toggleTheme(); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-white">
-                        {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />} {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-                      </button>
-                      <button onClick={() => { 
-                        const newStyle = bgStyle === 'aurora' ? 'solid' : 'aurora';
-                        setBgStyle(newStyle);
-                        if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', newStyle);
-                        markLocalMutation();
-                        setIsSettingsMenuOpen(false); 
-                      }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-white">
-                        <span className="w-4 h-4 flex items-center justify-center opacity-70">✨</span> {bgStyle === 'aurora' ? 'Solid Background' : 'Aurora Background'}
-                      </button>
-                      <button onClick={() => { setIsCardsModalOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-red-400">
-                        <ShieldAlert size={16} /> {t('emergencyCards')}
-                      </button>
-                      <label className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold cursor-pointer relative text-white">
-                        <SlidersHorizontal size={16} /> Accent Color
-                        <input type="color" value={themeColor} onChange={(e) => {
-                          setThemeColor(e.target.value);
-                          if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', e.target.value);
-                          markLocalMutation();
-                        }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                      </label>
-                      <button onClick={() => { setIsAvatarModalOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-white border-t border-white/10 mt-1 pt-3">
-                        <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center"><AvatarIcon name={isMounted ? avatar : 'user'} size={14} /></div> Change Avatar
-                      </button>
-                      {isAdmin && (
-                        <button onClick={() => { setIsAdminPanelOpen(true); setIsSettingsMenuOpen(false); }} className="w-full text-left px-3 py-2 rounded-xl hover:bg-white/10 flex items-center gap-3 text-sm font-semibold text-purple-400 border-t border-white/10 mt-1 pt-3">
-                          <Users size={16} /> Admin Dashboard
+                {isSettingsMenuOpen && createPortal(
+                  <div className="fixed inset-0 z-[10000] bg-black overflow-y-auto animate-in fade-in duration-200">
+                    <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
+                      <div>
+                        {/* Header */}
+                        <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
+                          <div className="flex items-center gap-3">
+                            <button 
+                              onClick={() => setIsSettingsMenuOpen(false)} 
+                              className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
+                              aria-label="Back"
+                            >
+                              <ChevronLeft size={20} className={lang === 'ar' ? 'rotate-180' : ''} />
+                            </button>
+                            <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                              <Settings size={22} className="text-white/80" /> {t('settings')}
+                            </h2>
+                          </div>
+                          <button onClick={() => setIsSettingsMenuOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                            <X size={18} />
+                          </button>
+                        </div>
+
+                        {/* Settings Options List */}
+                        <div className="flex flex-col gap-3 pb-8">
+                          {/* Language */}
+                          <button onClick={() => toggleLang()} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center"><Globe size={18} /></div>
+                              <span>{lang === 'en' ? 'Language / اللغة' : 'اللغة / Language'}</span>
+                            </div>
+                            <span className="text-xs bg-white/10 px-3 py-1.5 rounded-xl text-white/70 font-semibold">{lang === 'en' ? 'العربية' : 'English'}</span>
+                          </button>
+
+                          {/* Theme Mode */}
+                          <button onClick={() => toggleTheme()} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">{theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}</div>
+                              <span>{lang === 'ar' ? 'المظهر' : 'Appearance'}</span>
+                            </div>
+                            <span className="text-xs bg-white/10 px-3 py-1.5 rounded-xl text-white/70 font-semibold">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+                          </button>
+
+                          {/* Background Style */}
+                          <button onClick={() => { 
+                            const newStyle = bgStyle === 'aurora' ? 'solid' : 'aurora';
+                            setBgStyle(newStyle);
+                            if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', newStyle);
+                            markLocalMutation();
+                          }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center"><span className="text-base">✨</span></div>
+                              <span>{lang === 'ar' ? 'نمط الخلفية' : 'Background Style'}</span>
+                            </div>
+                            <span className="text-xs bg-white/10 px-3 py-1.5 rounded-xl text-white/70 font-semibold">{bgStyle === 'aurora' ? 'Solid' : 'Aurora'}</span>
+                          </button>
+
+                          {/* Emergency Cards */}
+                          <button onClick={() => { setIsSettingsMenuOpen(false); setIsCardsModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 flex items-center justify-between text-base font-bold text-red-400 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-red-500/15 flex items-center justify-center"><ShieldAlert size={18} /></div>
+                              <span>{t('emergencyCards')}</span>
+                            </div>
+                            <ChevronRight size={18} className={`text-red-400/60 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                          </button>
+
+                          {/* Accent Color */}
+                          <label className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold cursor-pointer relative text-white transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center"><SlidersHorizontal size={18} /></div>
+                              <span>Accent Color</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full border border-white/30 shadow-md" style={{ backgroundColor: themeColor }} />
+                              <input type="color" value={themeColor} onChange={(e) => {
+                                setThemeColor(e.target.value);
+                                if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', e.target.value);
+                                markLocalMutation();
+                              }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                            </div>
+                          </label>
+
+                          {/* Change Avatar */}
+                          <button onClick={() => { setIsSettingsMenuOpen(false); setIsAvatarModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center"><AvatarIcon name={isMounted ? avatar : 'user'} size={18} /></div>
+                              <span>Change Avatar</span>
+                            </div>
+                            <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                          </button>
+
+                          {/* Admin Dashboard */}
+                          {isAdmin && (
+                            <button onClick={() => { setIsSettingsMenuOpen(false); setIsAdminPanelOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 flex items-center justify-between text-base font-bold text-purple-400 transition-colors">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-purple-500/15 flex items-center justify-center"><Users size={18} /></div>
+                                <span>Admin Dashboard</span>
+                              </div>
+                              <ChevronRight size={18} className={`text-purple-400/60 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Bottom Done Button */}
+                      <div className="pt-4 pb-6">
+                        <button 
+                          onClick={() => setIsSettingsMenuOpen(false)} 
+                          className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                        >
+                          {lang === 'ar' ? 'إغلاق' : 'Close'}
                         </button>
-                      )}
+                      </div>
                     </div>
-                  </>
+                  </div>,
+                  document.body
                 )}
               </div>
 
               {/* Avatar Picker Page (Full Screen) */}
               {isAvatarModalOpen && createPortal(
-                <div className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-3xl overflow-y-auto">
-                  <div className="min-h-screen w-full max-w-lg mx-auto px-5 py-8 flex flex-col justify-between">
+                <div className="fixed inset-0 z-[10000] bg-black overflow-y-auto">
+                  <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
                     <div>
                       {/* Header */}
                       <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">

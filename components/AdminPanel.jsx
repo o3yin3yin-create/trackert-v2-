@@ -101,7 +101,7 @@ export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl })
         className="w-full max-w-lg h-full bg-[#f8fafc] dark:bg-[#0c0c0e] border-l border-r border-black/5 dark:border-white/5 relative z-10 flex flex-col shadow-2xl"
       >
         {/* Header */}
-        <div className="p-6 pb-4 border-b border-black/5 dark:border-white/5 flex items-center justify-between shrink-0">
+        <div className="p-6 pb-4 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] border-b border-black/5 dark:border-white/5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
               <Shield size={20} className="text-purple-500" />
