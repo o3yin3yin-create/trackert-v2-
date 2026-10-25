@@ -5753,6 +5753,7 @@ export default function App() {
                             <div className="flex items-center gap-3 min-w-0">
                               <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10 text-white">
                                 {sec.iconName === 'Target' && <Target size={17} />}
+                                {sec.iconName === 'ListChecks' && <ListChecks size={17} />}
                                 {sec.iconName === 'Check' && <Check size={17} strokeWidth={2.8} />}
                                 {sec.iconName === 'ShieldAlert' && <ShieldAlert size={17} />}
                                 {sec.iconName === 'Timer' && <Timer size={17} />}
