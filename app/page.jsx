@@ -621,6 +621,42 @@ export default function App() {
     }
     return false;
   });
+  const [pomodoroLastActiveTime, setPomodoroLastActiveTime] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('daybase_pomodoro_last_active');
+        if (saved) return parseInt(saved, 10) || 0;
+      } catch (e) {}
+    }
+    return 0;
+  });
+
+  const recordPomodoroActivity = () => {
+    const now = Date.now();
+    setPomodoroLastActiveTime(now);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('daybase_pomodoro_last_active', String(now));
+    }
+  };
+
+  const [flightLastActiveTime, setFlightLastActiveTime] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('daybase_flight_last_active');
+        if (saved) return parseInt(saved, 10) || 0;
+      } catch (e) {}
+    }
+    return 0;
+  });
+
+  const recordFlightActivity = () => {
+    const now = Date.now();
+    setFlightLastActiveTime(now);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('daybase_flight_last_active', String(now));
+    }
+  };
+
   const [pomodoroSessionStep, setPomodoroSessionStep] = useState(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -888,6 +924,19 @@ export default function App() {
     }
     initFromLocalDb();
   }, []);
+
+  // Refresh activity timestamp when timer is active
+  useEffect(() => {
+    if (isTimerRunning) {
+      recordPomodoroActivity();
+    }
+  }, [isTimerRunning]);
+
+  useEffect(() => {
+    if (isFlightTimerRunning) {
+      recordFlightActivity();
+    }
+  }, [isFlightTimerRunning]);
 
   // --- 2. Persist to local IndexedDB on state changes ---
   useEffect(() => {
@@ -2381,7 +2430,14 @@ export default function App() {
 
     if (widgetId === 'pomodoro') {
       const isRunning = !isPomodoroOpen && isTimerRunning;
-      if (mode === 'auto' && !isRunning) return null;
+      const THIRTY_MINS_MS = 30 * 60 * 1000;
+      const isWithinGrace = (Date.now() - pomodoroLastActiveTime) < THIRTY_MINS_MS;
+      const hasStartedSession = pomodoroTime < pomodoroInitialTime && pomodoroTime > 0;
+
+      // In auto mode: show if running, OR if paused/active within 30 minutes grace period
+      if (mode === 'auto' && !isRunning && !(isWithinGrace && hasStartedSession)) {
+        return null;
+      }
 
       const totalTime = pomodoroInitialTime || (25 * 60);
       const currentRemaining = Math.max(0, pomodoroTime);
@@ -2397,7 +2453,7 @@ export default function App() {
       return (
         <div 
           key="pomodoro-widget"
-          onClick={() => setIsPomodoroOpen(true)} 
+          onClick={() => { recordPomodoroActivity(); setIsPomodoroOpen(true); }} 
           data-no-day-swipe="true"
           className="w-full px-4 sm:px-5 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 dark:border-white/18 shadow-lg active:scale-[0.99] transition-all duration-200 mt-1 mb-1 select-none"
         >
@@ -2407,6 +2463,7 @@ export default function App() {
             <div 
               onClick={(e) => {
                 e.stopPropagation();
+                recordPomodoroActivity();
                 haptic('light');
                 getAudioCtx();
                 setIsTimerRunning(!isTimerRunning);
@@ -2489,7 +2546,13 @@ export default function App() {
 
     if (widgetId === 'flight') {
       const isRunning = !isFlightFocusOpen && isFlightTimerRunning && selectedFlight;
-      if (mode === 'auto' && !isRunning) return null;
+      const THIRTY_MINS_MS = 30 * 60 * 1000;
+      const isWithinGrace = (Date.now() - flightLastActiveTime) < THIRTY_MINS_MS;
+
+      // In auto mode: show if running, OR if selected flight was active within 30 minutes grace period
+      if (mode === 'auto' && !isRunning && !(isWithinGrace && selectedFlight)) {
+        return null;
+      }
 
       return (
         <div 

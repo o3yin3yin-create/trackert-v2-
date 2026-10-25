@@ -27,6 +27,23 @@ export default function SpotifyWidget({
   const [localProgress, setLocalProgress] = useState(0);
   const [loadingAction, setLoadingAction] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
+  const [lastActiveTime, setLastActiveTime] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('daybase_spotify_last_active');
+        if (saved) return parseInt(saved, 10) || 0;
+      } catch (e) {}
+    }
+    return 0;
+  });
+
+  const recordActivity = () => {
+    const now = Date.now();
+    setLastActiveTime(now);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('daybase_spotify_last_active', String(now));
+    }
+  };
   const [feedbackAction, setFeedbackAction] = useState(null); // 'next' | 'prev' | 'play' | 'pause'
 
   // Gesture tracking refs
@@ -113,6 +130,13 @@ export default function SpotifyWidget({
     };
   }, [data.isPlaying]);
 
+  // Record activity whenever track is playing
+  useEffect(() => {
+    if (data.isPlaying) {
+      recordActivity();
+    }
+  }, [data.isPlaying]);
+
   // Smooth local ticker for progress bar when playing
   useEffect(() => {
     if (!data.isPlaying || !data.durationMs) return;
@@ -129,6 +153,7 @@ export default function SpotifyWidget({
 
   // Playback control
   const triggerControl = async (action) => {
+    recordActivity();
     if (loadingAction || !data.title) return;
     setLoadingAction(true);
 
@@ -283,9 +308,18 @@ export default function SpotifyWidget({
     return null;
   }
 
-  // If in 'auto' smart mode, only show when a track is actively playing!
-  if (variant !== 'compact' && mode === 'auto' && (!data.isConnected || !data.isPlaying || !data.title)) {
-    return null;
+  // If in 'auto' smart mode:
+  // - Show if connected and actively playing.
+  // - If paused/idle, keep visible for a 30-minute grace period from last touch/play!
+  if (variant !== 'compact' && mode === 'auto') {
+    if (!data.isConnected || !data.title) {
+      return null;
+    }
+    const THIRTY_MINS_MS = 30 * 60 * 1000;
+    const isWithinGrace = (Date.now() - lastActiveTime) < THIRTY_MINS_MS;
+    if (!data.isPlaying && !isWithinGrace) {
+      return null;
+    }
   }
 
   // If NOT connected, show sleek monochrome black & white bar
