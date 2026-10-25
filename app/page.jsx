@@ -669,6 +669,7 @@ export default function App() {
 
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [isTicketsHistoryViewOpen, setIsTicketsHistoryViewOpen] = useState(false);
+  const [isFocusTasksViewOpen, setIsFocusTasksViewOpen] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -4631,7 +4632,7 @@ export default function App() {
                   <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
                     <div className="flex items-center gap-3">
                       <button 
-                        onClick={() => { setIsAnalyticsModalOpen(false); setIsTicketsHistoryViewOpen(false); }} 
+                        onClick={() => { setIsAnalyticsModalOpen(false); setIsTicketsHistoryViewOpen(false); setIsFocusTasksViewOpen(false); }} 
                         className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                         aria-label="Back"
                       >
@@ -4639,134 +4640,212 @@ export default function App() {
                       </button>
                       <h2 className="text-2xl font-black tracking-tight text-white">{t('analytics')}</h2>
                     </div>
-                    <button onClick={() => { setIsAnalyticsModalOpen(false); setIsTicketsHistoryViewOpen(false); }} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                    <button onClick={() => { setIsAnalyticsModalOpen(false); setIsTicketsHistoryViewOpen(false); setIsFocusTasksViewOpen(false); }} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
                       <X size={18} />
                     </button>
                   </div>
 
-                  {!isTicketsHistoryViewOpen ? (
-                    <div className="w-full flex flex-col pb-8">
-                      {/* Chart Card */}
-                      <div className="bg-white/5 p-5 rounded-3xl border border-white/10 mb-6">
-                        <div className="w-full h-56 mb-4 relative">
-                          <svg style={{ height: 0, width: 0, position: 'absolute' }}>
-                            <defs>
-                              <linearGradient id="cursorGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#2C2C2E" stopOpacity={0.8}/>
-                                <stop offset="100%" stopColor="#2C2C2E" stopOpacity={0.0}/>
-                              </linearGradient>
-                            </defs>
-                          </svg>
+                  {(() => {
+                    const todayFocusTasks = (pomodoroTasksData[activeDateStr] || [])
+                      .filter(t => t && t.name && !t.name.includes('✈') && typeof t.timeSpent === 'number')
+                      .sort((a, b) => (b.timeSpent || 0) - (a.timeSpent || 0));
 
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={sleepChartData} barGap={2} barCategoryGap={8}>
-                              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8E8E93', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em' }} dy={10} />
-                              <YAxis yAxisId="sleep" orientation="left" hide domain={[0, 24]} />
-                              <YAxis yAxisId="score" orientation="right" hide domain={[0, 100]} />
-                              <YAxis yAxisId="focus" orientation="right" hide domain={[0, 180]} />
-                              
-                              <Tooltip 
-                                cursor={<CustomCursor />} 
-                                contentStyle={{ backgroundColor: '#1C1C1E', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', color: '#FFFFFF', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
-                                itemStyle={{ color: '#FFFFFF', fontWeight: 600, fontSize: '12px' }} 
-                                formatter={(value, name) => { 
-                                  if (name === "Sleep") return [`${value} hrs`, "Sleep"];
-                                  if (name === "Focus") return [`${value} min`, "Focus"];
-                                  return [`${value.toFixed(0)}%`, "Score"]; 
-                                }} 
-                              />
-                              
-                              <Bar yAxisId="sleep" dataKey="sleep" fill="#FFFFFF" radius={[3, 3, 3, 3]} barSize={5} name="Sleep" />
-                              <Bar yAxisId="score" dataKey="score" fill={themeColor} radius={[3, 3, 3, 3]} barSize={5} name="Score" />
-                              <Bar yAxisId="focus" dataKey="focus" fill="#22d3ee" radius={[3, 3, 3, 3]} barSize={5} name="Focus" />
-                            </BarChart>
-                          </ResponsiveContainer>
+                    if (!isTicketsHistoryViewOpen && !isFocusTasksViewOpen) {
+                      return (
+                        <div className="w-full flex flex-col pb-8">
+                          {/* Chart Card */}
+                          <div className="bg-white/5 p-5 rounded-3xl border border-white/10 mb-4">
+                            <div className="w-full h-56 mb-4 relative">
+                              <svg style={{ height: 0, width: 0, position: 'absolute' }}>
+                                <defs>
+                                  <linearGradient id="cursorGradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#2C2C2E" stopOpacity={0.8}/>
+                                    <stop offset="100%" stopColor="#2C2C2E" stopOpacity={0.0}/>
+                                  </linearGradient>
+                                </defs>
+                              </svg>
+
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={sleepChartData} barGap={2} barCategoryGap={8}>
+                                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8E8E93', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em' }} dy={10} />
+                                  <YAxis yAxisId="sleep" orientation="left" hide domain={[0, 24]} />
+                                  <YAxis yAxisId="score" orientation="right" hide domain={[0, 100]} />
+                                  <YAxis yAxisId="focus" orientation="right" hide domain={[0, 180]} />
+                                  
+                                  <Tooltip 
+                                    cursor={<CustomCursor />} 
+                                    contentStyle={{ backgroundColor: '#1C1C1E', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', color: '#FFFFFF', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
+                                    itemStyle={{ color: '#FFFFFF', fontWeight: 600, fontSize: '12px' }} 
+                                    formatter={(value, name) => { 
+                                      if (name === "Sleep") return [`${value} hrs`, "Sleep"];
+                                      if (name === "Focus") return [`${value} min`, "Focus"];
+                                      return [`${value.toFixed(0)}%`, "Score"]; 
+                                    }} 
+                                  />
+                                  
+                                  <Bar yAxisId="sleep" dataKey="sleep" fill="#FFFFFF" radius={[3, 3, 3, 3]} barSize={5} name="Sleep" />
+                                  <Bar yAxisId="score" dataKey="score" fill={themeColor} radius={[3, 3, 3, 3]} barSize={5} name="Score" />
+                                  <Bar yAxisId="focus" dataKey="focus" fill="#22d3ee" radius={[3, 3, 3, 3]} barSize={5} name="Focus" />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </div>
+                            
+                            <div className="flex items-center justify-center gap-6 select-none pt-2 border-t border-white/5">
+                              <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-white"/><span className="text-[10px] font-bold tracking-widest text-[#8E8E93] uppercase">SLEEP</span></div>
+                              <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{backgroundColor: themeColor}}/><span className="text-[10px] font-bold tracking-widest text-[#8E8E93] uppercase">SCORE</span></div>
+                              <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-cyan-400"/><span className="text-[10px] font-bold tracking-widest text-[#8E8E93] uppercase">FOCUS</span></div>
+                            </div>
+                          </div>
+
+                          {/* Focus Tasks Button */}
+                          <button 
+                            onClick={() => setIsFocusTasksViewOpen(true)}
+                            className="w-full py-4 px-5 bg-white/5 hover:bg-white/10 transition-colors rounded-3xl flex justify-between items-center border border-white/10 shadow-lg mb-3 cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-orange-500/15 flex items-center justify-center text-orange-400">
+                                <Timer size={18} />
+                              </div>
+                              <div className="flex flex-col text-left">
+                                <span className="text-sm font-bold text-white tracking-wide">
+                                  {lang === 'ar' ? 'مهام وجلسات التركيز' : 'Focus Tasks & Sessions'}
+                                </span>
+                                <span className="text-[11px] text-white/40">
+                                  {lang === 'ar' ? 'عرض فترات التركيز المسجلة' : 'View logged focus sessions'}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {todayFocusTasks.length > 0 && (
+                                <span className="text-xs font-bold text-white/70 bg-white/10 px-2.5 py-0.5 rounded-full">
+                                  {todayFocusTasks.length} {lang === 'ar' ? 'مهام' : 'tasks'}
+                                </span>
+                              )}
+                              <ChevronDown size={16} className={lang === 'ar' ? 'rotate-90 text-white/50' : '-rotate-90 text-white/50'} />
+                            </div>
+                          </button>
+
+                          {/* View Tickets History Button */}
+                          <button 
+                            onClick={() => setIsTicketsHistoryViewOpen(true)}
+                            className="w-full py-4 px-5 bg-white/5 hover:bg-white/10 transition-colors rounded-3xl flex justify-between items-center border border-white/10 shadow-lg cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white">
+                                <Plane size={18} />
+                              </div>
+                              <span className="text-sm font-bold text-white tracking-wide">
+                                {lang === 'ar' ? 'سجل تذاكر الرحلات' : 'Flight Tickets History'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-white/50 bg-white/10 px-2 py-0.5 rounded-full">{finishedTickets.length}</span>
+                              <ChevronDown size={16} className="-rotate-90 text-white/50" />
+                            </div>
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    if (isFocusTasksViewOpen) {
+                      return (
+                        <div className="flex-1 w-full animate-in fade-in slide-in-from-right-4 duration-300 flex flex-col pb-8">
+                          <div className="flex justify-between items-center mb-6">
+                            <button onClick={() => setIsFocusTasksViewOpen(false)} className="text-white/70 hover:text-white transition flex items-center gap-2 text-sm font-bold cursor-pointer">
+                              <ChevronDown size={20} className={lang === 'ar' ? '-rotate-90' : 'rotate-90'} />
+                              {lang === 'ar' ? 'رجوع' : 'Back'}
+                            </button>
+                            <h4 className="text-xs font-bold text-white/50 uppercase tracking-widest">{lang === 'ar' ? 'مهام التركيز' : 'Focus Tasks'}</h4>
+                          </div>
+
+                          {todayFocusTasks.length > 0 ? (
+                            <div className="flex flex-col gap-2.5 w-full pb-8">
+                              {todayFocusTasks.map((task, idx) => {
+                                const mins = Math.max(1, Math.ceil((task.timeSpent || 0) / 60));
+                                return (
+                                  <div key={idx} className="flex justify-between items-center bg-white/5 px-4 py-3.5 rounded-2xl border border-white/5">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-3.5 h-3.5 rounded-full shadow-sm" style={{ backgroundColor: task.color || '#FF9F0A' }} />
+                                      <div className="flex flex-col">
+                                        <span className="text-sm font-bold text-white">{task.name}</span>
+                                        <span className="text-[10px] text-white/40">{activeDateStr}</span>
+                                      </div>
+                                    </div>
+                                    <span className="text-xs font-mono font-bold text-white/80 bg-white/10 px-2.5 py-1 rounded-xl">{mins} min</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="text-center text-xs font-bold text-white/40 py-16 flex flex-col items-center justify-center gap-3">
+                              <Timer size={36} className="opacity-40 text-orange-400" />
+                              <span>{lang === 'ar' ? 'لا يوجد فترات تركيز مسجلة لليوم' : 'No focus tasks logged for this day'}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="flex-1 w-full animate-in fade-in slide-in-from-right-4 duration-300 flex flex-col pb-8">
+                        <div className="flex justify-between items-center mb-6">
+                          <button onClick={() => setIsTicketsHistoryViewOpen(false)} className="text-white/70 hover:text-white transition flex items-center gap-2 text-sm font-bold">
+                            <ChevronDown size={20} className="rotate-90" />
+                            {lang === 'ar' ? 'رجوع' : 'Back'}
+                          </button>
+                          <h4 className="text-xs font-bold text-white/50 uppercase tracking-widest pr-4">{lang === 'ar' ? 'سجل التذاكر' : 'Tickets'}</h4>
                         </div>
                         
-                        <div className="flex items-center justify-center gap-6 select-none pt-2 border-t border-white/5">
-                          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-white"/><span className="text-[10px] font-bold tracking-widest text-[#8E8E93] uppercase">SLEEP</span></div>
-                          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{backgroundColor: themeColor}}/><span className="text-[10px] font-bold tracking-widest text-[#8E8E93] uppercase">SCORE</span></div>
-                          <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-cyan-400"/><span className="text-[10px] font-bold tracking-widest text-[#8E8E93] uppercase">FOCUS</span></div>
-                        </div>
-                      </div>
-
-                      {/* View Tickets History Button */}
-                      <button 
-                        onClick={() => setIsTicketsHistoryViewOpen(true)}
-                        className="w-full py-4 px-5 bg-white/5 hover:bg-white/10 transition-colors rounded-3xl flex justify-between items-center border border-white/10 shadow-lg"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white">
-                            <Plane size={18} />
+                        {finishedTickets.length > 0 ? (
+                          <div className="flex flex-col gap-3 w-full pb-10">
+                            {finishedTickets.map((ticket, idx) => {
+                              const isExpanded = expandedTicketIndex === idx;
+                              return (
+                                <div 
+                                  key={idx} 
+                                  onClick={() => {
+                                    if (isExpanded) {
+                                      setSelectedFlight(ticket);
+                                      setSelectedSeat(ticket.seat);
+                                      setFlightTimer(0);
+                                      setIsBoardingPassOpen(true);
+                                      setIsAnalyticsModalOpen(false);
+                                      setIsTicketsHistoryViewOpen(false);
+                                      setIsFocusTasksViewOpen(false);
+                                    } else {
+                                      setExpandedTicketIndex(idx);
+                                    }
+                                  }} 
+                                  className="w-full flex flex-col cursor-pointer transition-all duration-300 rounded-[2rem]"
+                                >
+                                  <BoardingPassCard 
+                                    flight={ticket} 
+                                    seat={ticket.seat} 
+                                    date={ticket.date} 
+                                    isArrived={true} 
+                                    lang={lang} 
+                                    isExpanded={isExpanded}
+                                    onToggleExpand={() => setExpandedTicketIndex(isExpanded ? null : idx)}
+                                  />
+                                </div>
+                              );
+                            })}
                           </div>
-                          <span className="text-sm font-bold text-white tracking-wide">
-                            {lang === 'ar' ? 'سجل تذاكر الرحلات' : 'Flight Tickets History'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-white/50 bg-white/10 px-2 py-0.5 rounded-full">{finishedTickets.length}</span>
-                          <ChevronDown size={16} className="-rotate-90 text-white/50" />
-                        </div>
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex-1 w-full animate-in fade-in slide-in-from-right-4 duration-300 flex flex-col pb-8">
-                      <div className="flex justify-between items-center mb-6">
-                        <button onClick={() => setIsTicketsHistoryViewOpen(false)} className="text-white/70 hover:text-white transition flex items-center gap-2 text-sm font-bold">
-                          <ChevronDown size={20} className="rotate-90" />
-                          {lang === 'ar' ? 'رجوع' : 'Back'}
-                        </button>
-                        <h4 className="text-xs font-bold text-white/50 uppercase tracking-widest pr-4">{lang === 'ar' ? 'سجل التذاكر' : 'Tickets'}</h4>
+                        ) : (
+                          <div className="text-center text-xs font-bold text-white/40 py-16 flex flex-col items-center justify-center gap-3">
+                            <Plane size={36} className="opacity-40" />
+                            {lang === 'ar' ? 'لا يوجد تذاكر مختومة بعد' : 'No stamped tickets yet'}
+                          </div>
+                        )}
                       </div>
-                      
-                      {finishedTickets.length > 0 ? (
-                        <div className="flex flex-col gap-3 w-full pb-10">
-                          {finishedTickets.map((ticket, idx) => {
-                            const isExpanded = expandedTicketIndex === idx;
-                            return (
-                              <div 
-                                key={idx} 
-                                onClick={() => {
-                                  if (isExpanded) {
-                                    setSelectedFlight(ticket);
-                                    setSelectedSeat(ticket.seat);
-                                    setFlightTimer(0);
-                                    setIsBoardingPassOpen(true);
-                                    setIsAnalyticsModalOpen(false);
-                                    setIsTicketsHistoryViewOpen(false);
-                                  } else {
-                                    setExpandedTicketIndex(idx);
-                                  }
-                                }} 
-                                className="w-full flex flex-col cursor-pointer transition-all duration-300 rounded-[2rem]"
-                              >
-                                <BoardingPassCard 
-                                  flight={ticket} 
-                                  seat={ticket.seat} 
-                                  date={ticket.date} 
-                                  isArrived={true} 
-                                  lang={lang} 
-                                  isExpanded={isExpanded}
-                                  onToggleExpand={() => setExpandedTicketIndex(isExpanded ? null : idx)}
-                                />
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="text-center text-xs font-bold text-white/40 py-16 flex flex-col items-center justify-center gap-3">
-                          <Plane size={36} className="opacity-40" />
-                          {lang === 'ar' ? 'لا يوجد تذاكر مختومة بعد' : 'No stamped tickets yet'}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
 
                 {/* Bottom Done Button */}
                 <div className="pt-4 pb-6">
                   <button 
-                    onClick={() => { setIsAnalyticsModalOpen(false); setIsTicketsHistoryViewOpen(false); }} 
+                    onClick={() => { setIsAnalyticsModalOpen(false); setIsTicketsHistoryViewOpen(false); setIsFocusTasksViewOpen(false); }} 
                     className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
                   >
                     {lang === 'ar' ? 'إغلاق' : 'Close'}
