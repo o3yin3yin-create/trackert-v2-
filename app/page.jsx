@@ -23,6 +23,7 @@ import SeatSelection from '../components/SeatSelection';
 import AdminPanel from '../components/AdminPanel';
 import AvatarIcon, { AVATAR_OPTIONS } from '../components/AvatarIcon';
 import SpotifyWidget from '../components/SpotifyWidget';
+import { guideSections } from '../lib/guideContent';
 
 let globalAudioCtx = null;
 const getAudioCtx = () => {
@@ -668,6 +669,12 @@ export default function App() {
   });
   const [isEmergencyCardsOpen, setIsEmergencyCardsOpen] = useState(false);
   const [isHowToUseOpen, setIsHowToUseOpen] = useState(false);
+  const [guideLang, setGuideLang] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('daybase_guide_lang') || 'en';
+    }
+    return 'en';
+  });
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
   const [isFocusMenuOpen, setIsFocusMenuOpen] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
@@ -5657,66 +5664,142 @@ export default function App() {
           {/* --- HOW TO USE PAGE (FULL SCREEN) --- */}
           {isHowToUseOpen && createPortal(
             <div className="fixed inset-0 z-[10005] bg-black overflow-y-auto">
-              <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
+              <div 
+                dir={guideLang === 'ar' ? 'rtl' : 'ltr'}
+                className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between"
+              >
                 <div>
-                  {/* Header */}
-                  <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
+                  {/* Sticky Top Header with Bilingual Switcher */}
+                  <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/10 sticky top-0 bg-black/95 backdrop-blur-md z-20 pt-1">
                     <div className="flex items-center gap-3">
                       <button 
                         onClick={() => setIsHowToUseOpen(false)} 
-                        className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
+                        className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90 cursor-pointer"
                         aria-label="Back"
                       >
-                        <ChevronLeft size={20} className={''} />
+                        <ChevronLeft size={20} className={guideLang === 'ar' ? 'rotate-180' : ''} />
                       </button>
-                      <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
-                        <BookOpen size={22} className="text-white/80" /> {t('howToUse')}
+                      <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                        <BookOpen size={22} className="text-white/80" /> 
+                        {guideLang === 'ar' ? 'دليل الاستخدام' : 'User Guide'}
                       </h2>
                     </div>
-                    <button onClick={() => setIsHowToUseOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
-                      <X size={18} />
-                    </button>
+
+                    <div className="flex items-center gap-2">
+                      {/* Language Switcher Pill */}
+                      <div className="flex items-center p-1 rounded-full bg-white/5 border border-white/10 select-none">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setGuideLang('en');
+                            if (typeof window !== 'undefined') localStorage.setItem('daybase_guide_lang', 'en');
+                          }}
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                            guideLang === 'en'
+                              ? 'bg-white text-black shadow-sm'
+                              : 'text-white/50 hover:text-white'
+                          }`}
+                        >
+                          EN
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setGuideLang('ar');
+                            if (typeof window !== 'undefined') localStorage.setItem('daybase_guide_lang', 'ar');
+                          }}
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                            guideLang === 'ar'
+                              ? 'bg-white text-black shadow-sm'
+                              : 'text-white/50 hover:text-white'
+                          }`}
+                        >
+                          عربي
+                        </button>
+                      </div>
+
+                      <button 
+                        onClick={() => setIsHowToUseOpen(false)} 
+                        className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all cursor-pointer"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="flex flex-col gap-5 pb-8 text-sm text-white/80">
-                    <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-                      <h4 className="font-bold text-white mb-1.5 flex items-center gap-2 text-base"><Target size={18} style={{color: themeColor}}/> {t('htu_mission_title')}</h4>
-                      <p className="text-xs text-white/60 leading-relaxed">{t('htu_mission_desc')}</p>
-                    </div>
-                    <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-                      <h4 className="font-bold text-white mb-1.5 flex items-center gap-2 text-base"><div className="w-3.5 h-3.5 rounded-sm bg-white/30"/> {t('htu_habits_title')}</h4>
-                      <p className="text-xs text-white/60 leading-relaxed">{t('htu_habits_desc')}</p>
-                    </div>
-                    <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-                      <h4 className="font-bold text-white mb-1.5 flex items-center gap-2 text-base"><PlaneTakeoff size={18} className="text-cyan-400"/> {t('htu_flight_title')}</h4>
-                      <p className="text-xs text-white/60 leading-relaxed">{t('htu_flight_desc')}</p>
-                    </div>
-                    <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-                      <h4 className="font-bold text-white mb-1.5 flex items-center gap-2 text-base"><Timer size={18} className="text-orange-400"/> {t('htu_pomodoro_title')}</h4>
-                      <p className="text-xs text-white/60 leading-relaxed">{t('htu_pomodoro_desc')}</p>
-                    </div>
-                    <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-                      <h4 className="font-bold text-white mb-1.5 flex items-center gap-2 text-base"><ShieldAlert size={18} className="text-red-400"/> {t('htu_emergency_title')}</h4>
-                      <p className="text-xs text-white/60 leading-relaxed">{t('htu_emergency_desc')}</p>
-                    </div>
-                    <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-                      <h4 className="font-bold text-white mb-1.5 flex items-center gap-2 text-base"><ListChecks size={18} className="text-purple-400"/> {t('htu_tasks_title')}</h4>
-                      <p className="text-xs text-white/60 leading-relaxed">{t('htu_tasks_desc')}</p>
-                    </div>
-                    <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-                      <h4 className="font-bold text-white mb-1.5 flex items-center gap-2 text-base"><BarChart2 size={18} className="text-green-400"/> {t('htu_analytics_title')}</h4>
-                      <p className="text-xs text-white/60 leading-relaxed">{t('htu_analytics_desc')}</p>
-                    </div>
+                  {/* Intro Banner */}
+                  <div className="mb-6 p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col gap-1.5">
+                    <span className="text-xs font-bold uppercase tracking-wider text-white/40">
+                      {guideLang === 'ar' ? 'نظام الإنتاجية والتركيز' : 'Personal Productivity OS'}
+                    </span>
+                    <p className="text-xs text-white/70 leading-relaxed">
+                      {guideLang === 'ar' 
+                        ? 'مرحباً بك في دليل التطبيق الكامل؛ دليلك للتعامل مع العادات اليومية، جلسات التركيز المتقدمة، حماية الستريك، وتخصيص تجربتك بالكامل.'
+                        : 'Welcome to your complete user guide. Learn how to master daily habits, manage deep work sessions, protect your streaks, and tailor your setup.'}
+                    </p>
+                  </div>
+
+                  {/* Sections List */}
+                  <div className="flex flex-col gap-4 pb-8">
+                    {guideSections.map((sec) => {
+                      const data = sec[guideLang] || sec.en;
+                      return (
+                        <div 
+                          key={sec.id}
+                          className="p-5 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-white/20 transition-all flex flex-col gap-3.5 shadow-sm"
+                        >
+                          {/* Card Header */}
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10 text-white">
+                                {sec.iconName === 'Target' && <Target size={17} />}
+                                {sec.iconName === 'Check' && <Check size={17} strokeWidth={2.8} />}
+                                {sec.iconName === 'ShieldAlert' && <ShieldAlert size={17} />}
+                                {sec.iconName === 'Timer' && <Timer size={17} />}
+                                {sec.iconName === 'PlaneTakeoff' && <PlaneTakeoff size={17} />}
+                                {sec.iconName === 'Radio' && <Radio size={17} />}
+                                {sec.iconName === 'Palette' && <Palette size={17} />}
+                                {sec.iconName === 'BarChart2' && <BarChart2 size={17} />}
+                              </div>
+                              <h4 className="font-bold text-white text-[15px] tracking-tight truncate">
+                                {data.title}
+                              </h4>
+                            </div>
+
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/60 shrink-0">
+                              {data.badge}
+                            </span>
+                          </div>
+
+                          {/* Card Description */}
+                          <p className="text-xs text-white/75 leading-relaxed font-normal">
+                            {data.desc}
+                          </p>
+
+                          {/* Tips Bullets */}
+                          {data.tips && data.tips.length > 0 && (
+                            <div className="pt-3 border-t border-white/5 flex flex-col gap-2">
+                              {data.tips.map((tip, idx) => (
+                                <div key={idx} className="flex items-start gap-2.5 text-xs text-white/60 leading-relaxed">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-white/40 shrink-0 mt-1.5" />
+                                  <span>{tip}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
                 {/* Bottom Done Button */}
-                <div className="pt-4 pb-6">
+                <div className="pt-4 pb-6 sticky bottom-0 bg-black/90 backdrop-blur-md">
                   <button 
                     onClick={() => setIsHowToUseOpen(false)} 
-                    className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                    className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white text-black hover:bg-white/90 shadow-lg cursor-pointer"
                   >
-                    {'Close'}
+                    {guideLang === 'ar' ? 'فهمت كل شيء' : 'Got it'}
                   </button>
                 </div>
               </div>
