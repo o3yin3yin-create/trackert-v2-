@@ -1350,6 +1350,9 @@ export default function App() {
   // بيانات إضافية للعادة (الميعاد والمكان اختياري)
   const [habitTime, setHabitTime] = useState("");
   const [habitLocation, setHabitLocation] = useState("");
+  const [selectedTimeHour, setSelectedTimeHour] = useState(4);
+  const [selectedTimeMinute, setSelectedTimeMinute] = useState("00");
+  const [selectedTimePeriod, setSelectedTimePeriod] = useState("PM");
 
   // --- Emergency Cards Modal ---
   const [isCardsModalOpen, setIsCardsModalOpen] = useState(false);
@@ -2239,9 +2242,9 @@ export default function App() {
       </style>
       
         {/* ---------------- ADD HABIT PAGE (FULL SCREEN) ---------------- */}
-        {isAddMounted && (
-          <div className={`fixed inset-0 z-[10000] bg-black overflow-y-auto transition-opacity duration-300 ease-out ${isAddVisible ? 'opacity-100' : 'opacity-0'}`}>
-            <div className={`min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isAddVisible ? 'translate-y-0 scale-100' : 'translate-y-4 scale-95 opacity-0'}`}>
+        {isAddMounted && typeof document !== 'undefined' && createPortal(
+          <div className={`fixed inset-0 z-[10005] bg-black overflow-y-auto transition-opacity duration-300 ease-out ${isAddVisible ? 'opacity-100' : 'opacity-0'}`}>
+            <div className={`min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+3rem)] flex flex-col justify-between transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isAddVisible ? 'translate-y-0 scale-100' : 'translate-y-4 scale-95 opacity-0'}`}>
               <div>
                 {/* Header */}
                 <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
@@ -2294,8 +2297,8 @@ export default function App() {
                 )}
 
                 {/* ---------------- FREQUENCY & SCHEDULING ---------------- */}
-                <div className="mb-6 bg-white/5 p-4 sm:p-5 rounded-2xl border border-white/10">
-                  <div className="flex items-center justify-between mb-4">
+                <div className="mb-6 bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <div className={`flex items-center justify-between ${habitFrequency !== 'daily' ? 'mb-4 pb-3 border-b border-white/10' : ''}`}>
                     <span className="text-xs font-bold tracking-wider text-white/50 uppercase">{t('frequency')}</span>
                     <div className="flex bg-black/40 rounded-xl p-1 border border-white/10">
                       <button 
@@ -2307,7 +2310,7 @@ export default function App() {
                       </button>
                       <button 
                         type="button"
-                        onClick={() => setHabitFrequency('weekly')} 
+                        onClick={() => setHabitFrequency(habitFrequency === 'daily' ? 'weekly' : habitFrequency)} 
                         className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${habitFrequency !== 'daily' ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'}`}
                       >
                         {t('scheduled')}
@@ -2316,7 +2319,7 @@ export default function App() {
                   </div>
 
                   {habitFrequency !== 'daily' && (
-                    <div className="pt-3 border-t border-white/10 space-y-4">
+                    <div className="space-y-4">
                       {/* Frequency Sub-tabs */}
                       <div className="flex bg-black/40 rounded-xl p-1 gap-1 border border-white/10">
                         <button 
@@ -2458,42 +2461,170 @@ export default function App() {
                   )}
                 </div>
 
-                {/* ---------------- TIME & LOCATION (OPTIONAL) ---------------- */}
-                <div className="mb-8 bg-white/5 p-4 sm:p-5 rounded-2xl border border-white/10 space-y-3">
-                  <span className="text-xs font-bold tracking-wider text-white/50 uppercase">
-                    {lang === 'ar' ? 'تفاصيل إضافية (اختياري)' : 'Additional Details (Optional)'}
-                  </span>
+                {/* ---------------- TIME SELECTION (BUTTONS) ---------------- */}
+                <div className="mb-6 bg-white/5 p-4 rounded-2xl border border-white/10">
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Clock size={15} className="text-white/50" />
+                      <span className="text-xs font-bold tracking-wider text-white/50 uppercase">
+                        {lang === 'ar' ? 'وقت العادة' : 'Habit Time'}
+                      </span>
+                    </div>
+                    {habitTime ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black font-mono px-2.5 py-1 rounded-lg bg-white text-black shadow-sm">
+                          {habitTime}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => { setHabitTime(""); haptic('light'); }}
+                          className="text-[11px] font-bold text-white/40 hover:text-white transition-colors px-1.5 py-0.5 rounded"
+                        >
+                          {lang === 'ar' ? 'إلغاء' : 'Clear'}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] font-medium text-white/30">
+                        {lang === 'ar' ? 'اختياري' : 'Optional'}
+                      </span>
+                    )}
+                  </div>
 
-                  <div className="space-y-3">
-                    {/* Habit Time Input */}
-                    <div className="flex items-center gap-2.5 bg-black/40 px-3.5 py-3 rounded-xl border border-white/10">
-                      <Clock size={16} className="text-white/40 shrink-0" />
-                      <input
-                        type="text"
-                        placeholder={t('habitTimePlaceholder')}
-                        value={habitTime}
-                        onChange={(e) => setHabitTime(e.target.value)}
-                        className="w-full bg-transparent text-white text-xs sm:text-sm outline-none font-medium placeholder:text-white/30"
-                      />
+                  {/* Quick Preset Chips */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 mb-3">
+                    {[
+                      { labelAr: '7 ص', labelEn: '7 AM', hour: 7, minute: '00', period: 'AM' },
+                      { labelAr: '9 ص', labelEn: '9 AM', hour: 9, minute: '00', period: 'AM' },
+                      { labelAr: '12 م', labelEn: '12 PM', hour: 12, minute: '00', period: 'PM' },
+                      { labelAr: '4 م', labelEn: '4 PM', hour: 4, minute: '00', period: 'PM' },
+                      { labelAr: '7 م', labelEn: '7 PM', hour: 7, minute: '00', period: 'PM' },
+                      { labelAr: '10 م', labelEn: '10 PM', hour: 10, minute: '00', period: 'PM' },
+                    ].map((chip, idx) => {
+                      const chipFormatted = `${String(chip.hour).padStart(2, '0')}:${chip.minute} ${chip.period}`;
+                      const isChipActive = habitTime === chipFormatted;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTimeHour(chip.hour);
+                            setSelectedTimeMinute(chip.minute);
+                            setSelectedTimePeriod(chip.period);
+                            setHabitTime(chipFormatted);
+                            haptic('light');
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold font-mono shrink-0 transition-all ${
+                            isChipActive
+                              ? 'bg-white text-black shadow-sm'
+                              : 'bg-black/30 text-white/60 hover:text-white border border-white/10'
+                          }`}
+                        >
+                          {lang === 'ar' ? chip.labelAr : chip.labelEn}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* 12-Hour Grid (Apple Style) */}
+                  <div className="grid grid-cols-6 gap-1.5 mb-3">
+                    {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => {
+                      const isActive = habitTime && selectedTimeHour === h;
+                      return (
+                        <button
+                          key={h}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTimeHour(h);
+                            setHabitTime(`${String(h).padStart(2, '0')}:${selectedTimeMinute} ${selectedTimePeriod}`);
+                            haptic('light');
+                          }}
+                          className={`py-2 rounded-xl text-xs font-bold font-mono transition-all ${
+                            isActive 
+                              ? 'bg-white text-black font-black shadow-md scale-[1.02]' 
+                              : 'bg-black/30 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'
+                          }`}
+                        >
+                          {h}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* AM/PM Toggle & Minute Selectors */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex bg-black/40 rounded-xl p-1 border border-white/10 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedTimePeriod('AM');
+                          setHabitTime(`${String(selectedTimeHour).padStart(2, '0')}:${selectedTimeMinute} AM`);
+                          haptic('light');
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                          habitTime && selectedTimePeriod === 'AM' ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'
+                        }`}
+                      >
+                        AM
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedTimePeriod('PM');
+                          setHabitTime(`${String(selectedTimeHour).padStart(2, '0')}:${selectedTimeMinute} PM`);
+                          haptic('light');
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                          habitTime && selectedTimePeriod === 'PM' ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'
+                        }`}
+                      >
+                        PM
+                      </button>
                     </div>
 
-                    {/* Habit Location Input */}
-                    <div className="flex items-center gap-2.5 bg-black/40 px-3.5 py-3 rounded-xl border border-white/10">
-                      <MapPin size={16} className="text-white/40 shrink-0" />
-                      <input
-                        type="text"
-                        placeholder={t('habitLocationPlaceholder')}
-                        value={habitLocation}
-                        onChange={(e) => setHabitLocation(e.target.value)}
-                        className="w-full bg-transparent text-white text-xs sm:text-sm outline-none font-medium placeholder:text-white/30"
-                      />
+                    <div className="flex bg-black/40 rounded-xl p-1 border border-white/10 gap-1 flex-1">
+                      {['00', '15', '30', '45'].map(m => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTimeMinute(m);
+                            setHabitTime(`${String(selectedTimeHour).padStart(2, '0')}:${m} ${selectedTimePeriod}`);
+                            haptic('light');
+                          }}
+                          className={`flex-1 py-1.5 rounded-lg text-xs font-bold font-mono transition-all text-center ${
+                            habitTime && selectedTimeMinute === m ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'
+                          }`}
+                        >
+                          :{m}
+                        </button>
+                      ))}
                     </div>
+                  </div>
+                </div>
+
+                {/* ---------------- HABIT LOCATION (OPTIONAL) ---------------- */}
+                <div className="mb-8 bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MapPin size={15} className="text-white/50" />
+                    <span className="text-xs font-bold tracking-wider text-white/50 uppercase">
+                      {lang === 'ar' ? 'الموقع أو المكان (اختياري)' : 'Location (Optional)'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2.5 bg-black/40 px-3.5 py-3 rounded-xl border border-white/10">
+                    <input
+                      type="text"
+                      placeholder={t('habitLocationPlaceholder')}
+                      value={habitLocation}
+                      onChange={(e) => setHabitLocation(e.target.value)}
+                      className="w-full bg-transparent text-white text-xs sm:text-sm outline-none font-medium placeholder:text-white/30"
+                    />
                   </div>
                 </div>
               </div>
 
               {/* Bottom Submit Action Button */}
-              <div className="pt-4 pb-6">
+              <div className="pt-4 pb-8">
                 <button 
                   onClick={confirmAddHabit} 
                   className="w-full py-4 rounded-2xl font-black text-base tracking-wide transition-all duration-200 active:scale-[0.98] shadow-2xl" 
@@ -2503,13 +2634,14 @@ export default function App() {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* ---------------- MANAGE HABITS PAGE (FULL SCREEN) ---------------- */}
-        {isManageMounted && (
-          <div className={`fixed inset-0 z-[10000] bg-black overflow-y-auto transition-opacity duration-300 ease-out ${isManageVisible ? 'opacity-100' : 'opacity-0'}`}>
-            <div className={`min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isManageVisible ? 'translate-y-0 scale-100' : 'translate-y-4 scale-95 opacity-0'}`}>
+        {isManageMounted && typeof document !== 'undefined' && createPortal(
+          <div className={`fixed inset-0 z-[10005] bg-black overflow-y-auto transition-opacity duration-300 ease-out ${isManageVisible ? 'opacity-100' : 'opacity-0'}`}>
+            <div className={`min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+3rem)] flex flex-col justify-between transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isManageVisible ? 'translate-y-0 scale-100' : 'translate-y-4 scale-95 opacity-0'}`}>
               <div>
                 {/* Header */}
                 <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
@@ -2576,7 +2708,7 @@ export default function App() {
               </div>
 
               {/* Bottom Done Action Button */}
-              <div className="pt-4 pb-6">
+              <div className="pt-4 pb-8">
                 <button 
                   onClick={handleCloseManage} 
                   className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
@@ -2585,7 +2717,8 @@ export default function App() {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* ---------------- NOTE MODAL ---------------- */}
