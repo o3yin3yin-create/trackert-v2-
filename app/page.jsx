@@ -830,7 +830,7 @@ export default function App() {
         }
         setSpotifyNotification({ 
           type: 'success', 
-          message: lang === 'ar' ? 'تم ربط حساب Spotify بنجاح! 🎵' : 'Spotify connected successfully! 🎵',
+          message: lang === 'ar' ? 'تم ربط حساب Spotify بنجاح!' : 'Spotify connected successfully!',
           desktopUrl: token ? `http://127.0.0.1:28282/callback?spotify_token=${encodeURIComponent(token)}` : null
         });
         const cleanUrl = window.location.pathname;
@@ -1853,7 +1853,7 @@ export default function App() {
                 playNote(523, 0, 0.25); playNote(659, 0.15, 0.25); playNote(784, 0.30, 0.25); playNote(1047, 0.45, 0.5);
               }
             } catch(e) {}
-            setTimeout(() => alert(t('focusComplete') || "Focus Session Completed! 🔥 Time for a break."), 100);
+            setTimeout(() => alert(t('focusComplete') || "Focus Session Completed! Time for a break."), 100);
             return 0;
           }
           return newT;
@@ -2089,8 +2089,9 @@ export default function App() {
 
   // --- Emergency Card Function ---
   const consumeEmergencyCard = (habitId) => {
-    const cardsLeft = habitCards[habitId] ?? 1;
-    if (cardsLeft <= 0) return;
+    const cardsLeft = habitCards[habitId] || 0;
+    const streak = getStreak(habitId);
+    if (cardsLeft <= 0 || streak <= 0) return;
     markLocalMutation(activeDateStr);
     const key = `${activeDateStr}-${habitId}`;
     setDailyData(prev => ({ ...prev, [key]: true }));
@@ -3343,18 +3344,19 @@ export default function App() {
                     <p className="text-white/30 text-center py-16 text-sm">{t('noSingleHabits')}</p>
                   ) : (
                     habits.filter(h => h.type === 'single').map(h => {
-                      const cards = habitCards[h.id] ?? 1;
+                      const cards = habitCards[h.id] || 0;
                       const streak = getStreak(h.id);
                       const hasCards = cards > 0;
                       const isChecked = !!dailyData[`${activeDateStr}-${h.id}`];
-                      const canUseCard = hasCards && !isChecked;
+                      // An emergency card can ONLY be used if there is an active streak (>0) to protect!
+                      const canUseCard = hasCards && streak > 0 && !isChecked;
                       return (
                         <div 
                           key={h.id} 
                           className={`flex items-center justify-between p-4 sm:p-5 rounded-2xl border transition-all ${
-                            hasCards
+                            (hasCards && streak > 0)
                               ? 'bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] border-white/20 shadow-xl'
-                              : 'bg-white/5 border-white/5'
+                              : 'bg-white/5 border-white/5 opacity-60'
                           }`}
                         >
                           <div className="flex flex-col gap-1 flex-1 min-w-0 pr-3">
@@ -5122,7 +5124,7 @@ export default function App() {
                   {/* Smart Auto Explainer Banner */}
                   <div className="mb-5 p-4 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-3">
                     <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0 mt-0.5 text-white text-sm">
-                      ✨
+                      <Sparkles size={16} className="text-white" />
                     </div>
                     <div className="flex flex-col">
                       <span className="text-xs font-bold text-white mb-0.5">
@@ -5354,7 +5356,7 @@ export default function App() {
                       </button>
                       <div className="flex flex-col">
                         <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
-                          <Palette size={22} className="text-purple-400" /> {lang === 'ar' ? 'المظهر والتخصيص' : 'Appearance'}
+                          <Palette size={22} className="text-white" /> {lang === 'ar' ? 'المظهر والتخصيص' : 'Appearance'}
                         </h2>
                         <span className="text-white/40 text-xs font-semibold mt-0.5">
                           {lang === 'ar' ? 'الخلفية، لون التمييز، الويدجيتس، والأفاتار' : 'Theme, accents, widgets & avatar'}
@@ -5373,7 +5375,7 @@ export default function App() {
                     <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                          <Sparkles size={18} className="text-amber-400" />
+                          <Sparkles size={18} className="text-white/80" />
                           <span className="text-sm font-bold text-white">
                             {lang === 'ar' ? 'نمط الخلفية' : 'Background Style'}
                           </span>
@@ -5398,7 +5400,7 @@ export default function App() {
                               : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white'
                           }`}
                         >
-                          <span className="text-xl">✨</span>
+                          <Sparkles size={20} className="text-white" />
                           <span className="text-xs font-bold">{lang === 'ar' ? 'أورورا حية' : 'Aurora'}</span>
                           <span className="text-[10px] text-white/40 text-center">{lang === 'ar' ? 'توهج متدرج ناعم' : 'Ambient glow'}</span>
                         </button>
@@ -5417,7 +5419,7 @@ export default function App() {
                               : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white'
                           }`}
                         >
-                          <span className="text-xl">⬛</span>
+                          <Moon size={20} className="text-white" />
                           <span className="text-xs font-bold">{lang === 'ar' ? 'سادة عميق' : 'Solid'}</span>
                           <span className="text-[10px] text-white/40 text-center">{lang === 'ar' ? 'سواد OLED هادئ' : 'Pure minimalist'}</span>
                         </button>
@@ -5428,7 +5430,7 @@ export default function App() {
                     <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                          <SlidersHorizontal size={18} className="text-cyan-400" />
+                          <SlidersHorizontal size={18} className="text-white/80" />
                           <span className="text-sm font-bold text-white">
                             {lang === 'ar' ? 'لون التمييز (Accent Color)' : 'Accent Color'}
                           </span>
@@ -5482,7 +5484,7 @@ export default function App() {
                       className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center">
                           <LayoutGrid size={20} />
                         </div>
                         <div className="flex flex-col">
@@ -5990,7 +5992,6 @@ export default function App() {
             <div className="bg-white/50 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border border-black/10 dark:border-white/5 rounded-full flex items-center p-1.5 gap-1.5 shadow-2xl dark:shadow-black/80">
               <button onClick={() => navTo('home')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white transition-all duration-200 active:scale-90"><Home size={18} /></button>
               <button onClick={() => navTo('tasks')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
-              <button onClick={() => navTo('analytics')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90" title={t('analytics')}><BarChart2 size={18} /></button>
               {/* Focus Menu: Combines Pomodoro & Flight Focus */}
               <div className="relative">
                 <button 
@@ -6140,7 +6141,7 @@ export default function App() {
                               className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
                             >
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center">
                                   <Palette size={20} />
                                 </div>
                                 <div className="flex flex-col">
@@ -6166,7 +6167,7 @@ export default function App() {
                             </span>
                             <div className="w-full text-left p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center">
                                   <Radio size={20} strokeWidth={2.5} />
                                 </div>
                                 <div className="flex flex-col">
@@ -6196,25 +6197,25 @@ export default function App() {
                             {/* Analytics */}
                             <button onClick={() => { setIsSettingsMenuOpen(false); setIsAnalyticsModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
                               <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center"><BarChart2 size={18} /></div>
+                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><BarChart2 size={18} /></div>
                                 <span className="text-sm font-bold text-white">{t('analytics')}</span>
                               </div>
                               <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
                             </button>
 
                             {/* Emergency Cards */}
-                            <button onClick={() => { setIsSettingsMenuOpen(false); setIsCardsModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 flex items-center justify-between text-base font-bold text-red-400 transition-colors">
+                            <button onClick={() => { setIsSettingsMenuOpen(false); setIsCardsModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
                               <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-red-500/15 flex items-center justify-center"><ShieldAlert size={18} /></div>
-                                <span className="text-sm font-bold text-red-400">{t('emergencyCards')}</span>
+                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><ShieldAlert size={18} /></div>
+                                <span className="text-sm font-bold text-white">{t('emergencyCards')}</span>
                               </div>
-                              <ChevronRight size={18} className={`text-red-400/60 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                              <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
                             </button>
 
                             {/* How to Use */}
                             <button onClick={() => { setIsSettingsMenuOpen(false); setIsHowToUseOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
                               <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center"><BookOpen size={18} /></div>
+                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><BookOpen size={18} /></div>
                                 <span className="text-sm font-bold text-white">{t('howToUse')}</span>
                               </div>
                               <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
@@ -6222,12 +6223,12 @@ export default function App() {
 
                             {/* Admin Dashboard */}
                             {isAdmin && (
-                              <button onClick={() => { setIsSettingsMenuOpen(false); setIsAdminPanelOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 flex items-center justify-between text-base font-bold text-purple-400 transition-colors">
+                              <button onClick={() => { setIsSettingsMenuOpen(false); setIsAdminPanelOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-9 h-9 rounded-xl bg-purple-500/15 flex items-center justify-center"><Users size={18} /></div>
-                                  <span className="text-sm font-bold text-purple-400">Admin Dashboard</span>
+                                  <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><Users size={18} /></div>
+                                  <span className="text-sm font-bold text-white">Admin Dashboard</span>
                                 </div>
-                                <ChevronRight size={18} className={`text-purple-400/60 ${lang === 'ar' ? 'rotate-180' : ''}`} />
+                                <ChevronRight size={18} className={`text-white/40 ${lang === 'ar' ? 'rotate-180' : ''}`} />
                               </button>
                             )}
                           </div>
