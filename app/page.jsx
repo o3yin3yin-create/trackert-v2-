@@ -1498,6 +1498,23 @@ export default function App() {
   const [isAddVisible, setIsAddVisible] = useState(false);
   const [isManageMounted, setIsManageMounted] = useState(false);
   const [isManageVisible, setIsManageVisible] = useState(false);
+  const [isEditMounted, setIsEditMounted] = useState(false);
+  const [isEditVisible, setIsEditVisible] = useState(false);
+
+  // Edit Habit States
+  const [editingHabit, setEditingHabit] = useState(null);
+  const [editHabitName, setEditHabitName] = useState("");
+  const [editHabitFrequency, setEditHabitFrequency] = useState('daily');
+  const [editHabitScheduleDays, setEditHabitScheduleDays] = useState([0]);
+  const [editHabitScheduleOnceDate, setEditHabitScheduleOnceDate] = useState("");
+  const [editHabitScheduleDayOfMonth, setEditHabitScheduleDayOfMonth] = useState(1);
+  const [editHabitScheduleMonthDay, setEditHabitScheduleMonthDay] = useState("01-01");
+  const [editHabitTime, setEditHabitTime] = useState("");
+  const [editHabitDuration, setEditHabitDuration] = useState("");
+  const [editHabitLocation, setEditHabitLocation] = useState("");
+  const [editTimeHour, setEditTimeHour] = useState(4);
+  const [editTimeMinute, setEditTimeMinute] = useState("00");
+  const [editTimePeriod, setEditTimePeriod] = useState("PM");
 
   const handleOpenAdd = () => {
     setIsAddMounted(true);
@@ -1531,6 +1548,8 @@ export default function App() {
     setIsFocusMenuOpen(false);
     setIsWidgetsModalOpen(false);
     setIsAppearanceModalOpen(false);
+    setIsEditVisible(false);
+    setTimeout(() => setIsEditMounted(false), 300);
     if (!skipManage) {
       setIsManageVisible(false);
       setTimeout(() => setIsManageMounted(false), 300);
@@ -2101,6 +2120,85 @@ export default function App() {
     markLocalMutation();
   };
 
+  // --- Edit Habit Logic (Preserves Streak & History 100%) ---
+  const openEditHabit = (habit) => {
+    if (!habit) return;
+    setEditingHabit(habit);
+    setEditHabitName(habit.name || "");
+    setEditHabitFrequency(habit.frequency || 'daily');
+    setEditHabitScheduleDays(Array.isArray(habit.scheduleDays) ? habit.scheduleDays : [0]);
+    if (habit.frequency === 'once') {
+      setEditHabitScheduleOnceDate(habit.scheduleDate || realTodayStr);
+    } else if (habit.frequency === 'monthly') {
+      setEditHabitScheduleDayOfMonth(parseInt(habit.scheduleDate, 10) || 1);
+    } else if (habit.frequency === 'yearly') {
+      setEditHabitScheduleMonthDay(habit.scheduleDate || "01-01");
+    } else {
+      setEditHabitScheduleOnceDate(realTodayStr);
+      setEditHabitScheduleDayOfMonth(1);
+      setEditHabitScheduleMonthDay("01-01");
+    }
+    setEditHabitTime(habit.time || "");
+    setEditHabitDuration(habit.duration || "");
+    setEditHabitLocation(habit.location || "");
+
+    // Parse time if exists (e.g. "04:30 PM")
+    if (habit.time && habit.time.includes(':')) {
+      try {
+        const [timePart, period] = habit.time.split(' ');
+        const [h, m] = timePart.split(':');
+        setEditTimeHour(parseInt(h, 10) || 4);
+        setEditTimeMinute(m || "00");
+        setEditTimePeriod(period || "PM");
+      } catch (e) {}
+    }
+
+    setIsEditMounted(true);
+    setTimeout(() => setIsEditVisible(true), 10);
+  };
+
+  const closeEditHabit = () => {
+    setIsEditVisible(false);
+    setTimeout(() => {
+      setIsEditMounted(false);
+      setEditingHabit(null);
+    }, 300);
+  };
+
+  const confirmSaveEditHabit = () => {
+    if (!editingHabit || !editHabitName.trim()) return;
+    haptic('medium');
+
+    let scheduleDateVal = null;
+    if (editHabitFrequency === 'once') {
+      scheduleDateVal = editHabitScheduleOnceDate;
+    } else if (editHabitFrequency === 'monthly') {
+      scheduleDateVal = String(editHabitScheduleDayOfMonth);
+    } else if (editHabitFrequency === 'yearly') {
+      scheduleDateVal = editHabitScheduleMonthDay;
+    }
+
+    setHabits(prev => prev.map(h => {
+      if (h.id === editingHabit.id) {
+        return {
+          ...h,
+          name: editHabitName.trim(),
+          frequency: editHabitFrequency,
+          scheduleDays: editHabitFrequency === 'weekly' ? editHabitScheduleDays : [],
+          scheduleDate: scheduleDateVal,
+          time: editHabitTime.trim() ? editHabitTime.trim() : null,
+          duration: editHabitDuration.trim() ? editHabitDuration.trim() : null,
+          location: editHabitLocation.trim() ? editHabitLocation.trim() : null,
+          updatedAt: Date.now()
+        };
+      }
+      return h;
+    }));
+
+    markLocalMutation();
+    closeEditHabit();
+  };
+
   // --- Emergency Card Function ---
   const consumeEmergencyCard = (habitId) => {
     const cardsLeft = habitCards[habitId] || 0;
@@ -2237,6 +2335,7 @@ export default function App() {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.2 }}
         key={habit.id}
+        onContextMenu={(e) => { e.preventDefault(); openEditHabit(habit); }}
         className={`relative flex flex-col transition-all duration-200 ease-out active:scale-[0.99] ${gridClass} liquid-panel`}
         style={{ 
           borderRadius: '20px',
@@ -3329,7 +3428,10 @@ export default function App() {
                   </span>
                   {habits.map(h => (
                     <div key={h.id} className="flex items-center gap-2 transition-all duration-200">
-                      <div className="flex-1 bg-white/5 hover:bg-white/10 px-4 py-3.5 rounded-2xl truncate flex items-center justify-between border border-white/10 shadow-sm">
+                      <div 
+                        onClick={() => openEditHabit(h)}
+                        className="flex-1 bg-white/5 hover:bg-white/10 px-4 py-3.5 rounded-2xl truncate flex items-center justify-between border border-white/10 shadow-sm cursor-pointer active:scale-[0.99] transition-all"
+                      >
                         <div className="flex flex-col truncate pr-2">
                           <span className="text-sm font-bold text-white truncate">{h.name}</span>
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -3353,9 +3455,28 @@ export default function App() {
                             )}
                           </div>
                         </div>
-                        {h.type === 'multi' && <span className="text-[10px] bg-white/10 px-2 py-1 rounded-xl text-white/70 font-semibold shrink-0">{h.subItems.length} {t('items')}</span>}
+                        <div className="flex items-center gap-2 shrink-0">
+                          {h.type === 'multi' && <span className="text-[10px] bg-white/10 px-2 py-1 rounded-xl text-white/70 font-semibold">{h.subItems.length} {t('items')}</span>}
+                          <span className="text-xs text-white/40 font-mono font-bold flex items-center gap-1">
+                            <Flame size={12} className="text-orange-400" />
+                            {getStreak(h.id)}
+                          </span>
+                        </div>
                       </div>
-                      <button onClick={() => deleteHabit(h.id)} className="p-3.5 bg-red-500/10 text-red-400 rounded-2xl hover:bg-red-500/20 transition-colors duration-200" title="Delete Habit"><Trash2 size={16} /></button>
+                      <button 
+                        onClick={() => openEditHabit(h)} 
+                        className="p-3.5 bg-white/10 text-white rounded-2xl hover:bg-white/20 transition-colors duration-200 cursor-pointer" 
+                        title="Edit Habit"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button 
+                        onClick={() => deleteHabit(h.id)} 
+                        className="p-3.5 bg-red-500/10 text-red-400 rounded-2xl hover:bg-red-500/20 transition-colors duration-200 cursor-pointer" 
+                        title="Delete Habit"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                   ))}
                   {habits.length === 0 && <p className="text-center text-white/40 py-12 text-sm">{t('noHabitsYet')}</p>}
@@ -3369,6 +3490,378 @@ export default function App() {
                   className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
                 >
                   {'Close'}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {/* ---------------- EDIT HABIT PAGE (FULL SCREEN) ---------------- */}
+        {isEditMounted && editingHabit && typeof document !== 'undefined' && createPortal(
+          <div className={`fixed inset-0 z-[10006] bg-black overflow-y-auto transition-opacity duration-300 ease-out ${isEditVisible ? 'opacity-100' : 'opacity-0'}`}>
+            <div className={`min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+3rem)] flex flex-col justify-between transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isEditVisible ? 'translate-y-0 scale-100' : 'translate-y-4 scale-95 opacity-0'}`}>
+              <div>
+                {/* Header */}
+                <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={closeEditHabit} 
+                      className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90 cursor-pointer"
+                      aria-label="Back"
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <div className="flex flex-col">
+                      <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                        <Edit2 size={20} /> {'Edit Habit'}
+                      </h2>
+                      <span className="text-white/40 text-[11px] font-semibold mt-0.5 flex items-center gap-1">
+                        <Flame size={11} className="text-orange-400" />
+                        {getStreak(editingHabit.id)} {'day streak safe (streak will not break)'}
+                      </span>
+                    </div>
+                  </div>
+                  <button onClick={closeEditHabit} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all cursor-pointer">
+                    <X size={18} />
+                  </button>
+                </div>
+                
+                {/* Habit Name */}
+                <div className="mb-5">
+                  <label className="block text-xs font-bold tracking-wider text-white/50 uppercase mb-2">
+                    {'Habit Name'}
+                  </label>
+                  <input 
+                    type="text" 
+                    placeholder="Habit Name..." 
+                    value={editHabitName} 
+                    onChange={(e) => setEditHabitName(e.target.value)} 
+                    className="w-full bg-white/5 border border-white/10 px-4 py-3.5 rounded-2xl outline-none focus:border-white/30 text-white text-base font-bold transition-colors" 
+                  />
+                </div>
+
+                {/* Frequency Picker */}
+                <div className="mb-6 bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <span className="block text-xs font-bold tracking-wider text-white/50 uppercase mb-3">
+                    {'Frequency'}
+                  </span>
+                  
+                  <div className="grid grid-cols-3 gap-1.5 mb-3">
+                    {[
+                      { id: 'daily', label: 'Daily' },
+                      { id: 'weekly', label: 'Weekly' },
+                      { id: 'once', label: 'One-Time' },
+                    ].map(f => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => { setEditHabitFrequency(f.id); haptic('light'); }}
+                        className={`py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          editHabitFrequency === f.id 
+                            ? 'bg-white text-black font-black shadow-md' 
+                            : 'bg-black/30 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-1.5 mb-3">
+                    {[
+                      { id: 'monthly', label: 'Monthly' },
+                      { id: 'yearly', label: 'Yearly' },
+                    ].map(f => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => { setEditHabitFrequency(f.id); haptic('light'); }}
+                        className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          editHabitFrequency === f.id 
+                            ? 'bg-white text-black font-black shadow-md' 
+                            : 'bg-black/30 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Sub-selectors */}
+                  {editHabitFrequency === 'once' && (
+                    <div className="pt-2 border-t border-white/10">
+                      <label className="block text-[11px] font-bold tracking-wider text-white/40 uppercase mb-2">{'Event Date'}</label>
+                      <input 
+                        type="date" 
+                        value={editHabitScheduleOnceDate} 
+                        onChange={(e) => setEditHabitScheduleOnceDate(e.target.value)}
+                        className="w-full bg-black/40 border border-white/10 px-3.5 py-2.5 rounded-xl text-white text-xs font-mono outline-none"
+                      />
+                    </div>
+                  )}
+
+                  {editHabitFrequency === 'weekly' && (
+                    <div className="pt-2 border-t border-white/10">
+                      <label className="block text-[11px] font-bold tracking-wider text-white/40 uppercase mb-2">{'Active Days of Week'}</label>
+                      <div className="grid grid-cols-7 gap-1">
+                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((dayName, idx) => {
+                          const isSelected = editHabitScheduleDays.includes(idx);
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                haptic('light');
+                                if (isSelected) {
+                                  if (editHabitScheduleDays.length > 1) {
+                                    setEditHabitScheduleDays(editHabitScheduleDays.filter(d => d !== idx));
+                                  }
+                                } else {
+                                  setEditHabitScheduleDays([...editHabitScheduleDays, idx].sort());
+                                }
+                              }}
+                              className={`py-2 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer ${
+                                isSelected ? 'bg-white text-black font-black shadow-md' : 'bg-black/30 text-white/40 border border-white/10 hover:text-white'
+                              }`}
+                            >
+                              {dayName}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {editHabitFrequency === 'monthly' && (
+                    <div className="pt-2 border-t border-white/10">
+                      <label className="block text-[11px] font-bold tracking-wider text-white/40 uppercase mb-2">{'Day of Month (1-31)'}</label>
+                      <select 
+                        value={editHabitScheduleDayOfMonth}
+                        onChange={(e) => setEditHabitScheduleDayOfMonth(parseInt(e.target.value, 10))}
+                        className="w-full bg-black/40 border border-white/10 px-3.5 py-2.5 rounded-xl text-white text-xs font-mono outline-none"
+                      >
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                          <option key={d} value={d} className="bg-black text-white">{d}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {editHabitFrequency === 'yearly' && (
+                    <div className="pt-2 border-t border-white/10 flex gap-2">
+                      <div className="flex-1">
+                        <label className="block text-[11px] font-bold tracking-wider text-white/40 uppercase mb-2">{'Month'}</label>
+                        <select
+                          value={editHabitScheduleMonthDay.split('-')[0]}
+                          onChange={(e) => {
+                            const curD = editHabitScheduleMonthDay.split('-')[1] || "01";
+                            setEditHabitScheduleMonthDay(`${e.target.value}-${curD}`);
+                          }}
+                          className="w-full bg-black/40 border border-white/10 px-3 py-2 rounded-xl text-white text-xs font-mono outline-none"
+                        >
+                          {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map(m => (
+                            <option key={m} value={m} className="bg-black text-white">{m}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-[11px] font-bold tracking-wider text-white/40 uppercase mb-2">{'Day'}</label>
+                        <select
+                          value={editHabitScheduleMonthDay.split('-')[1]}
+                          onChange={(e) => {
+                            const curM = editHabitScheduleMonthDay.split('-')[0] || "01";
+                            setEditHabitScheduleMonthDay(`${curM}-${e.target.value}`);
+                          }}
+                          className="w-full bg-black/40 border border-white/10 px-3 py-2 rounded-xl text-white text-xs font-mono outline-none"
+                        >
+                          {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')).map(d => (
+                            <option key={d} value={d} className="bg-black text-white">{d}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Time Selection */}
+                <div className="mb-6 bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Clock size={15} className="text-white/50" />
+                      <span className="text-xs font-bold tracking-wider text-white/50 uppercase">{'Habit Time'}</span>
+                    </div>
+                    {editHabitTime ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black font-mono px-2.5 py-1 rounded-lg bg-white text-black shadow-sm">
+                          {editHabitTime}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => { setEditHabitTime(""); haptic('light'); }}
+                          className="text-[11px] font-bold text-white/40 hover:text-white transition-colors px-1.5 py-0.5 rounded cursor-pointer"
+                        >
+                          {'Clear'}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] font-medium text-white/30">{'Optional'}</span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-6 gap-1.5 mb-3">
+                    {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => {
+                      const isActive = editHabitTime && editTimeHour === h;
+                      return (
+                        <button
+                          key={h}
+                          type="button"
+                          onClick={() => {
+                            setEditTimeHour(h);
+                            setEditHabitTime(`${String(h).padStart(2, '0')}:${editTimeMinute} ${editTimePeriod}`);
+                            haptic('light');
+                          }}
+                          className={`py-2 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer ${
+                            isActive ? 'bg-white text-black font-black shadow-md scale-[1.02]' : 'bg-black/30 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'
+                          }`}
+                        >
+                          {h}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="flex bg-black/40 rounded-xl p-1 border border-white/10 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditTimePeriod('AM');
+                          setEditHabitTime(`${String(editTimeHour).padStart(2, '0')}:${editTimeMinute} AM`);
+                          haptic('light');
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          editHabitTime && editTimePeriod === 'AM' ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'
+                        }`}
+                      >
+                        AM
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditTimePeriod('PM');
+                          setEditHabitTime(`${String(editTimeHour).padStart(2, '0')}:${editTimeMinute} PM`);
+                          haptic('light');
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          editHabitTime && editTimePeriod === 'PM' ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'
+                        }`}
+                      >
+                        PM
+                      </button>
+                    </div>
+
+                    <div className="flex bg-black/40 rounded-xl p-1 border border-white/10 gap-1 flex-1">
+                      {['00', '15', '30', '45'].map(m => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => {
+                            setEditTimeMinute(m);
+                            setEditHabitTime(`${String(editTimeHour).padStart(2, '0')}:${m} ${editTimePeriod}`);
+                            haptic('light');
+                          }}
+                          className={`flex-1 py-1.5 rounded-lg text-xs font-bold font-mono transition-all text-center cursor-pointer ${
+                            editHabitTime && editTimeMinute === m ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'
+                          }`}
+                        >
+                          :{m}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Duration Selection */}
+                <div className="mb-6 bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Hourglass size={15} className="text-white/50" />
+                      <span className="text-xs font-bold tracking-wider text-white/50 uppercase">{'Habit Duration'}</span>
+                    </div>
+                    {editHabitDuration ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black font-mono px-2.5 py-1 rounded-lg bg-white text-black shadow-sm">
+                          {editHabitDuration}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => { setEditHabitDuration(""); haptic('light'); }}
+                          className="text-[11px] font-bold text-white/40 hover:text-white transition-colors px-1.5 py-0.5 rounded cursor-pointer"
+                        >
+                          {'Clear'}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] font-medium text-white/30">{'Optional'}</span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5 mb-2.5">
+                    {['15m', '30m', '45m', '1h', '1.5h', '2h', '3h'].map(dur => {
+                      const isActive = editHabitDuration === dur;
+                      return (
+                        <button
+                          key={dur}
+                          type="button"
+                          onClick={() => { setEditHabitDuration(dur); haptic('light'); }}
+                          className={`py-2 rounded-xl text-xs font-bold font-mono transition-all text-center cursor-pointer ${
+                            isActive ? 'bg-white text-black font-black shadow-md scale-[1.02]' : 'bg-black/30 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'
+                          }`}
+                        >
+                          {dur}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center gap-2.5 bg-black/40 px-3.5 py-2.5 rounded-xl border border-white/10">
+                    <input
+                      type="text"
+                      placeholder="Or enter custom duration (e.g. 2 hours, 45m)..."
+                      value={editHabitDuration}
+                      onChange={(e) => setEditHabitDuration(e.target.value)}
+                      className="w-full bg-transparent text-white text-xs sm:text-sm outline-none font-medium placeholder:text-white/30"
+                    />
+                  </div>
+                </div>
+
+                {/* Location Selection */}
+                <div className="mb-8 bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MapPin size={15} className="text-white/50" />
+                    <span className="text-xs font-bold tracking-wider text-white/50 uppercase">{'Location (Optional)'}</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 bg-black/40 px-3.5 py-3 rounded-xl border border-white/10">
+                    <input
+                      type="text"
+                      placeholder="e.g., Room 302, Gym, Home Office..."
+                      value={editHabitLocation}
+                      onChange={(e) => setEditHabitLocation(e.target.value)}
+                      className="w-full bg-transparent text-white text-xs sm:text-sm outline-none font-medium placeholder:text-white/30"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Submit Action Button */}
+              <div className="pt-4 pb-8">
+                <button 
+                  onClick={confirmSaveEditHabit} 
+                  className="w-full py-4 rounded-2xl font-black text-base tracking-wide transition-all duration-200 active:scale-[0.98] shadow-2xl cursor-pointer" 
+                  style={{ backgroundColor: themeColor, color: '#000000' }}
+                >
+                  {'Save Changes'}
                 </button>
               </div>
             </div>
