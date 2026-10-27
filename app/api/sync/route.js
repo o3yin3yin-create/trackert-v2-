@@ -293,6 +293,7 @@ export async function POST(req) {
           !scheduleDaysMatch ||
           ex.scheduleDate !== (h.scheduleDate || null) ||
           ex.time !== (h.time || null) ||
+          ex.duration !== (h.duration || null) ||
           ex.location !== (h.location || null) ||
           ex.isNotifyEnabled !== (h.isNotifyEnabled || false) || 
           ex.notifyTime !== (h.notifyTime || null) || 
@@ -316,6 +317,7 @@ export async function POST(req) {
             scheduleDays: h.scheduleDays || [],
             scheduleDate: h.scheduleDate || null,
             time: h.time || null,
+            duration: h.duration || null,
             location: h.location || null,
             isNotifyEnabled: h.isNotifyEnabled || false,
             notifyTime: h.notifyTime || null,
@@ -331,6 +333,7 @@ export async function POST(req) {
             scheduleDays: h.scheduleDays || [],
             scheduleDate: h.scheduleDate || null,
             time: h.time || null,
+            duration: h.duration || null,
             location: h.location || null,
             isNotifyEnabled: h.isNotifyEnabled || false,
             notifyTime: h.notifyTime || null,

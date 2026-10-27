@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink } from 'lucide-react';
+import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -1564,8 +1564,9 @@ export default function App() {
   const [habitScheduleDayOfMonth, setHabitScheduleDayOfMonth] = useState(1);
   const [habitScheduleMonthDay, setHabitScheduleMonthDay] = useState("01-01");
 
-  // Additional habit data (time & location)
+  // Additional habit data (time, duration & location)
   const [habitTime, setHabitTime] = useState("");
+  const [habitDuration, setHabitDuration] = useState("");
   const [habitLocation, setHabitLocation] = useState("");
   const [selectedTimeHour, setSelectedTimeHour] = useState(4);
   const [selectedTimeMinute, setSelectedTimeMinute] = useState("00");
@@ -1748,7 +1749,7 @@ export default function App() {
     return streak;
   };
 
-  // --- Card Minting Engine (automatic every 7 streak days) ---
+  // --- Card Minting Engine (max 1 card per habit; earned after 7 streak days, replacement earned after use) ---
   useEffect(() => {
     if (!isMounted) return;
     let newCardsGranted = false;
@@ -1757,17 +1758,25 @@ export default function App() {
 
     habits.forEach(habit => {
       const streak = getStreak(habit.id);
-      // If streak is multiple of 7
-      if (streak > 0 && streak % 7 === 0) {
-        const grantKey = `${habit.id}-streak-${streak}`;
-        // Mint card if not already minted for this milestone
-        if (!newLog[grantKey]) {
+      const currentCards = newCards[habit.id] || 0;
+
+      // Strictly clamp: no habit can hold more than 1 card
+      if (currentCards > 1) {
+        newCards[habit.id] = 1;
+        newCardsGranted = true;
+      }
+
+      // If user has 0 cards and has an active streak of at least 7 days
+      if (streak >= 7 && (newCards[habit.id] || 0) < 1) {
+        const lastUsedStreak = newLog[`${habit.id}-last-used-streak`] || 0;
+        // Eligible if they never used a card, or reached at least 7 streak days after consuming the last card
+        const isEligible = !lastUsedStreak || streak >= lastUsedStreak + 7;
+        const grantKey = `${habit.id}-streak-block-${Math.floor(streak / 7)}`;
+
+        if (isEligible && !newLog[grantKey]) {
           newLog[grantKey] = true;
-          const currentCards = newCards[habit.id] ?? 1;
-          if (currentCards < 1) {
-            newCards[habit.id] = 1;
-            newCardsGranted = true;
-          }
+          newCards[habit.id] = 1;
+          newCardsGranted = true;
         }
       }
     });
@@ -2060,6 +2069,7 @@ export default function App() {
       scheduleDays: habitFrequency === 'weekly' ? habitScheduleDays : [],
       scheduleDate: scheduleDateVal,
       time: habitTime.trim() ? habitTime.trim() : null,
+      duration: habitDuration.trim() ? habitDuration.trim() : null,
       location: habitLocation.trim() ? habitLocation.trim() : null,
       updatedAt: Date.now()
     };
@@ -2076,6 +2086,7 @@ export default function App() {
     setHabitScheduleMonthDay("01-01");
     setHabitScheduleOnceDate(realTodayStr);
     setHabitTime("");
+    setHabitDuration("");
     setHabitLocation("");
     handleCloseAdd();
   };
@@ -2098,7 +2109,11 @@ export default function App() {
     markLocalMutation(activeDateStr);
     const key = `${activeDateStr}-${habitId}`;
     setDailyData(prev => ({ ...prev, [key]: true }));
-    setHabitCards(prev => ({ ...prev, [habitId]: cardsLeft - 1 }));
+    setHabitCards(prev => ({ ...prev, [habitId]: 0 }));
+    setGrantedCardsLog(prev => ({
+      ...(prev || {}),
+      [`${habitId}-last-used-streak`]: streak
+    }));
   };
 
   // --- Score Calculations ---
@@ -2183,7 +2198,7 @@ export default function App() {
   // Helper to render habit cards with slim Apple aesthetics and automatic full-width for multi/scheduled habits
   const renderHabitCard = (habit) => {
     const isMulti = habit.type === 'multi';
-    const isScheduled = (habit.frequency && habit.frequency !== 'daily') || !!habit.time || !!habit.location || (habit.frequency === 'once' && !!habit.scheduleDate);
+    const isScheduled = (habit.frequency && habit.frequency !== 'daily') || !!habit.time || !!habit.duration || !!habit.location || (habit.frequency === 'once' && !!habit.scheduleDate);
     const isExpanded = expandedHabits.includes(habit.id);
     
     let isAllChecked = false;
@@ -2251,7 +2266,7 @@ export default function App() {
                     </span>
                   )}
                 </div>
-                {(habit.time || habit.location) && (
+                {(habit.time || habit.duration || habit.location) && (
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {habit.time && (
                       <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
@@ -2259,6 +2274,14 @@ export default function App() {
                       }`}>
                         <Clock size={9} />
                         {habit.time}
+                      </span>
+                    )}
+                    {habit.duration && (
+                      <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
+                        isAllChecked ? 'bg-black/10 text-black/80' : (theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-black/5 text-black/70')
+                      }`}>
+                        <Hourglass size={9} />
+                        {habit.duration}
                       </span>
                     )}
                     {habit.location && (
@@ -2355,7 +2378,7 @@ export default function App() {
                 )}
               </div>
 
-              {/* Badges for time, location, frequency */}
+              {/* Badges for time, duration, location, frequency */}
               <div className="flex items-center gap-1.5 flex-wrap">
                 {habit.time && (
                   <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
@@ -2363,6 +2386,14 @@ export default function App() {
                   }`}>
                     <Clock size={9} />
                     {habit.time}
+                  </span>
+                )}
+                {habit.duration && (
+                  <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                    isAllChecked ? 'bg-black/10 text-black/80' : (theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-black/5 text-black/70')
+                  }`}>
+                    <Hourglass size={9} />
+                    {habit.duration}
                   </span>
                 )}
                 {habit.location && (
@@ -3162,6 +3193,71 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* ---------------- HABIT DURATION (OPTIONAL) ---------------- */}
+                <div className="mb-6 bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Hourglass size={15} className="text-white/50" />
+                      <span className="text-xs font-bold tracking-wider text-white/50 uppercase">
+                        {'Habit Duration'}
+                      </span>
+                    </div>
+                    {habitDuration ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black font-mono px-2.5 py-1 rounded-lg bg-white text-black shadow-sm">
+                          {habitDuration}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => { setHabitDuration(""); haptic('light'); }}
+                          className="text-[11px] font-bold text-white/40 hover:text-white transition-colors px-1.5 py-0.5 rounded cursor-pointer"
+                        >
+                          {'Clear'}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] font-medium text-white/30">
+                        {'Optional'}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Duration Presets */}
+                  <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5 mb-2.5">
+                    {['15m', '30m', '45m', '1h', '1.5h', '2h', '3h'].map(dur => {
+                      const isActive = habitDuration === dur;
+                      return (
+                        <button
+                          key={dur}
+                          type="button"
+                          onClick={() => {
+                            setHabitDuration(dur);
+                            haptic('light');
+                          }}
+                          className={`py-2 rounded-xl text-xs font-bold font-mono transition-all text-center cursor-pointer ${
+                            isActive 
+                              ? 'bg-white text-black font-black shadow-md scale-[1.02]' 
+                              : 'bg-black/30 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'
+                          }`}
+                        >
+                          {dur}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Custom Duration Input */}
+                  <div className="flex items-center gap-2.5 bg-black/40 px-3.5 py-2.5 rounded-xl border border-white/10">
+                    <input
+                      type="text"
+                      placeholder="Or enter custom duration (e.g. 2 hours, 45m)..."
+                      value={habitDuration}
+                      onChange={(e) => setHabitDuration(e.target.value)}
+                      className="w-full bg-transparent text-white text-xs sm:text-sm outline-none font-medium placeholder:text-white/30"
+                    />
+                  </div>
+                </div>
+
                 {/* ---------------- HABIT LOCATION (OPTIONAL) ---------------- */}
                 <div className="mb-8 bg-white/5 p-4 rounded-2xl border border-white/10">
                   <div className="flex items-center gap-2 mb-2">
@@ -3243,6 +3339,11 @@ export default function App() {
                             {(h.time || h.notifyTime) && (
                               <span className="text-[10px] text-white/40 flex items-center gap-1 font-mono">
                                 <Clock size={10} /> {h.time || h.notifyTime}
+                              </span>
+                            )}
+                            {h.duration && (
+                              <span className="text-[10px] text-white/40 flex items-center gap-1 font-mono">
+                                <Hourglass size={10} /> {h.duration}
                               </span>
                             )}
                             {h.location && (
@@ -3376,24 +3477,22 @@ export default function App() {
                                 {t('use')}
                               </button>
                             )}
-                            <div className="flex gap-1.5 items-center">
+                            <div className="flex gap-2 items-center">
                               {hasCards ? (
-                                Array.from({ length: Math.min(cards, 3) }).map((_, i) => (
+                                <div className="flex items-center gap-2">
                                   <div 
-                                    key={i} 
                                     className="w-7 h-10 rounded-lg flex items-center justify-center shadow-md border border-white/30"
                                     style={{
-                                      background: `linear-gradient(135deg, ${themeColor}cc, ${themeColor}66, rgba(255,255,255,0.3), ${themeColor}88)`,
-                                      transform: `rotate(${(i - 1) * 6}deg)`
+                                      background: `linear-gradient(135deg, ${themeColor}cc, ${themeColor}66, rgba(255,255,255,0.3), ${themeColor}88)`
                                     }}
                                   >
                                     <ShieldAlert size={14} color="#ffffff" />
                                   </div>
-                                ))
+                                  <span className="text-[11px] font-bold text-white/70">1 Shield</span>
+                                </div>
                               ) : (
                                 <span className="text-white/30 text-xs font-bold uppercase tracking-wider">{t('noCards')}</span>
                               )}
-                              {cards > 3 && <span className="text-xs font-black" style={{ color: themeColor }}>+{cards - 3}</span>}
                             </div>
                           </div>
                         </div>

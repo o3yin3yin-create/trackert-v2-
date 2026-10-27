@@ -45,6 +45,7 @@ model Habit {
   scheduleDate    String?                    // لتاريخ "once" كـ "YYYY-MM-DD" أو لليوم الشهري ("1".."31") أو السنوي ("MM-DD")
   
   time            String?  // ميعاد العادة الاختياري مثل "04:00 PM"
+  duration        String?  // مدة العادة مثل "2h" أو "45m"
   location        String?  // مكان العادة الاختياري مثل "قاعة 302" أو "الجيم"
   
   isNotifyEnabled Boolean  @default(false)
