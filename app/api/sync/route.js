@@ -76,21 +76,26 @@ export async function GET(req) {
       const clerkUser = await currentUser();
       const name = clerkUser?.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : 'Unknown';
       const email = clerkUser?.emailAddresses?.[0]?.emailAddress || userId;
+      const username = clerkUser?.username || null;
 
       user = await prisma.user.create({
-        data: { id: userId, email, name }, // clerk usually provides email, but ID is what matters for foreign keys
+        data: { id: userId, email, name, ...(username ? { username } : {}) },
         include: { habits: { orderBy: { createdAt: 'asc' } }, dailyLogs: true }
       });
-    } else if (user.name === 'Zain' || user.email.startsWith('user_')) {
+    } else {
       const clerkUser = await currentUser();
       if (clerkUser) {
-        const name = clerkUser.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : 'Unknown';
-        const email = clerkUser.emailAddresses?.[0]?.emailAddress || userId;
-        user = await prisma.user.update({
-          where: { id: userId },
-          data: { name, email },
-          include: { habits: { orderBy: { createdAt: 'asc' } }, dailyLogs: true }
-        });
+        const name = clerkUser.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : user.name;
+        const email = clerkUser.emailAddresses?.[0]?.emailAddress || user.email;
+        const username = clerkUser.username || null;
+
+        if ((username && user.username !== username) || (user.name === 'Zain' || user.email.startsWith('user_'))) {
+          user = await prisma.user.update({
+            where: { id: userId },
+            data: { name, email, ...(username ? { username } : {}) },
+            include: { habits: { orderBy: { createdAt: 'asc' } }, dailyLogs: true }
+          });
+        }
       }
     }
 

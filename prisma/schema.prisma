@@ -11,6 +11,7 @@ generator client {
 model User {
   id             String     @id // هنا هنخزن الـ clerkId الفريد
   email          String     @unique
+  username       String?    @unique // اسم المستخدم الفريد لنظام الأصدقاء
   name           String?    @default("Zain")
   fcmToken       String?    // توكن الإشعارات لجهاز المستخدم
   theme          String     @default("dark")

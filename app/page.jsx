@@ -24,6 +24,7 @@ import SeatSelection from '../components/SeatSelection';
 import AdminPanel from '../components/AdminPanel';
 import AvatarIcon, { AVATAR_OPTIONS } from '../components/AvatarIcon';
 import SpotifyWidget from '../components/SpotifyWidget';
+import ChooseUsername from '../components/ChooseUsername';
 import { guideSections } from '../lib/guideContent';
 
 let globalAudioCtx = null;
@@ -386,7 +387,7 @@ for (let val = 0; val <= 1000; val += 50) {
 }
 
 export default function App() {
-  const { user } = useUser(); 
+  const { user, isLoaded, isSignedIn } = useUser(); 
   const { getToken: getClerkToken } = useAuth();
   const [authModal, setAuthModal] = useState(null); // 'sign-in' | 'sign-up' | null
   const [isMounted, setIsMounted] = useState(false);
@@ -2279,7 +2280,15 @@ export default function App() {
 
   const sleepChartData = getChartData();
 
-  if (!isMounted) return null;
+  if (!isMounted || !isLoaded) {
+    return (
+      <div className="min-h-screen bg-[#000000] text-white flex flex-col items-center justify-center p-6 select-none font-sans">
+        <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center mb-4 animate-pulse">
+          <Sparkles size={22} className="text-white" />
+        </div>
+      </div>
+    );
+  }
 
   if (isBlocked) {
     return (
@@ -2291,6 +2300,11 @@ export default function App() {
         </p>
       </div>
     );
+  }
+
+  // 1) The Username Gate: If signed in and no username set, require setting username first
+  if (isSignedIn && !user?.username) {
+    return <ChooseUsername />;
   }
 
   // Helper to render habit cards with slim Apple aesthetics and automatic full-width for multi/scheduled habits

@@ -20,6 +20,21 @@ export const ClerkProvider = ({ children }) => {
   const [manualCode, setManualCode] = useState('');
   const [showManualInput, setShowManualInput] = useState(false);
 
+  const attachUserMethods = (rawUser) => {
+    if (!rawUser) return null;
+    return {
+      ...rawUser,
+      update: async (data) => {
+        const merged = { ...rawUser, ...data };
+        setUser(attachUserMethods(merged));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('bokra_desktop_user', JSON.stringify(merged));
+        }
+        return merged;
+      }
+    };
+  };
+
   // Load saved session on startup
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -27,7 +42,7 @@ export const ClerkProvider = ({ children }) => {
       const savedToken = localStorage.getItem('bokra_desktop_token');
       if (savedUser && savedToken) {
         try {
-          setUser(JSON.parse(savedUser));
+          setUser(attachUserMethods(JSON.parse(savedUser)));
         } catch (e) {
           localStorage.removeItem('bokra_desktop_user');
           localStorage.removeItem('bokra_desktop_token');
@@ -91,7 +106,7 @@ export const ClerkProvider = ({ children }) => {
       } catch (e) {}
     }
     localStorage.setItem('bokra_desktop_user', JSON.stringify(parsedUser));
-    setUser(parsedUser);
+    setUser(attachUserMethods(parsedUser));
     setIsWaitingForBrowser(false);
     setShowManualInput(false);
     window.dispatchEvent(new CustomEvent('bokra-desktop-auth-success', { detail: { token, user: parsedUser } }));
@@ -232,8 +247,8 @@ export const ClerkProvider = ({ children }) => {
 };
 
 export const useUser = () => {
-  const { user, isLoaded } = useContext(AuthContext);
-  return { user, isLoaded };
+  const { user, isLoaded, isSignedIn } = useContext(AuthContext);
+  return { user, isLoaded, isSignedIn: !!user };
 };
 
 export const Show = ({ when, children }) => {
