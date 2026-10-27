@@ -682,6 +682,36 @@ export default function App() {
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
   const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
+  const [isSpotifyConnected, setIsSpotifyConnected] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const cur = localStorage.getItem('daybase_spotify_refresh_token');
+      if (cur) setIsSpotifyConnected(true);
+
+      const onTokenUpdate = () => {
+        const token = localStorage.getItem('daybase_spotify_refresh_token');
+        setIsSpotifyConnected(Boolean(token));
+      };
+      window.addEventListener('spotify-token-updated', onTokenUpdate);
+      window.addEventListener('storage', onTokenUpdate);
+      return () => {
+        window.removeEventListener('spotify-token-updated', onTokenUpdate);
+        window.removeEventListener('storage', onTokenUpdate);
+      };
+    }
+  }, []);
+
+  const handleDisconnectSpotify = async () => {
+    try {
+      await apiFetch('/api/spotify/disconnect', { method: 'POST' });
+    } catch (_) {}
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('daybase_spotify_refresh_token');
+      window.dispatchEvent(new CustomEvent('spotify-token-updated'));
+    }
+    setIsSpotifyConnected(false);
+  };
   const [isFocusMenuOpen, setIsFocusMenuOpen] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const touchStartXRef = useRef(null);
@@ -1234,6 +1264,7 @@ export default function App() {
                localStorage.setItem('daybase_spotify_refresh_token', authoritative.spotifyRefreshToken);
                window.dispatchEvent(new CustomEvent('spotify-token-updated'));
              }
+             setIsSpotifyConnected(true);
           }
 
           // Cache authoritative server state into IndexedDB
@@ -5099,13 +5130,13 @@ export default function App() {
         
         {/* Floating In-App Friends & Interaction Notification Banner */}
         {activeInAppNotification && (
-          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[99999] max-w-sm w-[92%] sm:w-auto bg-[#18181b]/95 backdrop-blur-xl text-white border border-white/20 rounded-2xl p-3 shadow-2xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="fixed top-[calc(env(safe-area-inset-top,0px)+0.75rem)] left-1/2 -translate-x-1/2 z-[99999] max-w-sm w-[92%] sm:w-auto bg-[#18181b]/95 backdrop-blur-xl text-white border border-white/20 rounded-2xl p-3 shadow-2xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center font-bold text-xs uppercase shrink-0 shadow-sm">
                 {activeInAppNotification.user?.name?.charAt(0) || activeInAppNotification.user?.username?.charAt(0) || 'F'}
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-xs font-bold text-white truncate">
+                <span className="text-xs font-bold font-mono text-white truncate">
                   @{activeInAppNotification.user?.username}
                 </span>
                 <span className="text-[11px] text-white/60 truncate">
@@ -5119,26 +5150,70 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => handleAcceptRequest(activeInAppNotification.id)}
-                    className="px-2.5 py-1 rounded-xl bg-white text-black font-bold text-[11px] hover:bg-white/90 active:scale-95 transition-all shadow-sm cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-white text-black font-bold text-xs hover:bg-white/90 active:scale-95 transition-all shadow-sm cursor-pointer"
                   >
                     Accept
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDismissNotification(activeInAppNotification.id, true)}
-                    className="p-1 rounded-lg text-white/40 hover:text-white transition-colors cursor-pointer"
+                    className="p-1.5 rounded-lg text-white/40 hover:text-white transition-colors cursor-pointer"
                   >
                     <X size={14} />
                   </button>
                 </>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => handleDismissNotification(activeInAppNotification.id, false)}
-                  className="px-2.5 py-1 rounded-xl bg-white/15 text-white font-bold text-[11px] hover:bg-white/25 active:scale-95 transition-all cursor-pointer"
-                >
-                  Dismiss
-                </button>
+                <>
+                  {activeInAppNotification.type === 'study' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleDismissNotification(activeInAppNotification.id, false);
+                        setIsPomodoroOpen(true);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-white text-black font-black text-xs hover:bg-white/90 active:scale-95 transition-all shadow-sm cursor-pointer flex items-center gap-1"
+                    >
+                      <Timer size={13} strokeWidth={2.5} />
+                      Start Focus
+                    </button>
+                  ) : activeInAppNotification.type === 'nudge' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const targetUser = activeInAppNotification.user?.username;
+                        if (targetUser) {
+                          apiFetch('/api/friends/nudge', {
+                            method: 'POST',
+                            body: JSON.stringify({ username: targetUser, type: 'nudge' })
+                          }).catch(() => {});
+                        }
+                        handleDismissNotification(activeInAppNotification.id, false);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-white text-black font-bold text-xs hover:bg-white/90 active:scale-95 transition-all shadow-sm cursor-pointer"
+                    >
+                      Wave Back
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleDismissNotification(activeInAppNotification.id, false);
+                        setIsPomodoroOpen(true);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-white text-black font-black text-xs hover:bg-white/90 active:scale-95 transition-all shadow-sm cursor-pointer flex items-center gap-1"
+                    >
+                      <Flame size={13} />
+                      Cheer Back
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleDismissNotification(activeInAppNotification.id, false)}
+                    className="p-1.5 rounded-lg text-white/40 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <X size={14} />
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -7170,20 +7245,37 @@ export default function App() {
                                   <Radio size={20} strokeWidth={2.5} />
                                 </div>
                                 <div className="flex flex-col">
-                                  <span className="text-sm font-bold text-white">Spotify</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-bold text-white">Spotify</span>
+                                    {isSpotifyConnected && (
+                                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                        Connected
+                                      </span>
+                                    )}
+                                  </div>
                                   <span className="text-[11px] text-white/50 font-normal">
-                                    {'Music playback & sync'}
+                                    {isSpotifyConnected ? 'Linked to your account' : 'Music playback & sync'}
                                   </span>
                                 </div>
                               </div>
-                              <a 
-                                href={typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') ? 'https://bokra101.vercel.app/api/spotify/login' : '/api/spotify/login'}
-                                target={typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') ? '_blank' : '_self'}
-                                rel="noopener noreferrer"
-                                className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-white text-black hover:bg-white/90 transition-all active:scale-95 flex items-center gap-1.5 shadow-md"
-                              >
-                                {'Connect'}
-                              </a>
+                              {isSpotifyConnected ? (
+                                <button
+                                  type="button"
+                                  onClick={handleDisconnectSpotify}
+                                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-red-500/20 text-white/70 hover:text-red-400 transition-all cursor-pointer active:scale-95"
+                                >
+                                  Disconnect
+                                </button>
+                              ) : (
+                                <a 
+                                  href={typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') ? 'https://bokra101.vercel.app/api/spotify/login' : '/api/spotify/login'}
+                                  target={typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') ? '_blank' : '_self'}
+                                  rel="noopener noreferrer"
+                                  className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-white text-black hover:bg-white/90 transition-all active:scale-95 flex items-center gap-1.5 shadow-md"
+                                >
+                                  {'Connect'}
+                                </a>
+                              )}
                             </div>
                           </div>
 

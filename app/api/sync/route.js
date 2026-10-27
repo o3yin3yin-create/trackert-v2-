@@ -281,7 +281,7 @@ export async function POST(req) {
           updatedAt: new Date(),
           ...(state.activeSessionType !== undefined && { activeSessionType: state.activeSessionType }),
           ...(state.activeSessionData !== undefined && { activeSessionData: state.activeSessionData }),
-          ...(state.spotifyRefreshToken !== undefined && { spotifyRefreshToken: state.spotifyRefreshToken }),
+          ...(state.spotifyRefreshToken ? { spotifyRefreshToken: state.spotifyRefreshToken } : {}),
         }
       });
     }
