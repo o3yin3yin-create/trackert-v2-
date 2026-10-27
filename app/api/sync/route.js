@@ -143,6 +143,7 @@ export async function GET(req) {
 
     // Reconstruct the flat state object expected by the frontend
     const state = {
+      username: user.username || null,
       theme: user.theme,
       bgStyle: user.bgStyle,
       lang: user.lang,

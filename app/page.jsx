@@ -1059,6 +1059,18 @@ export default function App() {
              setThemeColor(authoritative.themeColor);
              if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', authoritative.themeColor);
           }
+          if (authoritative.username && typeof window !== 'undefined') {
+            try {
+              const savedUser = localStorage.getItem('bokra_desktop_user');
+              if (savedUser) {
+                const parsed = JSON.parse(savedUser);
+                if (!parsed.username || parsed.username !== authoritative.username) {
+                  parsed.username = authoritative.username;
+                  localStorage.setItem('bokra_desktop_user', JSON.stringify(parsed));
+                }
+              }
+            } catch (_) {}
+          }
           if (authoritative.avatar) {
              setAvatar(authoritative.avatar);
              if (typeof window !== 'undefined') localStorage.setItem('daybase_avatar_v1', authoritative.avatar || 'user');

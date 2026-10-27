@@ -31,6 +31,24 @@ export const ClerkProvider = ({ children }) => {
           localStorage.setItem('bokra_desktop_user', JSON.stringify(merged));
         }
         return merged;
+      },
+      reload: async () => {
+        if (typeof window === 'undefined') return rawUser;
+        try {
+          const res = await apiFetch('/api/user/username');
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.username) {
+              const updated = { ...rawUser, username: data.username };
+              if (data.name) updated.name = data.name;
+              if (data.avatar) updated.avatar = data.avatar;
+              localStorage.setItem('bokra_desktop_user', JSON.stringify(updated));
+              setUser(attachUserMethods(updated));
+              return updated;
+            }
+          }
+        } catch (e) {}
+        return rawUser;
       }
     };
   };
@@ -42,7 +60,22 @@ export const ClerkProvider = ({ children }) => {
       const savedToken = localStorage.getItem('bokra_desktop_token');
       if (savedUser && savedToken) {
         try {
-          setUser(attachUserMethods(JSON.parse(savedUser)));
+          const parsed = JSON.parse(savedUser);
+          setUser(attachUserMethods(parsed));
+
+          // Immediately check server for username and latest profile info
+          apiFetch('/api/user/username')
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+              if (data?.username) {
+                const refreshed = { ...parsed, username: data.username };
+                if (data.name) refreshed.name = data.name;
+                if (data.avatar) refreshed.avatar = data.avatar;
+                localStorage.setItem('bokra_desktop_user', JSON.stringify(refreshed));
+                setUser(attachUserMethods(refreshed));
+              }
+            })
+            .catch(() => {});
         } catch (e) {
           localStorage.removeItem('bokra_desktop_user');
           localStorage.removeItem('bokra_desktop_token');
@@ -109,6 +142,23 @@ export const ClerkProvider = ({ children }) => {
     setUser(attachUserMethods(parsedUser));
     setIsWaitingForBrowser(false);
     setShowManualInput(false);
+
+    // Sync latest user profile if username is missing
+    if (!parsedUser.username) {
+      apiFetch('/api/user/username')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.username) {
+            const refreshed = { ...parsedUser, username: data.username };
+            if (data.name) refreshed.name = data.name;
+            if (data.avatar) refreshed.avatar = data.avatar;
+            localStorage.setItem('bokra_desktop_user', JSON.stringify(refreshed));
+            setUser(attachUserMethods(refreshed));
+          }
+        })
+        .catch(() => {});
+    }
+
     window.dispatchEvent(new CustomEvent('bokra-desktop-auth-success', { detail: { token, user: parsedUser } }));
   };
 

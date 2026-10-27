@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUser, useAuth } from './AuthBridge';
 import { apiFetch } from '../lib/api';
 import { Loader2, ArrowRight, AlertCircle } from 'lucide-react';
@@ -11,6 +11,43 @@ export default function ChooseUsername() {
   const [value, setValue] = useState('');
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  // Auto-check on mount if user already has a username in database or Clerk
+  useEffect(() => {
+    let isMounted = true;
+    apiFetch('/api/user/username')
+      .then((res) => (res.ok ? res.json() : null))
+      .then(async (data) => {
+        if (!isMounted) return;
+        if (data?.username) {
+          if (typeof window !== 'undefined') {
+            try {
+              const savedUser = localStorage.getItem('bokra_desktop_user');
+              if (savedUser) {
+                const parsed = JSON.parse(savedUser);
+                parsed.username = data.username;
+                if (data.name) parsed.name = data.name;
+                if (data.avatar) parsed.avatar = data.avatar;
+                localStorage.setItem('bokra_desktop_user', JSON.stringify(parsed));
+              }
+            } catch (_) {}
+          }
+          try {
+            if (typeof user?.update === 'function') {
+              await user.update({ username: data.username });
+            }
+          } catch (_) {}
+          if (typeof window !== 'undefined') {
+            window.location.reload();
+          }
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   const clean = value.trim().toLowerCase();
   const tooShort = clean.length < 4;
@@ -49,6 +86,26 @@ export default function ChooseUsername() {
         setSaving(false);
         return;
       }
+
+      const confirmedUsername = data?.username || clean;
+
+      // Update desktop storage immediately
+      if (typeof window !== 'undefined') {
+        try {
+          const savedUser = localStorage.getItem('bokra_desktop_user');
+          if (savedUser) {
+            const parsed = JSON.parse(savedUser);
+            parsed.username = confirmedUsername;
+            localStorage.setItem('bokra_desktop_user', JSON.stringify(parsed));
+          }
+        } catch (_) {}
+      }
+
+      try {
+        if (typeof user?.update === 'function') {
+          await user.update({ username: confirmedUsername });
+        }
+      } catch (_) {}
 
       try {
         await user?.reload();
