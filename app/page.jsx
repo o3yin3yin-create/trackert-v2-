@@ -6841,6 +6841,8 @@ export default function App() {
                                 {sec.iconName === 'Radio' && <Radio size={17} />}
                                 {sec.iconName === 'Palette' && <Palette size={17} />}
                                 {sec.iconName === 'BarChart2' && <BarChart2 size={17} />}
+                                {sec.iconName === 'Sparkles' && <Sparkles size={17} />}
+                                {sec.iconName === 'Users' && <Users size={17} />}
                               </div>
                               <h4 className="font-bold text-white text-[15px] tracking-tight truncate">
                                 {data.title}

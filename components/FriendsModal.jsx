@@ -327,6 +327,19 @@ export default function FriendsModal({
   // Copied username indicator
   const [copied, setCopied] = useState(false);
 
+  // Lock background body scroll while Friends modal is open to ensure smooth scrolling
+  useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    const originalTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.touchAction = originalTouchAction;
+    };
+  }, [isOpen]);
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => {
@@ -720,17 +733,18 @@ export default function FriendsModal({
   return (
     <div 
       dir={isRtl ? 'rtl' : 'ltr'} 
-      className="fixed inset-0 z-[10005] bg-black overflow-y-auto select-none font-sans flex flex-col items-center animate-in fade-in duration-200"
+      className="fixed inset-0 z-[10005] bg-black overflow-y-auto overscroll-y-contain font-sans"
+      style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
     >
       {/* Toast banner */}
       {toastMessage && (
-        <div className="fixed top-6 z-[10040] bg-white text-black px-4 py-2 rounded-full font-bold text-xs shadow-2xl animate-in fade-in slide-in-from-top-4 duration-150">
+        <div className="fixed top-6 z-[10040] left-1/2 -translate-x-1/2 bg-white text-black px-4 py-2 rounded-full font-bold text-xs shadow-2xl animate-in fade-in slide-in-from-top-4 duration-150">
           {toastMessage}
         </div>
       )}
 
       {/* Main Container */}
-      <div className="w-full max-w-md min-h-screen px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+3rem)] flex flex-col justify-between relative">
+      <div className="w-full max-w-md min-h-full mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+3rem)] flex flex-col justify-between relative">
         
         {/* ========================================================= */}
         {/* VIEW 1: MAIN FRIENDS LIST & PRESENCE STORY BAR            */}
@@ -1331,7 +1345,10 @@ export default function FriendsModal({
           />
 
           {/* Sliding White Presence Sheet */}
-          <div className="relative z-10 w-full max-w-md mx-auto bg-white text-[#0a0a0a] rounded-t-[32px] p-5 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col gap-4 shadow-2xl animate-in slide-in-from-bottom duration-200 max-h-[92vh] overflow-y-auto">
+          <div 
+            className="relative z-10 w-full max-w-md mx-auto bg-white text-[#0a0a0a] rounded-t-[32px] p-5 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col gap-4 shadow-2xl animate-in slide-in-from-bottom duration-200 max-h-[90vh] overflow-y-auto overscroll-y-contain"
+            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+          >
             
             {/* Top Handle */}
             <div className="w-[44px] h-[5px] rounded-[3px] bg-[#d4d4d4] self-center mb-1" />

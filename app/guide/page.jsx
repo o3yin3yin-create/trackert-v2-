@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   Target, ListChecks, Check, ShieldAlert, Timer, PlaneTakeoff, 
-  Radio, Palette, BarChart2, Sparkles, ChevronLeft, ChevronDown, 
+  Radio, Palette, BarChart2, Sparkles, Users, ChevronLeft, ChevronDown, 
   CheckCheck, Share2, BookOpen, HelpCircle, ArrowUpRight
 } from 'lucide-react';
 import { guideSections, guideFAQ } from '../../lib/guideContent';
@@ -19,7 +19,8 @@ const iconMap = {
   Radio,
   Palette,
   BarChart2,
-  Sparkles
+  Sparkles,
+  Users
 };
 
 export default function GuidePage() {
