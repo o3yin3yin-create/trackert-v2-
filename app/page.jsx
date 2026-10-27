@@ -25,6 +25,7 @@ import AdminPanel from '../components/AdminPanel';
 import AvatarIcon, { AVATAR_OPTIONS } from '../components/AvatarIcon';
 import SpotifyWidget from '../components/SpotifyWidget';
 import ChooseUsername from '../components/ChooseUsername';
+import FriendsModal from '../components/FriendsModal';
 import { guideSections } from '../lib/guideContent';
 
 let globalAudioCtx = null;
@@ -678,6 +679,7 @@ export default function App() {
     return 'en';
   });
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
+  const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
   const [isFocusMenuOpen, setIsFocusMenuOpen] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const touchStartXRef = useRef(null);
@@ -1549,6 +1551,7 @@ export default function App() {
     setIsFocusMenuOpen(false);
     setIsWidgetsModalOpen(false);
     setIsAppearanceModalOpen(false);
+    setIsFriendsModalOpen(false);
     setIsEditVisible(false);
     setTimeout(() => setIsEditMounted(false), 300);
     if (!skipManage) {
@@ -1564,6 +1567,7 @@ export default function App() {
     else if (target === 'tasks') setIsTasksModalOpen(true);
     else if (target === 'pomodoro') setIsPomodoroOpen(true);
     else if (target === 'flight') setIsFlightFocusOpen(true);
+    else if (target === 'friends') setIsFriendsModalOpen(true);
     else if (target === 'home') topRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
   
@@ -6678,6 +6682,22 @@ export default function App() {
             <div className="bg-white/50 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border border-black/10 dark:border-white/5 rounded-full flex items-center p-1.5 gap-1.5 shadow-2xl dark:shadow-black/80">
               <button onClick={() => navTo('home')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white transition-all duration-200 active:scale-90"><Home size={18} /></button>
               <button onClick={() => navTo('tasks')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
+              <button 
+                onClick={() => {
+                  setIsFriendsModalOpen(true);
+                  setIsSettingsMenuOpen(false);
+                  setIsFocusMenuOpen(false);
+                }} 
+                className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${
+                  isFriendsModalOpen 
+                    ? 'bg-black/10 dark:bg-white/15 text-black dark:text-white' 
+                    : 'hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60'
+                }`}
+                title={t('friendsTitle')}
+                aria-label={t('friendsTitle')}
+              >
+                <Users size={18} />
+              </button>
               {/* Focus Menu: Combines Pomodoro & Flight Focus */}
               <div className="relative">
                 <button 
@@ -6880,6 +6900,15 @@ export default function App() {
                               {'Tools & Analytics'}
                             </span>
 
+                            {/* Friends */}
+                            <button onClick={() => { setIsSettingsMenuOpen(false); setIsFriendsModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors cursor-pointer">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><Users size={18} /></div>
+                                <span className="text-sm font-bold text-white">{t('friendsTitle')}</span>
+                              </div>
+                              <ChevronRight size={18} className="text-white/40" />
+                            </button>
+
                             {/* Analytics */}
                             <button onClick={() => { setIsSettingsMenuOpen(false); setIsAnalyticsModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
                               <div className="flex items-center gap-3">
@@ -7042,6 +7071,20 @@ export default function App() {
               lang={lang}
               themeColor={themeColor}
               isRtl={false}
+            />,
+            document.body
+          )}
+
+          {/* ---------------- FRIENDS MODAL ---------------- */}
+          {isFriendsModalOpen && typeof document !== 'undefined' && createPortal(
+            <FriendsModal 
+              isOpen={isFriendsModalOpen}
+              onClose={() => setIsFriendsModalOpen(false)}
+              myUsername={user?.username || ''}
+              myName={user?.fullName || user?.firstName || 'Explorer'}
+              myAvatar={avatar}
+              lang={lang}
+              themeColor={themeColor}
             />,
             document.body
           )}
