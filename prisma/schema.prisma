@@ -31,8 +31,10 @@ model User {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   
-  habits         Habit[]
-  dailyLogs      DailyLog[]
+  habits           Habit[]
+  dailyLogs        DailyLog[]
+  sentRequests     Friendship[] @relation("FriendRequester")
+  receivedRequests Friendship[] @relation("FriendAddressee")
 }
 
 // 2. جدول العادات ببيانات المواعيد المجدولة والتفاصيل الإضافية (الوقت والمكان)
@@ -74,4 +76,21 @@ model DailyLog {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, date]) // بيمنع تكرار نفس اليوم لنفس اليوزر
+}
+
+// 4. جدول الصداقات
+model Friendship {
+  id          String   @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      String   @default("pending") // pending | accepted | blocked
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  requester User @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("FriendAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+  @@index([requesterId, status])
 }
