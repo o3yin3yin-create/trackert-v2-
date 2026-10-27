@@ -10,7 +10,7 @@ export async function POST(req) {
   const me = await requireMe(req)
   if (!me) return json({ error: 'unauthorized' }, 401, req)
 
-  if (!rateLimit(`nudge:${me.id}`, 10, 60_000)) {
+  if (!await rateLimit(`nudge:${me.id}`, 10, 60_000)) {
     return json({ error: 'too_many_requests' }, 429, req)
   }
 
@@ -32,7 +32,7 @@ export async function POST(req) {
       return json({ error: 'user_not_found' }, 404, req)
     }
 
-    if (!rateLimit(`nudge-target:${me.id}:${targetUser.id}`, 4, 60_000)) {
+    if (!await rateLimit(`nudge-target:${me.id}:${targetUser.id}`, 4, 60_000)) {
       return json({ error: 'Please wait before nudging this friend again.' }, 429, req)
     }
 

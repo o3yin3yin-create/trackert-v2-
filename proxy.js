@@ -19,6 +19,22 @@ const handler = clerkMiddleware(async (auth, req) => {
   }
 
   // 3. Security Headers on all pages and routes
+  const cspHeader = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://clerk.com https://*.clerk.com https://apis.google.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://img.clerk.com https://images.clerk.dev https://i.scdn.co https://*.spotifycdn.com https://mosaic.scdn.co https://lh3.googleusercontent.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "connect-src 'self' https://*.clerk.accounts.dev https://clerk.com https://*.clerk.com https://api.clerk.com https://*.tile.openstreetmap.org https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com https://*.googleapis.com https://api.spotify.com https://*.upstash.io wss://*.upstash.io",
+    "frame-src 'self' https://open.spotify.com https://*.clerk.accounts.dev https://clerk.com",
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'self'"
+  ].join('; ');
+
+  response.headers.set('Content-Security-Policy', cspHeader);
   response.headers.set('X-Frame-Options', 'SAMEORIGIN');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');

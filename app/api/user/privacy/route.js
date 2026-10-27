@@ -31,7 +31,7 @@ export async function POST(req) {
   const me = await requireMe(req)
   if (!me) return json({ error: 'unauthorized' }, 401, req)
 
-  if (!rateLimit(`privacy:${me.id}`, 30, 60_000)) {
+  if (!await rateLimit(`privacy:${me.id}`, 30, 60_000)) {
     return json({ error: 'too_many_requests' }, 429, req)
   }
 

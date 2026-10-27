@@ -5,19 +5,40 @@ import { rateLimit } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
+// Short-lived in-memory session cache to relieve DB connection pool (TTL: 2500ms)
+const sessionCache = new Map();
+
+function cleanStaleSessionCache() {
+  if (sessionCache.size > 2000) {
+    const now = Date.now();
+    for (const [key, val] of sessionCache.entries()) {
+      if (now > val.exp) sessionCache.delete(key);
+    }
+  }
+}
+
 export async function GET(req) {
   const userId = await getAuthUserId(req);
   if (!userId) return NextResponse.json({ activeSessionType: null, activeSessionData: null });
+
+  const now = Date.now();
+  const cached = sessionCache.get(userId);
+  if (cached && now < cached.exp) {
+    return NextResponse.json(cached.data);
+  }
 
   try {
     const user = await prisma.user.findUnique({
       where: { clerkId: userId },
       select: { activeSessionType: true, activeSessionData: true }
     });
-    return NextResponse.json({
+    const result = {
       activeSessionType: user?.activeSessionType || null,
       activeSessionData: user?.activeSessionData || null
-    });
+    };
+    sessionCache.set(userId, { data: result, exp: now + 2500 });
+    cleanStaleSessionCache();
+    return NextResponse.json(result);
   } catch (e) {
     return NextResponse.json({ activeSessionType: null, activeSessionData: null });
   }
@@ -27,7 +48,7 @@ export async function POST(req) {
   const userId = await getAuthUserId(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  if (!rateLimit(`session:${userId}`, 60, 60_000)) {
+  if (!await rateLimit(`session:${userId}`, 60, 60_000)) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
 
@@ -58,6 +79,11 @@ export async function POST(req) {
         activeSessionType: type || null,
         activeSessionData: data || null,
       }
+    });
+
+    sessionCache.set(userId, {
+      data: { activeSessionType: type || null, activeSessionData: data || null },
+      exp: Date.now() + 2500
     });
 
     return NextResponse.json({ success: true });

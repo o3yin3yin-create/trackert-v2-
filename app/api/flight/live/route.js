@@ -10,7 +10,7 @@ const CACHE_TTL_MS = 5000; // 5 seconds cache
 export async function GET(request) {
   try {
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anon';
-    if (!rateLimit(`flight-live:${ip}`, 45, 60_000)) {
+    if (!await rateLimit(`flight-live:${ip}`, 45, 60_000)) {
       return NextResponse.json({ error: "Too many live tracking requests" }, { status: 429 });
     }
 

@@ -34,7 +34,7 @@ export async function GET(req) {
       }
     } else {
       // In-memory rate limiting if running without CRON_SECRET to prevent DoS flooding
-      if (!rateLimit("cron-notifications", 3, 60_000)) {
+      if (!await rateLimit("cron-notifications", 3, 60_000)) {
         return NextResponse.json({ error: "Too many cron requests" }, { status: 429 });
       }
     }

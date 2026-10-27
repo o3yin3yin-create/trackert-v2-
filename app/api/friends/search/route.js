@@ -7,7 +7,7 @@ export { OPTIONS }
 export async function GET(req) {
   const me = await requireMe(req)
   if (!me) return json({ error: 'unauthorized' }, 401, req)
-  if (!rateLimit(`search:${me.id}`, 40)) return json({ error: 'too_many_requests' }, 429, req)
+  if (!await rateLimit(`search:${me.id}`, 40)) return json({ error: 'too_many_requests' }, 429, req)
 
   const uname = normUsername(new URL(req.url).searchParams.get('username'))
   if (uname.length < 4 || uname.length > 64) return json({ user: null }, 200, req)

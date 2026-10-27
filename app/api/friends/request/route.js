@@ -7,7 +7,7 @@ export { OPTIONS }
 export async function POST(req) {
   const me = await requireMe(req)
   if (!me) return json({ error: 'unauthorized' }, 401, req)
-  if (!rateLimit(`request:${me.id}`, 15)) return json({ error: 'too_many_requests' }, 429, req)
+  if (!await rateLimit(`request:${me.id}`, 15)) return json({ error: 'too_many_requests' }, 429, req)
 
   const body = await req.json().catch(() => ({}))
   const uname = normUsername(body.username)

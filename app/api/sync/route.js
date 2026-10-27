@@ -14,7 +14,7 @@ export async function GET(req) {
   const userId = await getAuthUserId(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: getCorsHeaders(req) });
 
-  if (!rateLimit(`sync-get:${userId}`, 120, 60_000)) {
+  if (!await rateLimit(`sync-get:${userId}`, 120, 60_000)) {
     return NextResponse.json({ error: 'Too many sync requests' }, { status: 429, headers: getCorsHeaders(req) });
   }
 
@@ -186,7 +186,7 @@ export async function POST(req) {
   const userId = await getAuthUserId(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: getCorsHeaders(req) });
 
-  if (!rateLimit(`sync-post:${userId}`, 60, 60_000)) {
+  if (!await rateLimit(`sync-post:${userId}`, 60, 60_000)) {
     return NextResponse.json({ error: 'Too many sync updates. Please slow down.' }, { status: 429, headers: getCorsHeaders(req) });
   }
 
@@ -313,6 +313,16 @@ export async function POST(req) {
       }
 
       for (const h of habitsToUpsert) {
+        // IDOR protection: if habit already exists in DB, verify caller owns it
+        const existingRow = await prisma.habit.findUnique({
+          where: { id: h.id },
+          select: { userId: true }
+        });
+        if (existingRow && existingRow.userId !== user.id) {
+          // Attempting to modify another user's habit - skip unauthorized update
+          continue;
+        }
+
         await prisma.habit.upsert({
           where: { id: h.id },
           create: {

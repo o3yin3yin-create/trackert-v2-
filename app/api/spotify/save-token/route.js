@@ -18,7 +18,7 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     }
 
-    if (!rateLimit(`spotify-save:${userId}`, 15, 60_000)) {
+    if (!await rateLimit(`spotify-save:${userId}`, 15, 60_000)) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: corsHeaders });
     }
 

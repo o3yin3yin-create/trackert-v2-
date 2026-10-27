@@ -11,7 +11,7 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!rateLimit(`desktop-token:${userId}`, 10, 60_000)) {
+    if (!await rateLimit(`desktop-token:${userId}`, 10, 60_000)) {
       return NextResponse.json({ error: 'Too many token requests. Please wait a moment.' }, { status: 429 });
     }
 

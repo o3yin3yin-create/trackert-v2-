@@ -35,7 +35,7 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'Not connected to Spotify' }, { status: 401, headers: corsHeaders });
     }
 
-    if (!rateLimit(`spotify-ctrl:${refreshToken.slice(0, 16)}`, 30, 60_000)) {
+    if (!await rateLimit(`spotify-ctrl:${refreshToken.slice(0, 16)}`, 30, 60_000)) {
       return NextResponse.json({ success: false, error: 'Too many Spotify requests' }, { status: 429, headers: corsHeaders });
     }
 
