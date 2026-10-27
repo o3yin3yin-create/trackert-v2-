@@ -3,6 +3,7 @@ import { refreshAccessToken, sendPlaybackControl } from '@/lib/spotify';
 import { getAuthUserId } from '@/lib/auth-server';
 import prisma from '@/lib/prisma';
 import { getCorsHeaders, handleCorsOptions } from '@/lib/cors';
+import { rateLimit } from '@/lib/rateLimit';
 
 export async function OPTIONS(req) {
   return handleCorsOptions(req);
@@ -34,6 +35,10 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'Not connected to Spotify' }, { status: 401, headers: corsHeaders });
     }
 
+    if (!rateLimit(`spotify-ctrl:${refreshToken.slice(0, 16)}`, 30, 60_000)) {
+      return NextResponse.json({ success: false, error: 'Too many Spotify requests' }, { status: 429, headers: corsHeaders });
+    }
+
     const { action } = await req.json();
     if (!action || !['play', 'pause', 'next', 'previous'].includes(action)) {
       return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400, headers: corsHeaders });
@@ -45,6 +50,6 @@ export async function POST(req) {
     return NextResponse.json(result, { headers: corsHeaders });
   } catch (err) {
     console.error('[Spotify Control Error]:', err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500, headers: corsHeaders });
+    return NextResponse.json({ success: false, error: 'Failed to control playback' }, { status: 500, headers: corsHeaders });
   }
 }

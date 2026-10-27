@@ -1,31 +1,11 @@
 import { NextResponse } from 'next/server';
 import { clerkClient } from '@clerk/nextjs/server';
-import { PrismaClient } from '@prisma/client';
+import prisma from '@/lib/prisma';
 import { getAuthUserId } from '@/lib/auth-server';
-
-const prisma = new PrismaClient();
-
-function getCorsHeaders(req) {
-  const origin = req?.headers?.get('origin');
-  const headers = {
-    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-    'Access-Control-Allow-Headers': 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization',
-  };
-  if (origin) {
-    headers['Access-Control-Allow-Origin'] = origin;
-    headers['Access-Control-Allow-Credentials'] = 'true';
-  }
-  return headers;
-}
+import { getCorsHeaders, handleCorsOptions } from '@/lib/cors';
 
 export async function OPTIONS(req) {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      ...getCorsHeaders(req),
-      'Access-Control-Max-Age': '86400',
-    }
-  });
+  return handleCorsOptions(req);
 }
 
 export async function GET(req) {

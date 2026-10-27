@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthUserId } from '@/lib/auth-server';
 import prisma from '@/lib/prisma';
+import { rateLimit } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,8 +27,30 @@ export async function POST(req) {
   const userId = await getAuthUserId(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  if (!rateLimit(`session:${userId}`, 60, 60_000)) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+
   try {
-    const { type, data } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const { type, data } = body;
+
+    // Validate type enum
+    const validTypes = ['pomodoro', 'flight', null, ''];
+    if (type !== undefined && !validTypes.includes(type)) {
+      return NextResponse.json({ error: 'Invalid session type' }, { status: 400 });
+    }
+
+    // Validate data payload size
+    if (data !== undefined && data !== null) {
+      if (typeof data !== 'object') {
+        return NextResponse.json({ error: 'Invalid session data format' }, { status: 400 });
+      }
+      const dataStr = JSON.stringify(data);
+      if (dataStr.length > 25_000) {
+        return NextResponse.json({ error: 'Session data exceeds allowed limit' }, { status: 413 });
+      }
+    }
 
     await prisma.user.update({
       where: { clerkId: userId },

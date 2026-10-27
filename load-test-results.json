@@ -1,0 +1,62 @@
+[
+  {
+    "scenario": "Scenario 1: Normal Load (Static / Guide)",
+    "url": "http://localhost:3000/guide",
+    "connections": 10,
+    "duration": 10,
+    "reqSecAvg": 1322,
+    "reqSecMax": 1463,
+    "totalRequests": 14542,
+    "latencyAvgMs": 7.05,
+    "latencyP99Ms": 14,
+    "non2xx": 0,
+    "errors": 0,
+    "timeouts": 0,
+    "throughputMbSec": "119.03"
+  },
+  {
+    "scenario": "Scenario 2: High Load (Public Page /)",
+    "url": "http://localhost:3000/",
+    "connections": 50,
+    "duration": 10,
+    "reqSecAvg": 3175,
+    "reqSecMax": 3388,
+    "totalRequests": 34923,
+    "latencyAvgMs": 15.24,
+    "latencyP99Ms": 35,
+    "non2xx": 0,
+    "errors": 0,
+    "timeouts": 0,
+    "throughputMbSec": "62.29"
+  },
+  {
+    "scenario": "Scenario 3: Sudden Spike (CORS / Preflight)",
+    "url": "http://localhost:3000/api/sync",
+    "connections": 100,
+    "duration": 5,
+    "reqSecAvg": 5763,
+    "reqSecMax": 6098,
+    "totalRequests": 28810,
+    "latencyAvgMs": 34.08,
+    "latencyP99Ms": 65,
+    "non2xx": 0,
+    "errors": 0,
+    "timeouts": 0,
+    "throughputMbSec": "3.96"
+  },
+  {
+    "scenario": "Scenario 4: Sustained Load (API Session with DB Auth)",
+    "url": "http://localhost:3000/api/session",
+    "connections": 25,
+    "duration": 15,
+    "reqSecAvg": 84,
+    "reqSecMax": 177,
+    "totalRequests": 1267,
+    "latencyAvgMs": 287.57,
+    "latencyP99Ms": 1078,
+    "non2xx": 0,
+    "errors": 0,
+    "timeouts": 0,
+    "throughputMbSec": "0.11"
+  }
+]

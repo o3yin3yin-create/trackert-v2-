@@ -1,16 +1,24 @@
 import { prisma } from '@/lib/prisma'
 import { json, requireMe, normUsername, OPTIONS } from '@/lib/friends'
+import { rateLimit } from '@/lib/rateLimit'
 
 export { OPTIONS }
+
+const ALLOWED_NUDGE_TYPES = ['nudge', 'poke', 'cheer', 'study']
 
 export async function POST(req) {
   const me = await requireMe(req)
   if (!me) return json({ error: 'unauthorized' }, 401, req)
 
+  if (!rateLimit(`nudge:${me.id}`, 10, 60_000)) {
+    return json({ error: 'too_many_requests' }, 429, req)
+  }
+
   try {
     const body = await req.json().catch(() => ({}))
     const targetUsername = normUsername(body?.username)
-    const type = body?.type || 'nudge' // 'nudge' | 'poke' | 'cheer' | 'study'
+    const rawType = body?.type || 'nudge'
+    const type = ALLOWED_NUDGE_TYPES.includes(rawType) ? rawType : 'nudge'
 
     if (!targetUsername) {
       return json({ error: 'missing_username' }, 400, req)
@@ -22,6 +30,10 @@ export async function POST(req) {
 
     if (!targetUser) {
       return json({ error: 'user_not_found' }, 404, req)
+    }
+
+    if (!rateLimit(`nudge-target:${me.id}:${targetUser.id}`, 4, 60_000)) {
+      return json({ error: 'Please wait before nudging this friend again.' }, 429, req)
     }
 
     // Verify friendship status is accepted

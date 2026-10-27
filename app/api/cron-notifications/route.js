@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
+import { rateLimit } from "@/lib/rateLimit";
 
 const hasFirebaseCreds = 
   !!(process.env.FIREBASE_PROJECT_ID &&
@@ -23,13 +24,18 @@ if (hasFirebaseCreds && !admin.apps.length) {
 
 export async function GET(req) {
   try {
-    // 0. Authorization check: Require CRON_SECRET if defined in production
+    // 0. Authorization check: Require CRON_SECRET if defined
     const cronSecret = process.env.CRON_SECRET;
     if (cronSecret) {
       const authHeader = req.headers.get("authorization");
       const urlKey = new URL(req.url).searchParams.get("key");
       if (authHeader !== `Bearer ${cronSecret}` && urlKey !== cronSecret) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    } else {
+      // In-memory rate limiting if running without CRON_SECRET to prevent DoS flooding
+      if (!rateLimit("cron-notifications", 3, 60_000)) {
+        return NextResponse.json({ error: "Too many cron requests" }, { status: 429 });
       }
     }
 

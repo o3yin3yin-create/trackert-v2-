@@ -1,39 +1,32 @@
 import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import { getCorsHeaders, handleCorsOptions } from './lib/cors';
 
 const handler = clerkMiddleware(async (auth, req) => {
-  const origin = req.headers.get('origin');
-
-  // Handle preflight OPTIONS requests for all /api routes
+  // 1. Handle preflight OPTIONS requests for /api routes with strict whitelist CORS
   if (req.method === 'OPTIONS' && req.nextUrl.pathname.startsWith('/api')) {
-    const preflightHeaders = {
-      'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
-      'Access-Control-Allow-Headers': 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, x-spotify-refresh-token, Origin',
-      'Access-Control-Max-Age': '86400',
-    };
-    if (origin) {
-      preflightHeaders['Access-Control-Allow-Origin'] = origin;
-      preflightHeaders['Access-Control-Allow-Credentials'] = 'true';
-    } else {
-      preflightHeaders['Access-Control-Allow-Origin'] = '*';
-    }
-    return new NextResponse(null, {
-      status: 204,
-      headers: preflightHeaders,
-    });
+    return handleCorsOptions(req);
   }
 
   const response = NextResponse.next();
+
+  // 2. Attach strict CORS headers on API routes
   if (req.nextUrl.pathname.startsWith('/api')) {
-    if (origin) {
-      response.headers.set('Access-Control-Allow-Origin', origin);
-      response.headers.set('Access-Control-Allow-Credentials', 'true');
-    } else {
-      response.headers.set('Access-Control-Allow-Origin', '*');
+    const cors = getCorsHeaders(req);
+    for (const [key, val] of Object.entries(cors)) {
+      if (val) response.headers.set(key, val);
     }
-    response.headers.set('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-    response.headers.set('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, x-spotify-refresh-token, Origin');
   }
+
+  // 3. Security Headers on all pages and routes
+  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  if (process.env.NODE_ENV === 'production') {
+    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  }
+
   return response;
 });
 

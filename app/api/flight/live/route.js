@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server';
 import { FlightRadar24API } from 'flightradarapi';
+import { rateLimit } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
+const liveCache = new Map();
+const CACHE_TTL_MS = 5000; // 5 seconds cache
+
 export async function GET(request) {
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anon';
+    if (!rateLimit(`flight-live:${ip}`, 45, 60_000)) {
+      return NextResponse.json({ error: "Too many live tracking requests" }, { status: 429 });
+    }
+
     const { searchParams } = new URL(request.url);
     const flightId = searchParams.get('id');
 
@@ -21,6 +30,12 @@ export async function GET(request) {
         const t = (Date.now() / 1000) % 60;
         const progress = t / 60;
         return NextResponse.json({ lat: progress, lng: progress, angle: 45 });
+    }
+
+    // Check memory cache
+    const cached = liveCache.get(cleanId);
+    if (cached && Date.now() - cached.time < CACHE_TTL_MS) {
+      return NextResponse.json(cached.data);
     }
 
     const frapi = new FlightRadar24API();
@@ -43,7 +58,10 @@ export async function GET(request) {
       hd = details.trail[0].hd;
     }
 
-    return NextResponse.json({ lat, lng, angle: hd });
+    const payload = { lat, lng, angle: hd };
+    liveCache.set(cleanId, { time: Date.now(), data: payload });
+
+    return NextResponse.json(payload);
   } catch (error) {
     console.error("Live Tracking Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

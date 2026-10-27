@@ -1,15 +1,18 @@
 import { NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
-import { PrismaClient } from '@prisma/client';
+import prisma from '@/lib/prisma';
 import { signDesktopToken } from '@/lib/auth-server';
+import { rateLimit } from '@/lib/rateLimit';
 
-const prisma = new PrismaClient();
-
-export async function POST() {
+export async function POST(req) {
   try {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!rateLimit(`desktop-token:${userId}`, 10, 60_000)) {
+      return NextResponse.json({ error: 'Too many token requests. Please wait a moment.' }, { status: 429 });
     }
 
     const clerkUser = await currentUser();
@@ -50,8 +53,4 @@ export async function POST() {
     console.error('[Desktop Token Error]', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
-
-export async function GET() {
-  return POST();
 }

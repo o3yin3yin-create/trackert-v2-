@@ -20,9 +20,12 @@ export async function GET(req) {
   if (stateParam) {
     try {
       const decoded = JSON.parse(Buffer.from(stateParam, 'base64url').toString('utf-8'));
-      if (decoded?.u) userId = decoded.u;
+      if (decoded?.u && typeof decoded.u === 'string' && decoded.u.length < 128) userId = decoded.u;
       if (decoded?.f === 'desktop') fromDesktop = true;
-      if (decoded?.p) desktopPort = decoded.p;
+      if (decoded?.p && /^\d{4,5}$/.test(String(decoded.p))) {
+        const pNum = parseInt(decoded.p, 10);
+        if (pNum >= 1024 && pNum <= 65535) desktopPort = String(pNum);
+      }
     } catch (e) {}
   }
 

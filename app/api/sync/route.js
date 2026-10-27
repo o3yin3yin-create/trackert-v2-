@@ -1,37 +1,22 @@
 import { NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
-import { PrismaClient } from '@prisma/client';
+import prisma from '@/lib/prisma';
 import { getAuthUserId } from '@/lib/auth-server';
-
-const prisma = new PrismaClient();
-
-function getCorsHeaders(req) {
-  const origin = req?.headers?.get('origin');
-  const headers = {
-    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-    'Access-Control-Allow-Headers': 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization',
-  };
-  if (origin) {
-    headers['Access-Control-Allow-Origin'] = origin;
-    headers['Access-Control-Allow-Credentials'] = 'true';
-  }
-  return headers;
-}
+import { getCorsHeaders, handleCorsOptions } from '@/lib/cors';
+import { rateLimit } from '@/lib/rateLimit';
 
 export async function OPTIONS(req) {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      ...getCorsHeaders(req),
-      'Access-Control-Max-Age': '86400',
-    }
-  });
+  return handleCorsOptions(req);
 }
 
 // Fetch the complete state for the user
 export async function GET(req) {
   const userId = await getAuthUserId(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: getCorsHeaders(req) });
+
+  if (!rateLimit(`sync-get:${userId}`, 120, 60_000)) {
+    return NextResponse.json({ error: 'Too many sync requests' }, { status: 429, headers: getCorsHeaders(req) });
+  }
 
   try {
     const url = new URL(req.url);
@@ -200,6 +185,10 @@ export async function GET(req) {
 export async function POST(req) {
   const userId = await getAuthUserId(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: getCorsHeaders(req) });
+
+  if (!rateLimit(`sync-post:${userId}`, 60, 60_000)) {
+    return NextResponse.json({ error: 'Too many sync updates. Please slow down.' }, { status: 429, headers: getCorsHeaders(req) });
+  }
 
   try {
     let user = await prisma.user.findUnique({

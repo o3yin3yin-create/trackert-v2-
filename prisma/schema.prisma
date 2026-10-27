@@ -66,6 +66,9 @@ model Habit {
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isNotifyEnabled])
 }
 
 // 3. جدول تسجيل العادات اليومي والإحصائيات
