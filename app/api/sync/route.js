@@ -312,18 +312,20 @@ export async function POST(req) {
         }
       }
 
-      for (const h of habitsToUpsert) {
-        // IDOR protection: if habit already exists in DB, verify caller owns it
-        const existingRow = await prisma.habit.findUnique({
-          where: { id: h.id },
-          select: { userId: true }
+      if (habitsToUpsert.length > 0) {
+        // IDOR protection: batch query habit ownership in ONE roundtrip instead of N sequential queries
+        const habitIds = habitsToUpsert.map(h => h.id);
+        const existingInDb = await prisma.habit.findMany({
+          where: { id: { in: habitIds } },
+          select: { id: true, userId: true }
         });
-        if (existingRow && existingRow.userId !== user.id) {
-          // Attempting to modify another user's habit - skip unauthorized update
-          continue;
-        }
+        const foreignHabitIds = new Set(
+          existingInDb.filter(h => h.userId !== user.id).map(h => h.id)
+        );
+        const validHabits = habitsToUpsert.filter(h => !foreignHabitIds.has(h.id));
 
-        await prisma.habit.upsert({
+        // Execute upserts in parallel
+        await Promise.all(validHabits.map(h => prisma.habit.upsert({
           where: { id: h.id },
           create: {
             id: h.id,
@@ -361,7 +363,7 @@ export async function POST(req) {
             notifyBefore: h.notifyBefore ?? 0,
             customMessage: h.customMessage || null,
           }
-        });
+        })));
       }
     }
 
@@ -390,7 +392,7 @@ export async function POST(req) {
     });
     const existingLogsMap = new Map(existingDailyLogs.map(l => [l.date, l]));
 
-    for (const date of targetDatesArray) {
+    await Promise.all(targetDatesArray.map(async (date) => {
       const dateDailyData = {};
       for (const [k, v] of Object.entries(state.dailyData || {})) {
         if (k.startsWith(date)) {
@@ -423,7 +425,7 @@ export async function POST(req) {
       const existingFocus = existingDailyLog?.focusTime || 0;
       const focusVal = Math.max(clientFocus, existingFocus);
 
-      await prisma.dailyLog.upsert({
+      return prisma.dailyLog.upsert({
         where: { userId_date: { userId: user.id, date } },
         create: {
           userId: user.id,
@@ -440,7 +442,7 @@ export async function POST(req) {
           tasks: mergedTasks,
         }
       });
-    }
+    }));
 
     const finalUser = await prisma.user.update({
       where: { id: user.id },

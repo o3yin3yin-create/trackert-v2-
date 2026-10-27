@@ -22,9 +22,12 @@ export async function GET(req) {
   if (!userId) return NextResponse.json({ activeSessionType: null, activeSessionData: null });
 
   const now = Date.now();
-  const cached = sessionCache.get(userId);
-  if (cached && now < cached.exp) {
-    return NextResponse.json(cached.data);
+  const bypass = req?.headers?.get?.('x-bypass-cache') === '1' || process.env.DISABLE_SESSION_CACHE === 'true';
+  if (!bypass) {
+    const cached = sessionCache.get(userId);
+    if (cached && now < cached.exp) {
+      return NextResponse.json(cached.data);
+    }
   }
 
   try {

@@ -1,7 +1,14 @@
 import { PrismaClient } from '@prisma/client'
 
 const prismaClientSingleton = () => {
-  return new PrismaClient()
+  const dbUrl = process.env.DATABASE_URL || '';
+  const urlWithPool = dbUrl && !dbUrl.includes('connection_limit')
+    ? `${dbUrl}${dbUrl.includes('?') ? '&' : '?'}connection_limit=30&pool_timeout=30`
+    : dbUrl;
+
+  return new PrismaClient({
+    ...(urlWithPool ? { datasources: { db: { url: urlWithPool } } } : {})
+  });
 }
 
 declare global {
