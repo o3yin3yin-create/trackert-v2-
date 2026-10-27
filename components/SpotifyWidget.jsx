@@ -27,6 +27,19 @@ export default function SpotifyWidget({
   });
   const [artError, setArtError] = useState(false);
   const [localProgress, setLocalProgress] = useState(0);
+
+  const getSafeAlbumArt = (url) => {
+    if (!url) return null;
+    if (url.startsWith('/')) return url;
+    if (url.includes('scdn.co') || url.includes('spotifycdn.com')) {
+      return `/api/spotify/image?url=${encodeURIComponent(url)}`;
+    }
+    return url;
+  };
+
+  useEffect(() => {
+    setArtError(false);
+  }, [data.albumArt, data.title]);
   const [loadingAction, setLoadingAction] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const [lastActiveTime, setLastActiveTime] = useState(() => {
@@ -372,8 +385,9 @@ export default function SpotifyWidget({
           <div className="relative w-8 h-8 rounded-xl bg-white/10 overflow-hidden flex items-center justify-center shrink-0 border border-white/10">
             {data.albumArt && !artError ? (
               <img 
-                src={data.albumArt} 
+                src={getSafeAlbumArt(data.albumArt)} 
                 alt={data.title || 'Spotify'} 
+                referrerPolicy="no-referrer"
                 onError={() => setArtError(true)}
                 className={`w-full h-full object-cover transition-transform duration-1000 ${data.isPlaying ? 'scale-105' : 'grayscale-[40%]'}`} 
               />
@@ -507,8 +521,9 @@ export default function SpotifyWidget({
       >
         {data.albumArt && !artError ? (
           <img 
-            src={data.albumArt} 
+            src={getSafeAlbumArt(data.albumArt)} 
             alt={data.title} 
+            referrerPolicy="no-referrer"
             onError={() => setArtError(true)}
             className={`w-6 h-6 rounded-full object-cover shadow-sm ${data.isPlaying ? 'animate-spin' : ''}`}
             style={{ animationDuration: '6s' }} 
@@ -547,7 +562,7 @@ export default function SpotifyWidget({
         <div 
           className="absolute inset-0 opacity-10 pointer-events-none blur-3xl scale-150 grayscale"
           style={{
-            backgroundImage: `url(${data.albumArt})`,
+            backgroundImage: `url(${getSafeAlbumArt(data.albumArt)})`,
             backgroundPosition: 'center',
             backgroundSize: 'cover'
           }}
@@ -581,8 +596,9 @@ export default function SpotifyWidget({
         <div className="relative shrink-0">
           {data.albumArt && !artError ? (
             <img 
-              src={data.albumArt} 
+              src={getSafeAlbumArt(data.albumArt)} 
               alt={data.title || 'Album Art'} 
+              referrerPolicy="no-referrer"
               onError={() => setArtError(true)}
               className={`w-10 h-10 rounded-xl object-cover shadow-md border border-white/10 transition-opacity ${data.isPlaying ? 'opacity-100' : 'opacity-60'}`}
             />

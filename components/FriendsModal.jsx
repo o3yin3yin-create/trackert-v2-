@@ -10,6 +10,15 @@ import { apiFetch } from '@/lib/api';
 import { translations } from '@/lib/translations';
 import AvatarIcon from '@/components/AvatarIcon';
 
+const getSafeTrackArt = (url) => {
+  if (!url) return null;
+  if (url.startsWith('/')) return url;
+  if (url.includes('scdn.co') || url.includes('spotifycdn.com')) {
+    return `/api/spotify/image?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+};
+
 // Default presence presets to enrich friends with realistic activity states
 const PRESENCE_PRESETS = [
   {
@@ -1361,8 +1370,9 @@ export default function FriendsModal({
                 {selectedFriend.presence.kind === 'music' && (selectedFriend.presence.art || selectedFriend.presence.secArt) && (
                   <div className="w-14 h-14 rounded-[14px] overflow-hidden shadow-md shrink-0 border border-black/10">
                     <img 
-                      src={selectedFriend.presence.art || selectedFriend.presence.secArt} 
+                      src={getSafeTrackArt(selectedFriend.presence.art || selectedFriend.presence.secArt)} 
                       alt={selectedFriend.presence.big || 'Album'} 
+                      referrerPolicy="no-referrer"
                       className="w-full h-full object-cover"
                       onError={(e) => { e.currentTarget.style.display = 'none'; }}
                     />
@@ -1431,8 +1441,9 @@ export default function FriendsModal({
                 <div className="w-11 h-11 rounded-[12px] bg-[#0a0a0a] text-white flex items-center justify-center shrink-0 overflow-hidden relative border border-black/10">
                   {selectedFriend.presence.secArt ? (
                     <img 
-                      src={selectedFriend.presence.secArt} 
+                      src={getSafeTrackArt(selectedFriend.presence.secArt)} 
                       alt={selectedFriend.presence.secTitle || 'Spotify'} 
+                      referrerPolicy="no-referrer"
                       className="w-full h-full object-cover"
                       onError={(e) => { e.currentTarget.style.display = 'none'; }}
                     />
