@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.bokra.tracker",
+        "sha256_cert_fingerprints": ["DF:D4:DE:9A:A7:FD:A0:3C:FC:ED:57:73:99:52:88:13:BF:25:18:76:40:8D:D6:45:4C:09:27:D9:98:24:4C:90"]
+      }
+    }]

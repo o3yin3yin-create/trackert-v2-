@@ -1,0 +1,49 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build Next.js Static / PWA
+        run: |
+          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+          npx prisma generate
+          npm run build
+
+      - name: Install Bubblewrap
+        run: npm install -g @bubblewrap/cli
+
+      - name: Generate Key & Keystore
+        run: |
+          keytool -genkey -v -keystore bokra.keystore -alias bokra -keyalg RSA -keysize 2048 -validity 10000 -storepass bokra123456 -keypass bokra123456 -dname "CN=bokra, OU=Dev, O=bokra, L=Cairo, S=Cairo, C=EG"
+
+      - name: Upload Keystore Artifact (Backup)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bokra-keystore
+          path: bokra.keystore
+

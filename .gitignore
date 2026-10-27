@@ -48,6 +48,8 @@ next-env.d.ts
 .env.local
 service-account.json
 node_modules
+bokra-android.zip
+*.keystore
 .next
 dist
 src-tauri/target/
