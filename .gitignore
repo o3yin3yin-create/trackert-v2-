@@ -50,6 +50,8 @@ service-account.json
 node_modules
 bokra-android.zip
 *.keystore
+assetlinks.json
+/bokra.apk
 .next
 dist
 src-tauri/target/

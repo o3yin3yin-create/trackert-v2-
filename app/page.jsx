@@ -5645,10 +5645,11 @@ export default function App() {
             <div 
               className="w-full p-4 sm:p-5 flex flex-col transition-all duration-500 ease-out liquid-panel" 
               style={{ 
-                backgroundColor: theme === 'dark' ? `${themeColor}cc` : `${themeColor}aa`, 
+                backgroundColor: themeColor || '#ffffff', 
                 borderRadius: '24px', 
                 color: '#000000',
-                boxShadow: `0 0 24px -2px ${themeColor}66` 
+                border: '1px solid transparent',
+                boxShadow: `0 10px 25px -8px ${themeColor}66` 
               }}
             >
               <div className="flex items-center justify-between gap-2 mb-1 select-none">
@@ -5770,10 +5771,11 @@ export default function App() {
               <div 
                 className="w-full p-4 sm:p-5 flex flex-col transition-all duration-500 ease-out liquid-panel" 
                 style={{ 
-                  backgroundColor: theme === 'dark' ? `${themeColor}cc` : `${themeColor}aa`, 
+                  backgroundColor: themeColor || '#ffffff', 
                   borderRadius: '24px', 
                   color: '#000000',
-                  boxShadow: `0 0 24px -2px ${themeColor}66` 
+                  border: '1px solid transparent',
+                  boxShadow: `0 10px 25px -8px ${themeColor}66` 
                 }}
               >
                 <div className="flex items-center justify-between gap-2 mb-1 select-none">
