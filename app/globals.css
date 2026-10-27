@@ -879,6 +879,146 @@ canvas[class*="clerk"],
   }
 }
 
+/* 16. Monochrome Login Spec Matching */
+.cl-modalBackdrop {
+  background-color: rgba(0, 0, 0, 0.85) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
+
+.cl-modalContent {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  padding: 0 !important;
+  max-width: 380px !important;
+  width: 100% !important;
+}
+
+.cl-card {
+  background-color: #0d0d0f !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 28px !important;
+  padding: 32px 28px !important;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.85) !important;
+  max-width: 380px !important;
+  width: 100% !important;
+}
+
+.cl-header {
+  text-align: left !important;
+  align-items: flex-start !important;
+  display: flex !important;
+  flex-direction: column !important;
+  margin-bottom: 24px !important;
+}
+
+.cl-headerTitle {
+  color: #ffffff !important;
+  font-size: 26px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.025em !important;
+  text-align: left !important;
+  line-height: 1.2 !important;
+}
+
+.cl-headerSubtitle {
+  color: rgba(255, 255, 255, 0.55) !important;
+  font-size: 14px !important;
+  text-align: left !important;
+  margin-top: 6px !important;
+}
+
+.cl-socialButtonsBlockButton {
+  border-radius: 16px !important;
+  height: 50px !important;
+  background-color: #141416 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  justify-content: center !important;
+}
+
+.cl-socialButtonsBlockButton:hover {
+  background-color: #1c1c1f !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.cl-dividerRow {
+  margin: 22px 0 !important;
+}
+
+.cl-dividerLine {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.cl-dividerText {
+  color: rgba(255, 255, 255, 0.35) !important;
+  font-size: 11px !important;
+  letter-spacing: 2px !important;
+  font-weight: 700 !important;
+}
+
+.cl-formFieldLabel {
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-align: left !important;
+  margin-bottom: 8px !important;
+}
+
+.cl-formFieldInput {
+  border-radius: 14px !important;
+  height: 50px !important;
+  background-color: #111113 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  font-size: 14px !important;
+  font-family: var(--font-jetbrains-mono), monospace !important;
+  padding: 0 16px !important;
+}
+
+.cl-formFieldInput::placeholder {
+  color: rgba(255, 255, 255, 0.25) !important;
+  font-family: var(--font-jetbrains-mono), monospace !important;
+}
+
+.cl-formButtonPrimary {
+  border-radius: 16px !important;
+  height: 50px !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  font-weight: 700 !important;
+  font-size: 15px !important;
+  box-shadow: none !important;
+  transition: all 0.15s ease !important;
+  margin-top: 8px !important;
+}
+
+.cl-formButtonPrimary:hover {
+  background-color: #f2f2f2 !important;
+}
+
+.cl-footerActionLink {
+  color: #ffffff !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+  text-decoration: underline !important;
+  text-underline-offset: 4px !important;
+}
+
+.cl-modalCloseButton {
+  color: rgba(255, 255, 255, 0.55) !important;
+  top: 24px !important;
+  right: 24px !important;
+  transition: color 0.15s ease !important;
+}
+
+.cl-modalCloseButton:hover {
+  color: #ffffff !important;
+}
+
 
 
 

@@ -5589,6 +5589,7 @@ export default function App() {
               <div className="relative flex items-center justify-center shrink-0 window-no-drag" data-no-drag>
                 <Show when="signed-out">
                   <SignInButton 
+                    mode="modal"
                     forceRedirectUrl="/"
                     fallbackRedirectUrl="/"
                     signUpForceRedirectUrl="/"
