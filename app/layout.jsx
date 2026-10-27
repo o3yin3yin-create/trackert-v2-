@@ -45,6 +45,8 @@ export default function RootLayout({ children }) {
   return (
     <ClerkProvider 
       appearance={clerkAppearance}
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
       signInFallbackRedirectUrl="/"
       signUpFallbackRedirectUrl="/"
       signInForceRedirectUrl="/"
