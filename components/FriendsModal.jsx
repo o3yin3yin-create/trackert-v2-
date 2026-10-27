@@ -265,15 +265,64 @@ export default function FriendsModal({
     }
   };
 
-  // Privacy switches state (UI-only for now)
+  // Privacy switches state
   const [ghostMode, setGhostMode] = useState(false);
   const [privacySettings, setPrivacySettings] = useState({
     focusSessions: true,
     focusFlights: true,
-    lectures: true,
+    scheduledHabits: true,
     spotify: false,
     habits: true,
   });
+
+  // Load saved privacy settings on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedGhost = localStorage.getItem('bokra_privacy_ghost');
+        if (savedGhost !== null) setGhostMode(savedGhost === 'true');
+        const savedSettings = localStorage.getItem('bokra_privacy_settings');
+        if (savedSettings) {
+          const parsed = JSON.parse(savedSettings);
+          setPrivacySettings((prev) => ({ ...prev, ...parsed }));
+        }
+      } catch (_) {}
+    }
+
+    apiFetch('/api/user/privacy')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.privacySettings && typeof data.privacySettings === 'object') {
+          const s = data.privacySettings;
+          if (typeof s.ghostMode === 'boolean') setGhostMode(s.ghostMode);
+          setPrivacySettings({
+            focusSessions: s.focusSessions !== false,
+            focusFlights: s.focusFlights !== false,
+            scheduledHabits: s.scheduledHabits !== false && s.lectures !== false,
+            spotify: s.spotify !== false,
+            habits: s.habits !== false,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const savePrivacy = (newGhost, newSettings) => {
+    const payload = {
+      ghostMode: newGhost,
+      ...newSettings,
+      lectures: newSettings.scheduledHabits,
+    };
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bokra_privacy_ghost', String(newGhost));
+      localStorage.setItem('bokra_privacy_settings', JSON.stringify(newSettings));
+    }
+    apiFetch('/api/user/privacy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch(() => {});
+  };
 
   // Copied username indicator
   const [copied, setCopied] = useState(false);
@@ -1157,7 +1206,11 @@ export default function FriendsModal({
                 </div>
                 <button
                   type="button"
-                  onClick={() => setGhostMode(!ghostMode)}
+                  onClick={() => {
+                    const next = !ghostMode;
+                    setGhostMode(next);
+                    savePrivacy(next, privacySettings);
+                  }}
                   className={`w-12 h-7 rounded-full p-1 transition-colors duration-200 cursor-pointer shrink-0 ${
                     ghostMode ? 'bg-black' : 'bg-black/20'
                   }`}
@@ -1179,7 +1232,7 @@ export default function FriendsModal({
                   {[
                     { key: 'focusSessions', label: t('focusSessions'), desc: t('focusSessionsDesc') },
                     { key: 'focusFlights', label: t('focusFlights'), desc: t('focusFlightsDesc') },
-                    { key: 'lectures', label: t('lectures'), desc: t('lecturesDesc') },
+                    { key: 'scheduledHabits', label: t('scheduledHabits'), desc: t('scheduledHabitsDesc') },
                     { key: 'spotify', label: t('spotify'), desc: t('spotifyDesc') },
                     { key: 'habits', label: t('habits'), desc: t('habitsDesc') },
                   ].map((item) => {
@@ -1196,7 +1249,12 @@ export default function FriendsModal({
                         </div>
                         <button
                           type="button"
-                          onClick={() => setPrivacySettings({ ...privacySettings, [item.key]: !active })}
+                          onClick={() => {
+                            const next = { ...privacySettings, [item.key]: !active };
+                            if (item.key === 'scheduledHabits') next.lectures = next.scheduledHabits;
+                            setPrivacySettings(next);
+                            savePrivacy(ghostMode, next);
+                          }}
                           className={`w-12 h-7 rounded-full p-1 transition-colors duration-200 cursor-pointer shrink-0 ${
                             active ? 'bg-black' : 'bg-black/20'
                           }`}

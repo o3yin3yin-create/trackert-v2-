@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Shield } from 'lucide-react';
 import { translations } from '../lib/translations';
+import { apiFetch } from '@/lib/api';
 
 export default function PrivacyModal({ isOpen, onClose, lang = 'en' }) {
   const isRtl = lang === 'ar';
@@ -12,22 +13,63 @@ export default function PrivacyModal({ isOpen, onClose, lang = 'en' }) {
   const [privacySettings, setPrivacySettings] = useState({
     focusSessions: true,
     focusFlights: true,
-    lectures: true,
+    scheduledHabits: true,
     spotify: true,
     habits: true,
   });
 
-  // Load saved privacy settings
+  // Load saved privacy settings from local storage and authoritative API
   useEffect(() => {
+    if (!isOpen) return;
+
     if (typeof window !== 'undefined') {
       try {
         const savedGhost = localStorage.getItem('bokra_privacy_ghost');
         if (savedGhost !== null) setGhostMode(savedGhost === 'true');
         const savedSettings = localStorage.getItem('bokra_privacy_settings');
-        if (savedSettings) setPrivacySettings(JSON.parse(savedSettings));
+        if (savedSettings) {
+          const parsed = JSON.parse(savedSettings);
+          setPrivacySettings((prev) => ({ ...prev, ...parsed }));
+        }
       } catch (_) {}
     }
-  }, []);
+
+    // Fetch authoritative from DB
+    apiFetch('/api/user/privacy')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.privacySettings && typeof data.privacySettings === 'object') {
+          const s = data.privacySettings;
+          if (typeof s.ghostMode === 'boolean') {
+            setGhostMode(s.ghostMode);
+            if (typeof window !== 'undefined') localStorage.setItem('bokra_privacy_ghost', String(s.ghostMode));
+          }
+          const next = {
+            focusSessions: s.focusSessions !== false,
+            focusFlights: s.focusFlights !== false,
+            scheduledHabits: s.scheduledHabits !== false && s.lectures !== false,
+            spotify: s.spotify !== false,
+            habits: s.habits !== false,
+          };
+          setPrivacySettings(next);
+          if (typeof window !== 'undefined') localStorage.setItem('bokra_privacy_settings', JSON.stringify(next));
+        }
+      })
+      .catch(() => {});
+  }, [isOpen]);
+
+  const saveToServer = (newGhost, newSettings) => {
+    const payload = {
+      ghostMode: newGhost,
+      ...newSettings,
+      lectures: newSettings.scheduledHabits,
+    };
+    apiFetch('/api/user/privacy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch(() => {});
+  };
 
   const handleToggleGhost = () => {
     const next = !ghostMode;
@@ -35,14 +77,19 @@ export default function PrivacyModal({ isOpen, onClose, lang = 'en' }) {
     if (typeof window !== 'undefined') {
       localStorage.setItem('bokra_privacy_ghost', String(next));
     }
+    saveToServer(next, privacySettings);
   };
 
   const handleToggleSetting = (key) => {
     const next = { ...privacySettings, [key]: !privacySettings[key] };
+    if (key === 'scheduledHabits') {
+      next.lectures = next.scheduledHabits;
+    }
     setPrivacySettings(next);
     if (typeof window !== 'undefined') {
       localStorage.setItem('bokra_privacy_settings', JSON.stringify(next));
     }
+    saveToServer(ghostMode, next);
   };
 
   if (!isOpen) return null;
@@ -111,7 +158,7 @@ export default function PrivacyModal({ isOpen, onClose, lang = 'en' }) {
             {[
               { key: 'focusSessions', label: t('focusSessions'), desc: t('focusSessionsDesc') },
               { key: 'focusFlights', label: t('focusFlights'), desc: t('focusFlightsDesc') },
-              { key: 'lectures', label: t('lectures'), desc: t('lecturesDesc') },
+              { key: 'scheduledHabits', label: t('scheduledHabits'), desc: t('scheduledHabitsDesc') },
               { key: 'spotify', label: t('spotify'), desc: t('spotifyDesc') },
               { key: 'habits', label: t('habits'), desc: t('habitsDesc') },
             ].map((item) => {

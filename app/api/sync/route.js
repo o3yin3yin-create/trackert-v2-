@@ -163,6 +163,7 @@ export async function GET(req) {
       activeSessionType: user.activeSessionType,
       activeSessionData: user.activeSessionData,
       spotifyRefreshToken: user.spotifyRefreshToken || null,
+      privacySettings: user.privacySettings || {},
       updatedAt: user.updatedAt ? new Date(user.updatedAt).getTime() : Date.now(),
     };
 
@@ -255,6 +256,7 @@ export async function POST(req) {
           activeSessionType: state.activeSessionType || null,
           activeSessionData: state.activeSessionData || null,
           spotifyRefreshToken: state.spotifyRefreshToken || null,
+          privacySettings: state.privacySettings || {},
         },
         include: { habits: true }
       });
@@ -282,6 +284,7 @@ export async function POST(req) {
           ...(state.activeSessionType !== undefined && { activeSessionType: state.activeSessionType }),
           ...(state.activeSessionData !== undefined && { activeSessionData: state.activeSessionData }),
           ...(state.spotifyRefreshToken ? { spotifyRefreshToken: state.spotifyRefreshToken } : {}),
+          ...(state.privacySettings !== undefined && { privacySettings: state.privacySettings }),
         }
       });
     }

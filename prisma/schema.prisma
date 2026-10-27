@@ -29,6 +29,7 @@ model User {
   isAdmin        Boolean    @default(false)
   isBlocked      Boolean    @default(false)
   notifications  Json?      @default("[]") // In-app notifications (requests, nudges, cheers)
+  privacySettings Json?     @default("{}") // إعدادات الخصوصية للأصدقاء
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   
@@ -86,6 +87,7 @@ model Friendship {
   requesterId String
   addresseeId String
   status      String   @default("pending") // pending | accepted | blocked
+  togetherSeconds Int  @default(0)         // ثواني التركيز والمذاكرة المشتركة
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

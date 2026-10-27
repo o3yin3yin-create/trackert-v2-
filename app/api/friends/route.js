@@ -32,7 +32,7 @@ export async function GET(req) {
     const other = pub(otherUser)
 
     if (r.status === 'accepted') {
-      const presence = computeRealPresence(otherUser)
+      const presence = computeRealPresence(otherUser, r)
       out.friends.push({ friendshipId: r.id, user: other, presence })
     } else if (r.status === 'pending') {
       const item = { friendshipId: r.id, user: other }
