@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { 
   Users, Plus, X, Search, Check, Copy, Share2, 
   Shield, AlertCircle, Loader2, ChevronLeft, ChevronRight,
-  Music, Plane, Clock, Sparkles, MoreHorizontal, ShieldAlert, Trash2
+  Music, Plane, Clock, Sparkles, MoreHorizontal, ShieldAlert, Trash2, Lock
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { translations } from '@/lib/translations';
@@ -241,6 +241,29 @@ export default function FriendsModal({
 
   // In-list filter state
   const [listFilter, setListFilter] = useState('');
+
+  // Password Protection (admin2005)
+  const [isUnlocked, setIsUnlocked] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('bokra_friends_unlocked') === 'true';
+    }
+    return false;
+  });
+  const [enteredPassword, setEnteredPassword] = useState('');
+  const [passwordError, setPasswordError] = useState(false);
+
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault();
+    if (enteredPassword.trim() === 'admin2005') {
+      setIsUnlocked(true);
+      setPasswordError(false);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('bokra_friends_unlocked', 'true');
+      }
+    } else {
+      setPasswordError(true);
+    }
+  };
 
   // Privacy switches state (UI-only for now)
   const [ghostMode, setGhostMode] = useState(false);
@@ -564,6 +587,62 @@ export default function FriendsModal({
 
   if (!isOpen) return null;
 
+  if (!isUnlocked) {
+    return (
+      <div className="fixed inset-0 z-[10005] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div 
+          dir={isRtl ? 'rtl' : 'ltr'}
+          className="bg-[#121214] border border-white/10 rounded-3xl p-7 max-w-sm w-full text-center shadow-2xl flex flex-col items-center animate-in fade-in zoom-in-95"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-white/10 text-white flex items-center justify-center mb-4 border border-white/10 shadow-lg">
+            <Lock size={26} strokeWidth={2.5} />
+          </div>
+          <h3 className="text-xl font-black text-white mb-1.5 tracking-tight">
+            {t('friendsTitle')}
+          </h3>
+          <p className="text-xs text-white/50 mb-6 leading-relaxed max-w-xs">
+            {t('friendsPasswordRequired')}
+          </p>
+
+          <form onSubmit={handlePasswordSubmit} className="w-full flex flex-col gap-3">
+            <input
+              type="password"
+              value={enteredPassword}
+              onChange={(e) => {
+                setEnteredPassword(e.target.value);
+                if (passwordError) setPasswordError(false);
+              }}
+              placeholder={t('enterPassword')}
+              autoFocus
+              className="w-full bg-[#1c1c1e] border border-white/15 focus:border-white/40 px-4 py-3 rounded-2xl text-white text-center font-mono font-bold text-base outline-none transition-all placeholder:text-white/20"
+            />
+
+            {passwordError && (
+              <span className="text-xs text-red-400 font-bold animate-fadeIn">
+                {t('wrongPassword')}
+              </span>
+            )}
+
+            <button
+              type="submit"
+              className="w-full py-3.5 rounded-2xl bg-white text-black font-black text-sm hover:bg-white/90 active:scale-[0.98] transition-all shadow-lg cursor-pointer mt-1"
+            >
+              {t('unlock')}
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-xs text-white/40 hover:text-white transition-colors cursor-pointer py-1.5"
+            >
+              {t('cancel') || 'Cancel'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   // Filtered friends list
   const cleanFilter = listFilter.trim().toLowerCase().replace(/^@/, '');
   const filteredFriends = friendsWithPresence.filter((f) => {
@@ -633,17 +712,6 @@ export default function FriendsModal({
               </div>
 
               <div className="flex items-center gap-2">
-                {/* Privacy Screen Toggle */}
-                <button
-                  type="button"
-                  onClick={() => setView('privacy')}
-                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-                  title={t('privacy')}
-                  aria-label={t('privacy')}
-                >
-                  <Shield size={18} />
-                </button>
-
                 {/* Add Friend Button */}
                 <button
                   type="button"
@@ -1382,6 +1450,16 @@ export default function FriendsModal({
               <button
                 type="button"
                 onClick={() => {
+                  const targetUser = selectedFriend.user?.username;
+                  if (targetUser) {
+                    apiFetch('/api/friends/nudge', {
+                      method: 'POST',
+                      body: JSON.stringify({ 
+                        username: targetUser, 
+                        type: selectedFriend.presence.kind === 'habit' ? 'cheer' : 'study' 
+                      })
+                    }).catch(() => {});
+                  }
                   showToast(`${selectedFriend.presence.action} with ${selectedFriend.displayName}!`);
                 }}
                 className="flex-1 h-[54px] rounded-full bg-[#0a0a0a] text-white font-bold text-[16px] flex items-center justify-center active:scale-[0.98] hover:bg-black/90 transition-all cursor-pointer shadow-lg"
@@ -1391,6 +1469,13 @@ export default function FriendsModal({
               <button
                 type="button"
                 onClick={() => {
+                  const targetUser = selectedFriend.user?.username;
+                  if (targetUser) {
+                    apiFetch('/api/friends/nudge', {
+                      method: 'POST',
+                      body: JSON.stringify({ username: targetUser, type: 'nudge' })
+                    }).catch(() => {});
+                  }
                   showToast(`Nudge sent to ${selectedFriend.displayName}!`);
                 }}
                 className="w-[110px] h-[54px] rounded-full border-2 border-[#0a0a0a] text-[#0a0a0a] font-bold text-[16px] flex items-center justify-center active:scale-[0.98] hover:bg-black/5 transition-all cursor-pointer"

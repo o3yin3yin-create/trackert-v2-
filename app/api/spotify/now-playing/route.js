@@ -13,6 +13,11 @@ export async function OPTIONS(req) {
 export async function GET(req) {
   const corsHeaders = getCorsHeaders(req);
   try {
+    let userId = null;
+    try {
+      userId = await getAuthUserId(req);
+    } catch (_) {}
+
     const { searchParams } = new URL(req.url);
     let refreshToken = 
       searchParams.get('refresh_token') ||
@@ -20,17 +25,14 @@ export async function GET(req) {
       req.headers.get('x-spotify-refresh-token');
 
     // If no token from cookie/header, check user in database (handles desktop app sync)
-    if (!refreshToken) {
+    if (!refreshToken && userId) {
       try {
-        const userId = await getAuthUserId(req);
-        if (userId) {
-          const user = await prisma.user.findUnique({
-            where: { clerkId: userId },
-            select: { spotifyRefreshToken: true }
-          });
-          if (user?.spotifyRefreshToken) {
-            refreshToken = user.spotifyRefreshToken;
-          }
+        const user = await prisma.user.findUnique({
+          where: { clerkId: userId },
+          select: { spotifyRefreshToken: true }
+        });
+        if (user?.spotifyRefreshToken) {
+          refreshToken = user.spotifyRefreshToken;
         }
       } catch (authErr) {
         // Continue
@@ -86,6 +88,39 @@ export async function GET(req) {
     const albumArt = item.album?.images?.[0]?.url || item.album?.images?.[1]?.url || null;
     const songUrl = item.external_urls?.spotify || null;
     const deviceName = rawData.device?.name || null;
+
+    // Sync Spotify playback to user database record so friends see live listening status
+    if (userId) {
+      try {
+        const dbUser = await prisma.user.findUnique({
+          where: { clerkId: userId },
+          select: { activeSessionData: true }
+        });
+        const currentData = (dbUser?.activeSessionData && typeof dbUser.activeSessionData === 'object') ? dbUser.activeSessionData : {};
+        const spotifyTrack = (isPlaying && title) ? {
+          title,
+          artist,
+          album,
+          albumArt,
+          songUrl,
+          isPlaying: true,
+          progressPct: durationMs > 0 ? Math.round((progressMs / durationMs) * 100) : 0,
+          updatedAt: Date.now(),
+        } : null;
+
+        await prisma.user.update({
+          where: { clerkId: userId },
+          data: {
+            activeSessionData: {
+              ...currentData,
+              spotifyTrack
+            }
+          }
+        });
+      } catch (saveErr) {
+        console.warn('[Spotify now-playing save error]:', saveErr);
+      }
+    }
 
     return NextResponse.json({
       isConnected: true,

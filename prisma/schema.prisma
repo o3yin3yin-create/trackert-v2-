@@ -28,6 +28,7 @@ model User {
   spotifyRefreshToken String? // توكن سبوتيفاي للمزامنة بين الويب والديسكتوب
   isAdmin        Boolean    @default(false)
   isBlocked      Boolean    @default(false)
+  notifications  Json?      @default("[]") // In-app notifications (requests, nudges, cheers)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   
@@ -51,6 +52,7 @@ model Habit {
   time            String?  // ميعاد العادة الاختياري مثل "04:00 PM"
   duration        String?  // مدة العادة مثل "2h" أو "45m"
   location        String?  // مكان العادة الاختياري مثل "قاعة 302" أو "الجيم"
+  isPrivate       Boolean  @default(false)   // إذا كانت العادة خاصة لا تظهر للأصدقاء
   
   isNotifyEnabled Boolean  @default(false)
   notifyTime      String?  // هيتخزن بصيغة "08:00 PM"

@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass } from 'lucide-react';
+import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -26,6 +26,7 @@ import AvatarIcon, { AVATAR_OPTIONS } from '../components/AvatarIcon';
 import SpotifyWidget from '../components/SpotifyWidget';
 import ChooseUsername from '../components/ChooseUsername';
 import FriendsModal from '../components/FriendsModal';
+import PrivacyModal from '../components/PrivacyModal';
 import { guideSections } from '../lib/guideContent';
 
 let globalAudioCtx = null;
@@ -680,10 +681,85 @@ export default function App() {
   });
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
   const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   const [isFocusMenuOpen, setIsFocusMenuOpen] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const touchStartXRef = useRef(null);
   const touchStartYRef = useRef(null);
+
+  // --- In-App Notifications State & Polling ---
+  const [friendsIncomingCount, setFriendsIncomingCount] = useState(0);
+  const [activeInAppNotification, setActiveInAppNotification] = useState(null);
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+    let isMounted = true;
+
+    const checkFriendsNotifications = async () => {
+      try {
+        const res = await apiFetch('/api/friends');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!isMounted) return;
+
+        const incomingReqs = Array.isArray(data.incoming) ? data.incoming : [];
+        const notifs = Array.isArray(data.notifications) ? data.notifications : [];
+        const totalCount = incomingReqs.length + notifs.length;
+        setFriendsIncomingCount(totalCount);
+
+        if (notifs.length > 0) {
+          const latest = notifs[0];
+          setActiveInAppNotification({
+            id: latest.id,
+            type: latest.type || 'nudge',
+            user: { username: latest.fromUsername, name: latest.fromName, avatar: latest.fromAvatar },
+            message: latest.type === 'cheer' ? 'cheered you on! 🔥' : latest.type === 'study' ? 'asked to study together! 📚' : 'nudged you! 👋',
+            isRequest: false,
+          });
+        } else if (incomingReqs.length > 0) {
+          const latest = incomingReqs[0];
+          setActiveInAppNotification({
+            id: latest.friendshipId,
+            type: 'request',
+            user: latest.user,
+            message: 'sent you a friend request',
+            isRequest: true,
+          });
+        }
+      } catch (_) {}
+    };
+
+    checkFriendsNotifications();
+    const interval = setInterval(checkFriendsNotifications, 25000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [isSignedIn]);
+
+  const handleAcceptRequest = async (friendshipId) => {
+    try {
+      await apiFetch('/api/friends/respond', {
+        method: 'POST',
+        body: JSON.stringify({ friendshipId, action: 'accept' })
+      });
+      setActiveInAppNotification(null);
+      setFriendsIncomingCount(prev => Math.max(0, prev - 1));
+    } catch (_) {}
+  };
+
+  const handleDismissNotification = async (notifId, isRequest) => {
+    setActiveInAppNotification(null);
+    if (!isRequest && notifId) {
+      try {
+        await apiFetch('/api/friends/notifications/dismiss', {
+          method: 'POST',
+          body: JSON.stringify({ id: notifId })
+        });
+        setFriendsIncomingCount(prev => Math.max(0, prev - 1));
+      } catch (_) {}
+    }
+  };
 
   // --- Theme, Language & Background ---
   const [lang, setLang] = useState('en');
@@ -1530,6 +1606,7 @@ export default function App() {
   const [editTimeHour, setEditTimeHour] = useState(4);
   const [editTimeMinute, setEditTimeMinute] = useState("00");
   const [editTimePeriod, setEditTimePeriod] = useState("PM");
+  const [editHabitIsPrivate, setEditHabitIsPrivate] = useState(false);
 
   const handleOpenAdd = () => {
     setIsAddMounted(true);
@@ -1607,6 +1684,7 @@ export default function App() {
   const [selectedTimeHour, setSelectedTimeHour] = useState(4);
   const [selectedTimeMinute, setSelectedTimeMinute] = useState("00");
   const [selectedTimePeriod, setSelectedTimePeriod] = useState("PM");
+  const [habitIsPrivate, setHabitIsPrivate] = useState(false);
 
   // --- Emergency Cards Modal ---
   const [isCardsModalOpen, setIsCardsModalOpen] = useState(false);
@@ -2113,6 +2191,7 @@ export default function App() {
       time: habitTime.trim() ? habitTime.trim() : null,
       duration: habitDuration.trim() ? habitDuration.trim() : null,
       location: habitLocation.trim() ? habitLocation.trim() : null,
+      isPrivate: habitIsPrivate,
       updatedAt: Date.now()
     };
 
@@ -2130,6 +2209,7 @@ export default function App() {
     setHabitTime("");
     setHabitDuration("");
     setHabitLocation("");
+    setHabitIsPrivate(false);
     handleCloseAdd();
   };
 
@@ -2164,6 +2244,7 @@ export default function App() {
     setEditHabitTime(habit.time || "");
     setEditHabitDuration(habit.duration || "");
     setEditHabitLocation(habit.location || "");
+    setEditHabitIsPrivate(Boolean(habit.isPrivate));
 
     // Parse time if exists (e.g. "04:30 PM")
     if (habit.time && habit.time.includes(':')) {
@@ -2212,6 +2293,7 @@ export default function App() {
           time: editHabitTime.trim() ? editHabitTime.trim() : null,
           duration: editHabitDuration.trim() ? editHabitDuration.trim() : null,
           location: editHabitLocation.trim() ? editHabitLocation.trim() : null,
+          isPrivate: editHabitIsPrivate,
           updatedAt: Date.now()
         };
       }
@@ -2305,9 +2387,11 @@ export default function App() {
   if (!isMounted || !isLoaded) {
     return (
       <div className="min-h-screen bg-[#000000] text-white flex flex-col items-center justify-center p-6 select-none font-sans">
-        <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center mb-4 animate-pulse">
-          <Sparkles size={22} className="text-white" />
-        </div>
+        <img
+          src="/logo-transparent.png"
+          alt="bokra"
+          className="h-12 w-auto object-contain animate-pulse select-none drop-shadow-2xl opacity-80"
+        />
       </div>
     );
   }
@@ -2827,7 +2911,7 @@ export default function App() {
             data-no-day-swipe="true"
             className="col-span-1 w-full px-3.5 py-2.5 rounded-[20px] liquid-panel flex flex-col justify-between gap-1.5 cursor-pointer border border-white/10 dark:border-white/15 shadow-md hover:border-white/20 active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
           >
-            <div className="flex items-start justify-between gap-1.5 min-w-0">
+            <div className="flex items-center justify-between gap-1.5 min-w-0">
               <div className="flex flex-col min-w-0">
                 <span className="text-[12px] font-black text-white tracking-tight truncate leading-none font-sans">
                   {isRunning ? `${selectedFlight.origin} → ${selectedFlight.destination}` : ('Flight Focus')}
@@ -2837,7 +2921,7 @@ export default function App() {
                 </span>
               </div>
               {isRunning ? (
-                <div className="flex items-baseline font-mono font-black text-[11px] text-white shrink-0 tabular-nums leading-none">
+                <div className="flex items-baseline font-mono font-black text-[11px] text-white shrink-0 tabular-nums leading-none pt-0.5">
                   <span>{hours > 0 ? `${hours}h ` : ''}{String(mins).padStart(2, '0')}</span>
                   <span className="text-[9px] text-white/40 font-bold">:{String(secs).padStart(2, '0')}</span>
                 </div>
@@ -2879,7 +2963,7 @@ export default function App() {
           className="col-span-2 w-full px-4 py-2.5 sm:px-4.5 sm:py-3 rounded-[20px] liquid-panel flex flex-col justify-between gap-2 cursor-pointer border border-white/10 dark:border-white/15 shadow-lg hover:border-white/20 active:scale-[0.99] transition-all duration-200 select-none min-h-[62px]"
         >
           {/* Top Row: Route & Airline on Left, Split Timer or Fly Button on Right */}
-          <div className="flex items-start justify-between gap-3 min-w-0">
+          <div className="flex items-center justify-between gap-3 min-w-0 pt-0.5">
             <div className="flex flex-col min-w-0">
               <span className="text-[17px] sm:text-[18px] font-black tracking-tight text-white leading-none font-sans truncate">
                 {isRunning ? `${selectedFlight.origin} → ${selectedFlight.destination}` : ('Flight Focus')}
@@ -2890,7 +2974,7 @@ export default function App() {
             </div>
 
             {isRunning ? (
-              <div className="flex items-baseline font-black tracking-tight shrink-0 select-none tabular-nums font-mono leading-none">
+              <div className="flex items-baseline font-black tracking-tight shrink-0 select-none tabular-nums font-mono leading-none pt-1.5 sm:pt-2">
                 <span className="text-[23px] sm:text-[25px] text-white leading-none">
                   {hours > 0 ? `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}` : `00:${String(mins).padStart(2, '0')}`}
                 </span>
@@ -2970,15 +3054,22 @@ export default function App() {
                 <Users size={14} strokeWidth={2.6} />
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-[12px] font-bold text-white tracking-tight truncate leading-tight">
-                  {t('friendsTitle') || 'Friends'}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[12px] font-bold text-white tracking-tight truncate leading-tight">
+                    {t('friendsTitle') || 'Friends'}
+                  </span>
+                  {friendsIncomingCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-red-500 text-white font-black text-[9px] leading-tight">
+                      {friendsIncomingCount}
+                    </span>
+                  )}
+                </div>
                 <span className="text-[10px] text-white/60 truncate leading-tight mt-0.5 font-medium">
-                  {'3 active'}
+                  {friendsIncomingCount > 0 ? `${friendsIncomingCount} new notifications` : (t('friendsTitle') || 'Friends')}
                 </span>
               </div>
             </div>
-            <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+            <div className={`w-2 h-2 rounded-full shrink-0 ${friendsIncomingCount > 0 ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]' : 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'}`} />
           </div>
         );
       }
@@ -2999,12 +3090,18 @@ export default function App() {
                 <span className="text-[13px] font-bold text-white tracking-tight">
                   {t('friendsTitle') || 'Friends'}
                 </span>
-                <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/15 text-white/80 font-bold uppercase tracking-wider">
-                  {'3 ACTIVE'}
-                </span>
+                {friendsIncomingCount > 0 ? (
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-white text-black font-black uppercase tracking-wider">
+                    {friendsIncomingCount} NEW
+                  </span>
+                ) : (
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/15 text-white/80 font-bold uppercase tracking-wider">
+                    {'ACTIVE'}
+                  </span>
+                )}
               </div>
               <span className="text-[11px] text-white/50 font-medium">
-                {'Ahmed, Sara & 1 other active now'}
+                {friendsIncomingCount > 0 ? `${friendsIncomingCount} pending notifications & requests` : 'Activity, Focus & Study together'}
               </span>
             </div>
           </div>
@@ -3489,6 +3586,31 @@ export default function App() {
                     />
                   </div>
                 </div>
+
+                {/* ---------------- PRIVACY OPTION ---------------- */}
+                <div className="mb-8 bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
+                  <div className="flex flex-col pr-3">
+                    <span className="text-sm font-bold text-white">
+                      {t('privateHabit')}
+                    </span>
+                    <span className="text-xs text-white/50 mt-0.5">
+                      {t('privateHabitDesc')}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setHabitIsPrivate(!habitIsPrivate); haptic('light'); }}
+                    className={`w-12 h-7 rounded-full p-1 transition-colors relative cursor-pointer shrink-0 ${
+                      habitIsPrivate ? 'bg-white' : 'bg-white/15'
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full bg-black transition-transform ${
+                        habitIsPrivate ? 'translate-x-5' : 'translate-x-0 bg-white'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
 
               {/* Bottom Submit Action Button */}
@@ -3965,6 +4087,31 @@ export default function App() {
                       className="w-full bg-transparent text-white text-xs sm:text-sm outline-none font-medium placeholder:text-white/30"
                     />
                   </div>
+                </div>
+
+                {/* ---------------- PRIVACY OPTION ---------------- */}
+                <div className="mb-8 bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
+                  <div className="flex flex-col pr-3">
+                    <span className="text-sm font-bold text-white">
+                      {t('privateHabit')}
+                    </span>
+                    <span className="text-xs text-white/50 mt-0.5">
+                      {t('privateHabitDesc')}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setEditHabitIsPrivate(!editHabitIsPrivate); haptic('light'); }}
+                    className={`w-12 h-7 rounded-full p-1 transition-colors relative cursor-pointer shrink-0 ${
+                      editHabitIsPrivate ? 'bg-white' : 'bg-white/15'
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full bg-black transition-transform ${
+                        editHabitIsPrivate ? 'translate-x-5' : 'translate-x-0 bg-white'
+                      }`}
+                    />
+                  </button>
                 </div>
               </div>
 
@@ -4949,6 +5096,53 @@ export default function App() {
 
 
       <div className="min-h-screen bg-transparent text-white font-sans flex justify-center w-full selection:bg-white/20 pb-28 overflow-x-hidden relative">
+        
+        {/* Floating In-App Friends & Interaction Notification Banner */}
+        {activeInAppNotification && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[99999] max-w-sm w-[92%] sm:w-auto bg-[#18181b]/95 backdrop-blur-xl text-white border border-white/20 rounded-2xl p-3 shadow-2xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center font-bold text-xs uppercase shrink-0 shadow-sm">
+                {activeInAppNotification.user?.name?.charAt(0) || activeInAppNotification.user?.username?.charAt(0) || 'F'}
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-bold text-white truncate">
+                  @{activeInAppNotification.user?.username}
+                </span>
+                <span className="text-[11px] text-white/60 truncate">
+                  {activeInAppNotification.message}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {activeInAppNotification.isRequest ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleAcceptRequest(activeInAppNotification.id)}
+                    className="px-2.5 py-1 rounded-xl bg-white text-black font-bold text-[11px] hover:bg-white/90 active:scale-95 transition-all shadow-sm cursor-pointer"
+                  >
+                    Accept
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDismissNotification(activeInAppNotification.id, true)}
+                    className="p-1 rounded-lg text-white/40 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <X size={14} />
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleDismissNotification(activeInAppNotification.id, false)}
+                  className="px-2.5 py-1 rounded-xl bg-white/15 text-white font-bold text-[11px] hover:bg-white/25 active:scale-95 transition-all cursor-pointer"
+                >
+                  Dismiss
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         
         {/* Animated Aurora Background or Solid */}
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-black transition-colors duration-500">
@@ -6784,7 +6978,7 @@ export default function App() {
                   setIsSettingsMenuOpen(false);
                   setIsFocusMenuOpen(false);
                 }} 
-                className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${
+                className={`relative w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${
                   isFriendsModalOpen 
                     ? 'bg-black/10 dark:bg-white/15 text-black dark:text-white' 
                     : 'hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60'
@@ -6793,6 +6987,9 @@ export default function App() {
                 aria-label={t('friendsTitle')}
               >
                 <Users size={18} />
+                {friendsIncomingCount > 0 && (
+                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-white shadow-md animate-pulse" />
+                )}
               </button>
               {/* Focus Menu: Combines Pomodoro & Flight Focus */}
               <div className="relative">
@@ -7005,6 +7202,23 @@ export default function App() {
                               <ChevronRight size={18} className="text-white/40" />
                             </button>
 
+                            {/* Privacy & Sharing */}
+                            <button 
+                              onClick={() => { setIsSettingsMenuOpen(false); setIsPrivacyModalOpen(true); }} 
+                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors cursor-pointer"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center">
+                                  <Shield size={18} />
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-white">{t('privacy')}</span>
+                                  <span className="text-[11px] text-white/50 font-normal">{t('ghostMode')} & {t('shareWithFriends')}</span>
+                                </div>
+                              </div>
+                              <ChevronRight size={18} className="text-white/40" />
+                            </button>
+
                             {/* Analytics */}
                             <button onClick={() => { setIsSettingsMenuOpen(false); setIsAnalyticsModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
                               <div className="flex items-center gap-3">
@@ -7181,6 +7395,16 @@ export default function App() {
               myAvatar={avatar}
               lang={lang}
               themeColor={themeColor}
+            />,
+            document.body
+          )}
+
+          {/* ---------------- PRIVACY MODAL ---------------- */}
+          {isPrivacyModalOpen && typeof document !== 'undefined' && createPortal(
+            <PrivacyModal 
+              isOpen={isPrivacyModalOpen}
+              onClose={() => setIsPrivacyModalOpen(false)}
+              lang={lang}
             />,
             document.body
           )}

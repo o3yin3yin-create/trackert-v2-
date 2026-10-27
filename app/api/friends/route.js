@@ -19,7 +19,13 @@ export async function GET(req) {
     orderBy: { updatedAt: 'desc' },
   })
 
-  const out = { friends: [], incoming: [], outgoing: [], blocked: [] }
+  const out = { 
+    friends: [], 
+    incoming: [], 
+    outgoing: [], 
+    blocked: [],
+    notifications: Array.isArray(me.notifications) ? me.notifications : []
+  }
   for (const r of rows) {
     const iAmRequester = r.requesterId === me.id
     const otherUser = iAmRequester ? r.addressee : r.requester

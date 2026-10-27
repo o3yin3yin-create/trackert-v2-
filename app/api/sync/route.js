@@ -306,6 +306,7 @@ export async function POST(req) {
           ex.time !== (h.time || null) ||
           ex.duration !== (h.duration || null) ||
           ex.location !== (h.location || null) ||
+          ex.isPrivate !== (h.isPrivate || false) ||
           ex.isNotifyEnabled !== (h.isNotifyEnabled || false) || 
           ex.notifyTime !== (h.notifyTime || null) || 
           ex.notifyBefore !== (h.notifyBefore ?? 0) ||
@@ -330,6 +331,7 @@ export async function POST(req) {
             time: h.time || null,
             duration: h.duration || null,
             location: h.location || null,
+            isPrivate: Boolean(h.isPrivate),
             isNotifyEnabled: h.isNotifyEnabled || false,
             notifyTime: h.notifyTime || null,
             notifyBefore: h.notifyBefore ?? 0,
@@ -346,6 +348,7 @@ export async function POST(req) {
             time: h.time || null,
             duration: h.duration || null,
             location: h.location || null,
+            isPrivate: Boolean(h.isPrivate),
             isNotifyEnabled: h.isNotifyEnabled || false,
             notifyTime: h.notifyTime || null,
             notifyBefore: h.notifyBefore ?? 0,
