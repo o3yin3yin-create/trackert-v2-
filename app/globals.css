@@ -60,6 +60,11 @@ b, strong, .font-bold {
   font-weight: 400 !important;
 }
 
+.font-light {
+  font-weight: 300 !important;
+  -webkit-text-stroke: 0 !important;
+}
+
 .font-mono, 
 [class*="tabular-nums"],
 [class*="font-mono"] {

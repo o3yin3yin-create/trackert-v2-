@@ -5411,7 +5411,7 @@ export default function App() {
                   <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white group-hover:text-white/90 transition-colors">
                     {dayName}
                   </h1>
-                  <span className="text-2xl sm:text-3xl font-black text-white/70 group-hover:text-white/90 transition-colors tabular-nums">
+                  <span className="text-2xl sm:text-3xl font-light text-white/30 group-hover:text-white/50 transition-colors">
                     {dayNum}
                   </span>
                   {activeDateStr !== realTodayStr && (
