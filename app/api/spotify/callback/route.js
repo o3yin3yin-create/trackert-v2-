@@ -50,10 +50,10 @@ export async function GET(req) {
       }
       if (userId) {
         await prisma.user.upsert({
-          where: { id: userId },
+          where: { clerkId: userId },
           update: { spotifyRefreshToken: refreshToken },
           create: {
-            id: userId,
+            clerkId: userId,
             email: `${userId}@bokra.app`,
             spotifyRefreshToken: refreshToken
           }

@@ -65,7 +65,7 @@ export async function POST(req) {
     const existingInDb = await prisma.user.findFirst({
       where: {
         username: clean,
-        NOT: { id: userId }
+        NOT: { clerkId: userId }
       }
     });
 
@@ -91,10 +91,10 @@ export async function POST(req) {
 
     // 3. Update database record
     await prisma.user.upsert({
-      where: { id: userId },
+      where: { clerkId: userId },
       update: { username: clean },
       create: {
-        id: userId,
+        clerkId: userId,
         email: `${userId}@bokra.app`,
         username: clean,
         name: clean

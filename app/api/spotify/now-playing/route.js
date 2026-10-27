@@ -25,7 +25,7 @@ export async function GET(req) {
         const userId = await getAuthUserId(req);
         if (userId) {
           const user = await prisma.user.findUnique({
-            where: { id: userId },
+            where: { clerkId: userId },
             select: { spotifyRefreshToken: true }
           });
           if (user?.spotifyRefreshToken) {

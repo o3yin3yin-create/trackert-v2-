@@ -52,3 +52,4 @@ node_modules
 dist
 src-tauri/target/
 .api_backup/
+db_backup_*.json

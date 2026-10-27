@@ -40,8 +40,8 @@ export async function GET(req) {
 
     if (sinceTimestamp && !isNaN(sinceTimestamp)) {
       const userMeta = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { updatedAt: true, isBlocked: true }
+        where: { clerkId: userId },
+        select: { id: true, updatedAt: true, isBlocked: true }
       });
 
       if (userMeta?.isBlocked) {
@@ -58,7 +58,7 @@ export async function GET(req) {
     }
 
     let user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { clerkId: userId },
       include: {
         habits: {
           orderBy: { createdAt: 'asc' }
@@ -75,11 +75,11 @@ export async function GET(req) {
       // First time user, create default record
       const clerkUser = await currentUser();
       const name = clerkUser?.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : 'Unknown';
-      const email = clerkUser?.emailAddresses?.[0]?.emailAddress || userId;
+      const email = clerkUser?.emailAddresses?.[0]?.emailAddress || `${userId}@bokra.app`;
       const username = clerkUser?.username || null;
 
       user = await prisma.user.create({
-        data: { id: userId, email, name, ...(username ? { username } : {}) },
+        data: { clerkId: userId, email, name, ...(username ? { username } : {}) },
         include: { habits: { orderBy: { createdAt: 'asc' } }, dailyLogs: true }
       });
     } else {
@@ -91,7 +91,7 @@ export async function GET(req) {
 
         if ((username && user.username !== username) || (user.name === 'Zain' || user.email.startsWith('user_'))) {
           user = await prisma.user.update({
-            where: { id: userId },
+            where: { id: user.id },
             data: { name, email, ...(username ? { username } : {}) },
             include: { habits: { orderBy: { createdAt: 'asc' } }, dailyLogs: true }
           });
@@ -199,20 +199,17 @@ export async function POST(req) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: getCorsHeaders(req) });
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
+    let user = await prisma.user.findUnique({
+      where: { clerkId: userId },
       include: { habits: true }
     });
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404, headers: getCorsHeaders(req) });
-    }
-    if (user.isBlocked) {
+    if (user?.isBlocked) {
       return NextResponse.json({ error: 'ACCOUNT_BLOCKED' }, { status: 403, headers: getCorsHeaders(req) });
     }
 
     const state = await req.json();
 
-    const existingGranted = (user.grantedCards && typeof user.grantedCards === 'object') ? user.grantedCards : {};
+    const existingGranted = (user?.grantedCards && typeof user.grantedCards === 'object') ? user.grantedCards : {};
     const newGranted = (state.grantedCardsLog && typeof state.grantedCardsLog === 'object') 
       ? { ...existingGranted, ...state.grantedCardsLog }
       : { ...existingGranted };
@@ -240,45 +237,53 @@ export async function POST(req) {
     newGranted._habitOrder = activeStateHabits.map(h => h.id);
     newGranted._deletedHabits = Array.from(deletedHabitsSet);
 
-    // 2. Delete habits from database
-    if (deletedHabitsSet.size > 0) {
-      await prisma.habit.deleteMany({
-        where: { userId, id: { in: Array.from(deletedHabitsSet) } }
+    // If user does not exist in DB yet, create user record first
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          clerkId: userId,
+          email: `${userId}@bokra.app`,
+          theme: state.theme || 'dark',
+          bgStyle: state.bgStyle || 'aurora',
+          lang: state.lang || 'en',
+          themeColor: state.themeColor || '#FF9F0A',
+          avatar: state.avatar || 'boy1',
+          emergencyCards: state.emergencyCards || [],
+          grantedCards: newGranted,
+          finishedTickets: state.finishedTickets || [],
+          activeSessionType: state.activeSessionType || null,
+          activeSessionData: state.activeSessionData || null,
+          spotifyRefreshToken: state.spotifyRefreshToken || null,
+        },
+        include: { habits: true }
+      });
+    } else {
+      // 2. Delete habits from database
+      if (deletedHabitsSet.size > 0) {
+        await prisma.habit.deleteMany({
+          where: { userId: user.id, id: { in: Array.from(deletedHabitsSet) } }
+        });
+      }
+
+      // 3. Update User Settings
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          theme: state.theme,
+          bgStyle: state.bgStyle,
+          lang: state.lang,
+          themeColor: state.themeColor,
+          avatar: state.avatar || user.avatar,
+          emergencyCards: state.emergencyCards || [],
+          grantedCards: newGranted,
+          finishedTickets: state.finishedTickets || [],
+          updatedAt: new Date(),
+          ...(state.activeSessionType !== undefined && { activeSessionType: state.activeSessionType }),
+          ...(state.activeSessionData !== undefined && { activeSessionData: state.activeSessionData }),
+          ...(state.spotifyRefreshToken !== undefined && { spotifyRefreshToken: state.spotifyRefreshToken }),
+        }
       });
     }
-
-    // 3. Upsert User Settings
-    await prisma.user.upsert({
-      where: { id: userId },
-      create: {
-        id: userId,
-        email: userId,
-        theme: state.theme || 'dark',
-        bgStyle: state.bgStyle || 'aurora',
-        lang: state.lang || 'en',
-        themeColor: state.themeColor || '#FF9F0A',
-        avatar: state.avatar || 'boy1',
-        emergencyCards: state.emergencyCards || [],
-        grantedCards: newGranted,
-        finishedTickets: state.finishedTickets || [],
-        activeSessionType: state.activeSessionType || null,
-        activeSessionData: state.activeSessionData || null,
-        spotifyRefreshToken: state.spotifyRefreshToken || null,
-      },
-      update: {
-        theme: state.theme,
-        bgStyle: state.bgStyle,
-        lang: state.lang,
-        themeColor: state.themeColor,
-        emergencyCards: state.emergencyCards || [],
-        grantedCards: newGranted,
-        finishedTickets: state.finishedTickets || [],
-        updatedAt: new Date(),
-        ...(state.activeSessionType !== undefined && { activeSessionType: state.activeSessionType }),
-        ...(state.activeSessionData !== undefined && { activeSessionData: state.activeSessionData }),
-        ...(state.spotifyRefreshToken !== undefined && { spotifyRefreshToken: state.spotifyRefreshToken }),
-      }
-    });
 
     // 4. Sync Habits (Upsert only active non-deleted habits)
     if (activeStateHabits.length > 0) {
@@ -328,7 +333,7 @@ export async function POST(req) {
             notifyTime: h.notifyTime || null,
             notifyBefore: h.notifyBefore ?? 0,
             customMessage: h.customMessage || null,
-            userId
+            userId: user.id
           },
           update: {
             name: h.name,
@@ -349,7 +354,7 @@ export async function POST(req) {
       }
     }
 
-    // 3. Sync Daily Logs — ONLY FOR TODAY AND YESTERDAY (no querying all days)
+    // 5. Sync Daily Logs — ONLY FOR TODAY AND YESTERDAY (no querying all days)
     const now = new Date();
     const todayStr = (state.activeDateStr && state.activeDateStr.length === 10) 
       ? state.activeDateStr 
@@ -368,7 +373,7 @@ export async function POST(req) {
     // Query ONLY today and yesterday from database (max 2 rows)
     const existingDailyLogs = await prisma.dailyLog.findMany({
       where: {
-        userId,
+        userId: user.id,
         date: { in: targetDatesArray }
       }
     });
@@ -408,9 +413,9 @@ export async function POST(req) {
       const focusVal = Math.max(clientFocus, existingFocus);
 
       await prisma.dailyLog.upsert({
-        where: { userId_date: { userId, date } },
+        where: { userId_date: { userId: user.id, date } },
         create: {
-          userId,
+          userId: user.id,
           date,
           logs: mergedLogs,
           sleep: sleepVal,
@@ -427,7 +432,7 @@ export async function POST(req) {
     }
 
     const finalUser = await prisma.user.update({
-      where: { id: userId },
+      where: { id: user.id },
       data: { updatedAt: new Date() },
       select: { updatedAt: true }
     });

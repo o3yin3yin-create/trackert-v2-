@@ -11,7 +11,7 @@ export async function GET(req) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const caller = await prisma.user.findUnique({ where: { id: userId } });
+    const caller = await prisma.user.findUnique({ where: { clerkId: userId } });
     if (!caller || !caller.isAdmin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }

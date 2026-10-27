@@ -17,7 +17,7 @@ export async function POST(req) {
     }
 
     await prisma.user.update({
-      where: { id: userId },
+      where: { clerkId: userId },
       data: { fcmToken },
     });
 

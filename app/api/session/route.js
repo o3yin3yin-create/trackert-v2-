@@ -10,7 +10,7 @@ export async function GET(req) {
 
   try {
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { clerkId: userId },
       select: { activeSessionType: true, activeSessionData: true }
     });
     return NextResponse.json({
@@ -30,7 +30,7 @@ export async function POST(req) {
     const { type, data } = await req.json();
 
     await prisma.user.update({
-      where: { id: userId },
+      where: { clerkId: userId },
       data: {
         activeSessionType: type || null,
         activeSessionData: data || null,
