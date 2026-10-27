@@ -2792,32 +2792,62 @@ export default function App() {
         return null;
       }
 
+      const hours = Math.floor(flightTimer / 3600);
+      const mins = Math.floor((flightTimer % 3600) / 60);
+      const secs = flightTimer % 60;
+
+      const total = selectedFlight?.initialSeconds || selectedFlight?.totalSeconds || (flightTimer > 0 ? flightTimer : 3600);
+      const elapsed = Math.max(0, total - flightTimer);
+      const progressPct = isRunning && total > 0 
+        ? Math.min(96, Math.max(4, (elapsed / total) * 100)) 
+        : 12;
+
       if (size === 'compact') {
         return (
           <div 
             key="flight-widget"
             onClick={() => { recordFlightActivity(); setIsFlightFocusOpen(true); }} 
             data-no-day-swipe="true"
-            className="col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 dark:border-white/18 shadow-lg active:scale-[0.99] transition-all select-none min-h-[58px]"
+            className="col-span-1 w-full p-3.5 rounded-[22px] liquid-panel flex flex-col justify-between gap-3 cursor-pointer border border-white/10 dark:border-white/15 shadow-xl hover:border-white/20 active:scale-[0.99] transition-all duration-200 select-none min-h-[74px]"
           >
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-black shrink-0">
-                <Plane size={13} strokeWidth={2.8} />
-              </div>
+            <div className="flex items-start justify-between gap-1.5 min-w-0">
               <div className="flex flex-col min-w-0">
-                <span className="text-[12px] font-bold text-white tracking-tight truncate leading-tight">
-                  {isRunning ? `${selectedFlight.origin} → ${selectedFlight.destination}` : ('Flight')}
+                <span className="text-[13px] font-black text-white tracking-tight truncate leading-tight font-sans">
+                  {isRunning ? `${selectedFlight.origin} → ${selectedFlight.destination}` : ('Flight Focus')}
                 </span>
-                <span className="text-[10px] text-white/50 truncate leading-tight mt-0.5">
+                <span className="text-[10px] text-white/50 truncate leading-tight mt-0.5 font-medium">
                   {isRunning ? `${selectedFlight.callsign}` : ('Focus flight')}
                 </span>
               </div>
+              {isRunning ? (
+                <div className="flex items-baseline font-mono font-black text-xs text-white shrink-0 tabular-nums">
+                  <span>{hours > 0 ? `${hours}h ` : ''}{String(mins).padStart(2, '0')}</span>
+                  <span className="text-[10px] text-white/40 font-bold">:{String(secs).padStart(2, '0')}</span>
+                </div>
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-black shrink-0">
+                  <Plane size={11} strokeWidth={2.8} />
+                </div>
+              )}
             </div>
-            {isRunning && (
-              <span className="text-xs font-mono font-black text-white shrink-0 pl-1 tabular-nums">
-                {String(Math.floor((flightTimer % 3600) / 60)).padStart(2, '0')}:{String(flightTimer % 60).padStart(2, '0')}
-              </span>
-            )}
+
+            {/* Compact Progress Line with Airplane */}
+            <div className="relative w-full flex items-center py-1">
+              <div className="w-full h-[2.5px] rounded-full bg-white/20 overflow-hidden">
+                <div 
+                  className="h-full bg-white rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <div 
+                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-700 ease-out pointer-events-none text-white"
+                style={{ left: `${progressPct}%` }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className="drop-shadow-[0_0_6px_rgba(255,255,255,0.8)]">
+                  <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" transform="rotate(90 12 12)" />
+                </svg>
+              </div>
+            </div>
           </div>
         );
       }
@@ -2827,31 +2857,61 @@ export default function App() {
           key="flight-widget"
           onClick={() => { recordFlightActivity(); setIsFlightFocusOpen(true); }} 
           data-no-day-swipe="true"
-          className="col-span-2 w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 shadow-lg active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
+          className="col-span-2 w-full p-4 sm:p-4.5 rounded-[26px] liquid-panel flex flex-col justify-between gap-3.5 cursor-pointer border border-white/10 dark:border-white/15 shadow-xl hover:border-white/20 active:scale-[0.99] transition-all duration-200 select-none min-h-[90px]"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-black shrink-0">
-              <Plane size={14} strokeWidth={2.8} />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[13px] font-bold text-white tracking-tight">
+          {/* Top Row: Route & Airline on Left, Split Timer or Fly Button on Right */}
+          <div className="flex items-start justify-between gap-3 min-w-0">
+            <div className="flex flex-col min-w-0">
+              <span className="text-[18px] sm:text-[20px] font-black tracking-tight text-white leading-tight font-sans truncate">
                 {isRunning ? `${selectedFlight.origin} → ${selectedFlight.destination}` : ('Flight Focus')}
               </span>
-              <span className="text-[10px] text-white/50 font-semibold">
-                {isRunning ? `${selectedFlight.airline} ${selectedFlight.callsign}` : ('Join a real-world flight')}
+              <span className="text-[12px] sm:text-[13px] text-white/50 tracking-tight leading-tight font-medium truncate mt-1">
+                {isRunning ? `${selectedFlight.airline || 'Commercial'} · ${selectedFlight.callsign}` : ('Join a real-world flight')}
               </span>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
+
             {isRunning ? (
-              <span className="text-sm font-black font-mono px-3 py-1 rounded-full bg-white text-black shadow-sm tabular-nums">
-                {String(Math.floor(flightTimer / 3600)).padStart(2, '0')}:{String(Math.floor((flightTimer % 3600) / 60)).padStart(2, '0')}:{String(flightTimer % 60).padStart(2, '0')}
-              </span>
+              <div className="flex items-baseline font-black tracking-tight shrink-0 select-none tabular-nums font-mono">
+                <span className="text-2xl sm:text-[28px] text-white leading-none">
+                  {hours > 0 ? `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}` : `00:${String(mins).padStart(2, '0')}`}
+                </span>
+                <span className="text-sm sm:text-base text-white/45 ml-0.5 font-bold leading-none">
+                  :{String(secs).padStart(2, '0')}
+                </span>
+              </div>
             ) : (
-              <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/10 text-white/70 hover:bg-white/20">
+              <span className="text-xs font-bold px-4 py-1.5 rounded-full bg-white text-black hover:bg-white/90 active:scale-95 transition-all shadow-md font-sans shrink-0">
                 {'Fly'}
               </span>
             )}
+          </div>
+
+          {/* Bottom Row: Full-width Flight Track Line with Airplane Icon */}
+          <div className="relative w-full flex items-center py-1">
+            {/* Background track (remaining route) */}
+            <div className="w-full h-[2.5px] rounded-full bg-white/20 overflow-hidden">
+              {/* Completed track (solid white) */}
+              <div 
+                className="h-full bg-white rounded-full transition-all duration-700 ease-out"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+
+            {/* Airplane silhouette pinned exactly at the progress point */}
+            <div 
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-700 ease-out pointer-events-none text-white"
+              style={{ left: `${progressPct}%` }}
+            >
+              <svg 
+                width="16" 
+                height="16" 
+                viewBox="0 0 24 24" 
+                fill="currentColor" 
+                className="drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]"
+              >
+                <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" transform="rotate(90 12 12)" />
+              </svg>
+            </div>
           </div>
         </div>
       );
