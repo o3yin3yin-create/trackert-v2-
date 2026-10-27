@@ -5313,10 +5313,10 @@ export default function App() {
                   className="flex items-baseline gap-2.5 select-none cursor-pointer group active:scale-[0.98] transition-transform"
                   title="Change Date"
                 >
-                  <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white group-hover:text-white/90 transition-colors">
+                  <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white group-hover:text-white/90 transition-colors">
                     {dayName}
                   </h1>
-                  <span className="text-2xl sm:text-3xl font-bold text-white/60 group-hover:text-white/80 transition-colors">
+                  <span className="text-2xl sm:text-3xl font-black text-white/70 group-hover:text-white/90 transition-colors tabular-nums">
                     {dayNum}
                   </span>
                   {activeDateStr !== realTodayStr && (
