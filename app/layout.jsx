@@ -43,7 +43,13 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <ClerkProvider appearance={clerkAppearance}>
+    <ClerkProvider 
+      appearance={clerkAppearance}
+      signInFallbackRedirectUrl="/"
+      signUpFallbackRedirectUrl="/"
+      signInForceRedirectUrl="/"
+      signUpForceRedirectUrl="/"
+    >
       <html 
         lang="en" 
         className={`dark ${spaceGrotesk.variable} ${jetbrainsMono.variable}`} 
