@@ -57,16 +57,43 @@ export async function GET(req) {
     }
 
     if (!user) {
-      // First time user, create default record
+      // First time user or returning user from dev with new production clerkId: link by email
       const clerkUser = await currentUser();
-      const name = clerkUser?.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : 'Unknown';
       const email = clerkUser?.emailAddresses?.[0]?.emailAddress || `${userId}@bokra.app`;
+      const name = clerkUser?.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : 'Unknown';
       const username = clerkUser?.username || null;
 
-      user = await prisma.user.create({
-        data: { clerkId: userId, email, name, ...(username ? { username } : {}) },
-        include: { habits: { orderBy: { createdAt: 'asc' } }, dailyLogs: true }
-      });
+      // Check if user already exists with this email in database (from dev mode)
+      const existingUserByEmail = email && !email.endsWith('@bokra.app')
+        ? await prisma.user.findUnique({
+            where: { email },
+            include: {
+              habits: { orderBy: { createdAt: 'asc' } },
+              dailyLogs: true,
+            }
+          })
+        : null;
+
+      if (existingUserByEmail) {
+        // Seamlessly link existing dev user (and all their habits, daily logs, history) to new production clerkId
+        user = await prisma.user.update({
+          where: { id: existingUserByEmail.id },
+          data: {
+            clerkId: userId,
+            name: name !== 'Unknown' ? name : existingUserByEmail.name,
+            ...(username ? { username } : {}),
+          },
+          include: {
+            habits: { orderBy: { createdAt: 'asc' } },
+            dailyLogs: true,
+          }
+        });
+      } else {
+        user = await prisma.user.create({
+          data: { clerkId: userId, email, name, ...(username ? { username } : {}) },
+          include: { habits: { orderBy: { createdAt: 'asc' } }, dailyLogs: true }
+        });
+      }
     } else {
       const clerkUser = await currentUser();
       if (clerkUser) {
@@ -195,6 +222,23 @@ export async function POST(req) {
       where: { clerkId: userId },
       include: { habits: true }
     });
+    if (!user) {
+      const clerkUser = await currentUser();
+      const email = clerkUser?.emailAddresses?.[0]?.emailAddress;
+      if (email) {
+        const existingUserByEmail = await prisma.user.findUnique({
+          where: { email },
+          include: { habits: true }
+        });
+        if (existingUserByEmail) {
+          user = await prisma.user.update({
+            where: { id: existingUserByEmail.id },
+            data: { clerkId: userId },
+            include: { habits: true }
+          });
+        }
+      }
+    }
     if (user?.isBlocked) {
       return NextResponse.json({ error: 'ACCOUNT_BLOCKED' }, { status: 403, headers: getCorsHeaders(req) });
     }
