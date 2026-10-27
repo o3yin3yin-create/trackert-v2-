@@ -4,210 +4,14 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { 
   Users, Plus, X, Search, Check, Copy, Share2, 
   Shield, AlertCircle, Loader2, ChevronLeft, ChevronRight,
-  Music, Plane, Clock, Sparkles, MoreHorizontal, ShieldAlert, Trash2, Lock
+  Music, Plane, Clock, Sparkles, MoreHorizontal, ShieldAlert, Trash2, Lock,
+  Pin
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { translations } from '@/lib/translations';
 import AvatarIcon from '@/components/AvatarIcon';
+import { PRESENCE_PRESETS, DEMO_FRIENDS, getSafeTrackArt } from '@/lib/friendsPresets';
 
-const getSafeTrackArt = (url) => {
-  if (!url) return null;
-  if (url.startsWith('/')) return url;
-  if (url.includes('scdn.co') || url.includes('spotifycdn.com')) {
-    return `/api/spotify/image?url=${encodeURIComponent(url)}`;
-  }
-  return url;
-};
-
-// Default presence presets to enrich friends with realistic activity states
-const PRESENCE_PRESETS = [
-  {
-    kind: 'focus',
-    tag: 'Focus',
-    line: 'Focus 15:19 · Weightless',
-    right: '15:19',
-    status: 'Studying · listening to Spotify',
-    label: 'FOCUS SESSION',
-    big: '15:19',
-    bigSize: 56,
-    sub: 'left · cycle 2 of 4',
-    pct: 62,
-    hasBar: true,
-    barL: '10:41 done',
-    barR: '25:00',
-    hasChips: false,
-    chips: [],
-    hasDots: true,
-    dots: [1, 1, 0, 0],
-    action: 'Join session',
-    together: '6h 20m',
-    hasMusicBadge: true,
-    hasSec: true,
-    secTitle: 'Weightless',
-    secSub: 'Marconi Union · on Spotify',
-    secPct: 38,
-  },
-  {
-    kind: 'flight',
-    tag: 'Flight',
-    line: 'CAI → DXB · in the air',
-    right: '40 min',
-    status: 'On a focus flight',
-    label: 'FOCUS FLIGHT',
-    big: 'CAI → DXB',
-    bigSize: 38,
-    sub: 'Cairo to Dubai · 40 min left',
-    pct: 45,
-    hasBar: true,
-    barL: 'CAI',
-    barR: 'DXB',
-    hasChips: false,
-    chips: [],
-    hasDots: false,
-    dots: [],
-    action: 'Hop on this flight',
-    together: '3h 05m',
-    hasMusicBadge: false,
-    hasSec: false,
-  },
-  {
-    kind: 'music',
-    tag: 'Music',
-    line: 'Midnight City · M83',
-    right: '1:24',
-    status: 'Listening on Spotify',
-    label: 'LISTENING TO',
-    big: 'Midnight City',
-    bigSize: 34,
-    sub: 'M83',
-    pct: 38,
-    hasBar: true,
-    barL: '1:24',
-    barR: '4:03',
-    hasChips: false,
-    chips: [],
-    hasDots: false,
-    dots: [],
-    action: 'Listen along',
-    together: '1h 40m',
-    hasMusicBadge: true,
-    hasSec: false,
-  },
-  {
-    kind: 'lecture',
-    tag: 'Lecture',
-    line: 'In lecture · TT284 · GE4',
-    right: '48 min',
-    status: 'In a lecture',
-    label: 'IN LECTURE',
-    big: 'TT284',
-    bigSize: 44,
-    sub: 'Ends in 48 min',
-    pct: 0,
-    hasBar: false,
-    barL: '',
-    barR: '',
-    hasChips: true,
-    chips: ['11:30 AM', 'GE4', 'Weekly'],
-    hasDots: false,
-    dots: [],
-    action: 'Plan a study session',
-    together: '2h 10m',
-    hasMusicBadge: false,
-    hasSec: false,
-  },
-  {
-    kind: 'habit',
-    tag: 'Habit',
-    line: 'Just finished Prayers 5/5',
-    right: '5/5',
-    status: 'Finished a habit',
-    label: 'JUST FINISHED',
-    big: 'Prayers 5/5',
-    bigSize: 40,
-    sub: 'Streak: 12 days',
-    pct: 100,
-    hasBar: false,
-    barL: '',
-    barR: '',
-    hasChips: false,
-    chips: [],
-    hasDots: true,
-    dots: [1, 1, 1, 1, 1],
-    action: 'Cheer them on',
-    together: '4h 30m',
-    hasMusicBadge: false,
-    hasSec: false,
-  },
-  {
-    kind: 'idle',
-    tag: 'Idle',
-    line: 'Idle · last seen 2h ago',
-    right: '2h',
-    status: 'Not active',
-    label: 'IDLE',
-    big: 'Last seen 2h ago',
-    bigSize: 28,
-    sub: 'No activity right now',
-    pct: 0,
-    hasBar: false,
-    barL: '',
-    barR: '',
-    hasChips: false,
-    chips: [],
-    hasDots: false,
-    dots: [],
-    action: 'Ask to study',
-    together: '0h',
-    hasMusicBadge: false,
-    hasSec: false,
-  },
-];
-
-const DEMO_FRIENDS = [
-  {
-    friendshipId: 'demo-ahmed',
-    user: { username: 'ahmed', name: 'Ahmed', avatar: 'crown' },
-    displayName: 'Ahmed',
-    initial: 'A',
-    presence: PRESENCE_PRESETS[0],
-  },
-  {
-    friendshipId: 'demo-sara',
-    user: { username: 'sara', name: 'Sara', avatar: 'sparkles' },
-    displayName: 'Sara',
-    initial: 'S',
-    presence: PRESENCE_PRESETS[1],
-  },
-  {
-    friendshipId: 'demo-omar',
-    user: { username: 'omar', name: 'Omar', avatar: 'flame' },
-    displayName: 'Omar',
-    initial: 'O',
-    presence: PRESENCE_PRESETS[2],
-  },
-  {
-    friendshipId: 'demo-mona',
-    user: { username: 'mona', name: 'Mona', avatar: 'rocket' },
-    displayName: 'Mona',
-    initial: 'M',
-    presence: PRESENCE_PRESETS[3],
-  },
-  {
-    friendshipId: 'demo-youssef',
-    user: { username: 'youssef', name: 'Youssef', avatar: 'headphones' },
-    displayName: 'Youssef',
-    initial: 'Y',
-    presence: PRESENCE_PRESETS[4],
-  },
-  {
-    friendshipId: 'demo-hana',
-    user: { username: 'hana', name: 'Hana', avatar: 'smile' },
-    displayName: 'Hana',
-    initial: 'H',
-    presence: PRESENCE_PRESETS[5],
-  },
-];
 
 export default function FriendsModal({ 
   isOpen, 
@@ -216,7 +20,9 @@ export default function FriendsModal({
   myName = '',
   myAvatar = 'boy1',
   lang = 'en', 
-  themeColor = '#FF9F0A' 
+  themeColor = '#FF9F0A',
+  pinnedFriendUsername: propPinnedUsername,
+  onTogglePinFriend,
 }) {
   const isRtl = lang === 'ar';
   const t = useCallback((k) => translations[lang]?.[k] || translations.en[k] || k, [lang]);
@@ -231,6 +37,44 @@ export default function FriendsModal({
   const [incoming, setIncoming] = useState([]);
   const [outgoing, setOutgoing] = useState([]);
   const [blocked, setBlocked] = useState([]);
+
+  // Pinned Friend State (synced with localStorage & window event)
+  const [pinnedFriendUsername, setPinnedFriendUsername] = useState(() => {
+    if (propPinnedUsername !== undefined) return propPinnedUsername;
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('daybase_pinned_friend_username') || '';
+    }
+    return '';
+  });
+
+  useEffect(() => {
+    if (propPinnedUsername !== undefined) {
+      setPinnedFriendUsername(propPinnedUsername);
+    }
+  }, [propPinnedUsername]);
+
+  const handleTogglePin = (targetUsername, targetName) => {
+    if (!targetUsername) return;
+    const isCurrentlyPinned = (pinnedFriendUsername || '').toLowerCase() === targetUsername.toLowerCase();
+    const nextPinned = isCurrentlyPinned ? '' : targetUsername;
+    setPinnedFriendUsername(nextPinned);
+    if (typeof window !== 'undefined') {
+      if (nextPinned) {
+        localStorage.setItem('daybase_pinned_friend_username', nextPinned);
+      } else {
+        localStorage.removeItem('daybase_pinned_friend_username');
+      }
+      window.dispatchEvent(new CustomEvent('daybase_pinned_friend_changed', { detail: nextPinned }));
+    }
+    if (onTogglePinFriend) {
+      onTogglePinFriend(targetUsername);
+    }
+    if (isCurrentlyPinned) {
+      showToast('Unpinned. Home widget will show active friends.');
+    } else {
+      showToast(`Pinned ${targetName || targetUsername} to home screen`);
+    }
+  };
 
   // Selected friend for presence bottom sheet
   const [selectedFriend, setSelectedFriend] = useState(null);
@@ -842,8 +686,8 @@ export default function FriendsModal({
                         className="bg-white text-black rounded-3xl p-3.5 flex items-center justify-between shadow-2xl animate-in fade-in duration-150"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-11 h-11 rounded-full bg-black text-white flex items-center justify-center font-bold text-base uppercase shrink-0">
-                            {item.user?.name?.[0] || item.user?.username?.[0] || 'U'}
+                          <div className="w-11 h-11 rounded-full bg-black text-white flex items-center justify-center shrink-0">
+                            <AvatarIcon name={item.user?.avatar || 'user'} size={22} className="text-white" />
                           </div>
                           <div className="flex flex-col min-w-0">
                             <span className="font-bold text-black text-base truncate leading-tight">
@@ -916,9 +760,17 @@ export default function FriendsModal({
                             </div>
 
                             <div className="flex flex-col min-w-0 flex-1 pr-2">
-                              <span className="font-bold text-white text-[16px] truncate leading-tight">
-                                {f.displayName}
-                              </span>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="font-bold text-white text-[16px] truncate leading-tight">
+                                  {f.displayName}
+                                </span>
+                                {pinnedFriendUsername && (pinnedFriendUsername.toLowerCase() === (f.user?.username || f.displayName || '').toLowerCase()) && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white text-black text-[9px] font-mono font-black uppercase tracking-wider shrink-0">
+                                    <Pin size={8} className="fill-current" />
+                                    PINNED
+                                  </span>
+                                )}
+                              </div>
                               <span className="text-[#b3b3b3] text-[13px] truncate leading-tight mt-0.5">
                                 {f.presence.line}
                               </span>
@@ -1031,8 +883,8 @@ export default function FriendsModal({
                       </span>
                       <div className="bg-white text-black rounded-3xl p-4 flex items-center justify-between shadow-2xl">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-11 h-11 rounded-full bg-black text-white flex items-center justify-center font-bold text-base uppercase shrink-0">
-                            {searchResult.user.name?.[0] || searchResult.user.username?.[0] || 'U'}
+                          <div className="w-11 h-11 rounded-full bg-black text-white flex items-center justify-center shrink-0">
+                            <AvatarIcon name={searchResult.user.avatar || 'user'} size={22} className="text-white" />
                           </div>
                           <div className="flex flex-col min-w-0">
                             <span className="font-bold text-black text-base truncate leading-tight">
@@ -1231,8 +1083,8 @@ export default function FriendsModal({
                       className="bg-[#0c0c0e] border border-white/10 rounded-2xl p-3.5 flex items-center justify-between"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center font-bold text-sm uppercase shrink-0">
-                          {item.user?.name?.[0] || item.user?.username?.[0] || 'U'}
+                        <div className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center shrink-0">
+                          <AvatarIcon name={item.user?.avatar || 'user'} size={20} className="text-white" />
                         </div>
                         <div className="flex flex-col min-w-0">
                           <span className="font-bold text-white text-sm truncate leading-tight">
@@ -1301,6 +1153,23 @@ export default function FriendsModal({
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
+                {/* Pin / Unpin Button */}
+                <button
+                  type="button"
+                  onClick={() => handleTogglePin(selectedFriend.user?.username, selectedFriend.displayName)}
+                  className={`h-9 px-3 rounded-full flex items-center gap-1.5 font-bold text-xs transition-all cursor-pointer active:scale-95 ${
+                    (pinnedFriendUsername || '').toLowerCase() === (selectedFriend.user?.username || '').toLowerCase()
+                      ? 'bg-black text-white shadow-sm'
+                      : 'bg-[#f0f0f0] hover:bg-[#e4e4e7] text-[#0a0a0a]'
+                  }`}
+                  title={(pinnedFriendUsername || '').toLowerCase() === (selectedFriend.user?.username || '').toLowerCase() ? 'Unpin from Home' : 'Pin to Home'}
+                >
+                  <Pin size={13} className={(pinnedFriendUsername || '').toLowerCase() === (selectedFriend.user?.username || '').toLowerCase() ? 'fill-current' : ''} />
+                  <span>
+                    {(pinnedFriendUsername || '').toLowerCase() === (selectedFriend.user?.username || '').toLowerCase() ? 'Pinned' : 'Pin'}
+                  </span>
+                </button>
+
                 {/* Manage trigger (remove / block) */}
                 <button
                   type="button"
@@ -1332,6 +1201,29 @@ export default function FriendsModal({
                   MANAGE FRIENDSHIP
                 </span>
                 <div className="flex flex-col divide-y divide-black/10">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleTogglePin(selectedFriend.user?.username, selectedFriend.displayName);
+                      setShowManageSheet(false);
+                    }}
+                    className="py-2.5 text-start flex items-center justify-between text-black hover:text-black/70 cursor-pointer"
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold">
+                        {(pinnedFriendUsername || '').toLowerCase() === (selectedFriend.user?.username || '').toLowerCase()
+                          ? 'Unpin from Home'
+                          : 'Pin to Home Screen'}
+                      </span>
+                      <span className="text-[11px] text-[#71717a]">
+                        {(pinnedFriendUsername || '').toLowerCase() === (selectedFriend.user?.username || '').toLowerCase()
+                          ? 'Home widget will switch to auto-showing active friends'
+                          : 'Keep this friend fixed on your home screen widget'}
+                      </span>
+                    </div>
+                    <Pin size={16} className={`shrink-0 ${(pinnedFriendUsername || '').toLowerCase() === (selectedFriend.user?.username || '').toLowerCase() ? 'text-black fill-current' : 'text-[#71717a]'}`} />
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => handleRemoveOrBlock(selectedFriend.friendshipId, 'remove')}

@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell } from 'lucide-react';
+import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -28,6 +28,7 @@ import ChooseUsername from '../components/ChooseUsername';
 import FriendsModal from '../components/FriendsModal';
 import PrivacyModal from '../components/PrivacyModal';
 import { guideSections } from '../lib/guideContent';
+import { getDisplayFriend, formatBriefActivity, getActivityBadge, getSafeTrackArt } from '../lib/friendsPresets';
 
 let globalAudioCtx = null;
 const getAudioCtx = () => {
@@ -728,9 +729,36 @@ export default function App() {
   const touchStartXRef = useRef(null);
   const touchStartYRef = useRef(null);
 
-  // --- In-App Notifications State & Polling ---
+  // --- In-App Notifications & Friends Widget State ---
   const [friendsIncomingCount, setFriendsIncomingCount] = useState(0);
   const [activeInAppNotification, setActiveInAppNotification] = useState(null);
+  const [friendsList, setFriendsList] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('daybase_friends_cache');
+        if (cached) return JSON.parse(cached);
+      } catch (_) {}
+    }
+    return [];
+  });
+  const [pinnedFriendUsername, setPinnedFriendUsername] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('daybase_pinned_friend_username') || '';
+    }
+    return '';
+  });
+
+  useEffect(() => {
+    const handlePinnedChange = (e) => {
+      setPinnedFriendUsername(e.detail || '');
+    };
+    window.addEventListener('daybase_pinned_friend_changed', handlePinnedChange);
+    return () => window.removeEventListener('daybase_pinned_friend_changed', handlePinnedChange);
+  }, []);
+
+  const activeFriendToDisplay = useMemo(() => {
+    return getDisplayFriend(friendsList, pinnedFriendUsername);
+  }, [friendsList, pinnedFriendUsername]);
 
   useEffect(() => {
     if (!isSignedIn) return;
@@ -748,13 +776,21 @@ export default function App() {
         const totalCount = incomingReqs.length + notifs.length;
         setFriendsIncomingCount(totalCount);
 
+        const list = Array.isArray(data.friends) ? data.friends : [];
+        setFriendsList(list);
+        if (typeof window !== 'undefined' && list.length > 0) {
+          try {
+            localStorage.setItem('daybase_friends_cache', JSON.stringify(list));
+          } catch (_) {}
+        }
+
         if (notifs.length > 0) {
           const latest = notifs[0];
           setActiveInAppNotification({
             id: latest.id,
             type: latest.type || 'nudge',
             user: { username: latest.fromUsername, name: latest.fromName, avatar: latest.fromAvatar },
-            message: latest.type === 'cheer' ? 'cheered you on! 🔥' : latest.type === 'study' ? 'asked to study together! 📚' : 'nudged you! 👋',
+            message: latest.type === 'cheer' ? 'cheered you on' : latest.type === 'study' ? 'asked to study together' : 'nudged you',
             isRequest: false,
           });
         } else if (incomingReqs.length > 0) {
@@ -3119,6 +3155,17 @@ export default function App() {
     if (widgetId === 'friends') {
       if (mode === 'hidden') return null;
 
+      const friend = activeFriendToDisplay;
+      const brief = formatBriefActivity(friend?.presence);
+      const friendName = friend?.displayName || friend?.user?.name || friend?.user?.username || (t('friendsTitle') || 'Friends');
+      const friendAvatar = friend?.user?.avatar || 'user';
+      const isPinned = Boolean(friend?.isPinned);
+      const badge = getActivityBadge(friend?.presence, isPinned);
+      const isOnline = friend?.presence?.kind && friend?.presence?.kind !== 'idle';
+      const hasMusic = friend?.presence?.hasMusicBadge || friend?.presence?.kind === 'music';
+      const trackArt = (friend?.presence?.art || friend?.presence?.secArt);
+      const safeArtUrl = trackArt ? getSafeTrackArt(trackArt) : null;
+
       if (size === 'compact') {
         return (
           <div 
@@ -3127,27 +3174,44 @@ export default function App() {
             data-no-day-swipe="true"
             className="col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel flex items-center justify-between border border-white/10 dark:border-white/18 shadow-lg cursor-pointer active:scale-[0.99] hover:bg-white/10 transition-all duration-200 select-none min-h-[58px]"
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shrink-0">
-                <Users size={14} strokeWidth={2.6} />
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <div className="relative w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shrink-0">
+                <AvatarIcon name={friendAvatar} size={16} className="text-black" />
+                {isPinned ? (
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-black text-white flex items-center justify-center border border-white/40">
+                    <Pin size={6} className="fill-current" />
+                  </span>
+                ) : isOnline ? (
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border border-[#121214] shadow-[0_0_6px_rgba(52,211,153,0.9)]" />
+                ) : null}
               </div>
-              <div className="flex flex-col min-w-0">
-                <div className="flex items-center gap-1.5">
+
+              <div className="flex flex-col min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 min-w-0">
                   <span className="text-[12px] font-bold text-white tracking-tight truncate leading-tight">
-                    {t('friendsTitle') || 'Friends'}
+                    {friendName}
                   </span>
                   {friendsIncomingCount > 0 && (
-                    <span className="px-1.5 py-0.2 rounded-full bg-red-500 text-white font-black text-[9px] leading-tight">
+                    <span className="px-1.5 py-0.2 rounded-full bg-red-500 text-white font-black text-[9px] leading-tight shrink-0">
                       {friendsIncomingCount}
                     </span>
                   )}
                 </div>
                 <span className="text-[10px] text-white/60 truncate leading-tight mt-0.5 font-medium">
-                  {friendsIncomingCount > 0 ? `${friendsIncomingCount} new notifications` : (t('friendsTitle') || 'Friends')}
+                  {friendsIncomingCount > 0 ? `${friendsIncomingCount} pending notifications` : brief}
                 </span>
               </div>
             </div>
-            <div className={`w-2 h-2 rounded-full shrink-0 ${friendsIncomingCount > 0 ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]' : 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'}`} />
+
+            <div className="flex items-center gap-1 shrink-0 pl-1">
+              {friend?.presence?.right && friend?.presence?.kind !== 'idle' ? (
+                <span className="font-mono text-[10px] font-bold text-white/80">
+                  {friend.presence.right}
+                </span>
+              ) : (
+                <div className={`w-2 h-2 rounded-full shrink-0 ${friendsIncomingCount > 0 ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]' : isOnline ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-white/30'}`} />
+              )}
+            </div>
           </div>
         );
       }
@@ -3159,41 +3223,77 @@ export default function App() {
           data-no-day-swipe="true"
           className="col-span-2 w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between border border-white/10 shadow-lg cursor-pointer active:scale-[0.99] hover:bg-white/10 transition-all duration-200 select-none min-h-[58px]"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shrink-0">
-              <Users size={15} strokeWidth={2.6} />
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="text-[13px] font-bold text-white tracking-tight">
-                  {t('friendsTitle') || 'Friends'}
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            {/* Friend Avatar */}
+            <div className="relative w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shrink-0">
+              <AvatarIcon name={friendAvatar} size={20} className="text-black" />
+              {hasMusic ? (
+                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-black text-white border border-white/30 flex items-center justify-center shadow-md">
+                  <Music size={8} strokeWidth={2.8} />
                 </span>
+              ) : (
+                <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#121214] ${isOnline ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)]' : 'bg-white/30'}`} />
+              )}
+            </div>
+
+            {/* Friend Details & "بريف في رغيف" */}
+            <div className="flex flex-col min-w-0 flex-1 pr-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[13px] font-bold text-white tracking-tight truncate leading-tight">
+                  {friendName}
+                </span>
+
                 {friendsIncomingCount > 0 ? (
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-white text-black font-black uppercase tracking-wider">
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-white text-black font-black uppercase tracking-wider shrink-0">
                     {friendsIncomingCount} NEW
                   </span>
+                ) : isPinned ? (
+                  <span className="inline-flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full bg-white text-black font-black uppercase tracking-wider shrink-0">
+                    <Pin size={8} className="fill-current" />
+                    PINNED
+                  </span>
                 ) : (
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/15 text-white/80 font-bold uppercase tracking-wider">
-                    {'ACTIVE'}
+                  <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 ${isOnline ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/15 text-white/80'}`}>
+                    {badge}
                   </span>
                 )}
               </div>
-              <span className="text-[11px] text-white/50 font-medium">
-                {friendsIncomingCount > 0 ? `${friendsIncomingCount} pending notifications & requests` : 'Activity, Focus & Study together'}
+
+              {/* Brief Activity ("بريف في رغيف") */}
+              <span className="text-[11px] text-white/60 font-medium truncate mt-0.5 leading-tight">
+                {friendsIncomingCount > 0 
+                  ? `${friendsIncomingCount} pending notifications & requests` 
+                  : brief}
               </span>
             </div>
           </div>
-          {/* Avatar bubbles */}
-          <div className="flex items-center -space-x-1.5 shrink-0">
-            <div className="w-6 h-6 rounded-full bg-[#1a1a1a] border border-white/30 text-[10px] font-bold text-white flex items-center justify-center">
-              A
-            </div>
-            <div className="w-6 h-6 rounded-full bg-[#1a1a1a] border border-white/30 text-[10px] font-bold text-white flex items-center justify-center">
-              S
-            </div>
-            <div className="w-6 h-6 rounded-full bg-[#1a1a1a] border border-white/30 text-[10px] font-bold text-white flex items-center justify-center">
-              O
-            </div>
+
+          {/* Right Section: Spotify Cover Art or Timer/Status */}
+          <div className="flex items-center gap-2.5 shrink-0 pl-1">
+            {safeArtUrl ? (
+              <div className="w-9 h-9 rounded-xl bg-black/60 border border-white/15 overflow-hidden flex items-center justify-center shrink-0 shadow-md">
+                <img 
+                  src={safeArtUrl} 
+                  alt={friend?.presence?.secTitle || 'Spotify'} 
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              </div>
+            ) : friend?.presence?.right && friend?.presence?.kind !== 'idle' ? (
+              <div className="flex flex-col items-end">
+                <span className="font-mono text-[12px] font-bold text-white tracking-tight">
+                  {friend.presence.right}
+                </span>
+                <span className="text-[9px] text-white/40 font-mono uppercase tracking-wider">
+                  {friend.presence.kind === 'focus' ? 'TIME LEFT' : friend.presence.kind === 'flight' ? 'REMAINING' : 'ACTIVE'}
+                </span>
+              </div>
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40">
+                <Users size={14} />
+              </div>
+            )}
           </div>
         </div>
       );
@@ -7652,6 +7752,15 @@ export default function App() {
               myAvatar={avatar}
               lang={lang}
               themeColor={themeColor}
+              pinnedFriendUsername={pinnedFriendUsername}
+              onTogglePinFriend={(username) => {
+                const next = (pinnedFriendUsername || '').toLowerCase() === (username || '').toLowerCase() ? '' : username;
+                setPinnedFriendUsername(next);
+                if (typeof window !== 'undefined') {
+                  if (next) localStorage.setItem('daybase_pinned_friend_username', next);
+                  else localStorage.removeItem('daybase_pinned_friend_username');
+                }
+              }}
             />,
             document.body
           )}
