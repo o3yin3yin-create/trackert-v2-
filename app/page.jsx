@@ -426,10 +426,21 @@ export default function App() {
   const [habits, setHabits] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('daybase_habits_v4');
-      return saved ? JSON.parse(saved) : [
+      const savedOrder = localStorage.getItem('daybase_habit_order');
+      let list = saved ? JSON.parse(saved) : [
         { id: '1', name: 'Workout', type: 'single', subItems: [] },
         { id: '2', name: 'Prayers', type: 'multi', subItems: ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] }
       ];
+      if (savedOrder && Array.isArray(list)) {
+        try {
+          const orderIds = JSON.parse(savedOrder);
+          if (Array.isArray(orderIds)) {
+            const orderMap = new Map(orderIds.map((id, idx) => [id, idx]));
+            list.sort((a, b) => (orderMap.has(a.id) ? orderMap.get(a.id) : 999) - (orderMap.has(b.id) ? orderMap.get(b.id) : 999));
+          }
+        } catch (_) {}
+      }
+      return list;
     }
     return [];
   });
@@ -1187,7 +1198,19 @@ export default function App() {
           }
 
           if (Array.isArray(authoritative.habits)) {
-             const cleanHabits = authoritative.habits.filter(h => h && h.id && !deletedHabitIdsRef.current.has(h.id));
+             let cleanHabits = authoritative.habits.filter(h => h && h.id && !deletedHabitIdsRef.current.has(h.id));
+             if (typeof window !== 'undefined') {
+               const savedOrder = localStorage.getItem('daybase_habit_order');
+               if (savedOrder) {
+                 try {
+                   const orderIds = JSON.parse(savedOrder);
+                   if (Array.isArray(orderIds)) {
+                     const orderMap = new Map(orderIds.map((id, idx) => [id, idx]));
+                     cleanHabits.sort((a, b) => (orderMap.has(a.id) ? orderMap.get(a.id) : 999) - (orderMap.has(b.id) ? orderMap.get(b.id) : 999));
+                   }
+                 } catch (_) {}
+               }
+             }
              setHabits(cleanHabits);
              if (typeof window !== 'undefined') localStorage.setItem('daybase_habits_v4', JSON.stringify(cleanHabits));
           }
@@ -2256,6 +2279,23 @@ export default function App() {
       localStorage.setItem('daybase_deleted_habits', JSON.stringify(Array.from(deletedHabitIdsRef.current)));
     }
     setHabits(prev => prev.filter(h => h.id !== habitId));
+    markLocalMutation();
+  };
+
+  const moveHabit = (index, direction) => {
+    haptic('light');
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= habits.length) return;
+    const newHabits = [...habits];
+    const temp = newHabits[index];
+    newHabits[index] = newHabits[targetIndex];
+    newHabits[targetIndex] = temp;
+    setHabits(newHabits);
+    const newOrder = newHabits.map(h => h.id);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('daybase_habits_v4', JSON.stringify(newHabits));
+      localStorage.setItem('daybase_habit_order', JSON.stringify(newOrder));
+    }
     markLocalMutation();
   };
 
@@ -3744,8 +3784,28 @@ export default function App() {
                   <span className="block text-xs font-bold tracking-wider text-white/40 uppercase mb-3">
                     {'Registered Habits'} ({habits.length})
                   </span>
-                  {habits.map(h => (
+                  {habits.map((h, idx) => (
                     <div key={h.id} className="flex items-center gap-2 transition-all duration-200">
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => moveHabit(idx, 'up')}
+                          disabled={idx === 0}
+                          className="p-1.5 rounded-xl bg-white/5 hover:bg-white/15 text-white/70 hover:text-white disabled:opacity-20 disabled:pointer-events-none transition-all active:scale-90 cursor-pointer"
+                          title="Move up"
+                        >
+                          <ChevronUp size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveHabit(idx, 'down')}
+                          disabled={idx === habits.length - 1}
+                          className="p-1.5 rounded-xl bg-white/5 hover:bg-white/15 text-white/70 hover:text-white disabled:opacity-20 disabled:pointer-events-none transition-all active:scale-90 cursor-pointer"
+                          title="Move down"
+                        >
+                          <ChevronDown size={13} />
+                        </button>
+                      </div>
                       <div 
                         onClick={() => openEditHabit(h)}
                         className="flex-1 bg-white/5 hover:bg-white/10 px-4 py-3.5 rounded-2xl truncate flex items-center justify-between border border-white/10 shadow-sm cursor-pointer active:scale-[0.99] transition-all"
@@ -5641,7 +5701,7 @@ export default function App() {
             </div>
 
             {/* Mobile Habits Cards Grid */}
-            <div className="grid grid-cols-2 gap-3 items-start w-full">
+            <div className="grid grid-cols-2 gap-3 items-start w-full [grid-auto-flow:dense]">
               {activeScheduledHabits.map((habit) => renderHabitCard(habit))}
               {habits.length === 0 && (
                 <div className="col-span-2 text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-10 select-none">{t('noHabitsYet')}</div>
@@ -5766,7 +5826,7 @@ export default function App() {
               </div>
 
               {/* Habits Cards Grid */}
-              <div className="grid grid-cols-2 gap-3 mt-1 items-start w-full">
+              <div className="grid grid-cols-2 gap-3 mt-1 items-start w-full [grid-auto-flow:dense]">
                 {activeScheduledHabits.map((habit) => renderHabitCard(habit))}
                 {habits.length === 0 && (
                   <div className="col-span-2 text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-10 select-none">{t('noHabitsYet')}</div>

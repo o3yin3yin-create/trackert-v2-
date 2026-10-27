@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { translations } from '@/lib/translations';
+import AvatarIcon from '@/components/AvatarIcon';
 
 // Default presence presets to enrich friends with realistic activity states
 const PRESENCE_PRESETS = [
@@ -157,42 +158,42 @@ const PRESENCE_PRESETS = [
 const DEMO_FRIENDS = [
   {
     friendshipId: 'demo-ahmed',
-    user: { username: 'ahmed', name: 'Ahmed' },
+    user: { username: 'ahmed', name: 'Ahmed', avatar: 'crown' },
     displayName: 'Ahmed',
     initial: 'A',
     presence: PRESENCE_PRESETS[0],
   },
   {
     friendshipId: 'demo-sara',
-    user: { username: 'sara', name: 'Sara' },
+    user: { username: 'sara', name: 'Sara', avatar: 'sparkles' },
     displayName: 'Sara',
     initial: 'S',
     presence: PRESENCE_PRESETS[1],
   },
   {
     friendshipId: 'demo-omar',
-    user: { username: 'omar', name: 'Omar' },
+    user: { username: 'omar', name: 'Omar', avatar: 'flame' },
     displayName: 'Omar',
     initial: 'O',
     presence: PRESENCE_PRESETS[2],
   },
   {
     friendshipId: 'demo-mona',
-    user: { username: 'mona', name: 'Mona' },
+    user: { username: 'mona', name: 'Mona', avatar: 'rocket' },
     displayName: 'Mona',
     initial: 'M',
     presence: PRESENCE_PRESETS[3],
   },
   {
     friendshipId: 'demo-youssef',
-    user: { username: 'youssef', name: 'Youssef' },
+    user: { username: 'youssef', name: 'Youssef', avatar: 'headphones' },
     displayName: 'Youssef',
     initial: 'Y',
     presence: PRESENCE_PRESETS[4],
   },
   {
     friendshipId: 'demo-hana',
-    user: { username: 'hana', name: 'Hana' },
+    user: { username: 'hana', name: 'Hana', avatar: 'smile' },
     displayName: 'Hana',
     initial: 'H',
     presence: PRESENCE_PRESETS[5],
@@ -241,29 +242,6 @@ export default function FriendsModal({
 
   // In-list filter state
   const [listFilter, setListFilter] = useState('');
-
-  // Password Protection (admin2005)
-  const [isUnlocked, setIsUnlocked] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('bokra_friends_unlocked') === 'true';
-    }
-    return false;
-  });
-  const [enteredPassword, setEnteredPassword] = useState('');
-  const [passwordError, setPasswordError] = useState(false);
-
-  const handlePasswordSubmit = (e) => {
-    e.preventDefault();
-    if (enteredPassword.trim() === 'admin2005') {
-      setIsUnlocked(true);
-      setPasswordError(false);
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('bokra_friends_unlocked', 'true');
-      }
-    } else {
-      setPasswordError(true);
-    }
-  };
 
   // Privacy switches state
   const [ghostMode, setGhostMode] = useState(false);
@@ -649,62 +627,6 @@ export default function FriendsModal({
 
   if (!isOpen) return null;
 
-  if (!isUnlocked) {
-    return (
-      <div className="fixed inset-0 z-[10005] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-        <div 
-          dir={isRtl ? 'rtl' : 'ltr'}
-          className="bg-[#121214] border border-white/10 rounded-3xl p-7 max-w-sm w-full text-center shadow-2xl flex flex-col items-center animate-in fade-in zoom-in-95"
-        >
-          <div className="w-14 h-14 rounded-2xl bg-white/10 text-white flex items-center justify-center mb-4 border border-white/10 shadow-lg">
-            <Lock size={26} strokeWidth={2.5} />
-          </div>
-          <h3 className="text-xl font-black text-white mb-1.5 tracking-tight">
-            {t('friendsTitle')}
-          </h3>
-          <p className="text-xs text-white/50 mb-6 leading-relaxed max-w-xs">
-            {t('friendsPasswordRequired')}
-          </p>
-
-          <form onSubmit={handlePasswordSubmit} className="w-full flex flex-col gap-3">
-            <input
-              type="password"
-              value={enteredPassword}
-              onChange={(e) => {
-                setEnteredPassword(e.target.value);
-                if (passwordError) setPasswordError(false);
-              }}
-              placeholder={t('enterPassword')}
-              autoFocus
-              className="w-full bg-[#1c1c1e] border border-white/15 focus:border-white/40 px-4 py-3 rounded-2xl text-white text-center font-mono font-bold text-base outline-none transition-all placeholder:text-white/20"
-            />
-
-            {passwordError && (
-              <span className="text-xs text-red-400 font-bold animate-fadeIn">
-                {t('wrongPassword')}
-              </span>
-            )}
-
-            <button
-              type="submit"
-              className="w-full py-3.5 rounded-2xl bg-white text-black font-black text-sm hover:bg-white/90 active:scale-[0.98] transition-all shadow-lg cursor-pointer mt-1"
-            >
-              {t('unlock')}
-            </button>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-xs text-white/40 hover:text-white transition-colors cursor-pointer py-1.5"
-            >
-              {t('cancel') || 'Cancel'}
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
   // Filtered friends list
   const cleanFilter = listFilter.trim().toLowerCase().replace(/^@/, '');
   const filteredFriends = friendsWithPresence.filter((f) => {
@@ -808,7 +730,7 @@ export default function FriendsModal({
                         style={ring}
                       >
                         <div className="w-full h-full rounded-full bg-[#1a1a1a] flex items-center justify-center text-white font-bold text-base">
-                          {f.initial}
+                          <AvatarIcon name={f.user?.avatar || 'user'} size={22} className="text-white" />
                         </div>
                         {f.presence.hasMusicBadge && (
                           <span className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full bg-white border-2 border-black flex items-center justify-center text-black shadow-md">
@@ -975,7 +897,7 @@ export default function FriendsModal({
                               style={ring}
                             >
                               <div className="w-full h-full rounded-full bg-[#1a1a1a] text-white flex items-center justify-center font-bold text-base uppercase">
-                                {f.initial}
+                                <AvatarIcon name={f.user?.avatar || 'user'} size={22} className="text-white" />
                               </div>
                               {f.presence.hasMusicBadge && (
                                 <span className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full bg-white border-2 border-[#0d0d0d] flex items-center justify-center text-black shadow-md">
@@ -1357,7 +1279,7 @@ export default function FriendsModal({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-12 h-12 rounded-full bg-[#0a0a0a] text-white flex items-center justify-center font-bold text-[20px] uppercase shrink-0">
-                  {selectedFriend.initial}
+                  <AvatarIcon name={selectedFriend.user?.avatar || 'user'} size={24} className="text-white" />
                 </div>
                 <div className="flex flex-col min-w-0">
                   <span className="text-[20px] font-bold tracking-tight text-[#0a0a0a] truncate leading-tight">
@@ -1435,16 +1357,29 @@ export default function FriendsModal({
               </span>
 
               {/* Big Title */}
-              <span 
-                className="font-black tracking-tight text-[#0a0a0a] leading-none select-text"
-                style={{ fontSize: `${selectedFriend.presence.bigSize}px` }}
-              >
-                {selectedFriend.presence.big}
-              </span>
-
-              <span className="text-[14px] text-[#525252]">
-                {selectedFriend.presence.sub}
-              </span>
+              <div className="flex items-center gap-3">
+                {selectedFriend.presence.kind === 'music' && (selectedFriend.presence.art || selectedFriend.presence.secArt) && (
+                  <div className="w-14 h-14 rounded-[14px] overflow-hidden shadow-md shrink-0 border border-black/10">
+                    <img 
+                      src={selectedFriend.presence.art || selectedFriend.presence.secArt} 
+                      alt={selectedFriend.presence.big || 'Album'} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  </div>
+                )}
+                <div className="flex flex-col min-w-0">
+                  <span 
+                    className="font-black tracking-tight text-[#0a0a0a] leading-none select-text truncate"
+                    style={{ fontSize: `${selectedFriend.presence.bigSize}px` }}
+                  >
+                    {selectedFriend.presence.big}
+                  </span>
+                  <span className="text-[14px] text-[#525252] mt-1 truncate">
+                    {selectedFriend.presence.sub}
+                  </span>
+                </div>
+              </div>
 
               {/* Progress Bar (if hasBar) */}
               {selectedFriend.presence.hasBar && (
@@ -1493,8 +1428,17 @@ export default function FriendsModal({
             {/* Secondary Section (e.g. Spotify Track card) */}
             {selectedFriend.presence.hasSec && (
               <div className="flex items-center gap-3 border-2 border-[#e5e5e5] rounded-[20px] p-2.5 px-3">
-                <div className="w-11 h-11 rounded-[10px] bg-[#0a0a0a] text-white flex items-center justify-center shrink-0">
-                  <Music size={18} />
+                <div className="w-11 h-11 rounded-[12px] bg-[#0a0a0a] text-white flex items-center justify-center shrink-0 overflow-hidden relative border border-black/10">
+                  {selectedFriend.presence.secArt ? (
+                    <img 
+                      src={selectedFriend.presence.secArt} 
+                      alt={selectedFriend.presence.secTitle || 'Spotify'} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  ) : (
+                    <Music size={18} />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0 flex flex-col gap-1">
                   <span className="text-[14px] font-bold text-[#0a0a0a] truncate leading-tight">

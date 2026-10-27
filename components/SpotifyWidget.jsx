@@ -25,6 +25,7 @@ export default function SpotifyWidget({
     songUrl: null,
     deviceName: null
   });
+  const [artError, setArtError] = useState(false);
   const [localProgress, setLocalProgress] = useState(0);
   const [loadingAction, setLoadingAction] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
@@ -73,6 +74,7 @@ export default function SpotifyWidget({
         }
         if (isMounted) {
           setData(json);
+          setArtError(false);
           if (json.progressMs !== undefined) {
             setLocalProgress(json.progressMs);
           }
@@ -368,10 +370,11 @@ export default function SpotifyWidget({
 
         <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1.5 pointer-events-none">
           <div className="relative w-8 h-8 rounded-xl bg-white/10 overflow-hidden flex items-center justify-center shrink-0 border border-white/10">
-            {data.albumArt ? (
+            {data.albumArt && !artError ? (
               <img 
                 src={data.albumArt} 
                 alt={data.title || 'Spotify'} 
+                onError={() => setArtError(true)}
                 className={`w-full h-full object-cover transition-transform duration-1000 ${data.isPlaying ? 'scale-105' : 'grayscale-[40%]'}`} 
               />
             ) : (
@@ -502,10 +505,11 @@ export default function SpotifyWidget({
         onClick={() => triggerControl(data.isPlaying ? 'pause' : 'play')}
         className="flex items-center gap-3 px-3.5 py-1.5 rounded-full liquid-panel border border-white/10 shadow-lg text-white cursor-pointer active:scale-95 transition-all select-none"
       >
-        {data.albumArt ? (
+        {data.albumArt && !artError ? (
           <img 
             src={data.albumArt} 
             alt={data.title} 
+            onError={() => setArtError(true)}
             className={`w-6 h-6 rounded-full object-cover shadow-sm ${data.isPlaying ? 'animate-spin' : ''}`}
             style={{ animationDuration: '6s' }} 
           />
@@ -539,7 +543,7 @@ export default function SpotifyWidget({
       title="Swipe left/right to skip • Tap to play/pause"
     >
       {/* Background Ambient Glow from Album Art (Subtle Monochrome) */}
-      {data.albumArt && (
+      {data.albumArt && !artError && (
         <div 
           className="absolute inset-0 opacity-10 pointer-events-none blur-3xl scale-150 grayscale"
           style={{
@@ -575,10 +579,11 @@ export default function SpotifyWidget({
       {/* Left: Album Thumbnail + Title + Artist */}
       <div className="flex items-center gap-3 min-w-0 flex-1 relative z-10 pr-2">
         <div className="relative shrink-0">
-          {data.albumArt ? (
+          {data.albumArt && !artError ? (
             <img 
               src={data.albumArt} 
               alt={data.title || 'Album Art'} 
+              onError={() => setArtError(true)}
               className={`w-10 h-10 rounded-xl object-cover shadow-md border border-white/10 transition-opacity ${data.isPlaying ? 'opacity-100' : 'opacity-60'}`}
             />
           ) : (
