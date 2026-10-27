@@ -3,7 +3,7 @@
 **Project**: bokra (`tracker-v2`)  
 **Audit Date**: October 27, 2026  
 **Auditor Roles**: Security Engineer, QA Engineer, DevOps  
-**Target Environment**: Production Build on Node.js 24 / Next.js 16.2.6 (Turbopack) with Neon PostgreSQL  
+**Target Environment**: Production Build on Node.js 24 / Next.js 16.4.3 (Turbopack) with Neon PostgreSQL  
 
 ---
 
@@ -44,7 +44,7 @@ The site is ready for a controlled/beta launch, but before opening to high-volum
 | **VULN-10** | Verbose Error Message Leakage (`err.message`) in API Responses | **LOW** | `app/api/spotify/control/route.js`, `app/api/spotify/save-token/route.js` | **FIXED** | Replaced raw error message reflection with generic user-friendly error strings to prevent leaking database or network internals. |
 | **VULN-11** | Unbounded Memory Growth in Rate Limiter Map | **LOW** | `lib/friends.js` | **FIXED** | Created dedicated `lib/rateLimit.js` with automated sliding-window cleanup every 60 seconds to prune expired timestamps. |
 | **VULN-12** | Missing PostgreSQL Table Indexes on Foreign Keys | **MEDIUM** | `prisma/schema.prisma` | **FIXED** | Added `@@index([userId])` and `@@index([isNotifyEnabled])` on `Habit` model and applied to database via `npx prisma db push`. |
-| **VULN-13** | Dependency Vulnerabilities in Node Modules | **HIGH** | `package.json`, `package-lock.json` | **PARTIALLY FIXED** | Executed `npm audit fix`, reducing vulnerable packages from 38 down to 22. Remaining items are in deep transitive dev/framework dependencies. |
+| **VULN-13** | Dependency Vulnerabilities in Node Modules & Next.js Framework | **HIGH** | `package.json`, `package-lock.json` | **FIXED** | Upgraded `next` and `eslint-config-next` to `16.4.3` (latest stable 16.x release), resolving all critical and high severity Next.js, PostCSS, and Sharp vulnerabilities with zero build or runtime regressions. |
 
 ---
 
