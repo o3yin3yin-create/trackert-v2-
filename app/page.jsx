@@ -5528,7 +5528,7 @@ export default function App() {
               {/* Right: Account Avatar */}
               <div className="relative flex items-center justify-center shrink-0 window-no-drag" data-no-drag>
                 <Show when="signed-out">
-                  <SignInButton>
+                  <SignInButton mode="modal">
                     <button 
                       className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95 border border-white/20 shadow-sm"
                       title={!isOnline ? 'Offline' : isSyncing ? 'Syncing...' : 'Sign In'}
