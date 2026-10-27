@@ -2,11 +2,12 @@
 
 import React, { useState } from 'react';
 import { useUser, useAuth } from './AuthBridge';
+import { apiFetch } from '../lib/api';
 import { Loader2, ArrowRight, AlertCircle } from 'lucide-react';
 
 export default function ChooseUsername() {
   const { user } = useUser();
-  const { signOut } = useAuth();
+  const { signOut, getToken } = useAuth();
   const [value, setValue] = useState('');
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -21,16 +22,43 @@ export default function ChooseUsername() {
     if (tooShort || onlyNumbers || saving) return;
     setSaving(true);
     setError(null);
+
     try {
-      await user?.update({ username: clean });
+      let token = null;
+      if (typeof getToken === 'function') {
+        try {
+          token = await getToken();
+        } catch (_) {}
+      }
+
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await apiFetch('/api/user/username', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ username: clean })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data?.error || 'Failed to update username');
+        setSaving(false);
+        return;
+      }
+
+      try {
+        await user?.reload();
+      } catch (_) {}
+
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
     } catch (err) {
-      setError(
-        err?.errors?.[0]?.longMessage ??
-        err?.errors?.[0]?.message ??
-        err?.message ??
-        'Try another username'
-      );
-    } finally {
+      setError(err?.message || 'Network error, please try again.');
       setSaving(false);
     }
   }
