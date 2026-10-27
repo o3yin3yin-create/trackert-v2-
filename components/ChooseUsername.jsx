@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useUser, useAuth } from './AuthBridge';
-import { User, Loader2, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
+import { Loader2, ArrowRight, AlertCircle } from 'lucide-react';
 
 export default function ChooseUsername() {
   const { user } = useUser();
@@ -23,8 +23,13 @@ export default function ChooseUsername() {
     setError(null);
     try {
       await user?.update({ username: clean });
-    } catch (e) {
-      setError(e?.errors?.[0]?.longMessage ?? (e?.errors?.[0]?.message || e?.message || 'جرّب اسم تاني'));
+    } catch (err) {
+      setError(
+        err?.errors?.[0]?.longMessage ??
+        err?.errors?.[0]?.message ??
+        err?.message ??
+        'Try another username'
+      );
     } finally {
       setSaving(false);
     }
@@ -36,17 +41,19 @@ export default function ChooseUsername() {
       <div className="absolute w-[380px] h-[380px] rounded-full bg-white/[0.03] blur-3xl pointer-events-none -top-10" />
 
       <div className="w-full max-w-sm flex flex-col items-center text-center relative z-10">
-        {/* User Icon Badge */}
-        <div className="w-14 h-14 rounded-3xl bg-white/10 border border-white/10 flex items-center justify-center mb-6 shadow-2xl text-white">
-          <User size={26} strokeWidth={2.2} />
-        </div>
+        {/* Official bokra Logo */}
+        <img
+          src="/logo-transparent.png"
+          alt="bokra"
+          className="h-14 w-auto object-contain mb-5 select-none drop-shadow-2xl"
+        />
 
         {/* Title & Subtitle */}
         <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white mb-2">
           Choose Username
         </h1>
         <p className="text-xs sm:text-sm text-white/50 mb-7 max-w-xs leading-relaxed">
-          اختر اسم مستخدم فريد لحسابك لبدء استخدام نظام الأصدقاء.
+          Pick a unique username to connect with friends and track progress together.
         </p>
 
         {/* Username Form */}
@@ -75,7 +82,7 @@ export default function ChooseUsername() {
 
             {/* Guidance line */}
             <div className="flex items-center justify-between px-1 text-[11px] text-white/40 font-medium">
-              <span>4 حروف على الأقل، مش أرقام بس</span>
+              <span>At least 4 characters, cannot be numbers only</span>
               <span className="font-mono">{clean.length}/30</span>
             </div>
 
@@ -101,7 +108,7 @@ export default function ChooseUsername() {
             {saving ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
-                <span>جاري الحفظ...</span>
+                <span>Saving...</span>
               </>
             ) : (
               <>
