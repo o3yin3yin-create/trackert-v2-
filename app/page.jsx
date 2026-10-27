@@ -2880,22 +2880,24 @@ export default function App() {
         return (
           <div 
             key="friends-widget"
+            onClick={() => setIsFriendsModalOpen(true)}
             data-no-day-swipe="true"
-            className="col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel flex items-center justify-between border border-white/10 dark:border-white/18 shadow-lg opacity-80 select-none min-h-[58px]"
+            className="col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel flex items-center justify-between border border-white/10 dark:border-white/18 shadow-lg cursor-pointer active:scale-[0.99] hover:bg-white/10 transition-all duration-200 select-none min-h-[58px]"
           >
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white shrink-0">
-                <Users size={13} strokeWidth={2.5} />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shrink-0">
+                <Users size={14} strokeWidth={2.6} />
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-[12px] font-bold text-white tracking-tight truncate leading-tight">
-                  {'Friends'}
+                  {t('friendsTitle') || 'Friends'}
                 </span>
-                <span className="text-[10px] text-white/40 truncate leading-tight mt-0.5">
-                  {'Soon'}
+                <span className="text-[10px] text-white/60 truncate leading-tight mt-0.5 font-medium">
+                  {'3 active'}
                 </span>
               </div>
             </div>
+            <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
           </div>
         );
       }
@@ -2903,25 +2905,38 @@ export default function App() {
       return (
         <div 
           key="friends-widget"
+          onClick={() => setIsFriendsModalOpen(true)}
           data-no-day-swipe="true"
-          className="col-span-2 w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between border border-white/10 shadow-lg select-none opacity-80 min-h-[58px]"
+          className="col-span-2 w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between border border-white/10 shadow-lg cursor-pointer active:scale-[0.99] hover:bg-white/10 transition-all duration-200 select-none min-h-[58px]"
         >
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white shrink-0">
-              <Users size={14} strokeWidth={2.5} />
+            <div className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shrink-0">
+              <Users size={15} strokeWidth={2.6} />
             </div>
             <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <span className="text-[13px] font-bold text-white tracking-tight">
-                  {'Friends & Activity'}
+                  {t('friendsTitle') || 'Friends'}
                 </span>
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-white/10 text-white/60 font-bold uppercase">
-                  {'Soon'}
+                <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/15 text-white/80 font-bold uppercase tracking-wider">
+                  {'3 ACTIVE'}
                 </span>
               </div>
-              <span className="text-[10px] text-white/40 font-semibold">
-                {'Social accountability & streaks'}
+              <span className="text-[11px] text-white/50 font-medium">
+                {'Ahmed, Sara & 1 other active now'}
               </span>
+            </div>
+          </div>
+          {/* Avatar bubbles */}
+          <div className="flex items-center -space-x-1.5 shrink-0">
+            <div className="w-6 h-6 rounded-full bg-[#1a1a1a] border border-white/30 text-[10px] font-bold text-white flex items-center justify-center">
+              A
+            </div>
+            <div className="w-6 h-6 rounded-full bg-[#1a1a1a] border border-white/30 text-[10px] font-bold text-white flex items-center justify-center">
+              S
+            </div>
+            <div className="w-6 h-6 rounded-full bg-[#1a1a1a] border border-white/30 text-[10px] font-bold text-white flex items-center justify-center">
+              O
             </div>
           </div>
         </div>

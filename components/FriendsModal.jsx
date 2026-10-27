@@ -1,12 +1,203 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Users, Plus, X, Search, Check, Copy, Share2, 
-  Shield, AlertCircle, Loader2, ChevronLeft, ChevronRight 
+  Shield, AlertCircle, Loader2, ChevronLeft, ChevronRight,
+  Music, Plane, Clock, Sparkles, MoreHorizontal, ShieldAlert, Trash2
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { translations } from '@/lib/translations';
+
+// Default presence presets to enrich friends with realistic activity states
+const PRESENCE_PRESETS = [
+  {
+    kind: 'focus',
+    tag: 'Focus',
+    line: 'Focus 15:19 · Weightless',
+    right: '15:19',
+    status: 'Studying · listening to Spotify',
+    label: 'FOCUS SESSION',
+    big: '15:19',
+    bigSize: 56,
+    sub: 'left · cycle 2 of 4',
+    pct: 62,
+    hasBar: true,
+    barL: '10:41 done',
+    barR: '25:00',
+    hasChips: false,
+    chips: [],
+    hasDots: true,
+    dots: [1, 1, 0, 0],
+    action: 'Join session',
+    together: '6h 20m',
+    hasMusicBadge: true,
+    hasSec: true,
+    secTitle: 'Weightless',
+    secSub: 'Marconi Union · on Spotify',
+    secPct: 38,
+  },
+  {
+    kind: 'flight',
+    tag: 'Flight',
+    line: 'CAI → DXB · in the air',
+    right: '40 min',
+    status: 'On a focus flight',
+    label: 'FOCUS FLIGHT',
+    big: 'CAI → DXB',
+    bigSize: 38,
+    sub: 'Cairo to Dubai · 40 min left',
+    pct: 45,
+    hasBar: true,
+    barL: 'CAI',
+    barR: 'DXB',
+    hasChips: false,
+    chips: [],
+    hasDots: false,
+    dots: [],
+    action: 'Hop on this flight',
+    together: '3h 05m',
+    hasMusicBadge: false,
+    hasSec: false,
+  },
+  {
+    kind: 'music',
+    tag: 'Music',
+    line: 'Midnight City · M83',
+    right: '1:24',
+    status: 'Listening on Spotify',
+    label: 'LISTENING TO',
+    big: 'Midnight City',
+    bigSize: 34,
+    sub: 'M83',
+    pct: 38,
+    hasBar: true,
+    barL: '1:24',
+    barR: '4:03',
+    hasChips: false,
+    chips: [],
+    hasDots: false,
+    dots: [],
+    action: 'Listen along',
+    together: '1h 40m',
+    hasMusicBadge: true,
+    hasSec: false,
+  },
+  {
+    kind: 'lecture',
+    tag: 'Lecture',
+    line: 'In lecture · TT284 · GE4',
+    right: '48 min',
+    status: 'In a lecture',
+    label: 'IN LECTURE',
+    big: 'TT284',
+    bigSize: 44,
+    sub: 'Ends in 48 min',
+    pct: 0,
+    hasBar: false,
+    barL: '',
+    barR: '',
+    hasChips: true,
+    chips: ['11:30 AM', 'GE4', 'Weekly'],
+    hasDots: false,
+    dots: [],
+    action: 'Plan a study session',
+    together: '2h 10m',
+    hasMusicBadge: false,
+    hasSec: false,
+  },
+  {
+    kind: 'habit',
+    tag: 'Habit',
+    line: 'Just finished Prayers 5/5',
+    right: '5/5',
+    status: 'Finished a habit',
+    label: 'JUST FINISHED',
+    big: 'Prayers 5/5',
+    bigSize: 40,
+    sub: 'Streak: 12 days',
+    pct: 100,
+    hasBar: false,
+    barL: '',
+    barR: '',
+    hasChips: false,
+    chips: [],
+    hasDots: true,
+    dots: [1, 1, 1, 1, 1],
+    action: 'Cheer them on',
+    together: '4h 30m',
+    hasMusicBadge: false,
+    hasSec: false,
+  },
+  {
+    kind: 'idle',
+    tag: 'Idle',
+    line: 'Idle · last seen 2h ago',
+    right: '2h',
+    status: 'Not active',
+    label: 'IDLE',
+    big: 'Last seen 2h ago',
+    bigSize: 28,
+    sub: 'No activity right now',
+    pct: 0,
+    hasBar: false,
+    barL: '',
+    barR: '',
+    hasChips: false,
+    chips: [],
+    hasDots: false,
+    dots: [],
+    action: 'Ask to study',
+    together: '0h',
+    hasMusicBadge: false,
+    hasSec: false,
+  },
+];
+
+const DEMO_FRIENDS = [
+  {
+    friendshipId: 'demo-ahmed',
+    user: { username: 'ahmed', name: 'Ahmed' },
+    displayName: 'Ahmed',
+    initial: 'A',
+    presence: PRESENCE_PRESETS[0],
+  },
+  {
+    friendshipId: 'demo-sara',
+    user: { username: 'sara', name: 'Sara' },
+    displayName: 'Sara',
+    initial: 'S',
+    presence: PRESENCE_PRESETS[1],
+  },
+  {
+    friendshipId: 'demo-omar',
+    user: { username: 'omar', name: 'Omar' },
+    displayName: 'Omar',
+    initial: 'O',
+    presence: PRESENCE_PRESETS[2],
+  },
+  {
+    friendshipId: 'demo-mona',
+    user: { username: 'mona', name: 'Mona' },
+    displayName: 'Mona',
+    initial: 'M',
+    presence: PRESENCE_PRESETS[3],
+  },
+  {
+    friendshipId: 'demo-youssef',
+    user: { username: 'youssef', name: 'Youssef' },
+    displayName: 'Youssef',
+    initial: 'Y',
+    presence: PRESENCE_PRESETS[4],
+  },
+  {
+    friendshipId: 'demo-hana',
+    user: { username: 'hana', name: 'Hana' },
+    displayName: 'Hana',
+    initial: 'H',
+    presence: PRESENCE_PRESETS[5],
+  },
+];
 
 export default function FriendsModal({ 
   isOpen, 
@@ -31,8 +222,9 @@ export default function FriendsModal({
   const [outgoing, setOutgoing] = useState([]);
   const [blocked, setBlocked] = useState([]);
 
-  // Selected friend for bottom sheet
+  // Selected friend for presence bottom sheet
   const [selectedFriend, setSelectedFriend] = useState(null);
+  const [showManageSheet, setShowManageSheet] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
   // Search state in Add Friend view
@@ -93,6 +285,7 @@ export default function FriendsModal({
       loadFriends();
       setView('main');
       setSelectedFriend(null);
+      setShowManageSheet(false);
       setSearchQuery('');
       setSearchResult(null);
       setSearchPerformed(false);
@@ -138,6 +331,29 @@ export default function FriendsModal({
 
     return () => clearTimeout(timer);
   }, [searchQuery, view, t]);
+
+  // Assign presence states deterministically to friends
+  const friendsWithPresence = useMemo(() => {
+    if (friends.length === 0 && incoming.length === 0 && outgoing.length === 0) {
+      return DEMO_FRIENDS;
+    }
+    return friends.map((f, idx) => {
+      const preset = PRESENCE_PRESETS[idx % PRESENCE_PRESETS.length];
+      const friendName = f.user?.name || f.user?.username || 'Friend';
+      const initial = (friendName[0] || 'F').toUpperCase();
+      return {
+        ...f,
+        initial,
+        displayName: friendName,
+        presence: preset,
+      };
+    });
+  }, [friends, incoming, outgoing]);
+
+  // Count active friends (kind !== 'idle')
+  const activeFriendsCount = useMemo(() => {
+    return friendsWithPresence.filter((f) => f.presence.kind === 'focus' || f.presence.kind === 'flight' || f.presence.kind === 'music').length;
+  }, [friendsWithPresence]);
 
   // Action: Accept / Decline Request (Optimistic)
   const handleRespond = async (friendshipId, action) => {
@@ -222,6 +438,7 @@ export default function FriendsModal({
         setBlocked((prev) => [target, ...prev]);
       }
       setSelectedFriend(null);
+      setShowManageSheet(false);
     } else if (action === 'unblock') {
       setBlocked((prev) => prev.filter((b) => b.friendshipId !== friendshipId));
     }
@@ -272,14 +489,28 @@ export default function FriendsModal({
 
   // Filtered friends list
   const cleanFilter = listFilter.trim().toLowerCase().replace(/^@/, '');
-  const filteredFriends = friends.filter((f) => {
+  const filteredFriends = friendsWithPresence.filter((f) => {
     if (!cleanFilter) return true;
     const u = (f.user?.username || '').toLowerCase();
-    const n = (f.user?.name || '').toLowerCase();
+    const n = (f.displayName || '').toLowerCase();
     return u.includes(cleanFilter) || n.includes(cleanFilter);
   });
 
   const isEmpty = friends.length === 0 && incoming.length === 0;
+
+  // Helper for ring style
+  const getRingStyle = (kind, pct) => {
+    if (kind === 'idle') {
+      return { border: '2px solid #2a2a2a' };
+    }
+    if (kind === 'lecture' || kind === 'habit') {
+      return { border: '2px solid #ffffff' };
+    }
+    return {
+      background: `conic-gradient(#ffffff 0 ${pct}%, #3a3a3a 0)`,
+      padding: '2px',
+    };
+  };
 
   return (
     <div 
@@ -288,7 +519,7 @@ export default function FriendsModal({
     >
       {/* Toast banner */}
       {toastMessage && (
-        <div className="fixed top-6 z-[10020] bg-white text-black px-4 py-2 rounded-full font-bold text-xs shadow-2xl animate-in fade-in slide-in-from-top-4 duration-150">
+        <div className="fixed top-6 z-[10040] bg-white text-black px-4 py-2 rounded-full font-bold text-xs shadow-2xl animate-in fade-in slide-in-from-top-4 duration-150">
           {toastMessage}
         </div>
       )}
@@ -297,12 +528,12 @@ export default function FriendsModal({
       <div className="w-full max-w-md min-h-screen px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+3rem)] flex flex-col justify-between relative">
         
         {/* ========================================================= */}
-        {/* VIEW 1: MAIN FRIENDS LIST & EMPTY STATE                   */}
+        {/* VIEW 1: MAIN FRIENDS LIST & PRESENCE STORY BAR            */}
         {/* ========================================================= */}
         {view === 'main' && (
           <div className="flex-1 flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -312,9 +543,16 @@ export default function FriendsModal({
                 >
                   <ChevronLeft size={20} className={isRtl ? 'rotate-180' : ''} />
                 </button>
-                <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
-                  {t('friendsTitle')}
-                </h1>
+                <div className="flex items-center gap-2.5">
+                  <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
+                    {t('friendsTitle')}
+                  </h1>
+                  {!isEmpty && (
+                    <span className="text-[10px] font-bold tracking-widest text-[#b3b3b3] bg-[#171717] rounded-full px-2.5 py-1 uppercase shrink-0">
+                      {activeFriendsCount} ACTIVE
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center gap-2">
@@ -342,9 +580,46 @@ export default function FriendsModal({
               </div>
             </div>
 
-            {/* In-list Search Filter (Only shown when friends exist) */}
+            {/* Top Horizontal Presence Avatar Bar (Story Ring Bar) */}
+            {!isEmpty && friendsWithPresence.length > 0 && (
+              <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-3 mb-3 -mx-2 px-2">
+                {friendsWithPresence.map((f) => {
+                  const ring = getRingStyle(f.presence.kind, f.presence.pct);
+                  return (
+                    <button
+                      key={`story-${f.friendshipId}`}
+                      type="button"
+                      onClick={() => {
+                        setSelectedFriend(f);
+                        setShowManageSheet(false);
+                      }}
+                      className="flex flex-col items-center gap-1.5 shrink-0 w-[52px] cursor-pointer group active:scale-95 transition-transform"
+                    >
+                      <div 
+                        className="relative w-[50px] h-[50px] rounded-full flex items-center justify-center shrink-0"
+                        style={ring}
+                      >
+                        <div className="w-full h-full rounded-full bg-[#1a1a1a] flex items-center justify-center text-white font-bold text-base">
+                          {f.initial}
+                        </div>
+                        {f.presence.hasMusicBadge && (
+                          <span className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full bg-white border-2 border-black flex items-center justify-center text-black shadow-md">
+                            <Music size={9} strokeWidth={3} />
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-bold tracking-wider text-[#b3b3b3] group-hover:text-white transition-colors truncate max-w-full text-center">
+                        {f.presence.tag}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* In-list Search Filter */}
             {!isEmpty && (
-              <div className="relative flex items-center mb-6">
+              <div className="relative flex items-center mb-5">
                 <span className="absolute left-4 text-white/30 font-mono text-sm font-bold pointer-events-none select-none">
                   @
                 </span>
@@ -415,11 +690,11 @@ export default function FriendsModal({
               </div>
             ) : (
               /* POPULATED LIST */
-              <div className="flex-1 flex flex-col gap-6">
+              <div className="flex-1 flex flex-col gap-5">
                 {/* Requests Section */}
                 {incoming.length > 0 && (
-                  <div className="flex flex-col gap-3">
-                    <span className="text-[11px] font-bold tracking-widest text-white/40 uppercase px-1">
+                  <div className="flex flex-col gap-2.5">
+                    <span className="text-[10px] font-bold tracking-widest text-white/40 uppercase px-1">
                       {t('requests')} · {incoming.length}
                     </span>
                     {incoming.map((item) => (
@@ -464,8 +739,8 @@ export default function FriendsModal({
                 )}
 
                 {/* Friends Section */}
-                <div className="flex flex-col gap-3">
-                  <span className="text-[11px] font-bold tracking-widest text-white/40 uppercase px-1">
+                <div className="flex flex-col gap-2.5">
+                  <span className="text-[10px] font-bold tracking-widest text-white/40 uppercase px-1">
                     {t('friendsTitle')} · {filteredFriends.length}
                   </span>
 
@@ -474,38 +749,46 @@ export default function FriendsModal({
                       No friends found matching &ldquo;{listFilter}&rdquo;
                     </div>
                   ) : (
-                    filteredFriends.map((item) => {
-                      const friendName = item.user?.name || item.user?.username || 'Friend';
-                      const initial = friendName[0]?.toUpperCase() || 'F';
+                    filteredFriends.map((f) => {
+                      const ring = getRingStyle(f.presence.kind, f.presence.pct);
                       return (
                         <div
-                          key={item.friendshipId}
-                          onClick={() => setSelectedFriend(item)}
-                          className="bg-[#0c0c0e] hover:bg-white/[0.04] border border-white/10 rounded-2xl p-3.5 flex items-center justify-between cursor-pointer active:scale-[0.99] transition-all"
+                          key={f.friendshipId}
+                          onClick={() => {
+                            setSelectedFriend(f);
+                            setShowManageSheet(false);
+                          }}
+                          className="bg-[#0d0d0d] hover:bg-white/[0.04] border border-[#2a2a2a] rounded-[22px] px-3.5 py-3 h-[76px] flex items-center justify-between cursor-pointer active:scale-[0.99] transition-all select-none"
                         >
-                          <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
                             {/* Avatar with Ring */}
-                            <div className="w-11 h-11 rounded-full p-[2px] bg-white/20 shrink-0 flex items-center justify-center">
-                              <div className="w-full h-full rounded-full bg-[#1c1c1e] text-white flex items-center justify-center font-bold text-sm uppercase">
-                                {initial}
+                            <div 
+                              className="relative w-[48px] h-[48px] rounded-full flex items-center justify-center shrink-0"
+                              style={ring}
+                            >
+                              <div className="w-full h-full rounded-full bg-[#1a1a1a] text-white flex items-center justify-center font-bold text-base uppercase">
+                                {f.initial}
                               </div>
+                              {f.presence.hasMusicBadge && (
+                                <span className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full bg-white border-2 border-[#0d0d0d] flex items-center justify-center text-black shadow-md">
+                                  <Music size={9} strokeWidth={3} />
+                                </span>
+                              )}
                             </div>
-                            <div className="flex flex-col min-w-0">
-                              <span className="font-bold text-white text-[15px] truncate leading-tight">
-                                {friendName}
+
+                            <div className="flex flex-col min-w-0 flex-1 pr-2">
+                              <span className="font-bold text-white text-[16px] truncate leading-tight">
+                                {f.displayName}
                               </span>
-                              <span className="text-white/40 text-xs font-mono truncate leading-tight mt-0.5">
-                                @{item.user?.username}
+                              <span className="text-[#b3b3b3] text-[13px] truncate leading-tight mt-0.5">
+                                {f.presence.line}
                               </span>
                             </div>
                           </div>
 
-                          <div className="shrink-0 flex items-center gap-2">
-                            <span className="text-xs font-mono font-bold text-white/40">
-                              Connected
-                            </span>
-                            <ChevronRight size={14} className="text-white/30" />
-                          </div>
+                          <span className="font-mono text-[14px] font-bold text-white shrink-0 pl-1">
+                            {f.presence.right}
+                          </span>
                         </div>
                       );
                     })
@@ -831,92 +1114,219 @@ export default function FriendsModal({
       </div>
 
       {/* ========================================================= */}
-      {/* BOTTOM SHEET: FRIEND OPTIONS SHEET (TAP ANY FRIEND)       */}
+      {/* RICH BOTTOM SHEET: FRIEND PRESENCE & ACTIVITY WIDGET     */}
       {/* ========================================================= */}
       {selectedFriend && (
         <div className="fixed inset-0 z-[10030] flex flex-col justify-end">
           {/* Backdrop */}
           <div
-            onClick={() => setSelectedFriend(null)}
+            onClick={() => {
+              setSelectedFriend(null);
+              setShowManageSheet(false);
+            }}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
           />
 
-          {/* Sliding Sheet */}
-          <div className="relative z-10 w-full max-w-md mx-auto bg-white text-black rounded-t-[32px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col gap-5 shadow-2xl animate-in slide-in-from-bottom duration-200">
-            {/* Drag Handle */}
-            <div className="w-11 h-1.5 rounded-full bg-black/20 self-center mb-1" />
+          {/* Sliding White Presence Sheet */}
+          <div className="relative z-10 w-full max-w-md mx-auto bg-white text-[#0a0a0a] rounded-t-[32px] p-5 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col gap-4 shadow-2xl animate-in slide-in-from-bottom duration-200 max-h-[92vh] overflow-y-auto">
+            
+            {/* Top Handle */}
+            <div className="w-[44px] h-[5px] rounded-[3px] bg-[#d4d4d4] self-center mb-1" />
 
             {/* Friend Header */}
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-full bg-black text-white flex items-center justify-center font-bold text-lg uppercase shrink-0">
-                {selectedFriend.user?.name?.[0] || selectedFriend.user?.username?.[0] || 'F'}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-12 h-12 rounded-full bg-[#0a0a0a] text-white flex items-center justify-center font-bold text-[20px] uppercase shrink-0">
+                  {selectedFriend.initial}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[20px] font-bold tracking-tight text-[#0a0a0a] truncate leading-tight">
+                    {selectedFriend.displayName}
+                  </span>
+                  <span className="text-[13px] text-[#525252] truncate leading-tight mt-0.5">
+                    {selectedFriend.presence.status}
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-col min-w-0">
-                <span className="text-xl font-black text-black tracking-tight truncate leading-tight">
-                  {selectedFriend.user?.name || selectedFriend.user?.username}
-                </span>
-                <span className="text-xs text-black/50 font-mono truncate leading-tight mt-0.5">
-                  @{selectedFriend.user?.username}
-                </span>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                {/* Manage trigger (remove / block) */}
+                <button
+                  type="button"
+                  onClick={() => setShowManageSheet(!showManageSheet)}
+                  className="w-9 h-9 rounded-full bg-[#f0f0f0] hover:bg-[#e4e4e7] flex items-center justify-center text-[#0a0a0a] active:scale-90 transition-all cursor-pointer"
+                  title="Options"
+                >
+                  <MoreHorizontal size={18} />
+                </button>
+                {/* Close Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedFriend(null);
+                    setShowManageSheet(false);
+                  }}
+                  className="w-9 h-9 rounded-full bg-[#f0f0f0] hover:bg-[#e4e4e7] flex items-center justify-center text-[#0a0a0a] active:scale-90 transition-all cursor-pointer font-bold"
+                  aria-label="Close"
+                >
+                  <X size={16} strokeWidth={2.5} />
+                </button>
               </div>
             </div>
 
-            {/* Nudge Once a Day */}
-            <div className="flex flex-col gap-2 pt-2">
-              <span className="text-[10px] font-bold tracking-widest text-black/40 uppercase">
-                {t('nudgeOnceADay')}
-              </span>
-              <div className="flex gap-2 flex-wrap">
-                {[
-                  t('nudgeStudy'),
-                  t('nudgeJoining'),
-                  t('nudgeGoodLuck'),
-                ].map((nudge, idx) => (
+            {/* Management Tray (Revealed on click of ...) */}
+            {showManageSheet && (
+              <div className="bg-[#f7f7f8] rounded-2xl p-4 flex flex-col gap-3 border border-black/5 animate-in fade-in zoom-in-95 duration-150">
+                <span className="text-[10px] font-bold tracking-widest text-[#525252] uppercase">
+                  MANAGE FRIENDSHIP
+                </span>
+                <div className="flex flex-col divide-y divide-black/10">
                   <button
-                    key={idx}
                     type="button"
-                    onClick={() => {
-                      showToast(`Nudge "${nudge}" sent!`);
-                    }}
-                    className="px-4 py-2 rounded-full bg-[#f0f0f2] hover:bg-[#e4e4e7] active:scale-95 text-black font-bold text-xs transition-all cursor-pointer"
+                    onClick={() => handleRemoveOrBlock(selectedFriend.friendshipId, 'remove')}
+                    className="py-2.5 text-start flex items-center justify-between text-black hover:text-black/70 cursor-pointer"
                   >
-                    {nudge}
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold">{t('removeFriend')}</span>
+                      <span className="text-[11px] text-[#71717a]">{t('removeFriendDesc')}</span>
+                    </div>
+                    <Trash2 size={16} className="text-[#71717a] shrink-0" />
                   </button>
-                ))}
+
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveOrBlock(selectedFriend.friendshipId, 'block')}
+                    className="py-2.5 text-start flex items-center justify-between text-red-600 hover:text-red-700 cursor-pointer"
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold">{t('block')}</span>
+                      <span className="text-[11px] text-[#71717a]">{t('blockDesc')}</span>
+                    </div>
+                    <ShieldAlert size={16} className="text-red-500 shrink-0" />
+                  </button>
+                </div>
               </div>
+            )}
+
+            {/* Activity Card */}
+            <div className="bg-[#f5f5f5] rounded-[24px] p-5 flex flex-col gap-2.5">
+              <span className="font-mono text-[11px] font-bold tracking-[2px] text-[#525252] uppercase">
+                {selectedFriend.presence.label}
+              </span>
+
+              {/* Big Title */}
+              <span 
+                className="font-bold tracking-tight text-[#0a0a0a] leading-none select-text"
+                style={{ fontSize: `${selectedFriend.presence.bigSize}px` }}
+              >
+                {selectedFriend.presence.big}
+              </span>
+
+              <span className="text-[14px] text-[#525252]">
+                {selectedFriend.presence.sub}
+              </span>
+
+              {/* Progress Bar (if hasBar) */}
+              {selectedFriend.presence.hasBar && (
+                <div className="flex flex-col gap-2 pt-1">
+                  <div className="h-2 rounded-[4px] bg-[#d4d4d4] overflow-hidden">
+                    <div 
+                      className="h-full rounded-[4px] bg-[#0a0a0a] transition-all duration-500" 
+                      style={{ width: `${selectedFriend.presence.pct}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between font-mono text-[12px] font-bold text-[#404040]">
+                    <span>{selectedFriend.presence.barL}</span>
+                    <span>{selectedFriend.presence.barR}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Chips (e.g. Lecture) */}
+              {selectedFriend.presence.hasChips && (
+                <div className="flex gap-2 flex-wrap pt-1">
+                  {selectedFriend.presence.chips.map((chip, idx) => (
+                    <span 
+                      key={idx}
+                      className="font-mono text-[12px] font-bold bg-white text-[#0a0a0a] rounded-[10px] px-2.5 py-1.5 shadow-sm"
+                    >
+                      {chip}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Dots Indicator (e.g. Cycles or Habits) */}
+              {selectedFriend.presence.hasDots && (
+                <div className="flex gap-2 pt-1">
+                  {selectedFriend.presence.dots.map((dot, idx) => (
+                    <span 
+                      key={idx}
+                      className="w-3 h-3 rounded-full transition-colors"
+                      style={{ backgroundColor: dot ? '#0a0a0a' : '#c4c4c4' }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div className="h-[1px] bg-black/10 my-1" />
+            {/* Secondary Section (e.g. Spotify Track card) */}
+            {selectedFriend.presence.hasSec && (
+              <div className="flex items-center gap-3 border-2 border-[#e5e5e5] rounded-[20px] p-2.5 px-3">
+                <div className="w-11 h-11 rounded-[10px] bg-[#0a0a0a] text-white flex items-center justify-center shrink-0">
+                  <Music size={18} />
+                </div>
+                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                  <span className="text-[14px] font-bold text-[#0a0a0a] truncate leading-tight">
+                    {selectedFriend.presence.secTitle}
+                  </span>
+                  <span className="text-[12px] text-[#525252] truncate leading-tight">
+                    {selectedFriend.presence.secSub}
+                  </span>
+                  <div className="h-1 rounded-full bg-[#d4d4d4] overflow-hidden mt-0.5">
+                    <div 
+                      className="h-full rounded-full bg-[#0a0a0a]"
+                      style={{ width: `${selectedFriend.presence.secPct}%` }}
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => showToast(`Listening along to ${selectedFriend.presence.secTitle}...`)}
+                  className="h-9 px-3.5 rounded-full bg-[#f0f0f0] hover:bg-[#e4e4e7] font-bold text-[13px] text-[#0a0a0a] transition-all cursor-pointer active:scale-95 shrink-0"
+                >
+                  Listen along
+                </button>
+              </div>
+            )}
 
-            {/* Remove Friend Action */}
-            <button
-              type="button"
-              onClick={() => handleRemoveOrBlock(selectedFriend.friendshipId, 'remove')}
-              className="text-start flex flex-col gap-0.5 cursor-pointer group"
-            >
-              <span className="text-base font-bold text-black group-hover:text-black/70 transition-colors">
-                {t('removeFriend')}
-              </span>
-              <span className="text-xs text-black/50 leading-relaxed">
-                {t('removeFriendDesc')}
-              </span>
-            </button>
+            {/* Main Action Buttons */}
+            <div className="flex gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  showToast(`${selectedFriend.presence.action} with ${selectedFriend.displayName}!`);
+                }}
+                className="flex-1 h-[54px] rounded-full bg-[#0a0a0a] text-white font-bold text-[16px] flex items-center justify-center active:scale-[0.98] hover:bg-black/90 transition-all cursor-pointer shadow-lg"
+              >
+                {selectedFriend.presence.action}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  showToast(`Nudge sent to ${selectedFriend.displayName}!`);
+                }}
+                className="w-[110px] h-[54px] rounded-full border-2 border-[#0a0a0a] text-[#0a0a0a] font-bold text-[16px] flex items-center justify-center active:scale-[0.98] hover:bg-black/5 transition-all cursor-pointer"
+              >
+                Nudge
+              </button>
+            </div>
 
-            <div className="h-[1px] bg-black/10 my-1" />
+            {/* Together this week footer */}
+            <span className="text-[13px] text-[#525252] text-center select-none pt-0.5">
+              Together this week: {selectedFriend.presence.together}
+            </span>
 
-            {/* Block Action */}
-            <button
-              type="button"
-              onClick={() => handleRemoveOrBlock(selectedFriend.friendshipId, 'block')}
-              className="text-start flex flex-col gap-0.5 cursor-pointer group"
-            >
-              <span className="text-base font-bold text-red-600 group-hover:text-red-500 transition-colors">
-                {t('block')}
-              </span>
-              <span className="text-xs text-black/50 leading-relaxed">
-                {t('blockDesc')}
-              </span>
-            </button>
           </div>
         </div>
       )}
