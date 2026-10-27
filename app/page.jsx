@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass } from 'lucide-react';
+import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -1430,6 +1430,7 @@ export default function App() {
       const stateSnapshot = {
         ...latestStateRef.current,
         deletedHabitIds: deletedHabitsBeingPushed,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Africa/Cairo',
         updatedAt: Date.now()
       };
 
@@ -1634,6 +1635,7 @@ export default function App() {
   const [editHabitTime, setEditHabitTime] = useState("");
   const [editHabitDuration, setEditHabitDuration] = useState("");
   const [editHabitLocation, setEditHabitLocation] = useState("");
+  const [editHabitCategory, setEditHabitCategory] = useState("habit");
   const [editTimeHour, setEditTimeHour] = useState(4);
   const [editTimeMinute, setEditTimeMinute] = useState("00");
   const [editTimePeriod, setEditTimePeriod] = useState("PM");
@@ -1712,6 +1714,7 @@ export default function App() {
   const [habitTime, setHabitTime] = useState("");
   const [habitDuration, setHabitDuration] = useState("");
   const [habitLocation, setHabitLocation] = useState("");
+  const [habitCategory, setHabitCategory] = useState("habit");
   const [selectedTimeHour, setSelectedTimeHour] = useState(4);
   const [selectedTimeMinute, setSelectedTimeMinute] = useState("00");
   const [selectedTimePeriod, setSelectedTimePeriod] = useState("PM");
@@ -2222,6 +2225,7 @@ export default function App() {
       time: habitTime.trim() ? habitTime.trim() : null,
       duration: habitDuration.trim() ? habitDuration.trim() : null,
       location: habitLocation.trim() ? habitLocation.trim() : null,
+      category: habitCategory || 'habit',
       isPrivate: habitIsPrivate,
       updatedAt: Date.now()
     };
@@ -2230,6 +2234,7 @@ export default function App() {
     
     // Reset fields
     setNewHabitName("");
+    setHabitCategory('habit');
     setNewHabitType('single');
     setNewHabitSubItems(['', '']);
     setHabitFrequency('daily');
@@ -2275,6 +2280,7 @@ export default function App() {
     setEditHabitTime(habit.time || "");
     setEditHabitDuration(habit.duration || "");
     setEditHabitLocation(habit.location || "");
+    setEditHabitCategory(habit.category || 'habit');
     setEditHabitIsPrivate(Boolean(habit.isPrivate));
 
     // Parse time if exists (e.g. "04:30 PM")
@@ -2324,6 +2330,7 @@ export default function App() {
           time: editHabitTime.trim() ? editHabitTime.trim() : null,
           duration: editHabitDuration.trim() ? editHabitDuration.trim() : null,
           location: editHabitLocation.trim() ? editHabitLocation.trim() : null,
+          category: editHabitCategory || 'habit',
           isPrivate: editHabitIsPrivate,
           updatedAt: Date.now()
         };
@@ -3618,6 +3625,50 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* ---------------- ACTIVITY TYPE (FOR FRIENDS) ---------------- */}
+                <div className="mb-8 bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={15} className="text-white/50" />
+                      <span className="text-xs font-bold tracking-wider text-white/50 uppercase">
+                        {t('activityType')}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-white/40">
+                      {t('activityTypeDesc')}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {[
+                      { id: 'lecture', label: t('typeLecture'), icon: GraduationCap },
+                      { id: 'meeting', label: t('typeMeeting'), icon: Briefcase },
+                      { id: 'exam', label: t('typeExam'), icon: FileText },
+                      { id: 'study', label: t('typeStudy'), icon: BookOpen },
+                      { id: 'workout', label: t('typeWorkout'), icon: Dumbbell },
+                      { id: 'habit', label: t('typeHabit'), icon: Sparkles },
+                    ].map((cat) => {
+                      const isSelected = habitCategory === cat.id;
+                      const IconComp = cat.icon;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => { setHabitCategory(cat.id); haptic('light'); }}
+                          className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-1.5 cursor-pointer select-none active:scale-95 ${
+                            isSelected
+                              ? 'bg-white text-black shadow-md scale-[1.02]'
+                              : 'bg-black/30 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'
+                          }`}
+                        >
+                          <IconComp size={16} strokeWidth={isSelected ? 2.5 : 2} />
+                          <span className="truncate text-[11px] font-semibold">{cat.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* ---------------- PRIVACY OPTION ---------------- */}
                 <div className="mb-8 bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
                   <div className="flex flex-col pr-3">
@@ -4117,6 +4168,50 @@ export default function App() {
                       onChange={(e) => setEditHabitLocation(e.target.value)}
                       className="w-full bg-transparent text-white text-xs sm:text-sm outline-none font-medium placeholder:text-white/30"
                     />
+                  </div>
+                </div>
+
+                {/* ---------------- ACTIVITY TYPE (FOR FRIENDS) ---------------- */}
+                <div className="mb-8 bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={15} className="text-white/50" />
+                      <span className="text-xs font-bold tracking-wider text-white/50 uppercase">
+                        {t('activityType')}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-white/40">
+                      {t('activityTypeDesc')}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {[
+                      { id: 'lecture', label: t('typeLecture'), icon: GraduationCap },
+                      { id: 'meeting', label: t('typeMeeting'), icon: Briefcase },
+                      { id: 'exam', label: t('typeExam'), icon: FileText },
+                      { id: 'study', label: t('typeStudy'), icon: BookOpen },
+                      { id: 'workout', label: t('typeWorkout'), icon: Dumbbell },
+                      { id: 'habit', label: t('typeHabit'), icon: Sparkles },
+                    ].map((cat) => {
+                      const isSelected = editHabitCategory === cat.id;
+                      const IconComp = cat.icon;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => { setEditHabitCategory(cat.id); haptic('light'); }}
+                          className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-1.5 cursor-pointer select-none active:scale-95 ${
+                            isSelected
+                              ? 'bg-white text-black shadow-md scale-[1.02]'
+                              : 'bg-black/30 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'
+                          }`}
+                        >
+                          <IconComp size={16} strokeWidth={isSelected ? 2.5 : 2} />
+                          <span className="truncate text-[11px] font-semibold">{cat.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 

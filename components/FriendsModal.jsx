@@ -501,7 +501,7 @@ export default function FriendsModal({
 
   // Count active friends (kind !== 'idle')
   const activeFriendsCount = useMemo(() => {
-    return friendsWithPresence.filter((f) => f.presence.kind === 'focus' || f.presence.kind === 'flight' || f.presence.kind === 'music').length;
+    return friendsWithPresence.filter((f) => f.presence.kind === 'focus' || f.presence.kind === 'flight' || f.presence.kind === 'music' || f.presence.kind === 'lecture').length;
   }, [friendsWithPresence]);
 
   // Action: Accept / Decline Request (Optimistic)
@@ -1419,7 +1419,7 @@ export default function FriendsModal({
 
               {/* Big Title */}
               <span 
-                className="font-bold tracking-tight text-[#0a0a0a] leading-none select-text"
+                className="font-black tracking-tight text-[#0a0a0a] leading-none select-text"
                 style={{ fontSize: `${selectedFriend.presence.bigSize}px` }}
               >
                 {selectedFriend.presence.big}

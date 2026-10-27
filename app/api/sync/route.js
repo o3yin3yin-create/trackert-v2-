@@ -164,6 +164,7 @@ export async function GET(req) {
       activeSessionData: user.activeSessionData,
       spotifyRefreshToken: user.spotifyRefreshToken || null,
       privacySettings: user.privacySettings || {},
+      timezone: user.timezone || 'Africa/Cairo',
       updatedAt: user.updatedAt ? new Date(user.updatedAt).getTime() : Date.now(),
     };
 
@@ -285,6 +286,7 @@ export async function POST(req) {
           ...(state.activeSessionData !== undefined && { activeSessionData: state.activeSessionData }),
           ...(state.spotifyRefreshToken ? { spotifyRefreshToken: state.spotifyRefreshToken } : {}),
           ...(state.privacySettings !== undefined && { privacySettings: state.privacySettings }),
+          ...(state.timezone ? { timezone: state.timezone } : {}),
         }
       });
     }
@@ -309,6 +311,7 @@ export async function POST(req) {
           ex.time !== (h.time || null) ||
           ex.duration !== (h.duration || null) ||
           ex.location !== (h.location || null) ||
+          ex.category !== (h.category || 'habit') ||
           ex.isPrivate !== (h.isPrivate || false) ||
           ex.isNotifyEnabled !== (h.isNotifyEnabled || false) || 
           ex.notifyTime !== (h.notifyTime || null) || 
@@ -334,6 +337,7 @@ export async function POST(req) {
             time: h.time || null,
             duration: h.duration || null,
             location: h.location || null,
+            category: h.category || 'habit',
             isPrivate: Boolean(h.isPrivate),
             isNotifyEnabled: h.isNotifyEnabled || false,
             notifyTime: h.notifyTime || null,
@@ -351,6 +355,7 @@ export async function POST(req) {
             time: h.time || null,
             duration: h.duration || null,
             location: h.location || null,
+            category: h.category || 'habit',
             isPrivate: Boolean(h.isPrivate),
             isNotifyEnabled: h.isNotifyEnabled || false,
             notifyTime: h.notifyTime || null,
