@@ -1942,7 +1942,13 @@ export default function App() {
     if (!isMounted) return;
     if (isTimerRunning) {
       const endTime = Math.floor(Date.now() / 1000) + pomodoroTime;
-      const data = { endTime, initialTime: pomodoroInitialTime, taskName: activePomodoroTask?.name || '' };
+      const data = { 
+        endTime, 
+        initialTime: pomodoroInitialTime, 
+        taskName: activePomodoroTask?.name || '',
+        step: pomodoroSessionStep || 1,
+        totalCycles: 4
+      };
       if (typeof window !== 'undefined') {
         localStorage.setItem('daybase_active_pomodoro', JSON.stringify(data));
       }

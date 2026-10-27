@@ -361,23 +361,71 @@ export default function FriendsModal({
     return () => clearTimeout(timer);
   }, [searchQuery, view, lang]);
 
-  // Assign presence states deterministically to friends
+  // Assign presence: use real presence from API, or fallback to demo friends if 0 friends
   const friendsWithPresence = useMemo(() => {
     if (friends.length === 0 && incoming.length === 0 && outgoing.length === 0) {
       return DEMO_FRIENDS;
     }
-    return friends.map((f, idx) => {
-      const preset = PRESENCE_PRESETS[idx % PRESENCE_PRESETS.length];
+    return friends.map((f) => {
       const friendName = f.user?.name || f.user?.username || 'Friend';
       const initial = (friendName[0] || 'F').toUpperCase();
+      const presence = f.presence || {
+        kind: 'idle',
+        tag: 'Idle',
+        line: 'Idle · not active',
+        right: 'Now',
+        status: 'Not active',
+        label: 'IDLE',
+        big: 'Active just now',
+        bigSize: 28,
+        sub: 'No activity right now',
+        pct: 0,
+        hasBar: false,
+        barL: '',
+        barR: '',
+        hasChips: false,
+        chips: [],
+        hasDots: false,
+        dots: [],
+        action: 'Ask to study',
+        together: '0h',
+        hasMusicBadge: false,
+        hasSec: false,
+      };
+
       return {
         ...f,
         initial,
         displayName: friendName,
-        presence: preset,
+        presence,
       };
     });
   }, [friends, incoming, outgoing]);
+
+  // Keep selectedFriend in sync with live presence updates
+  useEffect(() => {
+    if (!selectedFriend) return;
+    const updated = friendsWithPresence.find((f) => f.friendshipId === selectedFriend.friendshipId);
+    if (updated && JSON.stringify(updated.presence) !== JSON.stringify(selectedFriend.presence)) {
+      setSelectedFriend(updated);
+    }
+  }, [friendsWithPresence, selectedFriend]);
+
+  // Live polling for friends presence while modal is open (every 10s)
+  useEffect(() => {
+    if (!isOpen) return;
+    const interval = setInterval(() => {
+      apiFetch('/api/friends')
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data.friends)) setFriends(data.friends);
+          if (Array.isArray(data.incoming)) setIncoming(data.incoming);
+          if (Array.isArray(data.outgoing)) setOutgoing(data.outgoing);
+        })
+        .catch(() => {});
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [isOpen]);
 
   // Count active friends (kind !== 'idle')
   const activeFriendsCount = useMemo(() => {
