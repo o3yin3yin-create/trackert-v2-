@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   Users, Plus, X, Search, Check, Copy, Share2, 
   Shield, AlertCircle, Loader2, ChevronLeft, ChevronRight,
@@ -209,7 +209,7 @@ export default function FriendsModal({
   themeColor = '#FF9F0A' 
 }) {
   const isRtl = lang === 'ar';
-  const t = (k) => translations[lang]?.[k] || translations.en[k] || k;
+  const t = useCallback((k) => translations[lang]?.[k] || translations.en[k] || k, [lang]);
 
   // Views: 'main' | 'add' | 'privacy'
   const [view, setView] = useState('main');
@@ -233,6 +233,10 @@ export default function FriendsModal({
   const [searchResult, setSearchResult] = useState(null); // { user, relation, friendshipId }
   const [searchError, setSearchError] = useState(null);
   const [searchPerformed, setSearchPerformed] = useState(false);
+
+  // Refs to prevent duplicate fetches, infinite loops, and flickering across re-renders
+  const lastQueryRef = useRef('');
+  const searchCacheRef = useRef({});
   const [requestSending, setRequestSending] = useState(false);
 
   // In-list filter state
@@ -292,24 +296,47 @@ export default function FriendsModal({
     }
   }, [isOpen, loadFriends]);
 
-  // Debounced search effect
+  // Debounced search effect with cache and duplicate suppression
   useEffect(() => {
-    if (view !== 'add') return;
+    if (view !== 'add') {
+      lastQueryRef.current = '';
+      return;
+    }
+
     const clean = searchQuery.trim().toLowerCase().replace(/^@/, '');
     if (clean.length < 4) {
+      lastQueryRef.current = '';
       setSearchResult(null);
       setSearchPerformed(false);
       setSearchError(null);
+      setSearching(false);
+      return;
+    }
+
+    // If query hasn't changed from last executed search, don't re-run
+    if (clean === lastQueryRef.current) {
+      return;
+    }
+
+    // Check memory cache first
+    if (searchCacheRef.current[clean]) {
+      lastQueryRef.current = clean;
+      setSearchResult(searchCacheRef.current[clean]);
+      setSearchPerformed(true);
+      setSearchError(null);
+      setSearching(false);
       return;
     }
 
     const timer = setTimeout(async () => {
+      if (clean === lastQueryRef.current) return;
+
       setSearching(true);
       setSearchError(null);
       try {
         const res = await apiFetch(`/api/friends/search?username=${encodeURIComponent(clean)}`);
         if (res.status === 429) {
-          setSearchError(t('tooManyRequests'));
+          setSearchError(translations[lang]?.tooManyRequests || translations.en?.tooManyRequests || 'Too many requests. Please wait a moment.');
           setSearchResult(null);
           setSearchPerformed(true);
           return;
@@ -318,6 +345,8 @@ export default function FriendsModal({
           throw new Error('Search failed');
         }
         const data = await res.json();
+        searchCacheRef.current[clean] = data;
+        lastQueryRef.current = clean;
         setSearchResult(data);
         setSearchPerformed(true);
       } catch (err) {
@@ -330,7 +359,7 @@ export default function FriendsModal({
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, view, t]);
+  }, [searchQuery, view, lang]);
 
   // Assign presence states deterministically to friends
   const friendsWithPresence = useMemo(() => {
