@@ -1,6 +1,6 @@
 "use client";
 import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin } from 'lucide-react';
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, Component } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useUser, useAuth, Show, SignInButton, SignUpButton, UserButton, SignIn, SignUp } from '../components/AuthBridge';
@@ -389,11 +389,77 @@ for (let val = 0; val <= 1000; val += 50) {
   gridLines.push(<line key={`v-${val}`} x1={val} y1="0" x2={val} y2="1000" stroke="rgba(12,60,38,0.18)" strokeWidth="0.5" />);
 }
 
-export default function App() {
+function safeJson(val, fallback) {
+  if (!val || val === 'undefined' || val === 'null') return fallback;
+  try {
+    const parsed = JSON.parse(val);
+    return parsed !== undefined && parsed !== null ? parsed : fallback;
+  } catch (_) {
+    return fallback;
+  }
+}
+
+class GlobalErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('[Bokra Critical Error]:', error, errorInfo);
+  }
+
+  handleReload = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('daybase_active_pomodoro');
+        localStorage.removeItem('daybase_active_flight');
+        localStorage.removeItem('daybase_daily_tasks_v4');
+      } catch (_) {}
+      window.location.reload();
+    }
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#000000] text-white flex flex-col items-center justify-center p-6 text-center select-none font-sans">
+          <img src="/logo-transparent.png" alt="bokra" className="h-12 w-auto object-contain mb-6 opacity-80" />
+          <h2 className="text-xl font-bold mb-2">Failed to load session</h2>
+          <p className="text-xs text-white/50 mb-6 max-w-xs leading-relaxed">
+            A temporary cache issue occurred. Tap below to refresh your app smoothly.
+          </p>
+          <button
+            onClick={this.handleReload}
+            className="px-6 py-3 rounded-full bg-white text-black font-bold text-sm active:scale-95 transition-transform cursor-pointer"
+          >
+            Reload App
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function AppContent() {
   const { user, isLoaded, isSignedIn } = useUser(); 
   const { getToken: getClerkToken } = useAuth();
   const [authModal, setAuthModal] = useState(null); // 'sign-in' | 'sign-up' | null
   const [isMounted, setIsMounted] = useState(false);
+  const [authTimeoutPassed, setAuthTimeoutPassed] = useState(false);
+
+  useEffect(() => {
+    // Failsafe: Never let Clerk auth delay trap mobile / Android user on the pulsing logo
+    const timer = setTimeout(() => {
+      setAuthTimeoutPassed(true);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (getClerkToken) {
@@ -428,13 +494,13 @@ export default function App() {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('daybase_habits_v4');
       const savedOrder = localStorage.getItem('daybase_habit_order');
-      let list = saved ? JSON.parse(saved) : [
+      let list = safeJson(saved, null) || [
         { id: '1', name: 'Workout', type: 'single', subItems: [] },
         { id: '2', name: 'Prayers', type: 'multi', subItems: ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] }
       ];
       if (savedOrder && Array.isArray(list)) {
         try {
-          const orderIds = JSON.parse(savedOrder);
+          const orderIds = safeJson(savedOrder, null);
           if (Array.isArray(orderIds)) {
             const orderMap = new Map(orderIds.map((id, idx) => [id, idx]));
             list.sort((a, b) => (orderMap.has(a.id) ? orderMap.get(a.id) : 999) - (orderMap.has(b.id) ? orderMap.get(b.id) : 999));
@@ -449,7 +515,7 @@ export default function App() {
   const [dailyData, setDailyData] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('daybase_dailyData_v4');
-      return saved ? JSON.parse(saved) : {};
+      return safeJson(saved, {});
     }
     return {};
   });
@@ -457,7 +523,7 @@ export default function App() {
   const [sleepData, setSleepData] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('daybase_sleepData_v4');
-      return saved ? JSON.parse(saved) : {};
+      return safeJson(saved, {});
     }
     return {};
   });
@@ -493,7 +559,7 @@ export default function App() {
   const [habitNotes, setHabitNotes] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('daybase_habitNotes_v4');
-      return saved ? JSON.parse(saved) : {};
+      return safeJson(saved, {});
     }
     return {};
   });
@@ -503,12 +569,12 @@ export default function App() {
 
   // --- States for Emergency Cards & Pomodoro ---
   const [habitCards, setHabitCards] = useState(() => {
-    if (typeof window !== 'undefined') return JSON.parse(localStorage.getItem('daybase_cards_v4') || "{}");
+    if (typeof window !== 'undefined') return safeJson(localStorage.getItem('daybase_cards_v4'), {});
     return {};
   });
   // Anti-cheat: 1 card per habit per 7 days streak
   const [grantedCardsLog, setGrantedCardsLog] = useState(() => {
-    if (typeof window !== 'undefined') return JSON.parse(localStorage.getItem('daybase_granted_cards_log_v4') || "{}");
+    if (typeof window !== 'undefined') return safeJson(localStorage.getItem('daybase_granted_cards_log_v4'), {});
     return {};
   });
 
@@ -574,9 +640,8 @@ export default function App() {
   const [finishedTickets, setFinishedTickets] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('trackert_finished_tickets_v1') || localStorage.getItem('daybase_finishedTickets');
-      if (saved) return JSON.parse(saved);
+      if (saved) return safeJson(saved, []);
     }
-    return [];
     return [];
   });
 
@@ -895,7 +960,7 @@ export default function App() {
   // --- Focus Time Tracking (seconds per day) ---
   const [focusTimeData, setFocusTimeData] = useState(() => {
     if (typeof window !== 'undefined') {
-      return JSON.parse(localStorage.getItem('daybase_focusTime_v4') || '{}');
+      return safeJson(localStorage.getItem('daybase_focusTime_v4'), {});
     }
     return {};
   });
@@ -1046,7 +1111,7 @@ export default function App() {
   });
   const [pomodoroTasksData, setPomodoroTasksData] = useState(() => {
     if (typeof window !== 'undefined') {
-      return JSON.parse(localStorage.getItem('daybase_pomodoro_tasks_v1') || '{}');
+      return safeJson(localStorage.getItem('daybase_pomodoro_tasks_v1'), {});
     }
     return {};
   });
@@ -2503,7 +2568,9 @@ export default function App() {
 
   const sleepChartData = getChartData();
 
-  if (!isMounted || !isLoaded) {
+  const authReady = isLoaded || authTimeoutPassed;
+
+  if (!isMounted || !authReady) {
     return (
       <div className="min-h-screen bg-[#000000] text-white flex flex-col items-center justify-center p-6 select-none font-sans">
         <img
@@ -7803,5 +7870,13 @@ export default function App() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <GlobalErrorBoundary>
+      <AppContent />
+    </GlobalErrorBoundary>
   );
 }

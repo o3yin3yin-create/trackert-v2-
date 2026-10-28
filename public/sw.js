@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bokra-cache-v3';
+const CACHE_NAME = 'bokra-cache-v5';
 
 // Essential core assets to pre-cache during installation
 const PRECACHE_ASSETS = [
@@ -89,44 +89,33 @@ self.addEventListener('fetch', (event) => {
   // This guarantees the Android TWA splash screen fades out in at most 1.5s even if offline/airplane mode.
   if (request.mode === 'navigate') {
     event.respondWith(
-      new Promise((resolve) => {
-        let isResolved = false;
+      (async () => {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 1500);
 
-        const timer = setTimeout(() => {
-          caches.match('/').then((cachedRoot) => {
-            if (cachedRoot && !isResolved) {
-              isResolved = true;
-              console.log('[bokra SW] Network timeout: serving cached root shell');
-              resolve(cachedRoot);
-            }
-          });
-        }, 1500);
-
-        fetch(request)
-          .then((networkResponse) => {
+          try {
+            const networkResponse = await fetch(request, { signal: controller.signal });
+            clearTimeout(timer);
             if (networkResponse && networkResponse.status === 200) {
               const clone = networkResponse.clone();
               caches.open(CACHE_NAME).then((cache) => cache.put('/', clone));
+              return networkResponse;
             }
-            if (!isResolved) {
-              isResolved = true;
-              clearTimeout(timer);
-              resolve(networkResponse);
-            }
-          })
-          .catch(async () => {
-            clearTimeout(timer);
-            if (!isResolved) {
-              isResolved = true;
-              const cached = await caches.match(request) || await caches.match('/');
-              if (cached) {
-                resolve(cached);
-              } else {
-                resolve(new Response('Offline', { status: 200, headers: { 'Content-Type': 'text/plain' } }));
-              }
-            }
-          });
-      })
+          } catch (e) {
+            // Network aborted or failed, proceed to cache immediately
+          }
+
+          const cached = (await caches.match(request)) || (await caches.match('/'));
+          if (cached) return cached;
+
+          return await fetch(request);
+        } catch (err) {
+          const cached = (await caches.match(request)) || (await caches.match('/'));
+          if (cached) return cached;
+          return new Response('Offline', { status: 200, headers: { 'Content-Type': 'text/html' } });
+        }
+      })()
     );
     return;
   }
