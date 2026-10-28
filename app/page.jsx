@@ -454,6 +454,15 @@ function AppContent() {
   const [authModal, setAuthModal] = useState(null); // 'sign-in' | 'sign-up' | null
   const [isMounted, setIsMounted] = useState(false);
   const [authTimeoutPassed, setAuthTimeoutPassed] = useState(false);
+  const [dbUsername, setDbUsername] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('bokra_desktop_user');
+        if (saved) return JSON.parse(saved).username || null;
+      } catch (_) {}
+    }
+    return null;
+  });
 
   useEffect(() => {
     // Failsafe: Never let Clerk auth delay trap mobile / Android user on the pulsing logo
@@ -2763,8 +2772,8 @@ function AppContent() {
   }
 
   // 1) The Username Gate: If signed in and no username set, require setting username first
-  if (isSignedIn && !user?.username) {
-    return <ChooseUsername />;
+  if (isSignedIn && isLoaded && !user?.username && !dbUsername) {
+    return <ChooseUsername onComplete={(newUsername) => setDbUsername(newUsername)} />;
   }
 
   // Helper to render habit cards with slim Apple aesthetics and automatic full-width for multi/scheduled habits
@@ -5983,9 +5992,9 @@ function AppContent() {
             </div>
           </header>
 
-          {/* ---------------- MOBILE-ONLY LAYOUT (md:hidden) ---------------- */}
+          {/* ---------------- MOBILE-ONLY LAYOUT (lg:hidden) ---------------- */}
           {/* Preserves the original clean vertical mobile stack that the user loves */}
-          <div className="flex flex-col w-full md:hidden gap-3">
+          <div className="flex flex-col w-full lg:hidden gap-3">
               <div className="hidden" />
             
             {/* Mobile Mission Card */}
@@ -6139,9 +6148,9 @@ function AppContent() {
 
           </div>
 
-          {/* ---------------- DESKTOP-ONLY BALANCED RESPONSIVE DASHBOARD (hidden md:grid) ---------------- */}
+          {/* ---------------- DESKTOP-ONLY BALANCED RESPONSIVE DASHBOARD (hidden lg:grid) ---------------- */}
           {/* Highly structured, symmetrical, clean dashboard optimized for laptops and desktop screens */}
-          <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 mb-12 items-start w-full max-w-6xl mx-auto">
+          <div className="hidden lg:grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mb-12 items-start w-full max-w-6xl mx-auto">
             
             {/* ITEM 1: Personal Routine (col 1) */}
             <div className="flex flex-col gap-5 w-full">

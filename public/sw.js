@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bokra-cache-v5';
+const CACHE_NAME = 'bokra-cache-v6';
 
 // Essential core assets to pre-cache during installation
 const PRECACHE_ASSETS = [
@@ -53,12 +53,15 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (!url.protocol.startsWith('http')) return;
 
-  // Never intercept or cache API routes, Clerk auth, or Firebase
+  // Never intercept or cache API routes, Clerk auth, or auth navigation
   if (
     url.hostname.includes('clerk') ||
     url.hostname.includes('firebaseio.com') ||
     url.hostname.includes('googleapis.com') ||
-    url.pathname.startsWith('/api/')
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/__clerk') ||
+    url.pathname.startsWith('/sign-in') ||
+    url.pathname.startsWith('/sign-up')
   ) {
     return;
   }
@@ -92,7 +95,7 @@ self.addEventListener('fetch', (event) => {
       (async () => {
         try {
           const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 1500);
+          const timer = setTimeout(() => controller.abort(), 4000);
 
           try {
             const networkResponse = await fetch(request, { signal: controller.signal });

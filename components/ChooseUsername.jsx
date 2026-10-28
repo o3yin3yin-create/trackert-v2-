@@ -5,12 +5,13 @@ import { useUser, useAuth } from './AuthBridge';
 import { apiFetch } from '../lib/api';
 import { Loader2, ArrowRight, AlertCircle } from 'lucide-react';
 
-export default function ChooseUsername() {
+export default function ChooseUsername({ onComplete }) {
   const { user } = useUser();
   const { signOut, getToken } = useAuth();
   const [value, setValue] = useState('');
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [checking, setChecking] = useState(true);
 
   // Auto-check on mount if user already has a username in database or Clerk
   useEffect(() => {
@@ -23,14 +24,16 @@ export default function ChooseUsername() {
           if (typeof window !== 'undefined') {
             try {
               const savedUser = localStorage.getItem('bokra_desktop_user');
-              if (savedUser) {
-                const parsed = JSON.parse(savedUser);
-                parsed.username = data.username;
-                if (data.name) parsed.name = data.name;
-                if (data.avatar) parsed.avatar = data.avatar;
-                localStorage.setItem('bokra_desktop_user', JSON.stringify(parsed));
-              }
+              const parsed = savedUser ? JSON.parse(savedUser) : {};
+              parsed.username = data.username;
+              if (data.name) parsed.name = data.name;
+              if (data.avatar) parsed.avatar = data.avatar;
+              localStorage.setItem('bokra_desktop_user', JSON.stringify(parsed));
             } catch (_) {}
+          }
+          if (typeof onComplete === 'function') {
+            onComplete(data.username);
+            return;
           }
           try {
             if (typeof user?.update === 'function') {
@@ -40,14 +43,18 @@ export default function ChooseUsername() {
           if (typeof window !== 'undefined') {
             window.location.reload();
           }
+        } else {
+          setChecking(false);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (isMounted) setChecking(false);
+      });
 
     return () => {
       isMounted = false;
     };
-  }, [user]);
+  }, [user, onComplete]);
 
   const clean = value.trim().toLowerCase();
   const tooShort = clean.length < 4;
@@ -111,6 +118,11 @@ export default function ChooseUsername() {
         await user?.reload();
       } catch (_) {}
 
+      if (typeof onComplete === 'function') {
+        onComplete(confirmedUsername);
+        return;
+      }
+
       if (typeof window !== 'undefined') {
         window.location.reload();
       }
@@ -118,6 +130,14 @@ export default function ChooseUsername() {
       setError(err?.message || 'Network error, please try again.');
       setSaving(false);
     }
+  }
+
+  if (checking) {
+    return (
+      <div className="min-h-screen bg-[#000000] text-white flex flex-col items-center justify-center p-6 select-none font-sans">
+        <Loader2 size={24} className="animate-spin text-white/50" />
+      </div>
+    );
   }
 
   return (
