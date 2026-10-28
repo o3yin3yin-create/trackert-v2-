@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Download, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut } from 'lucide-react';
+import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Download, RotateCcw, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut } from 'lucide-react';
 import React, { useState, useEffect, useRef, useCallback, useMemo, Component } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -765,6 +765,39 @@ function AppContent() {
   const [isSpotifyConnected, setIsSpotifyConnected] = useState(false);
   const [hasSpotifyAccess, setHasSpotifyAccess] = useState(false);
   const [isSpotifyInviteModalOpen, setIsSpotifyInviteModalOpen] = useState(false);
+  const [isClearingCache, setIsClearingCache] = useState(false);
+  const [cacheClearedSuccess, setCacheClearedSuccess] = useState(false);
+
+  const handleClearCache = async () => {
+    setIsClearingCache(true);
+    try {
+      if (typeof window !== 'undefined' && 'caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map((name) => caches.delete(name)));
+      }
+      if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const registration of registrations) {
+          await registration.unregister();
+        }
+      }
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        sessionStorage.clear();
+      }
+      setCacheClearedSuccess(true);
+      setTimeout(() => {
+        window.location.reload();
+      }, 700);
+    } catch (err) {
+      console.error('Failed to clear cache:', err);
+      setCacheClearedSuccess(true);
+      setTimeout(() => {
+        window.location.reload();
+      }, 700);
+    } finally {
+      setIsClearingCache(false);
+    }
+  };
 
   useEffect(() => {
     const handleOpenInvite = () => {
@@ -4086,7 +4119,7 @@ function AppContent() {
                     >
                       <ChevronLeft size={20} className={''} />
                     </button>
-                    <h2 className="text-2xl font-black tracking-tight text-white">{t('settings')}</h2>
+                    <h2 className="text-2xl font-black tracking-tight text-white">{t('manageHabits')}</h2>
                   </div>
                   <button onClick={handleCloseManage} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
                     <X size={18} />
@@ -6018,9 +6051,42 @@ function AppContent() {
             {/* Mobile Habits Cards Grid */}
             <div className="grid grid-cols-2 gap-3 items-start w-full [grid-auto-flow:dense]">
               {activeScheduledHabits.map((habit) => renderHabitCard(habit))}
-              {habits.length === 0 && (
-                <div className="col-span-2 text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-10 select-none">{t('noHabitsYet')}</div>
-              )}
+              {habits.length === 0 ? (
+                <div className="col-span-2 w-full py-10 sm:py-12 px-6 rounded-[28px] bg-white/[0.03] border border-dashed border-white/15 flex flex-col items-center justify-center text-center gap-4 my-2 select-none shadow-xl">
+                  <div 
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center border shadow-xl"
+                    style={{
+                      backgroundColor: `${themeColor}15`,
+                      borderColor: `${themeColor}30`,
+                      color: themeColor || '#ffffff',
+                    }}
+                  >
+                    <Plus size={26} strokeWidth={2.5} />
+                  </div>
+
+                  <div className="flex flex-col gap-1 max-w-sm">
+                    <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                      {t('noHabitsYet')}
+                    </h3>
+                    <p className="text-xs text-white/50 leading-relaxed">
+                      {t('noHabitsDesc')}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenAdd}
+                    className="mt-1 px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 shadow-xl flex items-center gap-2 cursor-pointer bg-white text-black hover:bg-white/90"
+                  >
+                    <Plus size={15} strokeWidth={3} />
+                    <span>{t('addFirstHabit')}</span>
+                  </button>
+                </div>
+              ) : activeScheduledHabits.length === 0 ? (
+                <div className="col-span-2 text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-10 select-none">
+                  {t('noHabitsScheduledToday')}
+                </div>
+              ) : null}
             </div>
 
             {/* Mobile Sleep Logger Card */}
@@ -6144,9 +6210,42 @@ function AppContent() {
               {/* Habits Cards Grid */}
               <div className="grid grid-cols-2 gap-3 mt-1 items-start w-full [grid-auto-flow:dense]">
                 {activeScheduledHabits.map((habit) => renderHabitCard(habit))}
-                {habits.length === 0 && (
-                  <div className="col-span-2 text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-10 select-none">{t('noHabitsYet')}</div>
-                )}
+                {habits.length === 0 ? (
+                  <div className="col-span-2 w-full py-10 sm:py-12 px-6 rounded-[28px] bg-white/[0.03] border border-dashed border-white/15 flex flex-col items-center justify-center text-center gap-4 my-2 select-none shadow-xl">
+                    <div 
+                      className="w-14 h-14 rounded-2xl flex items-center justify-center border shadow-xl"
+                      style={{
+                        backgroundColor: `${themeColor}15`,
+                        borderColor: `${themeColor}30`,
+                        color: themeColor || '#ffffff',
+                      }}
+                    >
+                      <Plus size={26} strokeWidth={2.5} />
+                    </div>
+
+                    <div className="flex flex-col gap-1 max-w-sm">
+                      <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                        {t('noHabitsYet')}
+                      </h3>
+                      <p className="text-xs text-white/50 leading-relaxed">
+                        {t('noHabitsDesc')}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleOpenAdd}
+                      className="mt-1 px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 shadow-xl flex items-center gap-2 cursor-pointer bg-white text-black hover:bg-white/90"
+                    >
+                      <Plus size={15} strokeWidth={3} />
+                      <span>{t('addFirstHabit')}</span>
+                    </button>
+                  </div>
+                ) : activeScheduledHabits.length === 0 ? (
+                  <div className="col-span-2 text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-10 select-none">
+                    {t('noHabitsScheduledToday')}
+                  </div>
+                ) : null}
               </div>
 
             </div>
@@ -7895,6 +7994,37 @@ function AppContent() {
                               </div>
                               <ChevronRight size={18} className="text-white/40" />
                             </a>
+
+                            {/* Clear Cache */}
+                            <button 
+                              type="button"
+                              onClick={handleClearCache} 
+                              disabled={isClearingCache}
+                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors cursor-pointer"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center">
+                                  {isClearingCache ? (
+                                    <Loader2 size={18} className="animate-spin" />
+                                  ) : (
+                                    <RotateCcw size={18} />
+                                  )}
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-white">
+                                    {cacheClearedSuccess ? t('cacheCleared') : t('clearCache')}
+                                  </span>
+                                  <span className="text-[11px] text-white/40 font-normal">
+                                    {t('clearCacheDesc')}
+                                  </span>
+                                </div>
+                              </div>
+                              {cacheClearedSuccess ? (
+                                <Check size={18} className="text-emerald-400" />
+                              ) : (
+                                <ChevronRight size={18} className="text-white/40" />
+                              )}
+                            </button>
 
                             {/* Admin Dashboard */}
                             {isAdmin && (

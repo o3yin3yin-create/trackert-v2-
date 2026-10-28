@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from 'react';
+import { Check } from 'lucide-react';
 import { useUser, SignIn } from '@clerk/nextjs';
 import { dark } from '@clerk/themes';
 import { clerkAppearance } from '@/lib/clerkTheme';
@@ -400,6 +401,7 @@ export default function DesktopAuthPage() {
           <div className="w-full">
             <SignIn
               routing="hash"
+              signUpUrl="/sign-up"
               appearance={clerkAppearance}
             />
           </div>
@@ -417,8 +419,8 @@ export default function DesktopAuthPage() {
         {/* State 4: Success */}
         {status === 'success' && (
           <div className="py-2 flex flex-col items-center text-center w-full">
-            <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg mb-4 font-bold border border-emerald-500/20">
-              ✓
+            <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-4 font-bold border border-emerald-500/20">
+              <Check size={20} strokeWidth={2.5} />
             </div>
             <h2 className="text-lg font-bold text-white mb-1">
               Successfully Signed In
