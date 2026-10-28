@@ -128,7 +128,7 @@ export default function SpotifyInviteModal({
                   setCode(e.target.value.toUpperCase());
                   setError('');
                 }}
-                placeholder="BOKRA-SPOT-01"
+                placeholder="BOKRA-XXXX-XXXX"
                 className="w-full h-13 px-4 rounded-2xl bg-white/5 border border-white/15 focus:border-white/40 focus:bg-white/10 text-center font-mono font-bold text-sm tracking-widest text-white placeholder:text-white/20 outline-none transition-all"
               />
             </div>

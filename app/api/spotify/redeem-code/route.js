@@ -17,7 +17,15 @@ export async function POST(req) {
 
   try {
     const body = await req.json();
-    const rawCode = (body?.code || '').trim().toUpperCase();
+    let rawCode = (body?.code || '').trim().toUpperCase().replace(/\s+/g, '');
+
+    // Allow user to paste with or without hyphens
+    if (rawCode.includes('BOKRA')) {
+      const rest = rawCode.replace(/^BOKRA-?/, '').replace(/-/g, '');
+      if (rest.length === 8) {
+        rawCode = `BOKRA-${rest.slice(0, 4)}-${rest.slice(4)}`;
+      }
+    }
 
     if (!rawCode) {
       return NextResponse.json({ error: 'Please enter a valid invite code' }, { status: 400, headers: cors });
