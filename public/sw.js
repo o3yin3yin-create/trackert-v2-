@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bokra-cache-v2';
+const CACHE_NAME = 'bokra-cache-v3';
 
 // Essential core assets to pre-cache during installation
 const PRECACHE_ASSETS = [
@@ -46,7 +46,7 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// Fetch Event: Network-First with Cache Fallback for complete offline reliability
+// Fetch Event: Multi-tiered strategy for instant load & offline resilience
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
@@ -63,31 +63,89 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network First with Cache Fallback
-  event.respondWith(
-    fetch(request)
-      .then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseClone);
-            if (request.mode === 'navigate') {
-              cache.put('/', networkResponse.clone());
+  // 1. Immutable Next.js static assets (_next/static/...) -> Cache-First
+  // These chunks contain hashes in their filename and never change content.
+  if (url.pathname.startsWith('/_next/static/')) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return fetch(request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return networkResponse;
+        }).catch(() => {
+          return new Response('', { status: 408, statusText: 'Offline Chunk' });
+        });
+      })
+    );
+    return;
+  }
+
+  // 2. Navigation requests (HTML pages) -> Network with 1.5s timeout fallback to Cache
+  // This guarantees the Android TWA splash screen fades out in at most 1.5s even if offline/airplane mode.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      new Promise((resolve) => {
+        let isResolved = false;
+
+        const timer = setTimeout(() => {
+          caches.match('/').then((cachedRoot) => {
+            if (cachedRoot && !isResolved) {
+              isResolved = true;
+              console.log('[bokra SW] Network timeout: serving cached root shell');
+              resolve(cachedRoot);
             }
           });
-        }
-        return networkResponse;
+        }, 1500);
+
+        fetch(request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              const clone = networkResponse.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put('/', clone));
+            }
+            if (!isResolved) {
+              isResolved = true;
+              clearTimeout(timer);
+              resolve(networkResponse);
+            }
+          })
+          .catch(async () => {
+            clearTimeout(timer);
+            if (!isResolved) {
+              isResolved = true;
+              const cached = await caches.match(request) || await caches.match('/');
+              if (cached) {
+                resolve(cached);
+              } else {
+                resolve(new Response('Offline', { status: 200, headers: { 'Content-Type': 'text/plain' } }));
+              }
+            }
+          });
       })
-      .catch(async () => {
-        console.log('[bokra SW] Offline mode fallback for:', url.pathname);
-        const cached = await caches.match(request);
-        if (cached) return cached;
-        if (request.mode === 'navigate') {
-          const cachedRoot = await caches.match('/');
-          if (cachedRoot) return cachedRoot;
-        }
-        return new Response('', { status: 408, statusText: 'Offline Asset Unavailable' });
-      })
+    );
+    return;
+  }
+
+  // 3. All other assets -> Stale-While-Revalidate
+  event.respondWith(
+    caches.match(request).then((cachedResponse) => {
+      const fetchPromise = fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return networkResponse;
+        })
+        .catch(() => cachedResponse);
+
+      return cachedResponse || fetchPromise;
+    })
   );
 });
 

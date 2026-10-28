@@ -10,13 +10,8 @@ export default function PwaRegister() {
     if (window.__TAURI_INTERNALS__) return;
 
     if ('serviceWorker' in navigator) {
-      let refreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) {
-          refreshing = true;
-          console.log('[bokra PWA] Controller changed, reloading page for latest version...');
-          window.location.reload();
-        }
+        console.log('[bokra PWA] Service worker controller updated.');
       });
 
       const registerSW = async () => {
