@@ -18,7 +18,7 @@ export default function FriendsModal({
   initialSelectedFriend = null,
   myUsername = '', 
   myName = '',
-  myAvatar = 'boy1',
+  myAvatar = 'user',
   lang = 'en', 
   themeColor = '#FF9F0A',
   pinnedFriendUsername: propPinnedUsername,

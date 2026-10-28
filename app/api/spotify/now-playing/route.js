@@ -19,13 +19,10 @@ export async function GET(req) {
     } catch (_) {}
 
     const { searchParams } = new URL(req.url);
-    let refreshToken = 
-      searchParams.get('refresh_token') ||
-      req.cookies.get('spotify_refresh_token')?.value || 
-      req.headers.get('x-spotify-refresh-token');
+    let refreshToken = null;
 
-    // If no token from cookie/header, check user in database (handles desktop app sync)
-    if (!refreshToken && userId) {
+    // For authenticated users, strictly bind Spotify to the user's account in database
+    if (userId) {
       try {
         const user = await prisma.user.findUnique({
           where: { clerkId: userId },
@@ -37,6 +34,12 @@ export async function GET(req) {
       } catch (authErr) {
         // Continue
       }
+    } else {
+      // For unauthenticated or guest users only
+      refreshToken = 
+        searchParams.get('refresh_token') ||
+        req.cookies.get('spotify_refresh_token')?.value || 
+        req.headers.get('x-spotify-refresh-token');
     }
 
     if (!refreshToken) {

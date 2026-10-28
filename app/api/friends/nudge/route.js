@@ -57,7 +57,7 @@ export async function POST(req) {
       type,
       fromUsername: me.username || 'friend',
       fromName: me.name || me.username || 'Friend',
-      fromAvatar: me.avatar || 'boy1',
+      fromAvatar: me.avatar || 'user',
       createdAt: Date.now(),
       read: false
     }

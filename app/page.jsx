@@ -1074,19 +1074,6 @@ function AppContent() {
     }
   }, [lang]);
 
-  // Ensure local Spotify token is synced to database under the user's account
-  useEffect(() => {
-    if (typeof window !== 'undefined' && user) {
-      const localToken = localStorage.getItem('daybase_spotify_refresh_token');
-      if (localToken) {
-        apiFetch('/api/spotify/save-token', {
-          method: 'POST',
-          body: JSON.stringify({ token: localToken })
-        }).catch(() => {});
-      }
-    }
-  }, [user]);
-
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
@@ -1171,12 +1158,12 @@ function AppContent() {
     const currentSnapshot = {
       habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
       theme, bgStyle, lang, focusTimeData, pomodoroTasksData, emergencyCards: habitCards,
-      finishedTickets, mission, updatedAt: Date.now()
+      finishedTickets, mission, avatar, updatedAt: Date.now()
     };
     saveLocalOfflineState(currentSnapshot);
   }, [
     habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
-    theme, bgStyle, lang, focusTimeData, pomodoroTasksData, finishedTickets, mission, isMounted
+    theme, bgStyle, lang, focusTimeData, pomodoroTasksData, finishedTickets, mission, avatar, isMounted
   ]);
 
   const lastServerUpdatedAtRef = useRef(0);
@@ -1384,13 +1371,22 @@ function AppContent() {
              if (typeof window !== 'undefined') localStorage.setItem('daybase_granted_cards_log_v4', JSON.stringify(authoritative.grantedCardsLog));
           }
 
-          if (authoritative.spotifyRefreshToken && typeof window !== 'undefined') {
-             const cur = localStorage.getItem('daybase_spotify_refresh_token');
-             if (cur !== authoritative.spotifyRefreshToken) {
-               localStorage.setItem('daybase_spotify_refresh_token', authoritative.spotifyRefreshToken);
-               window.dispatchEvent(new CustomEvent('spotify-token-updated'));
-             }
-             setIsSpotifyConnected(true);
+          if (typeof window !== 'undefined') {
+            if (authoritative.spotifyRefreshToken) {
+              const cur = localStorage.getItem('daybase_spotify_refresh_token');
+              if (cur !== authoritative.spotifyRefreshToken) {
+                localStorage.setItem('daybase_spotify_refresh_token', authoritative.spotifyRefreshToken);
+                window.dispatchEvent(new CustomEvent('spotify-token-updated'));
+              }
+              setIsSpotifyConnected(true);
+            } else {
+              const cur = localStorage.getItem('daybase_spotify_refresh_token');
+              if (cur) {
+                localStorage.removeItem('daybase_spotify_refresh_token');
+                window.dispatchEvent(new CustomEvent('spotify-token-updated'));
+              }
+              setIsSpotifyConnected(false);
+            }
           }
 
           // Cache authoritative server state into IndexedDB
@@ -1534,6 +1530,9 @@ function AppContent() {
     setPinnedFriendUsername("");
     setAvatar('user');
     setIsCloudLoaded(false);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('spotify-token-updated'));
+    }
   }, []);
 
   // Programmatic user sign out handler
@@ -1542,6 +1541,12 @@ function AppContent() {
       await clearUserLocalData();
       resetStateToCleanDefaults();
       setIsSettingsMenuOpen(false);
+      try {
+        await apiFetch('/api/spotify/disconnect', { method: 'POST' });
+      } catch (_) {}
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('spotify-token-updated'));
+      }
       if (signOut) {
         await signOut({ redirectUrl: '/' });
       }
@@ -1741,7 +1746,7 @@ function AppContent() {
   }, [
     habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog, 
     theme, bgStyle, lang, focusTimeData, pomodoroTasksData, finishedTickets, mission,
-    dailyTasks, dailyTasksDateStr, user, isCloudLoaded, executePush
+    dailyTasks, dailyTasksDateStr, avatar, user, isCloudLoaded, executePush
   ]);
 
   // --- Live Time Tick for absolute timers ---
@@ -2042,7 +2047,7 @@ function AppContent() {
   latestStateRef.current = {
     habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
     theme, bgStyle, lang, focusTimeData, pomodoroTasksData: activePomodoroTasks,
-    emergencyCards: habitCards, finishedTickets, mission, deletedHabitIds: Array.from(deletedHabitIdsRef.current),
+    emergencyCards: habitCards, finishedTickets, mission, avatar, deletedHabitIds: Array.from(deletedHabitIdsRef.current),
     spotifyRefreshToken: typeof window !== 'undefined' ? localStorage.getItem('daybase_spotify_refresh_token') || null : null,
     targetDates: syncTargetDates,
     activeDateStr
@@ -3341,7 +3346,8 @@ function AppContent() {
       if (mode === 'hidden') return null;
 
       const friend = activeFriendToDisplay;
-      const friendName = friend?.displayName || friend?.user?.name || friend?.user?.username || 'Sara';
+      const rawFriendName = friend?.displayName || friend?.user?.name || friend?.user?.username || 'Sara';
+      const friendFirstName = (rawFriendName.trim().split(/\s+/)[0] || rawFriendName).trim();
       const friendAvatar = friend?.user?.avatar || 'sparkles';
       const isPinned = Boolean(friend?.isPinned);
       const island = getIslandDetails(friend?.presence);
@@ -3355,8 +3361,9 @@ function AppContent() {
               setIsFriendsModalOpen(true);
             }}
             data-no-day-swipe="true"
-            className="col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel flex items-center justify-between gap-2 border border-white/10 dark:border-white/18 shadow-lg cursor-pointer active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
+            className="col-span-1 w-full px-2.5 sm:px-3 py-2.5 rounded-[20px] liquid-panel flex items-center justify-between gap-2 border border-white/10 dark:border-white/18 shadow-lg cursor-pointer active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
           >
+            {/* Left: Avatar + Friend First Name (Always visible) */}
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <div className="relative w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center shrink-0 border border-white/10">
                 <AvatarIcon name={friendAvatar} size={15} className="text-white" />
@@ -3367,25 +3374,21 @@ function AppContent() {
                 )}
               </div>
 
-              <div className="flex flex-col min-w-0 flex-1">
-                <div className="flex items-center gap-1 min-w-0">
-                  <span className="text-[12px] font-bold text-white tracking-tight truncate leading-tight">
-                    {friendName}
-                  </span>
-                  {friendsIncomingCount > 0 && (
-                    <span className="px-1.5 py-0.2 rounded-full bg-red-500 text-white font-black text-[9px] leading-tight shrink-0">
-                      {friendsIncomingCount}
-                    </span>
-                  )}
-                </div>
-                <span className="text-[10px] text-white/40 truncate leading-tight font-medium mt-0.5">
-                  {!island.isOffline ? island.title : 'Offline'}
+              <div className="flex items-center gap-1 min-w-0 flex-1">
+                <span className="text-[13px] font-bold text-white tracking-tight truncate leading-tight">
+                  {friendFirstName}
                 </span>
+                {friendsIncomingCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-red-500 text-white font-black text-[9px] leading-tight shrink-0">
+                    {friendsIncomingCount}
+                  </span>
+                )}
               </div>
             </div>
 
+            {/* Right: Compact Badge matching container curves */}
             {!island.isOffline ? (
-              <div className="h-[28px] bg-white text-black rounded-full px-2.5 flex items-center gap-1.5 font-mono font-bold text-[10px] shrink-0 shadow-sm">
+              <div className="h-[28px] bg-white text-black rounded-[12px] px-2 flex items-center gap-1.5 font-mono font-bold text-[10px] shrink-0 shadow-sm">
                 {island.iconType === 'music' && (
                   <div className="flex items-end gap-[1.5px] h-2.5 shrink-0" aria-hidden="true">
                     <span className="w-[2px] h-1.5 bg-black rounded-full" />
@@ -3408,7 +3411,7 @@ function AppContent() {
                 <span>{island.time}</span>
               </div>
             ) : (
-              <div className="h-[28px] border border-dashed border-white/20 rounded-full px-2.5 flex items-center font-mono text-white/30 text-[10px] shrink-0">
+              <div className="h-[28px] border border-dashed border-white/20 rounded-[12px] px-2 flex items-center font-mono text-white/30 text-[10px] shrink-0">
                 {island.time}
               </div>
             )}
@@ -3424,10 +3427,10 @@ function AppContent() {
             setIsFriendsModalOpen(true);
           }}
           data-no-day-swipe="true"
-          className="col-span-2 w-full px-4 sm:px-5 py-3 rounded-[20px] liquid-panel flex items-center justify-between gap-3 border border-white/10 dark:border-white/18 shadow-lg cursor-pointer active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
+          className="col-span-2 w-full px-3.5 sm:px-4 py-2.5 rounded-[24px] liquid-panel flex items-center justify-between gap-3 border border-white/10 dark:border-white/18 shadow-lg cursor-pointer active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
         >
-          {/* Left: Avatar + Friend Name */}
-          <div className="flex items-center gap-3 min-w-0 flex-1">
+          {/* Left: Avatar + Friend First Name */}
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 text-white flex items-center justify-center font-bold text-base uppercase shrink-0 border border-white/10">
               <AvatarIcon name={friendAvatar} size={18} className="text-white" />
               {isPinned && (
@@ -3437,9 +3440,9 @@ function AppContent() {
               )}
             </div>
 
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="font-bold text-white text-[15px] sm:text-[16px] tracking-tight truncate leading-tight">
-                {friendName}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="font-bold text-white text-[15px] sm:text-[16px] tracking-tight leading-tight shrink-0">
+                {friendFirstName}
               </span>
               {friendsIncomingCount > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full bg-red-500 text-white font-black text-[9px] leading-tight shrink-0">
@@ -3449,9 +3452,9 @@ function AppContent() {
             </div>
           </div>
 
-          {/* Right: Solid White Pill (Active) or Dashed Pill (Offline) */}
+          {/* Right: Solid White Badge expanding to the left with matching container curves */}
           {!island.isOffline ? (
-            <div className="h-[38px] sm:h-[42px] bg-white text-black rounded-full px-3.5 sm:px-4 flex items-center justify-between gap-2.5 sm:gap-3 shadow-md shrink-0 max-w-[62%] sm:max-w-[65%]">
+            <div className="flex-1 min-w-0 h-[40px] sm:h-[44px] bg-white text-black rounded-[18px] sm:rounded-[20px] px-3.5 sm:px-4 flex items-center justify-between gap-2.5 shadow-md ml-1 sm:ml-2">
               <div className="flex items-center gap-2 min-w-0">
                 {/* Icon matching Figma Island */}
                 {island.iconType === 'music' && (
@@ -3486,8 +3489,8 @@ function AppContent() {
               </span>
             </div>
           ) : (
-            <div className="h-[38px] sm:h-[42px] border border-dashed border-white/20 rounded-full px-3.5 sm:px-4 flex items-center justify-between gap-2.5 sm:gap-3 bg-white/[0.02] shrink-0 min-w-[130px] sm:min-w-[150px]">
-              <span className="text-white/40 font-medium text-[12px] sm:text-[13px] leading-none">
+            <div className="flex-1 min-w-0 h-[40px] sm:h-[44px] border border-dashed border-white/20 rounded-[18px] sm:rounded-[20px] px-3.5 sm:px-4 flex items-center justify-between gap-2.5 bg-white/[0.02] ml-1 sm:ml-2">
+              <span className="text-white/40 font-medium text-[12px] sm:text-[13px] leading-none truncate">
                 {island.title}
               </span>
               <span className="font-mono text-white/30 text-[11px] sm:text-[12px] shrink-0 leading-none">
@@ -7928,6 +7931,10 @@ function AppContent() {
                               setAvatar(av);
                               if (typeof window !== 'undefined') localStorage.setItem('daybase_avatar_v1', av);
                               markLocalMutation();
+                              apiFetch('/api/sync', {
+                                method: 'POST',
+                                body: JSON.stringify({ avatar: av, updatedAt: Date.now() })
+                              }).catch(() => {});
                               setIsAvatarModalOpen(false);
                             }}
                             className={`relative aspect-square rounded-2xl flex items-center justify-center border-2 transition-all duration-200 active:scale-95 bg-white/5 text-white ${avatar === av ? 'border-[#FF9F0A] shadow-[0_0_20px_rgba(255,159,10,0.3)] text-[#FF9F0A]' : 'border-white/10 hover:border-white/30'}`}
