@@ -12,6 +12,7 @@ export default function SpotifyWidget({
   userId = null,
   mode = 'auto', // 'auto' | 'always' | 'hidden'
   size = 'full', // 'full' | 'compact'
+  hasSpotifyAccess = false,
 }) {
   const [data, setData] = useState({
     isConnected: false,
@@ -329,8 +330,15 @@ export default function SpotifyWidget({
       if (variant === 'compact') return null;
       return (
         <div 
+          onClick={() => {
+            if (!hasSpotifyAccess) {
+              window.dispatchEvent(new CustomEvent('open-spotify-invite-modal'));
+              return;
+            }
+            window.location.href = getSpotifyLoginUrl();
+          }}
           data-no-day-swipe="true"
-          className={`col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel spotify-widget flex items-center justify-between shadow-lg transition-all border border-white/10 min-h-[58px] ${className}`}
+          className={`col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel spotify-widget flex items-center justify-between shadow-lg transition-all border border-white/10 min-h-[58px] cursor-pointer active:scale-[0.99] ${className}`}
         >
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-black shrink-0">
@@ -338,7 +346,9 @@ export default function SpotifyWidget({
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-[12px] font-bold text-white tracking-tight truncate">Spotify</span>
-              <span className="text-[10px] text-white/50 truncate">Connect</span>
+              <span className="text-[10px] text-white/50 truncate">
+                {hasSpotifyAccess ? 'Connect' : 'Invite Code'}
+              </span>
             </div>
           </div>
         </div>
@@ -442,7 +452,7 @@ export default function SpotifyWidget({
               Spotify
             </span>
             <span className="text-[10px] text-white/50 font-semibold">
-              'Connect account to sync player'
+              {hasSpotifyAccess ? 'Connect account to sync player' : 'Beta feature (Invite code required)'}
             </span>
           </div>
         </div>
@@ -451,26 +461,10 @@ export default function SpotifyWidget({
           <button
             type="button" 
             onClick={async () => {
-              const pasted = prompt('Enter Spotify Refresh Token:');
-              if (pasted && pasted.trim()) {
-                const cleanToken = pasted.trim();
-                localStorage.setItem('daybase_spotify_refresh_token', cleanToken);
-                apiFetch('/api/spotify/save-token', {
-                  method: 'POST',
-                  body: JSON.stringify({ token: cleanToken })
-                }).catch(() => {});
-                window.dispatchEvent(new CustomEvent('spotify-token-updated'));
+              if (!hasSpotifyAccess) {
+                window.dispatchEvent(new CustomEvent('open-spotify-invite-modal'));
+                return;
               }
-            }}
-            className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white transition-all text-[10px] font-bold cursor-pointer"
-            title='Manual Token Entry'
-          >
-            <KeyRound size={13} />
-          </button>
-
-          <button
-            type="button" 
-            onClick={async () => {
               const isDesktop = typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:');
               let port = 28282;
               if (isDesktop) {

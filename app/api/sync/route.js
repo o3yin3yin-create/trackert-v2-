@@ -175,6 +175,7 @@ export async function GET(req) {
       activeSessionType: user.activeSessionType,
       activeSessionData: user.activeSessionData,
       spotifyRefreshToken: user.spotifyRefreshToken || null,
+      hasSpotifyAccess: Boolean(user.hasSpotifyAccess),
       privacySettings: user.privacySettings || {},
       timezone: user.timezone || 'Africa/Cairo',
       updatedAt: user.updatedAt ? new Date(user.updatedAt).getTime() : Date.now(),

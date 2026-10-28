@@ -27,6 +27,7 @@ import SpotifyWidget from '../components/SpotifyWidget';
 import ChooseUsername from '../components/ChooseUsername';
 import FriendsModal from '../components/FriendsModal';
 import PrivacyModal from '../components/PrivacyModal';
+import SpotifyInviteModal from '../components/SpotifyInviteModal';
 import { guideSections } from '../lib/guideContent';
 import { getDisplayFriend, formatBriefActivity, getActivityBadge, getSafeTrackArt, getIslandDetails } from '../lib/friendsPresets';
 
@@ -762,6 +763,17 @@ function AppContent() {
   const [selectedFriendForModal, setSelectedFriendForModal] = useState(null);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   const [isSpotifyConnected, setIsSpotifyConnected] = useState(false);
+  const [hasSpotifyAccess, setHasSpotifyAccess] = useState(false);
+  const [isSpotifyInviteModalOpen, setIsSpotifyInviteModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOpenInvite = () => {
+      setIsSettingsMenuOpen(false);
+      setIsSpotifyInviteModalOpen(true);
+    };
+    window.addEventListener('open-spotify-invite-modal', handleOpenInvite);
+    return () => window.removeEventListener('open-spotify-invite-modal', handleOpenInvite);
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -1389,6 +1401,10 @@ function AppContent() {
             }
           }
 
+          if (authoritative.hasSpotifyAccess !== undefined) {
+            setHasSpotifyAccess(Boolean(authoritative.hasSpotifyAccess));
+          }
+
           // Cache authoritative server state into IndexedDB
           saveLocalOfflineState(authoritative);
           setTimeout(() => {
@@ -1527,6 +1543,7 @@ function AppContent() {
     setGrantedCardsLog({});
     setFinishedTickets([]);
     setIsSpotifyConnected(false);
+    setHasSpotifyAccess(false);
     setPinnedFriendUsername("");
     setAvatar('user');
     setIsCloudLoaded(false);
@@ -3338,6 +3355,7 @@ function AppContent() {
           userId={user?.id}
           mode={mode}
           size={size}
+          hasSpotifyAccess={hasSpotifyAccess}
         />
       );
     }
@@ -7766,7 +7784,11 @@ function AppContent() {
                                     )}
                                   </div>
                                   <span className="text-[11px] text-white/50 font-normal">
-                                    {isSpotifyConnected ? 'Linked to your account' : 'Music playback & sync'}
+                                    {isSpotifyConnected 
+                                      ? 'Linked to your account' 
+                                      : hasSpotifyAccess 
+                                      ? 'Music playback & sync' 
+                                      : 'Beta feature (Invite code required)'}
                                   </span>
                                 </div>
                               </div>
@@ -7779,14 +7801,21 @@ function AppContent() {
                                   Disconnect
                                 </button>
                               ) : (
-                                <a 
-                                  href={typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') ? 'https://bokra101.vercel.app/api/spotify/login' : '/api/spotify/login'}
-                                  target={typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') ? '_blank' : '_self'}
-                                  rel="noopener noreferrer"
-                                  className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-white text-black hover:bg-white/90 transition-all active:scale-95 flex items-center gap-1.5 shadow-md"
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!hasSpotifyAccess) {
+                                      setIsSettingsMenuOpen(false);
+                                      setIsSpotifyInviteModalOpen(true);
+                                    } else {
+                                      const loginUrl = typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') ? 'https://bokra101.vercel.app/api/spotify/login' : '/api/spotify/login';
+                                      window.location.href = loginUrl;
+                                    }
+                                  }}
+                                  className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-white text-black hover:bg-white/90 transition-all active:scale-95 flex items-center gap-1.5 shadow-md cursor-pointer"
                                 >
                                   {'Connect'}
-                                </a>
+                                </button>
                               )}
                             </div>
                           </div>
@@ -8029,6 +8058,14 @@ function AppContent() {
             />,
             document.body
           )}
+
+          {/* ---------------- SPOTIFY INVITE MODAL ---------------- */}
+          <SpotifyInviteModal 
+            isOpen={isSpotifyInviteModalOpen}
+            onClose={() => setIsSpotifyInviteModalOpen(false)}
+            onSuccess={() => setHasSpotifyAccess(true)}
+            isSignedIn={Boolean(isSignedIn && user)}
+          />
 
         </div>
       </div>

@@ -26,6 +26,7 @@ model User {
   activeSessionData Json?   // Session details
   avatar         String?    @default("boy1") // boy1, boy2, boy3, girl1, girl2, girl3
   spotifyRefreshToken String? // توكن سبوتيفاي للمزامنة بين الويب والديسكتوب
+  hasSpotifyAccess    Boolean    @default(false) // صلاحية الوصول لميزة سبوتيفاي بكود دعوة
   isAdmin        Boolean    @default(false)
   isBlocked      Boolean    @default(false)
   notifications  Json?      @default("[]") // In-app notifications (requests, nudges, cheers)
@@ -102,4 +103,14 @@ model Friendship {
   @@unique([requesterId, addresseeId])
   @@index([addresseeId, status])
   @@index([requesterId, status])
+}
+
+// 5. أكواد الدعوة لميزة سبوتيفاي التجريبية
+model SpotifyInviteCode {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  isUsed    Boolean   @default(false)
+  usedBy    String?   // clerkId أو userId
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 }

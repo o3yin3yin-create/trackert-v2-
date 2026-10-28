@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { SPOTIFY_SCOPES, getRedirectUri } from '@/lib/spotify';
 import { getAuthUserId } from '@/lib/auth-server';
+import prisma from '@/lib/prisma';
 
 export async function GET(req) {
   const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || '491c8113d9e04931a82e942edc73d67e';
@@ -12,6 +13,22 @@ export async function GET(req) {
     try {
       uid = (await getAuthUserId(req)) || '';
     } catch (e) {}
+  }
+
+  // Ensure user has unlocked Spotify Beta Access via invite code
+  if (uid) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { clerkId: uid },
+        select: { hasSpotifyAccess: true }
+      });
+      if (!user?.hasSpotifyAccess) {
+        const origin = req.headers?.get?.('x-forwarded-host') 
+          ? `${req.headers.get('x-forwarded-proto') || 'https'}://${req.headers.get('x-forwarded-host')}`
+          : new URL(req.url).origin;
+        return NextResponse.redirect(`${origin}/?spotify_error=invite_required`);
+      }
+    } catch (_) {}
   }
 
   const from = searchParams.get('from') || '';
