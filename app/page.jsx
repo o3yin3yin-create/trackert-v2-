@@ -28,7 +28,7 @@ import ChooseUsername from '../components/ChooseUsername';
 import FriendsModal from '../components/FriendsModal';
 import PrivacyModal from '../components/PrivacyModal';
 import { guideSections } from '../lib/guideContent';
-import { getDisplayFriend, formatBriefActivity, getActivityBadge, getSafeTrackArt } from '../lib/friendsPresets';
+import { getDisplayFriend, formatBriefActivity, getActivityBadge, getSafeTrackArt, getIslandDetails } from '../lib/friendsPresets';
 
 let globalAudioCtx = null;
 const getAudioCtx = () => {
@@ -3156,15 +3156,10 @@ export default function App() {
       if (mode === 'hidden') return null;
 
       const friend = activeFriendToDisplay;
-      const brief = formatBriefActivity(friend?.presence);
-      const friendName = friend?.displayName || friend?.user?.name || friend?.user?.username || (t('friendsTitle') || 'Friends');
-      const friendAvatar = friend?.user?.avatar || 'user';
+      const friendName = friend?.displayName || friend?.user?.name || friend?.user?.username || 'Sara';
+      const friendAvatar = friend?.user?.avatar || 'sparkles';
       const isPinned = Boolean(friend?.isPinned);
-      const badge = getActivityBadge(friend?.presence, isPinned);
-      const isOnline = friend?.presence?.kind && friend?.presence?.kind !== 'idle';
-      const hasMusic = friend?.presence?.hasMusicBadge || friend?.presence?.kind === 'music';
-      const trackArt = (friend?.presence?.art || friend?.presence?.secArt);
-      const safeArtUrl = trackArt ? getSafeTrackArt(trackArt) : null;
+      const island = getIslandDetails(friend?.presence);
 
       if (size === 'compact') {
         return (
@@ -3172,22 +3167,20 @@ export default function App() {
             key="friends-widget"
             onClick={() => setIsFriendsModalOpen(true)}
             data-no-day-swipe="true"
-            className="col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel flex items-center justify-between border border-white/10 dark:border-white/18 shadow-lg cursor-pointer active:scale-[0.99] hover:bg-white/10 transition-all duration-200 select-none min-h-[58px]"
+            className="col-span-1 w-full p-2.5 rounded-[26px] bg-[#0c0c0e] border border-white/10 flex items-center justify-between gap-2 shadow-lg cursor-pointer active:scale-[0.99] hover:bg-white/[0.04] transition-all duration-200 select-none min-h-[58px]"
           >
-            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-              <div className="relative w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shrink-0">
-                <AvatarIcon name={friendAvatar} size={16} className="text-black" />
-                {isPinned ? (
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-black text-white flex items-center justify-center border border-white/40">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <div className="relative w-8 h-8 rounded-full bg-[#1c1c1e] text-white flex items-center justify-center shrink-0 border border-white/10">
+                <AvatarIcon name={friendAvatar} size={15} className="text-white" />
+                {isPinned && (
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-white text-black flex items-center justify-center border border-black shadow-sm">
                     <Pin size={6} className="fill-current" />
                   </span>
-                ) : isOnline ? (
-                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border border-[#121214] shadow-[0_0_6px_rgba(52,211,153,0.9)]" />
-                ) : null}
+                )}
               </div>
 
               <div className="flex flex-col min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 min-w-0">
+                <div className="flex items-center gap-1 min-w-0">
                   <span className="text-[12px] font-bold text-white tracking-tight truncate leading-tight">
                     {friendName}
                   </span>
@@ -3197,21 +3190,40 @@ export default function App() {
                     </span>
                   )}
                 </div>
-                <span className="text-[10px] text-white/60 truncate leading-tight mt-0.5 font-medium">
-                  {friendsIncomingCount > 0 ? `${friendsIncomingCount} pending notifications` : brief}
+                <span className="text-[10px] text-white/40 truncate leading-tight font-medium mt-0.5">
+                  {!island.isOffline ? island.title : 'Offline'}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-1 shrink-0 pl-1">
-              {friend?.presence?.right && friend?.presence?.kind !== 'idle' ? (
-                <span className="font-mono text-[10px] font-bold text-white/80">
-                  {friend.presence.right}
-                </span>
-              ) : (
-                <div className={`w-2 h-2 rounded-full shrink-0 ${friendsIncomingCount > 0 ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]' : isOnline ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-white/30'}`} />
-              )}
-            </div>
+            {!island.isOffline ? (
+              <div className="h-[28px] bg-white text-black rounded-full px-2.5 flex items-center gap-1.5 font-mono font-bold text-[10px] shrink-0 shadow-sm">
+                {island.iconType === 'music' && (
+                  <div className="flex items-end gap-[1.5px] h-2.5 shrink-0" aria-hidden="true">
+                    <span className="w-[2px] h-1.5 bg-black rounded-full" />
+                    <span className="w-[2px] h-2.5 bg-black rounded-full" />
+                    <span className="w-[2px] h-1 bg-black rounded-full" />
+                  </div>
+                )}
+                {island.iconType === 'flight' && (
+                  <Plane size={10} className="text-black shrink-0" strokeWidth={2.6} />
+                )}
+                {island.iconType === 'focus' && (
+                  <Timer size={10} className="text-black shrink-0" strokeWidth={2.6} />
+                )}
+                {island.iconType === 'lecture' && (
+                  <BookOpen size={10} className="text-black shrink-0" strokeWidth={2.6} />
+                )}
+                {island.iconType === 'habit' && (
+                  <Check size={10} className="text-black shrink-0" strokeWidth={3} />
+                )}
+                <span>{island.time}</span>
+              </div>
+            ) : (
+              <div className="h-[28px] border border-dashed border-white/20 rounded-full px-2.5 flex items-center font-mono text-white/30 text-[10px] shrink-0">
+                {island.time}
+              </div>
+            )}
           </div>
         );
       }
@@ -3221,80 +3233,77 @@ export default function App() {
           key="friends-widget"
           onClick={() => setIsFriendsModalOpen(true)}
           data-no-day-swipe="true"
-          className="col-span-2 w-full px-4 py-3 rounded-[20px] liquid-panel flex items-center justify-between border border-white/10 shadow-lg cursor-pointer active:scale-[0.99] hover:bg-white/10 transition-all duration-200 select-none min-h-[58px]"
+          className="col-span-2 w-full p-2.5 sm:p-3 rounded-[32px] bg-[#0c0c0e] border border-white/10 flex items-center justify-between gap-3 shadow-lg cursor-pointer active:scale-[0.99] hover:bg-white/[0.04] transition-all duration-200 select-none min-h-[64px]"
         >
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            {/* Friend Avatar */}
-            <div className="relative w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shrink-0">
-              <AvatarIcon name={friendAvatar} size={20} className="text-black" />
-              {hasMusic ? (
-                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-black text-white border border-white/30 flex items-center justify-center shadow-md">
-                  <Music size={8} strokeWidth={2.8} />
+          {/* Left: Avatar + Friend Name */}
+          <div className="flex items-center gap-3 min-w-0 flex-1 pl-1 sm:pl-1.5">
+            <div className="relative w-10 h-10 rounded-full bg-[#1c1c1e] text-white flex items-center justify-center font-bold text-base uppercase shrink-0 border border-white/10">
+              <AvatarIcon name={friendAvatar} size={20} className="text-white" />
+              {isPinned && (
+                <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-white text-black flex items-center justify-center border border-black shadow-sm">
+                  <Pin size={8} className="fill-current" />
                 </span>
-              ) : (
-                <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#121214] ${isOnline ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)]' : 'bg-white/30'}`} />
               )}
             </div>
 
-            {/* Friend Details & "بريف في رغيف" */}
-            <div className="flex flex-col min-w-0 flex-1 pr-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-[13px] font-bold text-white tracking-tight truncate leading-tight">
-                  {friendName}
-                </span>
-
-                {friendsIncomingCount > 0 ? (
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-white text-black font-black uppercase tracking-wider shrink-0">
-                    {friendsIncomingCount} NEW
-                  </span>
-                ) : isPinned ? (
-                  <span className="inline-flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full bg-white text-black font-black uppercase tracking-wider shrink-0">
-                    <Pin size={8} className="fill-current" />
-                    PINNED
-                  </span>
-                ) : (
-                  <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 ${isOnline ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/15 text-white/80'}`}>
-                    {badge}
-                  </span>
-                )}
-              </div>
-
-              {/* Brief Activity ("بريف في رغيف") */}
-              <span className="text-[11px] text-white/60 font-medium truncate mt-0.5 leading-tight">
-                {friendsIncomingCount > 0 
-                  ? `${friendsIncomingCount} pending notifications & requests` 
-                  : brief}
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-bold text-white text-[15px] sm:text-[16px] tracking-tight truncate leading-tight">
+                {friendName}
               </span>
+              {friendsIncomingCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-red-500 text-white font-black text-[9px] leading-tight shrink-0">
+                  {friendsIncomingCount}
+                </span>
+              )}
             </div>
           </div>
 
-          {/* Right Section: Spotify Cover Art or Timer/Status */}
-          <div className="flex items-center gap-2.5 shrink-0 pl-1">
-            {safeArtUrl ? (
-              <div className="w-9 h-9 rounded-xl bg-black/60 border border-white/15 overflow-hidden flex items-center justify-center shrink-0 shadow-md">
-                <img 
-                  src={safeArtUrl} 
-                  alt={friend?.presence?.secTitle || 'Spotify'} 
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover"
-                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                />
-              </div>
-            ) : friend?.presence?.right && friend?.presence?.kind !== 'idle' ? (
-              <div className="flex flex-col items-end">
-                <span className="font-mono text-[12px] font-bold text-white tracking-tight">
-                  {friend.presence.right}
+          {/* Right: Solid White Pill (Active) or Dashed Pill (Offline) */}
+          {!island.isOffline ? (
+            <div className="h-[44px] bg-white text-black rounded-full px-4 flex items-center justify-between gap-3 shadow-md shrink-0 max-w-[62%] sm:max-w-[65%]">
+              <div className="flex items-center gap-2 min-w-0">
+                {/* Icon matching Figma Island */}
+                {island.iconType === 'music' && (
+                  <div className="flex items-end gap-[2px] h-3.5 shrink-0" aria-hidden="true">
+                    <span className="w-[2.5px] h-2 bg-black rounded-full" />
+                    <span className="w-[2.5px] h-3.5 bg-black rounded-full" />
+                    <span className="w-[2.5px] h-1.5 bg-black rounded-full" />
+                  </div>
+                )}
+                {island.iconType === 'flight' && (
+                  <Plane size={13} className="text-black shrink-0" strokeWidth={2.6} />
+                )}
+                {island.iconType === 'focus' && (
+                  <Timer size={13} className="text-black shrink-0" strokeWidth={2.6} />
+                )}
+                {island.iconType === 'lecture' && (
+                  <BookOpen size={13} className="text-black shrink-0" strokeWidth={2.6} />
+                )}
+                {island.iconType === 'habit' && (
+                  <Check size={13} className="text-black shrink-0" strokeWidth={3} />
+                )}
+
+                {/* Title */}
+                <span className="font-black text-[11px] sm:text-[12px] tracking-wider uppercase truncate leading-none">
+                  {island.title}
                 </span>
-                <span className="text-[9px] text-white/40 font-mono uppercase tracking-wider">
-                  {friend.presence.kind === 'focus' ? 'TIME LEFT' : friend.presence.kind === 'flight' ? 'REMAINING' : 'ACTIVE'}
-                </span>
               </div>
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40">
-                <Users size={14} />
-              </div>
-            )}
-          </div>
+
+              {/* Time / Duration */}
+              <span className="font-mono font-bold text-[11px] sm:text-[12px] text-black tracking-tight shrink-0 leading-none">
+                {island.time}
+              </span>
+            </div>
+          ) : (
+            <div className="h-[44px] border border-dashed border-white/20 rounded-full px-4 flex items-center justify-between gap-3 bg-white/[0.02] shrink-0 min-w-[140px] sm:min-w-[160px]">
+              <span className="text-white/40 font-medium text-[12px] sm:text-[13px] leading-none">
+                {island.title}
+              </span>
+              <span className="font-mono text-white/30 text-[11px] sm:text-[12px] shrink-0 leading-none">
+                {island.time}
+              </span>
+            </div>
+          )}
         </div>
       );
     }
