@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut } from 'lucide-react';
+import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Download, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut } from 'lucide-react';
 import React, { useState, useEffect, useRef, useCallback, useMemo, Component } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -7879,6 +7879,19 @@ function AppContent() {
                               <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><BookOpen size={18} /></div>
                                 <span className="text-sm font-bold text-white">{t('howToUse')}</span>
+                              </div>
+                              <ChevronRight size={18} className="text-white/40" />
+                            </a>
+
+                            {/* Download Apps */}
+                            <a 
+                              href="/download" 
+                              onClick={() => setIsSettingsMenuOpen(false)} 
+                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><Download size={18} /></div>
+                                <span className="text-sm font-bold text-white">{t('downloadApps')}</span>
                               </div>
                               <ChevronRight size={18} className="text-white/40" />
                             </a>

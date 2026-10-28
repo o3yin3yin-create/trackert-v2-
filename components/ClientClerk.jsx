@@ -340,6 +340,15 @@ export const useAuth = () => {
   };
 };
 
+export const useClerk = () => {
+  const { signOut, openLoginInBrowser } = useContext(AuthContext);
+  return {
+    signOut,
+    openSignIn: openLoginInBrowser,
+    openSignUp: openLoginInBrowser,
+  };
+};
+
 
 export const UserButton = ({ appearance }) => {
   const { user, signOut } = useContext(AuthContext);
