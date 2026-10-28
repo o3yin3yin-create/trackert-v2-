@@ -693,6 +693,7 @@ export default function App() {
   });
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
   const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
+  const [selectedFriendForModal, setSelectedFriendForModal] = useState(null);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   const [isSpotifyConnected, setIsSpotifyConnected] = useState(false);
 
@@ -1733,6 +1734,7 @@ export default function App() {
     setIsWidgetsModalOpen(false);
     setIsAppearanceModalOpen(false);
     setIsFriendsModalOpen(false);
+    setSelectedFriendForModal(null);
     setIsEditVisible(false);
     setTimeout(() => setIsEditMounted(false), 300);
     if (!skipManage) {
@@ -1748,7 +1750,10 @@ export default function App() {
     else if (target === 'tasks') setIsTasksModalOpen(true);
     else if (target === 'pomodoro') setIsPomodoroOpen(true);
     else if (target === 'flight') setIsFlightFocusOpen(true);
-    else if (target === 'friends') setIsFriendsModalOpen(true);
+    else if (target === 'friends') {
+      setSelectedFriendForModal(null);
+      setIsFriendsModalOpen(true);
+    }
     else if (target === 'home') topRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
   
@@ -3165,12 +3170,15 @@ export default function App() {
         return (
           <div 
             key="friends-widget"
-            onClick={() => setIsFriendsModalOpen(true)}
+            onClick={() => {
+              setSelectedFriendForModal(friend);
+              setIsFriendsModalOpen(true);
+            }}
             data-no-day-swipe="true"
-            className="col-span-1 w-full p-2.5 rounded-[26px] bg-[#0c0c0e] border border-white/10 flex items-center justify-between gap-2 shadow-lg cursor-pointer active:scale-[0.99] hover:bg-white/[0.04] transition-all duration-200 select-none min-h-[58px]"
+            className="col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel flex items-center justify-between gap-2 border border-white/10 dark:border-white/18 shadow-lg cursor-pointer active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
           >
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <div className="relative w-8 h-8 rounded-full bg-[#1c1c1e] text-white flex items-center justify-center shrink-0 border border-white/10">
+              <div className="relative w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center shrink-0 border border-white/10">
                 <AvatarIcon name={friendAvatar} size={15} className="text-white" />
                 {isPinned && (
                   <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-white text-black flex items-center justify-center border border-black shadow-sm">
@@ -3231,14 +3239,17 @@ export default function App() {
       return (
         <div 
           key="friends-widget"
-          onClick={() => setIsFriendsModalOpen(true)}
+          onClick={() => {
+            setSelectedFriendForModal(friend);
+            setIsFriendsModalOpen(true);
+          }}
           data-no-day-swipe="true"
-          className="col-span-2 w-full p-2.5 sm:p-3 rounded-[32px] bg-[#0c0c0e] border border-white/10 flex items-center justify-between gap-3 shadow-lg cursor-pointer active:scale-[0.99] hover:bg-white/[0.04] transition-all duration-200 select-none min-h-[64px]"
+          className="col-span-2 w-full px-4 sm:px-5 py-3 rounded-[20px] liquid-panel flex items-center justify-between gap-3 border border-white/10 dark:border-white/18 shadow-lg cursor-pointer active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
         >
           {/* Left: Avatar + Friend Name */}
-          <div className="flex items-center gap-3 min-w-0 flex-1 pl-1 sm:pl-1.5">
-            <div className="relative w-10 h-10 rounded-full bg-[#1c1c1e] text-white flex items-center justify-center font-bold text-base uppercase shrink-0 border border-white/10">
-              <AvatarIcon name={friendAvatar} size={20} className="text-white" />
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 text-white flex items-center justify-center font-bold text-base uppercase shrink-0 border border-white/10">
+              <AvatarIcon name={friendAvatar} size={18} className="text-white" />
               {isPinned && (
                 <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-white text-black flex items-center justify-center border border-black shadow-sm">
                   <Pin size={8} className="fill-current" />
@@ -3260,7 +3271,7 @@ export default function App() {
 
           {/* Right: Solid White Pill (Active) or Dashed Pill (Offline) */}
           {!island.isOffline ? (
-            <div className="h-[44px] bg-white text-black rounded-full px-4 flex items-center justify-between gap-3 shadow-md shrink-0 max-w-[62%] sm:max-w-[65%]">
+            <div className="h-[38px] sm:h-[42px] bg-white text-black rounded-full px-3.5 sm:px-4 flex items-center justify-between gap-2.5 sm:gap-3 shadow-md shrink-0 max-w-[62%] sm:max-w-[65%]">
               <div className="flex items-center gap-2 min-w-0">
                 {/* Icon matching Figma Island */}
                 {island.iconType === 'music' && (
@@ -3295,7 +3306,7 @@ export default function App() {
               </span>
             </div>
           ) : (
-            <div className="h-[44px] border border-dashed border-white/20 rounded-full px-4 flex items-center justify-between gap-3 bg-white/[0.02] shrink-0 min-w-[140px] sm:min-w-[160px]">
+            <div className="h-[38px] sm:h-[42px] border border-dashed border-white/20 rounded-full px-3.5 sm:px-4 flex items-center justify-between gap-2.5 sm:gap-3 bg-white/[0.02] shrink-0 min-w-[130px] sm:min-w-[150px]">
               <span className="text-white/40 font-medium text-[12px] sm:text-[13px] leading-none">
                 {island.title}
               </span>
@@ -7323,6 +7334,7 @@ export default function App() {
               <button onClick={() => navTo('tasks')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
               <button 
                 onClick={() => {
+                  setSelectedFriendForModal(null);
                   setIsFriendsModalOpen(true);
                   setIsSettingsMenuOpen(false);
                   setIsFocusMenuOpen(false);
@@ -7560,7 +7572,7 @@ export default function App() {
                             </span>
 
                             {/* Friends */}
-                            <button onClick={() => { setIsSettingsMenuOpen(false); setIsFriendsModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors cursor-pointer">
+                            <button onClick={() => { setIsSettingsMenuOpen(false); setSelectedFriendForModal(null); setIsFriendsModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors cursor-pointer">
                               <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><Users size={18} /></div>
                                 <span className="text-sm font-bold text-white">{t('friendsTitle')}</span>
@@ -7755,7 +7767,11 @@ export default function App() {
           {isFriendsModalOpen && typeof document !== 'undefined' && createPortal(
             <FriendsModal 
               isOpen={isFriendsModalOpen}
-              onClose={() => setIsFriendsModalOpen(false)}
+              onClose={() => {
+                setIsFriendsModalOpen(false);
+                setSelectedFriendForModal(null);
+              }}
+              initialSelectedFriend={selectedFriendForModal}
               myUsername={user?.username || ''}
               myName={user?.fullName || user?.firstName || 'Explorer'}
               myAvatar={avatar}
