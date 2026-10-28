@@ -73,7 +73,7 @@ export default function GuidePage() {
       className="min-h-screen bg-[#000000] text-white selection:bg-white selection:text-black font-sans antialiased"
     >
       {/* Top Sticky Navigation Bar */}
-      <header className="sticky top-0 z-50 bg-black/85 backdrop-blur-xl border-b border-white/10 px-4 sm:px-8 py-3.5 transition-all">
+      <header className="sticky top-0 z-50 bg-black/85 backdrop-blur-xl border-b border-white/10 px-4 sm:px-8 pt-[calc(env(safe-area-inset-top,0px)+0.875rem)] pb-3.5 transition-all">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
           
           {/* Left: Back Link & Page Title */}

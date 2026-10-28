@@ -3578,7 +3578,7 @@ function AppContent() {
         {/* ---------------- ADD HABIT PAGE (FULL SCREEN) ---------------- */}
         {isAddMounted && typeof document !== 'undefined' && createPortal(
           <div className={`fixed inset-0 z-[10005] bg-black overflow-y-auto transition-opacity duration-300 ease-out ${isAddVisible ? 'opacity-100' : 'opacity-0'}`}>
-            <div className={`min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+3rem)] flex flex-col justify-between transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isAddVisible ? 'translate-y-0 scale-100' : 'translate-y-4 scale-95 opacity-0'}`}>
+            <div className={`min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+3rem)] flex flex-col justify-between transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isAddVisible ? 'translate-y-0 scale-100' : 'translate-y-4 scale-95 opacity-0'}`}>
               <div>
                 {/* Header */}
                 <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
@@ -4074,7 +4074,7 @@ function AppContent() {
         {/* ---------------- MANAGE HABITS PAGE (FULL SCREEN) ---------------- */}
         {isManageMounted && typeof document !== 'undefined' && createPortal(
           <div className={`fixed inset-0 z-[10005] bg-black overflow-y-auto transition-opacity duration-300 ease-out ${isManageVisible ? 'opacity-100' : 'opacity-0'}`}>
-            <div className={`min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+3rem)] flex flex-col justify-between transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isManageVisible ? 'translate-y-0 scale-100' : 'translate-y-4 scale-95 opacity-0'}`}>
+            <div className={`min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+3rem)] flex flex-col justify-between transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isManageVisible ? 'translate-y-0 scale-100' : 'translate-y-4 scale-95 opacity-0'}`}>
               <div>
                 {/* Header */}
                 <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
@@ -4199,7 +4199,7 @@ function AppContent() {
         {/* ---------------- EDIT HABIT PAGE (FULL SCREEN) ---------------- */}
         {isEditMounted && editingHabit && typeof document !== 'undefined' && createPortal(
           <div className={`fixed inset-0 z-[10006] bg-black overflow-y-auto transition-opacity duration-300 ease-out ${isEditVisible ? 'opacity-100' : 'opacity-0'}`}>
-            <div className={`min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+3rem)] flex flex-col justify-between transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isEditVisible ? 'translate-y-0 scale-100' : 'translate-y-4 scale-95 opacity-0'}`}>
+            <div className={`min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+3rem)] flex flex-col justify-between transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) ${isEditVisible ? 'translate-y-0 scale-100' : 'translate-y-4 scale-95 opacity-0'}`}>
               <div>
                 {/* Header */}
                 <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
@@ -4672,7 +4672,7 @@ function AppContent() {
         {/* ---------------- EMERGENCY CARDS PAGE (FULL SCREEN) ---------------- */}
         {isCardsModalOpen && createPortal(
           <div className="fixed inset-0 z-[10000] bg-black overflow-y-auto">
-            <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
+            <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
               <div>
                 {/* Header */}
                 <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
@@ -4826,7 +4826,7 @@ function AppContent() {
         {/* ---------------- FLIGHT FOCUS PAGE (FULL SCREEN) ---------------- */}
         {isFlightFocusOpen && createPortal(
           <div className="fixed inset-0 z-[10000] overflow-y-auto bg-black animate-in fade-in duration-200">
-            <div className="min-h-screen w-full max-w-4xl mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
+            <div className="min-h-screen w-full max-w-4xl mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
               <div>
                 {/* Header */}
                 <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
@@ -5401,7 +5401,7 @@ function AppContent() {
 
             return (
               <div className="fixed inset-0 z-[10000] bg-black overflow-y-auto animate-in fade-in duration-200">
-                <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between items-center">
+                <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between items-center">
                   {/* Header */}
                   <div className="w-full flex justify-between items-center mb-6 pb-4 border-b border-white/10">
                     <div className="flex items-center gap-3">
@@ -5606,7 +5606,7 @@ function AppContent() {
         
         {/* Floating In-App Friends & Interaction Notification Banner */}
         {activeInAppNotification && (
-          <div className="fixed top-[calc(env(safe-area-inset-top,0px)+0.75rem)] left-1/2 -translate-x-1/2 z-[99999] max-w-sm w-[92%] sm:w-auto bg-[#18181b]/95 backdrop-blur-xl text-white border border-white/20 rounded-2xl p-3 shadow-2xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="fixed top-[calc(env(safe-area-inset-top,0px)+1.5rem)] sm:top-[calc(env(safe-area-inset-top,0px)+2rem)] left-1/2 -translate-x-1/2 z-[99999] max-w-sm w-[92%] sm:w-auto bg-[#18181b]/95 backdrop-blur-xl text-white border border-white/20 rounded-2xl p-3 shadow-2xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center font-bold text-xs uppercase shrink-0 shadow-sm">
                 {activeInAppNotification.user?.name?.charAt(0) || activeInAppNotification.user?.username?.charAt(0) || 'F'}
@@ -5743,7 +5743,7 @@ function AppContent() {
           initial={{ opacity: 0, y: 15 }} 
           animate={{ opacity: 1, y: 0 }} 
           transition={{ duration: 0.4 }} 
-          className={`w-full max-w-[428px] md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto h-full flex flex-col px-5 md:px-10 relative z-10 pt-[calc(env(safe-area-inset-top,0px)+1.25rem)] md:pt-4 pb-36 md:pb-40 ${(typeof window !== 'undefined' && window.__TAURI_INTERNALS__) ? 'pt-9 md:pt-10' : ''}`}
+          className={`w-full max-w-[428px] sm:max-w-2xl md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto h-full flex flex-col px-5 sm:px-8 md:px-10 lg:px-12 relative z-10 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] md:pt-[calc(env(safe-area-inset-top,0px)+3rem)] lg:pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] pb-36 md:pb-40 ${(typeof window !== 'undefined' && window.__TAURI_INTERNALS__) ? 'pt-12 md:pt-14' : ''}`}
           onTouchStart={(e) => {
             if (e.target && e.target.closest && (e.target.closest('[data-no-day-swipe]') || e.target.closest('.spotify-widget'))) {
               touchStartXRef.current = null;
@@ -5775,7 +5775,7 @@ function AppContent() {
         >
           
           {/* Header with Navigation */}
-          <header className="flex flex-col gap-2 mb-4 sm:mb-6 w-full">
+          <header className="flex flex-col gap-2 mb-5 sm:mb-7 w-full">
             {/* Clean Minimal Apple Header: Day & Date on Left, Glowing Status Account Avatar on Right */}
             <div 
               data-tauri-drag-region 
@@ -6310,7 +6310,7 @@ function AppContent() {
           {/* --- ANALYTICS PAGE (FULL SCREEN) --- */}
           {isAnalyticsModalOpen && createPortal(
             <div className="fixed inset-0 z-[10005] bg-black overflow-y-auto">
-              <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
+              <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
                 <div>
                   {/* Header */}
                   <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
@@ -6543,7 +6543,7 @@ function AppContent() {
           {/* --- WIDGETS CUSTOMIZATION MODAL (FULL SCREEN) --- */}
           {isWidgetsModalOpen && createPortal(
             <div className="fixed inset-0 z-[10005] bg-black overflow-y-auto animate-in fade-in duration-200">
-              <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
+              <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
                 <div>
                   {/* Header */}
                   <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
@@ -6788,7 +6788,7 @@ function AppContent() {
           {/* --- APPEARANCE & CUSTOMIZATION MODAL (FULL SCREEN) --- */}
           {isAppearanceModalOpen && createPortal(
             <div className="fixed inset-0 z-[10005] bg-black overflow-y-auto animate-in fade-in duration-200">
-              <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
+              <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
                 <div>
                   {/* Header */}
                   <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
@@ -6986,7 +6986,7 @@ function AppContent() {
           {/* --- DAILY TASKS PAGE (FULL SCREEN) --- */}
           {isTasksModalOpen && createPortal(
             <div className="fixed inset-0 z-[10000] bg-black overflow-y-auto">
-              <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
+              <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
                 <div>
                   {/* Header */}
                   <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
@@ -7119,7 +7119,7 @@ function AppContent() {
             <div className="fixed inset-0 z-[10005] bg-black overflow-y-auto">
               <div 
                 dir={guideLang === 'ar' ? 'rtl' : 'ltr'}
-                className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between"
+                className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between"
               >
                 <div>
                   {/* Sticky Top Header with Bilingual Switcher */}
@@ -7521,7 +7521,7 @@ function AppContent() {
         </motion.div>
 
         {/* --- FLOATING NAV --- */}
-        <div className="fixed bottom-0 left-0 w-full flex justify-center pt-3 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none z-[10000] pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] sm:pb-5">
+        <div className="fixed bottom-0 left-0 w-full flex justify-center pt-3 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none z-[10000] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] sm:pb-6">
           <div className="w-full max-w-[428px] md:max-w-2xl lg:max-w-3xl px-6 flex justify-between items-center pointer-events-auto">
             <div className="bg-white/50 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border border-black/10 dark:border-white/5 rounded-full flex items-center p-1.5 gap-1.5 shadow-2xl dark:shadow-black/80">
               <button onClick={() => navTo('home')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white transition-all duration-200 active:scale-90"><Home size={18} /></button>
@@ -7638,7 +7638,7 @@ function AppContent() {
 
                 {isSettingsMenuOpen && createPortal(
                   <div className="fixed inset-0 z-[10000] bg-black overflow-y-auto animate-in fade-in duration-200">
-                    <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
+                    <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
                       <div>
                         {/* Header */}
                         <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
@@ -7938,7 +7938,7 @@ function AppContent() {
               {/* Avatar Picker Page (Full Screen) */}
               {isAvatarModalOpen && createPortal(
                 <div className="fixed inset-0 z-[10000] bg-black overflow-y-auto">
-                  <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
+                  <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
                     <div>
                       {/* Header */}
                       <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">

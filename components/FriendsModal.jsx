@@ -844,7 +844,7 @@ export default function FriendsModal({
       )}
 
       {/* Main Container */}
-      <div className="w-full max-w-md min-h-full mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+3rem)] flex flex-col justify-between relative">
+      <div className="w-full max-w-md min-h-full mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+3rem)] flex flex-col justify-between relative">
         
         {/* ========================================================= */}
         {/* VIEW 1: MAIN FRIENDS LIST & PRESENCE STORY BAR            */}
