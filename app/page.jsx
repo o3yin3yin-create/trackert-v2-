@@ -29,7 +29,7 @@ import FriendsModal from '../components/FriendsModal';
 import PrivacyModal from '../components/PrivacyModal';
 import SpotifyInviteModal from '../components/SpotifyInviteModal';
 import { guideSections } from '../lib/guideContent';
-import { getDisplayFriend, formatBriefActivity, getActivityBadge, getSafeTrackArt, getIslandDetails } from '../lib/friendsPresets';
+import { getDisplayFriend, formatBriefActivity, getActivityBadge, getSafeTrackArt, getIslandDetails, PRESENCE_PRESETS } from '../lib/friendsPresets';
 
 let globalAudioCtx = null;
 const getAudioCtx = () => {
@@ -447,14 +447,169 @@ class GlobalErrorBoundary extends Component {
   }
 }
 
-function AppContent() {
-  const { user, isLoaded, isSignedIn } = useUser(); 
+const getPreviewData = () => {
+  const habits = [
+    { id: 'p1', name: 'Morning Workout', type: 'single', subItems: [] },
+    { id: 'p2', name: 'Daily Prayers', type: 'multi', subItems: ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] },
+    { id: 'p3', name: 'Deep Work Session', type: 'single', subItems: [] },
+    { id: 'p4', name: 'Read 20 Pages', type: 'single', subItems: [] },
+    { id: 'p5', name: 'Clean Eating / Sugar Free', type: 'single', subItems: [] },
+    { id: 'p6', name: 'Evening Reflection', type: 'single', subItems: [] },
+  ];
+
+  const dailyData = {};
+  const today = new Date();
+  
+  for (let i = 0; i <= 45; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const ds = `${y}-${m}-${day}`;
+
+    if (i === 0) {
+      dailyData[`${ds}-p1`] = true;
+      dailyData[`${ds}-p2-Fajr`] = true;
+      dailyData[`${ds}-p2-Dhuhr`] = true;
+      dailyData[`${ds}-p2-Asr`] = true;
+      dailyData[`${ds}-p2-Maghrib`] = true;
+      dailyData[`${ds}-p3`] = true;
+      dailyData[`${ds}-p4`] = true;
+      dailyData[`${ds}-p5`] = true;
+      dailyData[`${ds}-p6`] = false;
+    } else {
+      if (i <= 18) dailyData[`${ds}-p1`] = true;
+      else if (i % 2 === 0) dailyData[`${ds}-p1`] = true;
+
+      if (i <= 34) {
+        dailyData[`${ds}-p2-Fajr`] = true;
+        dailyData[`${ds}-p2-Dhuhr`] = true;
+        dailyData[`${ds}-p2-Asr`] = true;
+        dailyData[`${ds}-p2-Maghrib`] = true;
+        dailyData[`${ds}-p2-Isha`] = true;
+      }
+
+      if (i <= 12) dailyData[`${ds}-p3`] = true;
+      else if (i % 3 !== 0) dailyData[`${ds}-p3`] = true;
+
+      if (i <= 21) dailyData[`${ds}-p4`] = true;
+      else if (i % 2 === 0) dailyData[`${ds}-p4`] = true;
+
+      if (i <= 9) dailyData[`${ds}-p5`] = true;
+      else if (i % 2 === 0) dailyData[`${ds}-p5`] = true;
+
+      if (i <= 15) dailyData[`${ds}-p6`] = true;
+      else if (i % 3 === 0) dailyData[`${ds}-p6`] = true;
+    }
+  }
+
+  const tasks = [
+    { id: 't1', text: 'Review iOS design tokens & typography', completed: true },
+    { id: 't2', text: 'Push production build v1.2 to App Store', completed: true },
+    { id: 't3', text: 'Record 30s marketing showcase demo', completed: false },
+    { id: 't4', text: 'Sync with product and engineering teams', completed: true },
+    { id: 't5', text: 'Prepare high-res App Store promotional banners', completed: false },
+  ];
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  const flight = {
+    id: 'preview-ms777',
+    callsign: 'MS777',
+    airline: 'EgyptAir',
+    origin: 'CAI',
+    destination: 'LHR',
+    model: 'Boeing 787-9 Dreamliner',
+    departureTime: nowSec - 7200,
+    estimatedArrival: nowSec + 10800,
+    initialSeconds: 18000,
+    totalSeconds: 18000,
+    originCoords: { lat: 30.1219, lng: 31.4056 },
+    destCoords: { lat: 51.4700, lng: -0.4543 },
+  };
+
+  const cards = { p1: 1, p2: 1, p3: 1 };
+
+  const friends = [
+    {
+      friendshipId: 'demo-sara',
+      user: { username: 'sara', name: 'Sara', avatar: 'sparkles' },
+      displayName: 'Sara',
+      initial: 'S',
+      presence: PRESENCE_PRESETS[2],
+      isPinned: true,
+    },
+    {
+      friendshipId: 'demo-ahmed',
+      user: { username: 'ahmed', name: 'Ahmed', avatar: 'plane' },
+      displayName: 'Ahmed',
+      initial: 'A',
+      presence: PRESENCE_PRESETS[1],
+      isPinned: false,
+    },
+    {
+      friendshipId: 'demo-nour',
+      user: { username: 'nour', name: 'Nour', avatar: 'compass' },
+      displayName: 'Nour',
+      initial: 'N',
+      presence: PRESENCE_PRESETS[4],
+      isPinned: false,
+    },
+    {
+      friendshipId: 'demo-youssef',
+      user: { username: 'youssef', name: 'Youssef', avatar: 'target' },
+      displayName: 'Youssef',
+      initial: 'Y',
+      presence: PRESENCE_PRESETS[3],
+      isPinned: false,
+    },
+  ];
+
+  const widgets = [
+    { id: 'flight', mode: 'always', size: 'full' },
+    { id: 'friends', mode: 'always', size: 'full' },
+    { id: 'pomodoro', mode: 'auto', size: 'full' },
+  ];
+
+  const focusTime = {};
+  for (let i = 0; i <= 14; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const ds = `${y}-${m}-${day}`;
+    focusTime[ds] = (120 + (i % 4) * 35) * 60;
+  }
+
+  return { habits, dailyData, tasks, flight, cards, friends, widgets, focusTime };
+};
+
+function AppContent({ isPreview = false }) {
+  const clerkAuth = useUser();
+  const user = useMemo(() => {
+    if (isPreview) {
+      return {
+        id: 'preview_user_1',
+        fullName: 'Omar Helbawy',
+        firstName: 'Omar',
+        username: 'omar',
+        imageUrl: null,
+        primaryEmailAddress: { emailAddress: 'omar@bokra.app' },
+        publicMetadata: { role: 'pro' }
+      };
+    }
+    return clerkAuth.user;
+  }, [isPreview, clerkAuth.user]);
+  const isLoaded = isPreview ? true : clerkAuth.isLoaded;
+  const isSignedIn = isPreview ? true : clerkAuth.isSignedIn;
   const { getToken: getClerkToken } = useAuth();
   const { signOut } = useClerk();
   const [authModal, setAuthModal] = useState(null); // 'sign-in' | 'sign-up' | null
   const [isMounted, setIsMounted] = useState(false);
   const [authTimeoutPassed, setAuthTimeoutPassed] = useState(false);
   const [dbUsername, setDbUsername] = useState(() => {
+    if (isPreview) return 'omar';
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('bokra_desktop_user');
@@ -502,6 +657,7 @@ function AppContent() {
   // --- States (v4) ---
 
   const [habits, setHabits] = useState(() => {
+    if (isPreview) return getPreviewData().habits;
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('daybase_habits_v4');
       const savedOrder = localStorage.getItem('daybase_habit_order');
@@ -524,6 +680,7 @@ function AppContent() {
   });
 
   const [dailyData, setDailyData] = useState(() => {
+    if (isPreview) return getPreviewData().dailyData;
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('daybase_dailyData_v4');
       return safeJson(saved, {});
@@ -540,6 +697,7 @@ function AppContent() {
   });
 
   const [mission, setMission] = useState(() => {
+    if (isPreview) return 'Build and ship the mobile app release v1.2';
     if (typeof window !== 'undefined') {
       return localStorage.getItem('daybase_mission_v4') || "";
     }
@@ -580,11 +738,13 @@ function AppContent() {
 
   // --- States for Emergency Cards & Pomodoro ---
   const [habitCards, setHabitCards] = useState(() => {
+    if (isPreview) return getPreviewData().cards;
     if (typeof window !== 'undefined') return safeJson(localStorage.getItem('daybase_cards_v4'), {});
     return {};
   });
   // Anti-cheat: 1 card per habit per 7 days streak
   const [grantedCardsLog, setGrantedCardsLog] = useState(() => {
+    if (isPreview) return { 'p1-7': true, 'p2-7': true, 'p2-14': true, 'p4-7': true };
     if (typeof window !== 'undefined') return safeJson(localStorage.getItem('daybase_granted_cards_log_v4'), {});
     return {};
   });
@@ -595,6 +755,7 @@ function AppContent() {
   const [isFlightFocusOpen, setIsFlightFocusOpen] = useState(false);
   const [flightOptions, setFlightOptions] = useState([]);
   const [selectedFlight, setSelectedFlight] = useState(() => {
+    if (isPreview) return getPreviewData().flight;
     if (typeof window !== 'undefined') {
       try {
         const saved = JSON.parse(localStorage.getItem('daybase_active_flight') || 'null');
@@ -607,6 +768,7 @@ function AppContent() {
   });
   const [flightLoading, setFlightLoading] = useState(false);
   const [flightTimer, setFlightTimer] = useState(() => {
+    if (isPreview) return 10800;
     if (typeof window !== 'undefined') {
       try {
         const saved = JSON.parse(localStorage.getItem('daybase_active_flight') || 'null');
@@ -619,6 +781,7 @@ function AppContent() {
     return 0;
   });
   const [isFlightTimerRunning, setIsFlightTimerRunning] = useState(() => {
+    if (isPreview) return true;
     if (typeof window !== 'undefined') {
       try {
         const saved = JSON.parse(localStorage.getItem('daybase_active_flight') || 'null');
@@ -854,6 +1017,7 @@ function AppContent() {
   const [friendsIncomingCount, setFriendsIncomingCount] = useState(0);
   const [activeInAppNotification, setActiveInAppNotification] = useState(null);
   const [friendsList, setFriendsList] = useState(() => {
+    if (isPreview) return getPreviewData().friends;
     if (typeof window !== 'undefined') {
       try {
         const cached = localStorage.getItem('daybase_friends_cache');
@@ -863,6 +1027,7 @@ function AppContent() {
     return [];
   });
   const [pinnedFriendUsername, setPinnedFriendUsername] = useState(() => {
+    if (isPreview) return 'sara';
     if (typeof window !== 'undefined') {
       return localStorage.getItem('daybase_pinned_friend_username') || '';
     }
@@ -882,7 +1047,7 @@ function AppContent() {
   }, [friendsList, pinnedFriendUsername]);
 
   useEffect(() => {
-    if (!isSignedIn) return;
+    if (isPreview || !isSignedIn) return;
     let isMounted = true;
 
     const checkFriendsNotifications = async () => {
@@ -1014,6 +1179,7 @@ function AppContent() {
 
   // --- Focus Time Tracking (seconds per day) ---
   const [focusTimeData, setFocusTimeData] = useState(() => {
+    if (isPreview) return getPreviewData().focusTime;
     if (typeof window !== 'undefined') {
       return safeJson(localStorage.getItem('daybase_focusTime_v4'), {});
     }
@@ -1034,6 +1200,7 @@ function AppContent() {
 
   // --- Daily Tasks State ---
   const [dailyTasks, setDailyTasks] = useState(() => {
+    if (isPreview) return getPreviewData().tasks;
     if (typeof window !== 'undefined') {
       try {
         const parsed = JSON.parse(localStorage.getItem('daybase_daily_tasks_v4') || "[]");
@@ -1045,6 +1212,7 @@ function AppContent() {
     return [];
   });
   const [dailyTasksDateStr, setDailyTasksDateStr] = useState(() => {
+    if (isPreview) return getFormatDateStr(new Date());
     if (typeof window !== 'undefined') {
       return localStorage.getItem('daybase_daily_tasks_date_v4') || "";
     }
@@ -1062,6 +1230,7 @@ function AppContent() {
 
   // Dynamic Home Screen Widgets Config
   const [widgetsConfig, setWidgetsConfig] = useState(() => {
+    if (isPreview) return getPreviewData().widgets;
     const DEFAULT_WIDGETS = [
       { id: 'pomodoro', mode: 'auto', size: 'full' },
       { id: 'flight', mode: 'auto', size: 'full' },
@@ -1086,7 +1255,7 @@ function AppContent() {
 
   const updateWidgetsConfig = (newConfig) => {
     setWidgetsConfig(newConfig);
-    if (typeof window !== 'undefined') {
+    if (!isPreview && typeof window !== 'undefined') {
       localStorage.setItem('bokra_widgets_config', JSON.stringify(newConfig));
     }
   };
@@ -1619,7 +1788,7 @@ function AppContent() {
 
   // Account State / Switch / Logout Lifecycle Listener
   useEffect(() => {
-    if (!isLoaded || !isMounted) return;
+    if (isPreview || !isLoaded || !isMounted) return;
 
     const storedOwner = typeof window !== 'undefined' ? localStorage.getItem('daybase_owner_user_id') : null;
     const cachedToken = typeof window !== 'undefined' ? localStorage.getItem('bokra_cached_clerk_token') : null;
@@ -1644,17 +1813,17 @@ function AppContent() {
         });
       }
     }
-  }, [user?.id, isLoaded, isMounted, clearUserLocalData, resetStateToCleanDefaults, fetchCloudState]);
+  }, [user?.id, isLoaded, isMounted, clearUserLocalData, resetStateToCleanDefaults, fetchCloudState, isPreview]);
 
   // Initial cloud state load
   useEffect(() => {
-    if (!user || !isMounted) return;
+    if (isPreview || !user || !isMounted) return;
     fetchCloudState(false);
-  }, [user, isMounted, fetchCloudState]);
+  }, [user, isMounted, fetchCloudState, isPreview]);
 
   // --- 4. Real-time background sync (Polling 1.0s + Focus + Visibility + Online + BroadcastChannel) ---
   useEffect(() => {
-    if (!user || !isMounted || !isCloudLoaded) return;
+    if (isPreview || !user || !isMounted || !isCloudLoaded) return;
 
     const syncSilently = () => {
       if (typeof navigator !== 'undefined' && !navigator.onLine) return;
@@ -1702,11 +1871,11 @@ function AppContent() {
         channel.close();
       }
     };
-  }, [user, isMounted, isCloudLoaded, fetchCloudState]);
+  }, [user, isMounted, isCloudLoaded, fetchCloudState, isPreview]);
 
   // --- 5. Push cloud state debounced (50ms) with strict versioned queue serialization ---
   const executePush = useCallback(async () => {
-    if (!user || !isCloudLoaded) return;
+    if (isPreview || !user || !isCloudLoaded) return;
     if (localMutationVersionRef.current === pushedMutationVersionRef.current) return;
     if (isPushingRef.current) {
       // If a push is already active, return. The finally block of the active push will re-trigger.
@@ -2121,6 +2290,7 @@ function AppContent() {
   // - Completed tasks stay archived in the past day's record
   // - Uncompleted tasks carry over to today with rolledOver: true (highlighted red)
   useEffect(() => {
+    if (isPreview) return;
     const todayStr = getFormatDateStr(new Date());
     if (dailyTasksDateStr && dailyTasksDateStr !== todayStr) {
       const previousTasks = Array.isArray(dailyTasks) 
@@ -2155,21 +2325,21 @@ function AppContent() {
     } else if (!dailyTasksDateStr) {
       setDailyTasksDateStr(todayStr);
     }
-  }, [baseDate, dailyTasksDateStr]);
+  }, [baseDate, dailyTasksDateStr, isPreview]);
 
   // --- Effects (Save to LocalStorage) ---
-  useEffect(() => { if (isMounted) localStorage.setItem('daybase_habits_v4', JSON.stringify(habits)); }, [habits, isMounted]);
-  useEffect(() => { if (isMounted) localStorage.setItem('daybase_dailyData_v4', JSON.stringify(dailyData)); }, [dailyData, isMounted]);
-  useEffect(() => { if (isMounted) localStorage.setItem('daybase_sleepData_v4', JSON.stringify(sleepData)); }, [sleepData, isMounted]);
-  useEffect(() => { if (isMounted) localStorage.setItem('daybase_mission_v4', mission); }, [mission, isMounted]);
-  useEffect(() => { if (isMounted) localStorage.setItem('daybase_themeColor_v4', themeColor); }, [themeColor, isMounted]);
-  useEffect(() => { if (isMounted) localStorage.setItem('daybase_avatar_v1', avatar); }, [avatar, isMounted]);
+  useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_habits_v4', JSON.stringify(habits)); }, [habits, isMounted, isPreview]);
+  useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_dailyData_v4', JSON.stringify(dailyData)); }, [dailyData, isMounted, isPreview]);
+  useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_sleepData_v4', JSON.stringify(sleepData)); }, [sleepData, isMounted, isPreview]);
+  useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_mission_v4', mission); }, [mission, isMounted, isPreview]);
+  useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_themeColor_v4', themeColor); }, [themeColor, isMounted, isPreview]);
+  useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_avatar_v1', avatar); }, [avatar, isMounted, isPreview]);
 
-  useEffect(() => { if (isMounted) localStorage.setItem('daybase_habitNotes_v4', JSON.stringify(habitNotes)); }, [habitNotes, isMounted]);
-  useEffect(() => { if (isMounted) localStorage.setItem('daybase_cards_v4', JSON.stringify(habitCards)); }, [habitCards, isMounted]);
-  useEffect(() => { if (isMounted) localStorage.setItem('daybase_daily_tasks_v4', JSON.stringify(dailyTasks)); }, [dailyTasks, isMounted]);
-  useEffect(() => { if (isMounted) localStorage.setItem('daybase_daily_tasks_date_v4', dailyTasksDateStr); }, [dailyTasksDateStr, isMounted]);
-  useEffect(() => { if (isMounted) localStorage.setItem('daybase_granted_cards_log_v4', JSON.stringify(grantedCardsLog)); }, [grantedCardsLog, isMounted]);
+  useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_habitNotes_v4', JSON.stringify(habitNotes)); }, [habitNotes, isMounted, isPreview]);
+  useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_cards_v4', JSON.stringify(habitCards)); }, [habitCards, isMounted, isPreview]);
+  useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_daily_tasks_v4', JSON.stringify(dailyTasks)); }, [dailyTasks, isMounted, isPreview]);
+  useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_daily_tasks_date_v4', dailyTasksDateStr); }, [dailyTasksDateStr, isMounted, isPreview]);
+  useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_granted_cards_log_v4', JSON.stringify(grantedCardsLog)); }, [grantedCardsLog, isMounted, isPreview]);
 
   // --- Streak Function ---
   const getStreak = (habitId) => {
@@ -3386,6 +3556,7 @@ function AppContent() {
     }
 
     if (widgetId === 'spotify') {
+      if (isPreview) return null;
       return (
         <SpotifyWidget 
           key="spotify-widget"
@@ -5620,9 +5791,11 @@ function AppContent() {
                 </div>
 
                 {/* Spotify Mini Player in Pomodoro */}
-                <div className="mt-5 flex justify-center w-full">
-                  <SpotifyWidget lang={lang} theme={theme} themeColor={neon} variant="compact" userId={user?.id} />
-                </div>
+                {!isPreview && (
+                  <div className="mt-5 flex justify-center w-full">
+                    <SpotifyWidget lang={lang} theme={theme} themeColor={neon} variant="compact" userId={user?.id} />
+                  </div>
+                )}
               </div>
 
               {/* Bottom Done Action */}
@@ -5950,43 +6123,55 @@ function AppContent() {
 
               {/* Right: Account Avatar */}
               <div className="relative flex items-center justify-center shrink-0 window-no-drag" data-no-drag>
-                <Show when="signed-out">
-                  <Link 
-                    href="/sign-in"
-                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95 border border-white/20 shadow-sm"
-                    title={!isOnline ? 'Offline' : 'Sign In'}
-                    aria-label="Account"
-                  >
-                    <User size={16} className="text-white/80" />
-                  </Link>
-                </Show>
-                
-                <Show when="signed-in">
+                {isPreview ? (
                   <div 
-                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 border ${
-                      !isOnline 
-                        ? 'border-white/10 opacity-70' 
-                        : isSyncing 
-                        ? 'border-white/60 shadow-[0_0_10px_rgba(255,255,255,0.4)]' 
-                        : 'border-white/25 hover:border-white/50 shadow-sm'
-                    }`}
-                    title={!isOnline ? 'Offline' : isSyncing ? 'Syncing...' : 'Online & Synced'}
+                    className="w-9 h-9 rounded-full flex items-center justify-center border border-white/25 shadow-sm bg-white/10 text-white select-none cursor-pointer hover:border-white/50 transition-all active:scale-95"
+                    title="Omar Helbawy"
+                    onClick={() => setIsSettingsMenuOpen(true)}
                   >
-                    <UserButton 
-                      appearance={{ 
-                        elements: { 
-                          rootBox: "w-9 h-9 flex items-center justify-center",
-                          userButtonTrigger: "w-9 h-9 rounded-full p-0 border-0 outline-none focus:outline-none flex items-center justify-center overflow-hidden",
-                          avatarBox: "w-full h-full rounded-full overflow-hidden",
-                          userButtonAvatarImage: "w-full h-full object-cover rounded-full",
-                          userButtonPopoverCard: "!bg-[#18181B] !border !border-white/10 !shadow-2xl !bg-none",
-                          userButtonPopoverFooter: "!bg-transparent !bg-none !border-t !border-white/10 !border-b-0",
-                          developmentModeBadge: "!hidden",
-                        } 
-                      }} 
-                    />
+                    <AvatarIcon name={avatar || 'sparkles'} size={18} className="text-white" />
                   </div>
-                </Show>
+                ) : (
+                  <>
+                    <Show when="signed-out">
+                      <Link 
+                        href="/sign-in"
+                        className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95 border border-white/20 shadow-sm"
+                        title={!isOnline ? 'Offline' : 'Sign In'}
+                        aria-label="Account"
+                      >
+                        <User size={16} className="text-white/80" />
+                      </Link>
+                    </Show>
+                    
+                    <Show when="signed-in">
+                      <div 
+                        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 border ${
+                          !isOnline 
+                            ? 'border-white/10 opacity-70' 
+                            : isSyncing 
+                            ? 'border-white/60 shadow-[0_0_10px_rgba(255,255,255,0.4)]' 
+                            : 'border-white/25 hover:border-white/50 shadow-sm'
+                        }`}
+                        title={!isOnline ? 'Offline' : isSyncing ? 'Syncing...' : 'Online & Synced'}
+                      >
+                        <UserButton 
+                          appearance={{ 
+                            elements: { 
+                              rootBox: "w-9 h-9 flex items-center justify-center",
+                              userButtonTrigger: "w-9 h-9 rounded-full p-0 border-0 outline-none focus:outline-none flex items-center justify-center overflow-hidden",
+                              avatarBox: "w-full h-full rounded-full overflow-hidden",
+                              userButtonAvatarImage: "w-full h-full object-cover rounded-full",
+                              userButtonPopoverCard: "!bg-[#18181B] !border !border-white/10 !shadow-2xl !bg-none",
+                              userButtonPopoverFooter: "!bg-transparent !bg-none !border-t !border-white/10 !border-b-0",
+                              developmentModeBadge: "!hidden",
+                            } 
+                          }} 
+                        />
+                      </div>
+                    </Show>
+                  </>
+                )}
               </div>
 
             </div>
@@ -6096,54 +6281,6 @@ function AppContent() {
                   {t('noHabitsScheduledToday')}
                 </div>
               ) : null}
-            </div>
-
-            {/* Mobile Sleep Logger Card */}
-            <div className="w-full px-4 py-3 rounded-[20px] flex justify-between items-center shadow-lg mb-6 transition-all duration-200 liquid-panel">
-              <div className="flex items-center gap-2.5">
-                <Moon size={18} className={theme === 'dark' ? 'text-white/80' : 'text-black/80'} strokeWidth={2.2} />
-                <span className={`text-[15px] font-bold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>{t('sleep')}</span>
-              </div>
-              <div className={`flex items-center rounded-full px-3 py-1 gap-2.5 ${
-                theme === 'dark' ? 'bg-white/10 border border-white/10' : 'bg-black/5 border border-black/10'
-              }`}>
-                <button 
-                  type="button" 
-                  onClick={() => setSleepInput(prev => {
-                    const val = Math.max(0, (parseFloat(prev) || 0) - 1);
-                    return val === 0 ? '' : String(val);
-                  })} 
-                  className={`font-bold text-base px-1 active:scale-90 select-none cursor-pointer ${
-                    theme === 'dark' ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black'
-                  }`}
-                >−</button>
-                <div className={`flex items-center font-mono text-sm font-bold tabular-nums ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                  <input 
-                    type="number" 
-                    step="0.5" 
-                    value={sleepInput} 
-                    onChange={(e) => setSleepInput(e.target.value)} 
-                    placeholder="0"
-                    className="w-8 bg-transparent text-center font-mono text-sm font-bold outline-none"
-                  />
-                  <span className={`text-xs ${theme === 'dark' ? 'text-white/50' : 'text-black/50'}`}>h</span>
-                </div>
-                <button 
-                  type="button" 
-                  onClick={() => setSleepInput(prev => String((parseFloat(prev) || 0) + 1))} 
-                  className={`font-bold text-base px-1 active:scale-90 select-none cursor-pointer ${
-                    theme === 'dark' ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black'
-                  }`}
-                >+</button>
-              </div>
-              <button 
-                onClick={logSleep} 
-                className={`px-5 py-2 rounded-full font-bold text-xs tracking-wide transition-all active:scale-95 shadow-sm cursor-pointer ${
-                  theme === 'dark' ? 'bg-white text-black hover:bg-white/90' : 'bg-black text-white hover:bg-black/90'
-                }`}
-              >
-                {t('save')}
-              </button>
             </div>
 
           </div>
@@ -6259,57 +6396,9 @@ function AppContent() {
 
             </div>
 
-            {/* ITEM 2: Tasks & Sleep (col 2) */}
+            {/* ITEM 2: Tasks (col 2) */}
             <div className="flex flex-col gap-6 w-full">
               
-              {/* Sleep Logger Card */}
-              <div className="w-full px-4 py-3 rounded-[20px] flex justify-between items-center shadow-lg transition-all duration-200 liquid-panel">
-                <div className="flex items-center gap-2.5">
-                  <Moon size={18} className={theme === 'dark' ? 'text-white/80' : 'text-black/80'} strokeWidth={2.2} />
-                  <span className={`text-[15px] font-bold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>{t('sleep')}</span>
-                </div>
-                <div className={`flex items-center rounded-full px-3 py-1 gap-2.5 ${
-                  theme === 'dark' ? 'bg-white/10 border border-white/10' : 'bg-black/5 border border-black/10'
-                }`}>
-                  <button 
-                    type="button" 
-                    onClick={() => setSleepInput(prev => {
-                      const val = Math.max(0, (parseFloat(prev) || 0) - 1);
-                      return val === 0 ? '' : String(val);
-                    })} 
-                    className={`font-bold text-base px-1 active:scale-90 select-none cursor-pointer ${
-                      theme === 'dark' ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black'
-                    }`}
-                  >−</button>
-                  <div className={`flex items-center font-mono text-sm font-bold tabular-nums ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                    <input 
-                      type="number" 
-                      step="0.5" 
-                      value={sleepInput} 
-                      onChange={(e) => setSleepInput(e.target.value)} 
-                      placeholder="0"
-                      className="w-8 bg-transparent text-center font-mono text-sm font-bold outline-none"
-                    />
-                    <span className={`text-xs ${theme === 'dark' ? 'text-white/50' : 'text-black/50'}`}>h</span>
-                  </div>
-                  <button 
-                    type="button" 
-                    onClick={() => setSleepInput(prev => String((parseFloat(prev) || 0) + 1))} 
-                    className={`font-bold text-base px-1 active:scale-90 select-none cursor-pointer ${
-                      theme === 'dark' ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black'
-                    }`}
-                  >+</button>
-                </div>
-                <button 
-                  onClick={logSleep} 
-                  className={`px-5 py-2 rounded-full font-bold text-xs tracking-wide transition-all active:scale-95 shadow-sm cursor-pointer ${
-                    theme === 'dark' ? 'bg-white text-black hover:bg-white/90' : 'bg-black text-white hover:bg-black/90'
-                  }`}
-                >
-                  {t('save')}
-                </button>
-              </div>
-
               {/* Daily Tasks Checklist Widget */}
               <div className="liquid-panel p-6 shadow-xl flex flex-col w-full" style={{ borderRadius: '28px' }}>
                 <div className="flex items-center justify-between mb-4 select-none">
@@ -6458,9 +6547,8 @@ function AppContent() {
                               </svg>
 
                               <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={sleepChartData} barGap={2} barCategoryGap={8}>
+                                <BarChart data={sleepChartData} barGap={4} barCategoryGap={8}>
                                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8E8E93', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em' }} dy={10} />
-                                  <YAxis yAxisId="sleep" orientation="left" hide domain={[0, 24]} />
                                   <YAxis yAxisId="score" orientation="right" hide domain={[0, 100]} />
                                   <YAxis yAxisId="focus" orientation="right" hide domain={[0, 180]} />
                                   
@@ -6469,21 +6557,18 @@ function AppContent() {
                                     contentStyle={{ backgroundColor: '#1C1C1E', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', color: '#FFFFFF', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
                                     itemStyle={{ color: '#FFFFFF', fontWeight: 600, fontSize: '12px' }} 
                                     formatter={(value, name) => { 
-                                      if (name === "Sleep") return [`${value} hrs`, "Sleep"];
                                       if (name === "Focus") return [`${value} min`, "Focus"];
                                       return [`${value.toFixed(0)}%`, "Score"]; 
                                     }} 
                                   />
                                   
-                                  <Bar yAxisId="sleep" dataKey="sleep" fill="#FFFFFF" radius={[3, 3, 3, 3]} barSize={5} name="Sleep" />
-                                  <Bar yAxisId="score" dataKey="score" fill={themeColor} radius={[3, 3, 3, 3]} barSize={5} name="Score" />
-                                  <Bar yAxisId="focus" dataKey="focus" fill="#22d3ee" radius={[3, 3, 3, 3]} barSize={5} name="Focus" />
+                                  <Bar yAxisId="score" dataKey="score" fill={themeColor} radius={[3, 3, 3, 3]} barSize={6} name="Score" />
+                                  <Bar yAxisId="focus" dataKey="focus" fill="#22d3ee" radius={[3, 3, 3, 3]} barSize={6} name="Focus" />
                                 </BarChart>
                               </ResponsiveContainer>
                             </div>
                             
                             <div className="flex items-center justify-center gap-6 select-none pt-2 border-t border-white/5">
-                              <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-white"/><span className="text-[10px] font-bold tracking-widest text-[#8E8E93] uppercase">SLEEP</span></div>
                               <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{backgroundColor: themeColor}}/><span className="text-[10px] font-bold tracking-widest text-[#8E8E93] uppercase">SCORE</span></div>
                               <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-cyan-400"/><span className="text-[10px] font-bold tracking-widest text-[#8E8E93] uppercase">FOCUS</span></div>
                             </div>
@@ -6694,7 +6779,7 @@ function AppContent() {
 
                   {/* Widgets List */}
                   <div className="flex flex-col gap-3 pb-8">
-                    {widgetsConfig.map((widget, index) => {
+                    {widgetsConfig.filter(w => !isPreview || w.id !== 'spotify').map((widget, index) => {
                       const meta = {
                         pomodoro: {
                           icon: <Timer size={18} strokeWidth={2.4} />,
@@ -8212,18 +8297,22 @@ function AppContent() {
           )}
 
           {/* ---------------- SPOTIFY INVITE MODAL ---------------- */}
-          <SpotifyInviteModal 
-            isOpen={isSpotifyInviteModalOpen}
-            onClose={() => setIsSpotifyInviteModalOpen(false)}
-            onSuccess={() => setHasSpotifyAccess(true)}
-            isSignedIn={Boolean(isSignedIn && user)}
-          />
+          {!isPreview && (
+            <SpotifyInviteModal 
+              isOpen={isSpotifyInviteModalOpen}
+              onClose={() => setIsSpotifyInviteModalOpen(false)}
+              onSuccess={() => setHasSpotifyAccess(true)}
+              isSignedIn={Boolean(isSignedIn && user)}
+            />
+          )}
 
         </div>
       </div>
     </div>
   );
 }
+
+export { AppContent, GlobalErrorBoundary };
 
 export default function Page() {
   return (
