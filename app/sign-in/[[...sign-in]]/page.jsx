@@ -13,7 +13,7 @@ export default function SignInPage() {
         >
           <X size={18} strokeWidth={2.2} />
         </Link>
-        <SignIn />
+        <SignIn routing="path" path="/sign-in" fallbackRedirectUrl="/" forceRedirectUrl="/" />
       </div>
     </div>
   );

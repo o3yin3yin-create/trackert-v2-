@@ -1,12 +1,12 @@
 "use client";
-import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin } from 'lucide-react';
+import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut } from 'lucide-react';
 import React, { useState, useEffect, useRef, useCallback, useMemo, Component } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { useUser, useAuth, Show, SignInButton, SignUpButton, UserButton, SignIn, SignUp } from '../components/AuthBridge';
+import { useUser, useAuth, useClerk, Show, SignInButton, SignUpButton, UserButton, SignIn, SignUp } from '../components/AuthBridge';
 import { clerkAppearance } from '../lib/clerkTheme';
 import { apiFetch, setApiTokenGetter } from '../lib/api';
-import { loadLocalOfflineState, saveLocalOfflineState, queueSyncMutation, resolveConflict, getPendingSyncQueue, clearPendingSyncQueue } from '../lib/db';
+import { loadLocalOfflineState, saveLocalOfflineState, queueSyncMutation, resolveConflict, getPendingSyncQueue, clearPendingSyncQueue, clearLocalOfflineState } from '../lib/db';
 import { motion } from 'framer-motion';
 import MinimalTimer from '../components/MinimalTimer';
 import { translations } from '../lib/translations';
@@ -449,6 +449,7 @@ class GlobalErrorBoundary extends Component {
 function AppContent() {
   const { user, isLoaded, isSignedIn } = useUser(); 
   const { getToken: getClerkToken } = useAuth();
+  const { signOut } = useClerk();
   const [authModal, setAuthModal] = useState(null); // 'sign-in' | 'sign-up' | null
   const [isMounted, setIsMounted] = useState(false);
   const [authTimeoutPassed, setAuthTimeoutPassed] = useState(false);
@@ -1468,6 +1469,118 @@ function AppContent() {
       isSyncingRef.current = false;
     }
   }, [user]);
+
+  // Clear all locally cached user data across localStorage & IndexedDB
+  const clearUserLocalData = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    const keysToRemove = [
+      'daybase_habits_v4',
+      'daybase_habit_order',
+      'daybase_dailyData_v4',
+      'daybase_sleepData_v4',
+      'daybase_mission_v4',
+      'daybase_daily_tasks_v4',
+      'daybase_daily_tasks_date_v4',
+      'daybase_habitNotes_v4',
+      'daybase_cards_v4',
+      'daybase_granted_cards_log_v4',
+      'daybase_focusTime_v4',
+      'daybase_active_pomodoro',
+      'daybase_active_flight',
+      'daybase_pomodoro_last_active',
+      'daybase_flight_last_active',
+      'daybase_pomodoro_session_step',
+      'daybase_pomodoro_tasks_v1',
+      'trackert_finished_tickets_v1',
+      'daybase_finishedTickets',
+      'daybase_friends_cache',
+      'daybase_pinned_friend_username',
+      'daybase_spotify_refresh_token',
+      'daybase_spotify_last_active',
+      'daybase_deleted_habits',
+      'daybase_owner_user_id',
+      'bokra_cached_clerk_token',
+      'bokra_desktop_user',
+      'bokra_desktop_token',
+      'daybase_last_local_update'
+    ];
+    for (const k of keysToRemove) {
+      try { localStorage.removeItem(k); } catch (_) {}
+    }
+    try {
+      await clearPendingSyncQueue();
+      await clearLocalOfflineState();
+    } catch (_) {}
+  }, []);
+
+  // Reset in-memory states to clean starter defaults
+  const resetStateToCleanDefaults = useCallback(() => {
+    const defaults = [
+      { id: '1', name: 'Workout', type: 'single', subItems: [] },
+      { id: '2', name: 'Prayers', type: 'multi', subItems: ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] }
+    ];
+    setHabits(defaults);
+    setDailyData({});
+    setSleepData({});
+    setMission("");
+    setFocusTimeData({});
+    setPomodoroTasksData({});
+    setDailyTasks([]);
+    setHabitNotes({});
+    setHabitCards({});
+    setGrantedCardsLog({});
+    setFinishedTickets([]);
+    setIsSpotifyConnected(false);
+    setPinnedFriendUsername("");
+    setAvatar('user');
+    setIsCloudLoaded(false);
+  }, []);
+
+  // Programmatic user sign out handler
+  const handleSignOut = useCallback(async () => {
+    try {
+      await clearUserLocalData();
+      resetStateToCleanDefaults();
+      setIsSettingsMenuOpen(false);
+      if (signOut) {
+        await signOut({ redirectUrl: '/' });
+      }
+    } catch (err) {
+      console.warn('[bokra Auth] Error during sign out:', err);
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    }
+  }, [clearUserLocalData, resetStateToCleanDefaults, signOut]);
+
+  // Account State / Switch / Logout Lifecycle Listener
+  useEffect(() => {
+    if (!isLoaded || !isMounted) return;
+
+    const storedOwner = typeof window !== 'undefined' ? localStorage.getItem('daybase_owner_user_id') : null;
+    const cachedToken = typeof window !== 'undefined' ? localStorage.getItem('bokra_cached_clerk_token') : null;
+    const desktopUser = typeof window !== 'undefined' ? localStorage.getItem('bokra_desktop_user') : null;
+
+    if (user?.id) {
+      if (storedOwner && storedOwner !== user.id) {
+        // Switched to a different user account: purge old local data, then load new account state
+        clearUserLocalData().then(() => {
+          localStorage.setItem('daybase_owner_user_id', user.id);
+          resetStateToCleanDefaults();
+          fetchCloudState(false);
+        });
+      } else {
+        localStorage.setItem('daybase_owner_user_id', user.id);
+      }
+    } else {
+      // Signed out
+      if (storedOwner || cachedToken || desktopUser) {
+        clearUserLocalData().then(() => {
+          resetStateToCleanDefaults();
+        });
+      }
+    }
+  }, [user?.id, isLoaded, isMounted, clearUserLocalData, resetStateToCleanDefaults, fetchCloudState]);
 
   // Initial cloud state load
   useEffect(() => {
@@ -5775,21 +5888,14 @@ function AppContent() {
               {/* Right: Account Avatar */}
               <div className="relative flex items-center justify-center shrink-0 window-no-drag" data-no-drag>
                 <Show when="signed-out">
-                  <SignInButton 
-                    mode="modal"
-                    forceRedirectUrl="/"
-                    fallbackRedirectUrl="/"
-                    signUpForceRedirectUrl="/"
-                    signUpFallbackRedirectUrl="/"
+                  <Link 
+                    href="/sign-in"
+                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95 border border-white/20 shadow-sm"
+                    title={!isOnline ? 'Offline' : 'Sign In'}
+                    aria-label="Account"
                   >
-                    <button 
-                      className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95 border border-white/20 shadow-sm"
-                      title={!isOnline ? 'Offline' : isSyncing ? 'Syncing...' : 'Sign In'}
-                      aria-label="Account"
-                    >
-                      <User size={16} className="text-white/80" />
-                    </button>
-                  </SignInButton>
+                    <User size={16} className="text-white/80" />
+                  </Link>
                 </Show>
                 
                 <Show when="signed-in">
@@ -7535,28 +7641,78 @@ function AppContent() {
                         {/* Restructured Apple-style Grouped Settings */}
                         <div className="flex flex-col gap-5 pb-8">
 
-                          {/* Profile Card / Header */}
-                          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
-                            <div className="flex items-center gap-3.5">
-                              <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
-                                <AvatarIcon name={isMounted ? avatar : 'user'} size={24} />
+                          {/* Account Card / Auth Header */}
+                          {isSignedIn && user ? (
+                            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
+                              <div className="flex items-center gap-3.5 min-w-0">
+                                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
+                                  <AvatarIcon name={isMounted ? avatar : 'user'} size={24} />
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-base font-bold text-white truncate">
+                                    {user.fullName || user.firstName || 'Explorer'}
+                                  </span>
+                                  <span className="text-xs text-white/40 truncate">
+                                    {user.primaryEmailAddress?.emailAddress || 'bokra companion'}
+                                  </span>
+                                </div>
                               </div>
-                              <div className="flex flex-col min-w-0">
-                                <span className="text-base font-bold text-white truncate">
-                                  {user?.fullName || user?.firstName || ('Explorer')}
-                                </span>
-                                <span className="text-xs text-white/40 truncate">
-                                  {user?.primaryEmailAddress?.emailAddress || 'bokra companion'}
-                                </span>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  onClick={() => { setIsSettingsMenuOpen(false); setIsAvatarModalOpen(true); }}
+                                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-all active:scale-95"
+                                >
+                                  {'Edit'}
+                                </button>
+                                <button
+                                  onClick={handleSignOut}
+                                  className="px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-bold transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                                  title="Sign Out"
+                                >
+                                  <LogOut size={13} />
+                                  <span>Sign Out</span>
+                                </button>
                               </div>
                             </div>
-                            <button
-                              onClick={() => { setIsSettingsMenuOpen(false); setIsAvatarModalOpen(true); }}
-                              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-all active:scale-95"
-                            >
-                              {'Edit'}
-                            </button>
-                          </div>
+                          ) : (
+                            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center shrink-0">
+                                    <User size={20} />
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <span className="text-sm font-bold text-white">Sign In to bokra</span>
+                                    <span className="text-[11px] text-white/50 font-normal">Sync habits & backup your progress</span>
+                                  </div>
+                                </div>
+                                <Link
+                                  href="/sign-in"
+                                  onClick={() => setIsSettingsMenuOpen(false)}
+                                  className="px-4 py-2 rounded-xl bg-white text-black text-xs font-bold hover:bg-white/90 transition-all active:scale-95 shadow-sm"
+                                >
+                                  Sign In
+                                </Link>
+                              </div>
+                              <div className="pt-2 border-t border-white/5 flex items-center justify-between">
+                                <span className="text-[11px] text-white/40">Using app in guest mode</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (typeof window !== 'undefined' && window.confirm('Clear all local habits and reset app?')) {
+                                      clearUserLocalData().then(() => {
+                                        resetStateToCleanDefaults();
+                                        setIsSettingsMenuOpen(false);
+                                      });
+                                    }
+                                  }}
+                                  className="text-[11px] text-white/40 hover:text-red-400 underline transition-colors cursor-pointer"
+                                >
+                                  Reset Local Data
+                                </button>
+                              </div>
+                            </div>
+                          )}
 
                           {/* Group 1: Appearance & Customization */}
                           <div className="flex flex-col gap-1.5">

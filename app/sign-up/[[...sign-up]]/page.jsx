@@ -13,7 +13,7 @@ export default function SignUpPage() {
         >
           <X size={18} strokeWidth={2.2} />
         </Link>
-        <SignUp />
+        <SignUp routing="path" path="/sign-up" fallbackRedirectUrl="/" forceRedirectUrl="/" />
       </div>
     </div>
   );
