@@ -28,6 +28,7 @@ import ChooseUsername from '../components/ChooseUsername';
 import FriendsModal from '../components/FriendsModal';
 import PrivacyModal from '../components/PrivacyModal';
 import SpotifyInviteModal from '../components/SpotifyInviteModal';
+import UniversityScheduleModal from '../components/UniversityScheduleModal';
 import { guideSections } from '../lib/guideContent';
 import { getDisplayFriend, formatBriefActivity, getActivityBadge, getSafeTrackArt, getIslandDetails, PRESENCE_PRESETS } from '../lib/friendsPresets';
 
@@ -934,6 +935,7 @@ function AppContent({ isPreview = false }) {
   const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
   const [selectedFriendForModal, setSelectedFriendForModal] = useState(null);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
+  const [isUniversityModalOpen, setIsUniversityModalOpen] = useState(false);
   const [isSpotifyConnected, setIsSpotifyConnected] = useState(false);
   const [hasSpotifyAccess, setHasSpotifyAccess] = useState(false);
   const [isSpotifyInviteModalOpen, setIsSpotifyInviteModalOpen] = useState(false);
@@ -2745,6 +2747,30 @@ function AppContent({ isPreview = false }) {
     handleCloseAdd();
   };
 
+  const handleImportLectures = (importedLectures, replaceExisting = false) => {
+    if (!requireAuth()) return;
+    if (!importedLectures || importedLectures.length === 0) return;
+    haptic('medium');
+    markLocalMutation();
+
+    setHabits(prev => {
+      let baseHabits = prev;
+      if (replaceExisting) {
+        const removed = prev.filter(h => h.category === 'lecture');
+        removed.forEach(h => deletedHabitIdsRef.current.add(h.id));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('daybase_deleted_habits', JSON.stringify(Array.from(deletedHabitIdsRef.current)));
+        }
+        baseHabits = prev.filter(h => h.category !== 'lecture');
+      }
+      const updated = [...baseHabits, ...importedLectures];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('daybase_habits_v4', JSON.stringify(updated));
+      }
+      return updated;
+    });
+  };
+
   const deleteHabit = (habitId) => {
     haptic('heavy');
     deletedHabitIdsRef.current.add(habitId);
@@ -3038,8 +3064,16 @@ function AppContent({ isPreview = false }) {
                     </span>
                   )}
                 </div>
-                {(habit.time || habit.duration || habit.location) && (
+                {(habit.time || habit.duration || habit.location || habit.category === 'lecture') && (
                   <div className="flex items-center gap-1.5 flex-wrap">
+                    {habit.category === 'lecture' && (
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
+                        isAllChecked ? 'bg-black/10 text-black/80' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                      }`}>
+                        <GraduationCap size={9} />
+                        {t('typeLecture')}
+                      </span>
+                    )}
                     {habit.time && (
                       <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
                         isAllChecked ? 'bg-black/10 text-black/80' : (theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-black/5 text-black/70')
@@ -3152,6 +3186,14 @@ function AppContent({ isPreview = false }) {
 
               {/* Badges for time, duration, location, frequency */}
               <div className="flex items-center gap-1.5 flex-wrap">
+                {habit.category === 'lecture' && (
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                    isAllChecked ? 'bg-black/10 text-black/80' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                  }`}>
+                    <GraduationCap size={9} />
+                    {t('typeLecture')}
+                  </span>
+                )}
                 {habit.time && (
                   <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
                     isAllChecked ? 'bg-black/10 text-black/80' : (theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-black/5 text-black/70')
@@ -4329,8 +4371,20 @@ function AppContent({ isPreview = false }) {
 
                 
                 {/* Add New Habit Button inside Manage */}
-                <button onClick={() => {handleCloseManage(); handleOpenAdd();}} className="w-full py-4 mb-6 rounded-2xl font-black text-sm flex justify-center items-center gap-2 border border-white/15 bg-white text-black hover:bg-white/90 transition-all duration-200 active:scale-[0.98] shadow-lg">
+                <button onClick={() => {handleCloseManage(); handleOpenAdd();}} className="w-full py-4 mb-2.5 rounded-2xl font-black text-sm flex justify-center items-center gap-2 border border-white/15 bg-white text-black hover:bg-white/90 transition-all duration-200 active:scale-[0.98] shadow-lg">
                   <Plus size={18} strokeWidth={3}/> {t('addNewHabit')}
+                </button>
+
+                {/* Import University Schedule Button */}
+                <button 
+                  onClick={() => {
+                    handleCloseManage(); 
+                    setIsUniversityModalOpen(true);
+                  }} 
+                  className="w-full py-3 mb-6 rounded-2xl font-bold text-xs sm:text-sm flex justify-center items-center gap-2 border border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 transition-all duration-200 active:scale-[0.98]"
+                >
+                  <GraduationCap size={17} className="text-blue-400" />
+                  <span>{t('importSchedule')}</span>
                 </button>
 
                 {/* List of Habits with Full Scroll */}
@@ -6260,6 +6314,34 @@ function AppContent({ isPreview = false }) {
             {/* Dynamic Widgets (Under Mission Card) */}
             <div className="grid grid-cols-2 gap-3 items-start w-full">
               {widgetsConfig.map((widget) => renderDynamicWidget(widget.id, widget.mode, widget.size || 'full'))}
+              {(() => {
+                const todaysLectures = activeScheduledHabits.filter(h => h.category === 'lecture');
+                if (todaysLectures.length === 0) return null;
+                return (
+                  <div 
+                    onClick={() => setIsUniversityModalOpen(true)}
+                    className="col-span-2 w-full px-4 py-3 rounded-[20px] bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 backdrop-blur-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] select-none shadow-lg"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0">
+                        <GraduationCap size={16} />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-black text-white tracking-tight truncate">
+                          {t('todaysLectures')} · {todaysLectures.length}
+                        </span>
+                        <span className="text-[11px] text-white/50 truncate">
+                          {todaysLectures[0].name}{todaysLectures[0].time ? ` (${todaysLectures[0].time})` : ''}{todaysLectures[0].location ? ` · ${todaysLectures[0].location}` : ''}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 text-[11px] font-bold text-blue-400 shrink-0">
+                      <span>{t('universitySchedule')}</span>
+                      <ChevronRight size={14} />
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Mobile Habits Cards Grid */}
@@ -6371,6 +6453,34 @@ function AppContent({ isPreview = false }) {
               {/* Dynamic Widgets (Under Mission Card) */}
               <div className="grid grid-cols-2 gap-3 items-start w-full">
                 {widgetsConfig.map((widget) => renderDynamicWidget(widget.id, widget.mode, widget.size || 'full'))}
+                {(() => {
+                  const todaysLectures = activeScheduledHabits.filter(h => h.category === 'lecture');
+                  if (todaysLectures.length === 0) return null;
+                  return (
+                    <div 
+                      onClick={() => setIsUniversityModalOpen(true)}
+                      className="col-span-2 w-full px-4 py-3 rounded-[20px] bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 backdrop-blur-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] select-none shadow-lg"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0">
+                          <GraduationCap size={16} />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs font-black text-white tracking-tight truncate">
+                            {t('todaysLectures')} · {todaysLectures.length}
+                          </span>
+                          <span className="text-[11px] text-white/50 truncate">
+                            {todaysLectures[0].name}{todaysLectures[0].time ? ` (${todaysLectures[0].time})` : ''}{todaysLectures[0].location ? ` · ${todaysLectures[0].location}` : ''}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 text-[11px] font-bold text-blue-400 shrink-0">
+                        <span>{t('universitySchedule')}</span>
+                        <ChevronRight size={14} />
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Habits Cards Grid */}
@@ -8048,6 +8158,23 @@ function AppContent({ isPreview = false }) {
                               <ChevronRight size={18} className="text-white/40" />
                             </button>
 
+                            {/* University Academic Schedule */}
+                            <button 
+                              onClick={() => { setIsSettingsMenuOpen(false); setIsUniversityModalOpen(true); }} 
+                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors cursor-pointer"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center">
+                                  <GraduationCap size={18} />
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-white">{t('universitySchedule')}</span>
+                                  <span className="text-[11px] text-white/50 font-normal">{t('universityScheduleDesc')}</span>
+                                </div>
+                              </div>
+                              <ChevronRight size={18} className="text-white/40" />
+                            </button>
+
                             {/* Privacy & Sharing */}
                             <button 
                               onClick={() => { setIsSettingsMenuOpen(false); setIsPrivacyModalOpen(true); }} 
@@ -8312,6 +8439,18 @@ function AppContent({ isPreview = false }) {
               isOpen={isPrivacyModalOpen}
               onClose={() => setIsPrivacyModalOpen(false)}
               lang={lang}
+            />,
+            document.body
+          )}
+
+          {/* ---------------- UNIVERSITY SCHEDULE MODAL ---------------- */}
+          {isUniversityModalOpen && typeof document !== 'undefined' && createPortal(
+            <UniversityScheduleModal 
+              isOpen={isUniversityModalOpen}
+              onClose={() => setIsUniversityModalOpen(false)}
+              onImportLectures={handleImportLectures}
+              lang={lang}
+              themeColor={themeColor}
             />,
             document.body
           )}
