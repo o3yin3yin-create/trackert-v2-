@@ -26,6 +26,7 @@ import AvatarIcon, { AVATAR_OPTIONS } from '../components/AvatarIcon';
 import SpotifyWidget from '../components/SpotifyWidget';
 import ChooseUsername from '../components/ChooseUsername';
 import FriendsModal from '../components/FriendsModal';
+import WeeklyScheduleCalendar from '../components/WeeklyScheduleCalendar';
 import PrivacyModal from '../components/PrivacyModal';
 import SpotifyInviteModal from '../components/SpotifyInviteModal';
 import { guideSections } from '../lib/guideContent';
@@ -932,6 +933,7 @@ function AppContent({ isPreview = false }) {
   });
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
   const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
+  const [isScheduleCalendarOpen, setIsScheduleCalendarOpen] = useState(false);
   const [selectedFriendForModal, setSelectedFriendForModal] = useState(null);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   const [isSpotifyConnected, setIsSpotifyConnected] = useState(false);
@@ -2160,6 +2162,7 @@ function AppContent({ isPreview = false }) {
     setIsAppearanceModalOpen(false);
     setIsFriendsModalOpen(false);
     setSelectedFriendForModal(null);
+    setIsScheduleCalendarOpen(false);
     setIsEditVisible(false);
     setTimeout(() => setIsEditMounted(false), 300);
     if (!skipManage) {
@@ -2173,6 +2176,7 @@ function AppContent({ isPreview = false }) {
     closeAllModals();
     if (target === 'analytics') setIsAnalyticsModalOpen(true);
     else if (target === 'tasks') setIsTasksModalOpen(true);
+    else if (target === 'schedule') setIsScheduleCalendarOpen(true);
     else if (target === 'pomodoro') setIsPomodoroOpen(true);
     else if (target === 'flight') setIsFlightFocusOpen(true);
     else if (target === 'friends') {
@@ -2605,6 +2609,40 @@ function AppContent({ isPreview = false }) {
     }
   }, [isFlightTimerRunning, selectedFlight, isMounted]);
 
+  const handleJoinFriendSession = (info) => {
+    if (!info) return;
+    const { friendName, presence, sessionData } = info;
+    const isFlight = sessionData?.type === 'flight' || presence?.status === 'flight';
+
+    if (isFlight) {
+      if (sessionData?.flight) {
+        setSelectedFlight(sessionData.flight);
+      }
+      if (sessionData?.remainingSec != null) {
+        setFlightTimer(sessionData.remainingSec);
+      }
+      setIsFlightTimerRunning(true);
+      recordFlightActivity();
+      closeAllModals();
+      setIsFlightFocusOpen(true);
+    } else {
+      const initTime = sessionData?.initialTime || 25 * 60;
+      const remSec = sessionData?.remainingSec != null ? sessionData.remainingSec : initTime;
+      const tName = sessionData?.taskName || (friendName ? (lang === 'ar' ? `جلسة تركيز مع ${friendName}` : `Focus with ${friendName}`) : (lang === 'ar' ? 'جلسة تركيز' : 'Focus Session'));
+
+      setPomodoroInitialTime(initTime);
+      setPomodoroTime(remSec);
+      setActivePomodoroTask({ name: tName, color: '#FF9F0A' });
+      if (sessionData?.step) {
+        setPomodoroSessionStep(sessionData.step);
+      }
+      setIsTimerRunning(true);
+      recordPomodoroActivity();
+      closeAllModals();
+      setIsPomodoroOpen(true);
+    }
+  };
+
   // --- Date Nav Functions ---
   const handlePrevDay = () => {
     setBaseDate(prev => {
@@ -2768,6 +2806,14 @@ function AppContent({ isPreview = false }) {
     if (typeof window !== 'undefined') {
       localStorage.setItem('daybase_habits_v4', JSON.stringify(newHabits));
       localStorage.setItem('daybase_habit_order', JSON.stringify(newOrder));
+    }
+    markLocalMutation();
+  };
+
+  const handleUpdateScheduleHabits = (updatedHabits) => {
+    setHabits(updatedHabits);
+    if (typeof window !== 'undefined' && !isPreview) {
+      localStorage.setItem('daybase_habits_v4', JSON.stringify(updatedHabits));
     }
     markLocalMutation();
   };
@@ -4328,10 +4374,15 @@ function AppContent({ isPreview = false }) {
                 
 
                 
-                {/* Add New Habit Button inside Manage */}
-                <button onClick={() => {handleCloseManage(); handleOpenAdd();}} className="w-full py-4 mb-6 rounded-2xl font-black text-sm flex justify-center items-center gap-2 border border-white/15 bg-white text-black hover:bg-white/90 transition-all duration-200 active:scale-[0.98] shadow-lg">
-                  <Plus size={18} strokeWidth={3}/> {t('addNewHabit')}
-                </button>
+                {/* Action Buttons inside Manage */}
+                <div className="grid grid-cols-2 gap-2 mb-6">
+                  <button onClick={() => {handleCloseManage(); handleOpenAdd();}} className="w-full py-3.5 rounded-2xl font-black text-xs sm:text-sm flex justify-center items-center gap-2 border border-white/15 bg-white text-black hover:bg-white/90 transition-all duration-200 active:scale-[0.98] shadow-lg">
+                    <Plus size={16} strokeWidth={3}/> {t('addNewHabit')}
+                  </button>
+                  <button onClick={() => {handleCloseManage(); setIsScheduleCalendarOpen(true);}} className="w-full py-3.5 rounded-2xl font-black text-xs sm:text-sm flex justify-center items-center gap-2 border border-white/15 bg-white/10 text-white hover:bg-white/15 transition-all duration-200 active:scale-[0.98]">
+                    <Calendar size={16} /> {lang === 'ar' ? 'الجدول والروتين' : 'Schedule Planner'}
+                  </button>
+                </div>
 
                 {/* List of Habits with Full Scroll */}
                 <div className="space-y-3 pb-8">
@@ -7741,6 +7792,21 @@ function AppContent({ isPreview = false }) {
               <button onClick={() => navTo('tasks')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
               <button 
                 onClick={() => {
+                  closeAllModals();
+                  setIsScheduleCalendarOpen(true);
+                }} 
+                className={`relative w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${
+                  isScheduleCalendarOpen 
+                    ? 'bg-black/10 dark:bg-white/15 text-black dark:text-white' 
+                    : 'hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60'
+                }`}
+                title={lang === 'ar' ? 'الجدول الأسبوعي' : 'Weekly Schedule'}
+                aria-label={lang === 'ar' ? 'الجدول الأسبوعي' : 'Weekly Schedule'}
+              >
+                <Calendar size={18} />
+              </button>
+              <button 
+                onClick={() => {
                   setSelectedFriendForModal(null);
                   setIsFriendsModalOpen(true);
                   setIsSettingsMenuOpen(false);
@@ -8287,6 +8353,7 @@ function AppContent({ isPreview = false }) {
                 setIsFriendsModalOpen(false);
                 setSelectedFriendForModal(null);
               }}
+              onJoinSession={handleJoinFriendSession}
               initialSelectedFriend={selectedFriendForModal}
               myUsername={user?.username || ''}
               myName={user?.fullName || user?.firstName || 'Explorer'}
@@ -8302,6 +8369,19 @@ function AppContent({ isPreview = false }) {
                   else localStorage.removeItem('daybase_pinned_friend_username');
                 }
               }}
+            />,
+            document.body
+          )}
+
+          {/* ---------------- WEEKLY SCHEDULE CALENDAR MODAL ---------------- */}
+          {isScheduleCalendarOpen && typeof document !== 'undefined' && createPortal(
+            <WeeklyScheduleCalendar
+              isOpen={isScheduleCalendarOpen}
+              onClose={() => setIsScheduleCalendarOpen(false)}
+              habits={habits}
+              onUpdateHabits={handleUpdateScheduleHabits}
+              lang={lang}
+              themeColor={themeColor}
             />,
             document.body
           )}

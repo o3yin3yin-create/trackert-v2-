@@ -23,6 +23,7 @@ export default function FriendsModal({
   themeColor = '#FF9F0A',
   pinnedFriendUsername: propPinnedUsername,
   onTogglePinFriend,
+  onJoinSession,
 }) {
   const isRtl = lang === 'ar';
   const t = useCallback((k) => translations[lang]?.[k] || translations.en[k] || k, [lang]);
@@ -761,16 +762,28 @@ export default function FriendsModal({
             type="button"
             onClick={() => {
               const targetUser = selectedFriend.user?.username;
+              const presence = selectedFriend.presence;
+
               if (targetUser) {
                 apiFetch('/api/friends/nudge', {
                   method: 'POST',
                   body: JSON.stringify({ 
                     username: targetUser, 
-                    type: selectedFriend.presence.kind === 'habit' ? 'cheer' : 'study' 
+                    type: presence?.kind === 'habit' ? 'cheer' : 'study' 
                   })
                 }).catch(() => {});
               }
-              showToast(`${selectedFriend.presence.action} with ${selectedFriend.displayName}!`);
+
+              if (onJoinSession) {
+                onJoinSession({
+                  friendName: selectedFriend.displayName || targetUser || 'Friend',
+                  presence: presence,
+                  sessionData: presence?.sessionData
+                });
+                onClose();
+              } else {
+                showToast(`${selectedFriend.presence.action} with ${selectedFriend.displayName}!`);
+              }
             }}
             className="flex-1 h-[54px] rounded-full bg-[#0a0a0a] text-white font-bold text-[16px] flex items-center justify-center active:scale-[0.98] hover:bg-black/90 transition-all cursor-pointer shadow-lg"
           >
