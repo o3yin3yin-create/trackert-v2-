@@ -2941,6 +2941,51 @@ function AppContent({ isPreview = false }) {
     );
   }
 
+  // Strict Authentication Gate: Prevent anyone from using the application without signing in
+  const isAuthFailed = isLoaded ? !isSignedIn : (authTimeoutPassed && !isSignedIn);
+
+  if (isAuthFailed && !isPreview) {
+    if (typeof window !== 'undefined' && !window.__TAURI_INTERNALS__) {
+      window.location.replace('/sign-in');
+      return (
+        <div className="min-h-screen bg-[#000000] text-white flex flex-col items-center justify-center p-6 select-none font-sans">
+          <img
+            src="/logo-transparent.png"
+            alt="bokra"
+            className="h-12 w-auto object-contain animate-pulse select-none drop-shadow-2xl opacity-80"
+          />
+        </div>
+      );
+    }
+
+    // Native / Desktop / APK Gate
+    return (
+      <div className="min-h-screen bg-[#000000] text-white flex flex-col items-center justify-center p-6 text-center select-none font-sans">
+        <div className="w-full max-w-sm bg-[#121214] border border-white/10 rounded-3xl p-8 shadow-2xl flex flex-col items-center backdrop-blur-xl">
+          <img
+            src="/logo-transparent.png"
+            alt="bokra"
+            className="h-12 w-auto object-contain mb-4 select-none drop-shadow-xl"
+          />
+          <h2 className="text-xl font-bold tracking-tight text-white mb-2">
+            Sign In to bokra
+          </h2>
+          <p className="text-xs text-white/50 mb-6 leading-relaxed">
+            Please sign in to access your habits, streaks, and focus companion.
+          </p>
+          <SignInButton>
+            <button
+              type="button"
+              className="w-full py-3.5 px-6 rounded-2xl bg-white hover:bg-white/90 text-black font-bold text-sm transition-all active:scale-[0.98] shadow-lg cursor-pointer"
+            >
+              Sign In
+            </button>
+          </SignInButton>
+        </div>
+      </div>
+    );
+  }
+
   // 1) The Username Gate: If signed in and no username set, require setting username first
   if (isSignedIn && isLoaded && !user?.username && !dbUsername) {
     return <ChooseUsername onComplete={(newUsername) => setDbUsername(newUsername)} />;

@@ -1,11 +1,27 @@
-import { clerkMiddleware } from '@clerk/nextjs/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { getCorsHeaders, handleCorsOptions } from './lib/cors';
+
+const isPublicRoute = createRouteMatcher([
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/desktop-auth(.*)',
+  '/download(.*)',
+  '/guide(.*)',
+  '/preview(.*)',
+  '/api(.*)',
+  '/__clerk(.*)',
+]);
 
 const handler = clerkMiddleware(async (auth, req) => {
   // 1. Handle preflight OPTIONS requests for /api routes with strict whitelist CORS
   if (req.method === 'OPTIONS' && req.nextUrl.pathname.startsWith('/api')) {
     return handleCorsOptions(req);
+  }
+
+  // 2. Protect non-public routes: force sign-in for any unauthenticated user
+  if (!isPublicRoute(req)) {
+    await auth.protect();
   }
 
   const response = NextResponse.next();
