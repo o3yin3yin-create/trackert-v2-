@@ -30,10 +30,10 @@ export default function DownloadPage() {
   const isAr = lang === 'ar';
 
   const GITHUB_RELEASES_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases";
-  const MAC_DMG_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/latest/download/bokra.dmg";
-  const WIN_EXE_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/latest/download/bokra-setup.exe";
-  const LINUX_APPIMAGE_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/latest/download/bokra.AppImage";
-  const LINUX_DEB_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/latest/download/bokra_amd64.deb";
+  const MAC_DMG_URL = "/bokra.dmg";
+  const WIN_EXE_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/latest";
+  const LINUX_APPIMAGE_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/latest";
+  const LINUX_DEB_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/latest";
   const ANDROID_APK_URL = "/bokra.apk";
 
   return (
@@ -147,13 +147,14 @@ export default function DownloadPage() {
             <div className="flex flex-col gap-2 pt-2">
               <a
                 href={MAC_DMG_URL}
+                download="bokra.dmg"
                 className="w-full h-12 rounded-xl bg-white text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
               >
                 <Download size={15} />
-                <span>{isAr ? 'تحميل نسخة الماك (.DMG)' : 'Download for Mac (.DMG)'}</span>
+                <span>{isAr ? 'تحميل مباشر للماك (.DMG)' : 'Direct Download for Mac (.DMG)'}</span>
               </a>
-              <span className="text-[10px] text-center text-white/30 font-mono">
-                {isAr ? 'يتطلب macOS 11.0 Big Sur أو أحدث' : 'Requires macOS 11.0 Big Sur or later'}
+              <span className="text-[10px] text-center text-white/40 font-mono">
+                {isAr ? 'تحميل مباشر فوري من السيرفر (6.1 MB)' : 'Direct download from server (6.1 MB)'}
               </span>
             </div>
           </div>
@@ -185,14 +186,21 @@ export default function DownloadPage() {
             <div className="flex flex-col gap-2 pt-2">
               <a
                 href={WIN_EXE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-full h-12 rounded-xl bg-white text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
               >
                 <Download size={15} />
                 <span>{isAr ? 'تحميل نسخة ويندوز (.EXE)' : 'Download for Windows (.EXE)'}</span>
               </a>
-              <span className="text-[10px] text-center text-white/30 font-mono">
-                {isAr ? 'معالجات 64 بت (x64)' : 'Windows 64-bit architecture'}
-              </span>
+              <div className="flex items-center justify-center gap-1.5 pt-0.5">
+                <Link
+                  href="/"
+                  className="text-[11px] text-white/50 hover:text-white underline font-mono transition-colors"
+                >
+                  {isAr ? 'أو افتح وثبت تطبيق الويب المكتبي فوراً' : 'or install Desktop Web App instantly'}
+                </Link>
+              </div>
             </div>
           </div>
 
@@ -223,6 +231,8 @@ export default function DownloadPage() {
             <div className="flex flex-col gap-2 pt-2">
               <a
                 href={LINUX_APPIMAGE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-full h-12 rounded-xl bg-white text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
               >
                 <Download size={15} />
@@ -231,6 +241,8 @@ export default function DownloadPage() {
               <div className="text-center">
                 <a 
                   href={LINUX_DEB_URL} 
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-[11px] text-white/40 hover:text-white underline font-mono transition-colors"
                 >
                   {isAr ? 'أو حمّل حزمة دبيان (.DEB)' : 'or download .DEB package'}
