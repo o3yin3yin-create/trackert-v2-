@@ -588,6 +588,47 @@ const getPreviewData = () => {
 
 function AppContent({ isPreview = false }) {
   const clerkAuth = useUser();
+  const [cachedUser, setCachedUser] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('daybase_cached_user');
+        if (saved) return JSON.parse(saved);
+        const desktopUser = localStorage.getItem('bokra_desktop_user');
+        if (desktopUser) {
+          const parsed = JSON.parse(desktopUser);
+          return {
+            id: parsed.id || 'desktop_user',
+            fullName: parsed.name || parsed.username || 'Explorer',
+            firstName: parsed.firstName || parsed.name || 'Explorer',
+            username: parsed.username || 'explorer',
+            imageUrl: null,
+            publicMetadata: { role: 'pro' }
+          };
+        }
+      } catch (_) {}
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (clerkAuth.user) {
+      const u = {
+        id: clerkAuth.user.id,
+        fullName: clerkAuth.user.fullName,
+        firstName: clerkAuth.user.firstName,
+        username: clerkAuth.user.username,
+        imageUrl: clerkAuth.user.imageUrl,
+        primaryEmailAddress: clerkAuth.user.primaryEmailAddress ? { emailAddress: clerkAuth.user.primaryEmailAddress.emailAddress } : null,
+        publicMetadata: clerkAuth.user.publicMetadata || {}
+      };
+      setCachedUser(u);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('daybase_cached_user', JSON.stringify(u));
+        localStorage.setItem('daybase_owner_user_id', u.id);
+      }
+    }
+  }, [clerkAuth.user]);
+
   const user = useMemo(() => {
     if (isPreview) {
       return {
@@ -600,10 +641,15 @@ function AppContent({ isPreview = false }) {
         publicMetadata: { role: 'pro' }
       };
     }
-    return clerkAuth.user;
-  }, [isPreview, clerkAuth.user]);
-  const isLoaded = isPreview ? true : clerkAuth.isLoaded;
-  const isSignedIn = isPreview ? true : clerkAuth.isSignedIn;
+    return clerkAuth.user || cachedUser;
+  }, [isPreview, clerkAuth.user, cachedUser]);
+  const isLoaded = isPreview ? true : (clerkAuth.isLoaded || Boolean(cachedUser));
+  const isSignedIn = useMemo(() => {
+    if (isPreview) return true;
+    if (clerkAuth.isSignedIn) return true;
+    if (user?.id) return true;
+    return false;
+  }, [isPreview, clerkAuth.isSignedIn, user]);
   const { getToken: getClerkToken } = useAuth();
   const { signOut } = useClerk();
   const [authModal, setAuthModal] = useState(null); // 'sign-in' | 'sign-up' | null
@@ -613,6 +659,11 @@ function AppContent({ isPreview = false }) {
     if (isPreview) return 'omar';
     if (typeof window !== 'undefined') {
       try {
+        const cached = localStorage.getItem('daybase_cached_user');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed?.username) return parsed.username;
+        }
         const saved = localStorage.getItem('bokra_desktop_user');
         if (saved) return JSON.parse(saved).username || null;
       } catch (_) {}
@@ -1054,6 +1105,7 @@ function AppContent({ isPreview = false }) {
 
     const checkFriendsNotifications = async () => {
       try {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) return;
         const res = await apiFetch('/api/friends');
         if (!res.ok) return;
         const data = await res.json();
@@ -1724,6 +1776,7 @@ function AppContent({ isPreview = false }) {
       'daybase_spotify_last_active',
       'daybase_deleted_habits',
       'daybase_owner_user_id',
+      'daybase_cached_user',
       'bokra_cached_clerk_token',
       'bokra_desktop_user',
       'bokra_desktop_token',
@@ -1768,6 +1821,7 @@ function AppContent({ isPreview = false }) {
   // Programmatic user sign out handler
   const handleSignOut = useCallback(async () => {
     try {
+      setCachedUser(null);
       await clearUserLocalData();
       resetStateToCleanDefaults();
       setIsSettingsMenuOpen(false);
@@ -1790,36 +1844,44 @@ function AppContent({ isPreview = false }) {
 
   // Account State / Switch / Logout Lifecycle Listener
   useEffect(() => {
-    if (isPreview || !isLoaded || !isMounted) return;
+    if (isPreview || !isMounted) return;
+
+    // NEVER run account purge if device is offline!
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+
+    // Wait until Clerk has definitely loaded
+    if (!clerkAuth.isLoaded) return;
 
     const storedOwner = typeof window !== 'undefined' ? localStorage.getItem('daybase_owner_user_id') : null;
     const cachedToken = typeof window !== 'undefined' ? localStorage.getItem('bokra_cached_clerk_token') : null;
     const desktopUser = typeof window !== 'undefined' ? localStorage.getItem('bokra_desktop_user') : null;
 
-    if (user?.id) {
-      if (storedOwner && storedOwner !== user.id) {
+    if (clerkAuth.user?.id) {
+      if (storedOwner && storedOwner !== clerkAuth.user.id) {
         // Switched to a different user account: purge old local data, then load new account state
         clearUserLocalData().then(() => {
-          localStorage.setItem('daybase_owner_user_id', user.id);
+          localStorage.setItem('daybase_owner_user_id', clerkAuth.user.id);
           resetStateToCleanDefaults();
           fetchCloudState(false);
         });
       } else {
-        localStorage.setItem('daybase_owner_user_id', user.id);
+        localStorage.setItem('daybase_owner_user_id', clerkAuth.user.id);
       }
-    } else {
-      // Signed out
+    } else if (clerkAuth.isLoaded && !clerkAuth.isSignedIn) {
+      // Confirmed signed out on Clerk while online
       if (storedOwner || cachedToken || desktopUser) {
         clearUserLocalData().then(() => {
+          setCachedUser(null);
           resetStateToCleanDefaults();
         });
       }
     }
-  }, [user?.id, isLoaded, isMounted, clearUserLocalData, resetStateToCleanDefaults, fetchCloudState, isPreview]);
+  }, [clerkAuth.user?.id, clerkAuth.isLoaded, clerkAuth.isSignedIn, isMounted, clearUserLocalData, resetStateToCleanDefaults, fetchCloudState, isPreview]);
 
   // Initial cloud state load
   useEffect(() => {
     if (isPreview || !user || !isMounted) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
     fetchCloudState(false);
   }, [user, isMounted, fetchCloudState, isPreview]);
 
@@ -2118,7 +2180,8 @@ function AppContent({ isPreview = false }) {
   const [isAuthPromptOpen, setIsAuthPromptOpen] = useState(false);
 
   const requireAuth = (callback) => {
-    if (!isSignedIn && !isPreview) {
+    const isOfflineNow = typeof navigator !== 'undefined' && !navigator.onLine;
+    if (!isSignedIn && !isPreview && !isOfflineNow) {
       setIsAuthPromptOpen(true);
       return false;
     }
@@ -2981,7 +3044,7 @@ function AppContent({ isPreview = false }) {
 
   const sleepChartData = getChartData();
 
-  const authReady = isLoaded || authTimeoutPassed;
+  const authReady = isLoaded || authTimeoutPassed || (typeof navigator !== 'undefined' && !navigator.onLine) || Boolean(cachedUser);
 
   if (!isMounted || !authReady) {
     return (
@@ -3008,7 +3071,7 @@ function AppContent({ isPreview = false }) {
   }
 
   // 1) The Username Gate: If signed in and no username set, require setting username first
-  if (isSignedIn && isLoaded && !user?.username && !dbUsername) {
+  if (isSignedIn && isLoaded && !user?.username && !dbUsername && (typeof navigator === 'undefined' || navigator.onLine)) {
     return <ChooseUsername onComplete={(newUsername) => setDbUsername(newUsername)} />;
   }
 
