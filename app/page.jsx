@@ -449,18 +449,99 @@ class GlobalErrorBoundary extends Component {
 }
 
 const getPreviewData = () => {
+  const today = new Date();
+  const currentDayOfWeek = today.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+
+  // Ensure scheduled habits include today's day of the week so they are always active on today's view
   const habits = [
-    { id: 'p1', name: 'Morning Workout', type: 'single', subItems: [] },
-    { id: 'p2', name: 'Daily Prayers', type: 'multi', subItems: ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] },
-    { id: 'p3', name: 'Deep Work Session', type: 'single', subItems: [] },
-    { id: 'p4', name: 'Read 20 Pages', type: 'single', subItems: [] },
-    { id: 'p5', name: 'Clean Eating / Sugar Free', type: 'single', subItems: [] },
-    { id: 'p6', name: 'Evening Reflection', type: 'single', subItems: [] },
+    { 
+      id: 'p1', 
+      name: 'Morning Workout & Cardio', 
+      type: 'single', 
+      subItems: [],
+      category: 'workout',
+      frequency: 'weekly',
+      scheduleDays: [0, 1, 2, 3, 4, 5, 6],
+      time: '07:30 AM',
+      duration: '50m',
+      location: 'Fitness Club'
+    },
+    { 
+      id: 'p2', 
+      name: 'Daily Prayers (الصلوات الخمس)', 
+      type: 'multi', 
+      subItems: ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'],
+      category: 'habit',
+      frequency: 'daily'
+    },
+    { 
+      id: 'p3', 
+      name: 'CS301: Operating Systems & Architecture', 
+      type: 'single', 
+      subItems: [],
+      category: 'lecture',
+      frequency: 'weekly',
+      scheduleDays: [currentDayOfWeek, (currentDayOfWeek + 2) % 7, (currentDayOfWeek + 4) % 7],
+      time: '09:30 AM',
+      duration: '1h 30m',
+      location: 'Auditorium 3'
+    },
+    { 
+      id: 'p4', 
+      name: 'CS304: Database Systems & SQL Lab', 
+      type: 'single', 
+      subItems: [],
+      category: 'lecture',
+      frequency: 'weekly',
+      scheduleDays: [currentDayOfWeek, (currentDayOfWeek + 3) % 7],
+      time: '11:15 AM',
+      duration: '2h 00m',
+      location: 'Lab 4 - Tech Wing'
+    },
+    { 
+      id: 'p5', 
+      name: 'Deep Work: Algorithms & Problem Solving', 
+      type: 'single', 
+      subItems: [],
+      category: 'study',
+      frequency: 'daily',
+      time: '02:00 PM',
+      duration: '2h 00m',
+      location: 'Study Hub / Library'
+    },
+    { 
+      id: 'p6', 
+      name: 'Clean Eating & Hydration (3L Water)', 
+      type: 'single', 
+      subItems: [],
+      category: 'habit',
+      frequency: 'daily'
+    },
+    { 
+      id: 'p7', 
+      name: 'Product Engineering Standup', 
+      type: 'single', 
+      subItems: [],
+      category: 'meeting',
+      frequency: 'weekly',
+      scheduleDays: [currentDayOfWeek, (currentDayOfWeek + 2) % 7],
+      time: '05:00 PM',
+      duration: '45m',
+      location: 'Google Meet'
+    },
+    { 
+      id: 'p8', 
+      name: 'Read 20 Pages (Architecture & Tech)', 
+      type: 'single', 
+      subItems: [],
+      category: 'habit',
+      frequency: 'daily',
+      time: '09:30 PM',
+      duration: '30m'
+    },
   ];
 
   const dailyData = {};
-  const today = new Date();
-  
   for (let i = 0; i <= 45; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
@@ -475,15 +556,18 @@ const getPreviewData = () => {
       dailyData[`${ds}-p2-Dhuhr`] = true;
       dailyData[`${ds}-p2-Asr`] = true;
       dailyData[`${ds}-p2-Maghrib`] = true;
+      dailyData[`${ds}-p2-Isha`] = false;
       dailyData[`${ds}-p3`] = true;
       dailyData[`${ds}-p4`] = true;
       dailyData[`${ds}-p5`] = true;
-      dailyData[`${ds}-p6`] = false;
+      dailyData[`${ds}-p6`] = true;
+      dailyData[`${ds}-p7`] = true;
+      dailyData[`${ds}-p8`] = false;
     } else {
-      if (i <= 18) dailyData[`${ds}-p1`] = true;
+      if (i <= 24) dailyData[`${ds}-p1`] = true;
       else if (i % 2 === 0) dailyData[`${ds}-p1`] = true;
 
-      if (i <= 34) {
+      if (i <= 38) {
         dailyData[`${ds}-p2-Fajr`] = true;
         dailyData[`${ds}-p2-Dhuhr`] = true;
         dailyData[`${ds}-p2-Asr`] = true;
@@ -491,26 +575,33 @@ const getPreviewData = () => {
         dailyData[`${ds}-p2-Isha`] = true;
       }
 
-      if (i <= 12) dailyData[`${ds}-p3`] = true;
+      if (i <= 18) dailyData[`${ds}-p3`] = true;
       else if (i % 3 !== 0) dailyData[`${ds}-p3`] = true;
 
-      if (i <= 21) dailyData[`${ds}-p4`] = true;
+      if (i <= 16) dailyData[`${ds}-p4`] = true;
       else if (i % 2 === 0) dailyData[`${ds}-p4`] = true;
 
-      if (i <= 9) dailyData[`${ds}-p5`] = true;
-      else if (i % 2 === 0) dailyData[`${ds}-p5`] = true;
+      if (i <= 28) dailyData[`${ds}-p5`] = true;
+      else if (i % 3 !== 0) dailyData[`${ds}-p5`] = true;
 
-      if (i <= 15) dailyData[`${ds}-p6`] = true;
-      else if (i % 3 === 0) dailyData[`${ds}-p6`] = true;
+      if (i <= 14) dailyData[`${ds}-p6`] = true;
+      else if (i % 2 === 0) dailyData[`${ds}-p6`] = true;
+
+      if (i <= 20) dailyData[`${ds}-p7`] = true;
+      else if (i % 2 === 0) dailyData[`${ds}-p7`] = true;
+
+      if (i <= 19) dailyData[`${ds}-p8`] = true;
+      else if (i % 3 === 0) dailyData[`${ds}-p8`] = true;
     }
   }
 
   const tasks = [
-    { id: 't1', text: 'Review iOS design tokens & typography', completed: true },
-    { id: 't2', text: 'Push production build v1.2 to App Store', completed: true },
-    { id: 't3', text: 'Record 30s marketing showcase demo', completed: false },
-    { id: 't4', text: 'Sync with product and engineering teams', completed: true },
-    { id: 't5', text: 'Prepare high-res App Store promotional banners', completed: false },
+    { id: 't1', text: 'Review Algorithms lecture notes & practice dynamic programming', completed: true },
+    { id: 't2', text: 'Submit Operating Systems Assignment 2 before 11:59 PM', completed: true },
+    { id: 't3', text: 'Prepare high-res App Store promotional presentation', completed: true },
+    { id: 't4', text: 'Complete 2 synchronized Pomodoro blocks with Mohamed', completed: true },
+    { id: 't5', text: 'Grocery run: fresh fruits, oats, and Greek yogurt', completed: false },
+    { id: 't6', text: 'Clean workspace desk & plan tomorrow morning schedule', completed: false },
   ];
 
   const nowSec = Math.floor(Date.now() / 1000);
@@ -529,39 +620,246 @@ const getPreviewData = () => {
     destCoords: { lat: 51.4700, lng: -0.4543 },
   };
 
-  const cards = { p1: 1, p2: 1, p3: 1 };
+  const cards = { p1: 1, p2: 1, p3: 1, p5: 1 };
 
   const friends = [
+    {
+      friendshipId: 'demo-mohamed',
+      user: { username: 'mohamed', name: 'Mohamed', avatar: 'flame' },
+      displayName: 'Mohamed',
+      initial: 'M',
+      presence: {
+        kind: 'focus',
+        tag: 'Focus',
+        line: 'Focus 2/4 · 12:40 left',
+        right: '12:40',
+        status: 'Studying',
+        label: 'FOCUS SESSION',
+        big: '12:40',
+        bigSize: 56,
+        sub: 'left · cycle 2 of 4',
+        pct: 65,
+        hasBar: true,
+        barL: '12:20 done',
+        barR: '25:00',
+        hasChips: false,
+        chips: [],
+        hasDots: true,
+        dots: [1, 1, 0, 0],
+        action: 'Join session',
+        sessionData: {
+          type: 'pomodoro',
+          initialTime: 1500,
+          remainingSec: 760,
+          taskName: 'Operating Systems & Networks',
+          step: 2,
+          totalCycles: 4
+        },
+        together: '6h 40m',
+        hasMusicBadge: false,
+        hasSec: false,
+      },
+      isPinned: true,
+    },
     {
       friendshipId: 'demo-sara',
       user: { username: 'sara', name: 'Sara', avatar: 'sparkles' },
       displayName: 'Sara',
       initial: 'S',
-      presence: PRESENCE_PRESETS[2],
+      presence: {
+        kind: 'flight',
+        tag: 'Flight',
+        line: 'CAI → LHR · in the air',
+        right: '02:45:00',
+        status: 'On a focus flight',
+        label: 'FOCUS FLIGHT',
+        big: 'CAI → LHR',
+        bigSize: 38,
+        sub: 'Cairo to London · 02:45:00 left',
+        pct: 55,
+        hasBar: true,
+        barL: 'CAI',
+        barR: 'LHR',
+        hasChips: false,
+        chips: [],
+        hasDots: false,
+        dots: [],
+        action: 'Hop on this flight',
+        sessionData: {
+          type: 'flight',
+          flight: flight,
+          remainingSec: 9900
+        },
+        together: '4h 15m',
+        hasMusicBadge: false,
+        hasSec: false,
+      },
       isPinned: true,
     },
     {
       friendshipId: 'demo-ahmed',
-      user: { username: 'ahmed', name: 'Ahmed', avatar: 'plane' },
+      user: { username: 'ahmed', name: 'Ahmed', avatar: 'bookOpen' },
       displayName: 'Ahmed',
       initial: 'A',
-      presence: PRESENCE_PRESETS[1],
+      presence: {
+        kind: 'lecture',
+        tag: 'Lecture',
+        line: 'In lecture · CS305',
+        right: '28 min',
+        status: 'In a lecture',
+        label: 'IN LECTURE',
+        big: 'CS305',
+        bigSize: 44,
+        sub: 'Algorithms & Complexity · Ends in 28 min',
+        pct: 0,
+        hasBar: false,
+        barL: '',
+        barR: '',
+        hasChips: true,
+        chips: ['10:00 AM', 'Weekly'],
+        hasDots: false,
+        dots: [],
+        action: 'Plan a study session',
+        together: '3h 20m',
+        hasMusicBadge: false,
+        hasSec: false,
+      },
       isPinned: false,
     },
     {
       friendshipId: 'demo-nour',
-      user: { username: 'nour', name: 'Nour', avatar: 'compass' },
+      user: { username: 'nour', name: 'Nour', avatar: 'target' },
       displayName: 'Nour',
       initial: 'N',
-      presence: PRESENCE_PRESETS[4],
+      presence: {
+        kind: 'habit',
+        tag: 'Habit',
+        line: 'Just finished Morning Workout',
+        right: 'Done',
+        status: 'Finished a habit',
+        label: 'JUST FINISHED',
+        big: 'Morning Workout',
+        bigSize: 40,
+        sub: 'Streak: 24 days',
+        pct: 100,
+        hasBar: false,
+        barL: '',
+        barR: '',
+        hasChips: false,
+        chips: [],
+        hasDots: true,
+        dots: [1, 1, 1, 1, 1],
+        action: 'Cheer them on',
+        together: '5h 10m',
+        hasMusicBadge: false,
+        hasSec: false,
+      },
       isPinned: false,
     },
     {
       friendshipId: 'demo-youssef',
-      user: { username: 'youssef', name: 'Youssef', avatar: 'target' },
+      user: { username: 'youssef', name: 'Youssef', avatar: 'dumbbell' },
       displayName: 'Youssef',
       initial: 'Y',
-      presence: PRESENCE_PRESETS[3],
+      presence: {
+        kind: 'focus',
+        tag: 'Focus',
+        line: 'Focus 1/4 · 18:20 left',
+        right: '18:20',
+        status: 'Studying',
+        label: 'FOCUS SESSION',
+        big: '18:20',
+        bigSize: 56,
+        sub: 'left · cycle 1 of 4',
+        pct: 40,
+        hasBar: true,
+        barL: '11:40 done',
+        barR: '30:00',
+        hasChips: false,
+        chips: [],
+        hasDots: true,
+        dots: [1, 0, 0, 0],
+        action: 'Join session',
+        sessionData: {
+          type: 'pomodoro',
+          initialTime: 1800,
+          remainingSec: 1100,
+          taskName: 'Mobile UI Architecture',
+          step: 1,
+          totalCycles: 4
+        },
+        together: '2h 50m',
+        hasMusicBadge: false,
+        hasSec: false,
+      },
+      isPinned: false,
+    },
+    {
+      friendshipId: 'demo-mariam',
+      user: { username: 'mariam', name: 'Mariam', avatar: 'compass' },
+      displayName: 'Mariam',
+      initial: 'M',
+      presence: {
+        kind: 'habit',
+        tag: 'Habit',
+        line: 'Just finished Reading 30m',
+        right: 'Done',
+        status: 'Finished a habit',
+        label: 'JUST FINISHED',
+        big: 'Reading 30m',
+        bigSize: 40,
+        sub: 'Streak: 16 days',
+        pct: 100,
+        hasBar: false,
+        barL: '',
+        barR: '',
+        hasChips: false,
+        chips: [],
+        hasDots: true,
+        dots: [1, 1, 1, 1, 1],
+        action: 'Cheer them on',
+        together: '3h 45m',
+        hasMusicBadge: false,
+        hasSec: false,
+      },
+      isPinned: false,
+    },
+    {
+      friendshipId: 'demo-karim',
+      user: { username: 'karim', name: 'Karim', avatar: 'timer' },
+      displayName: 'Karim',
+      initial: 'K',
+      presence: {
+        kind: 'focus',
+        tag: 'Focus',
+        line: 'Focus 3/4 · 08:15 left',
+        right: '08:15',
+        status: 'Studying',
+        label: 'FOCUS SESSION',
+        big: '08:15',
+        bigSize: 56,
+        sub: 'left · cycle 3 of 4',
+        pct: 75,
+        hasBar: true,
+        barL: '16:45 done',
+        barR: '25:00',
+        hasChips: false,
+        chips: [],
+        hasDots: true,
+        dots: [1, 1, 1, 0],
+        action: 'Join session',
+        sessionData: {
+          type: 'pomodoro',
+          initialTime: 1500,
+          remainingSec: 495,
+          taskName: 'Calculus III Problem Set',
+          step: 3,
+          totalCycles: 4
+        },
+        together: '4h 30m',
+        hasMusicBadge: false,
+        hasSec: false,
+      },
       isPinned: false,
     },
   ];
@@ -573,6 +871,8 @@ const getPreviewData = () => {
   ];
 
   const focusTime = {};
+  const pomodoroTasksData = {};
+
   for (let i = 0; i <= 14; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
@@ -580,10 +880,16 @@ const getPreviewData = () => {
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     const ds = `${y}-${m}-${day}`;
-    focusTime[ds] = (120 + (i % 4) * 35) * 60;
+    focusTime[ds] = (140 + (i % 5) * 30) * 60;
+
+    pomodoroTasksData[ds] = [
+      { name: 'Algorithms & Problem Solving', color: '#FF9F0A', timeSpent: (40 + (i % 3) * 15) * 60 },
+      { name: 'Operating Systems Assignment', color: '#0A84FF', timeSpent: (35 + (i % 4) * 10) * 60 },
+      { name: 'UI Architecture Design', color: '#30D158', timeSpent: (25 + (i % 2) * 15) * 60 }
+    ];
   }
 
-  return { habits, dailyData, tasks, flight, cards, friends, widgets, focusTime };
+  return { habits, dailyData, tasks, flight, cards, friends, widgets, focusTime, pomodoroTasksData };
 };
 
 function AppContent({ isPreview = false }) {
@@ -749,7 +1055,7 @@ function AppContent({ isPreview = false }) {
   });
 
   const [mission, setMission] = useState(() => {
-    if (isPreview) return 'Build and ship the mobile app release v1.2';
+    if (isPreview) return 'Build high-performance systems, maintain discipline, and achieve peak focus';
     if (typeof window !== 'undefined') {
       return localStorage.getItem('daybase_mission_v4') || "";
     }
@@ -1080,7 +1386,7 @@ function AppContent({ isPreview = false }) {
     return [];
   });
   const [pinnedFriendUsername, setPinnedFriendUsername] = useState(() => {
-    if (isPreview) return 'sara';
+    if (isPreview) return 'mohamed';
     if (typeof window !== 'undefined') {
       return localStorage.getItem('daybase_pinned_friend_username') || '';
     }
@@ -1375,6 +1681,7 @@ function AppContent({ isPreview = false }) {
     return { name: '', color: '#FF9F0A' };
   });
   const [pomodoroTasksData, setPomodoroTasksData] = useState(() => {
+    if (isPreview) return getPreviewData().pomodoroTasksData || {};
     if (typeof window !== 'undefined') {
       return safeJson(localStorage.getItem('daybase_pomodoro_tasks_v1'), {});
     }
@@ -1390,6 +1697,7 @@ function AppContent({ isPreview = false }) {
 
   // --- 1. Instant Offline-First Local Load from IndexedDB ---
   useEffect(() => {
+    if (isPreview) return;
     async function initFromLocalDb() {
       try {
         const localState = await loadLocalOfflineState();
