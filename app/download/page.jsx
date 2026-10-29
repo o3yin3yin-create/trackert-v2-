@@ -31,6 +31,7 @@ export default function DownloadPage() {
 
   const GITHUB_RELEASES_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/tag/v0.1.0";
   const MAC_DMG_URL = "/bokra.dmg";
+  const WIN_ZIP_URL = "/bokra-windows.zip";
   const LINUX_APPIMAGE_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.0/bokra_0.1.0_amd64.AppImage";
   const LINUX_DEB_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.0/bokra_0.1.0_amd64.deb";
   const ANDROID_APK_URL = "/bokra.apk";
@@ -183,16 +184,17 @@ export default function DownloadPage() {
             </div>
 
             <div className="flex flex-col gap-2 pt-2">
-              <Link
-                href="/"
+              <a
+                href={WIN_ZIP_URL}
+                download="bokra-windows.zip"
                 className="w-full h-12 rounded-xl bg-white text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
               >
                 <Download size={15} />
-                <span>{isAr ? 'تثبيت تطبيق سطح المكتب للويندوز' : 'Install Desktop App for Windows'}</span>
-              </Link>
+                <span>{isAr ? 'تحميل حزمة ويندوز (.ZIP)' : 'Download for Windows (.ZIP)'}</span>
+              </a>
               <div className="flex items-center justify-center gap-1.5 pt-0.5">
                 <span className="text-[10px] text-center text-white/40 font-mono">
-                  {isAr ? 'تثبيت فوري مباشر بضغطة واحدة على جهازك' : 'Instant 1-click standalone desktop install'}
+                  {isAr ? 'تحميل مباشر فوري (تطبيق مستقل مع اختصار سطح المكتب)' : 'Direct fast download (standalone desktop app & shortcut)'}
                 </span>
               </div>
             </div>

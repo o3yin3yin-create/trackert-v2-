@@ -73,7 +73,7 @@ try {
   const nextCacheDir = path.join(rootDir, '.next');
   try {
     if (fs.existsSync(nextCacheDir)) {
-      execSync(`rm -rf "${nextCacheDir}"`);
+      fs.rmSync(nextCacheDir, { recursive: true, force: true });
     }
   } catch (e) {
     console.warn('[build-export] Notice: .next cleanup notice:', e.message);
@@ -81,7 +81,7 @@ try {
 
   // 4. Run Next.js static build
   console.log('[build-export] Generating static export bundle into out/...');
-  execSync('OUTPUT_EXPORT=true npx next build', {
+  execSync('npx next build', {
     cwd: rootDir,
     stdio: 'inherit',
     env: {

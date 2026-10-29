@@ -3419,13 +3419,15 @@ function AppContent({ isPreview = false }) {
         transition={{ duration: 0.2 }}
         key={habit.id}
         onContextMenu={(e) => { e.preventDefault(); openEditHabit(habit); }}
-        className={`relative flex flex-col transition-all duration-200 ease-out active:scale-[0.99] ${gridClass} liquid-panel`}
+        className={`relative flex flex-col transition-all duration-200 ease-out active:scale-[0.99] ${gridClass} ${isAllChecked ? '' : 'liquid-panel'}`}
         style={{ 
           borderRadius: '20px',
           backgroundColor: cardBg,
           color: cardColor,
           border: cardBorder,
           boxShadow: cardShadow,
+          backdropFilter: isAllChecked ? 'none' : 'blur(20px)',
+          WebkitBackdropFilter: isAllChecked ? 'none' : 'blur(20px)',
           minHeight: isMulti && isExpanded ? 'auto' : '58px'
         }}
       >
@@ -6619,7 +6621,7 @@ function AppContent({ isPreview = false }) {
             
             {/* Mobile Mission Card */}
             <div 
-              className="w-full p-4 sm:p-5 flex flex-col transition-all duration-500 ease-out liquid-panel" 
+              className="w-full p-4 sm:p-5 flex flex-col transition-all duration-500 ease-out" 
               style={{ 
                 backgroundColor: themeColor || '#ffffff', 
                 borderRadius: '24px', 
@@ -6730,7 +6732,7 @@ function AppContent({ isPreview = false }) {
               
               {/* Mission & Score Card */}
               <div 
-                className="w-full p-4 sm:p-5 flex flex-col transition-all duration-500 ease-out liquid-panel" 
+                className="w-full p-4 sm:p-5 flex flex-col transition-all duration-500 ease-out" 
                 style={{ 
                   backgroundColor: themeColor || '#ffffff', 
                   borderRadius: '24px', 
