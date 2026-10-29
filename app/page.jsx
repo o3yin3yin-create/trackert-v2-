@@ -1507,15 +1507,11 @@ function AppContent({ isPreview = false }) {
   const toggleLang = () => {};
 
   const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    if (newTheme === 'dark') {
+    setTheme('dark');
+    if (typeof window !== 'undefined') {
       document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+      localStorage.setItem('daybase_theme', 'dark');
     }
-    if (typeof window !== 'undefined') localStorage.setItem('daybase_theme', newTheme);
-    markLocalMutation();
   };
 
   const toggleCabinHum = () => {
@@ -1707,7 +1703,7 @@ function AppContent({ isPreview = false }) {
           if (localState.sleepData && Object.keys(localState.sleepData).length > 0) setSleepData(localState.sleepData);
           if (localState.focusTimeData && Object.keys(localState.focusTimeData).length > 0) setFocusTimeData(localState.focusTimeData);
           if (localState.pomodoroTasksData && Object.keys(localState.pomodoroTasksData).length > 0) setPomodoroTasksData(localState.pomodoroTasksData);
-          if (localState.theme) setTheme(localState.theme);
+          setTheme('dark');
           if (localState.bgStyle) setBgStyle(localState.bgStyle);
           if (localState.lang) setLang(localState.lang);
           if (localState.themeColor) setThemeColor(localState.themeColor);
@@ -1835,10 +1831,8 @@ function AppContent({ isPreview = false }) {
 
           isApplyingRemoteRef.current = true;
           if (authoritative.isAdmin !== undefined) setIsAdmin(authoritative.isAdmin);
-          if (authoritative.theme) {
-             setTheme(authoritative.theme);
-             if (typeof window !== 'undefined') localStorage.setItem('daybase_theme', authoritative.theme);
-          }
+          setTheme('dark');
+          if (typeof window !== 'undefined') localStorage.setItem('daybase_theme', 'dark');
           if (authoritative.bgStyle) {
              setBgStyle(authoritative.bgStyle);
              if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', authoritative.bgStyle);
@@ -2034,9 +2028,8 @@ function AppContent({ isPreview = false }) {
              }
           }
           
-          // Re-apply theme class
-          if (authoritative.theme === 'dark') document.documentElement.classList.add('dark');
-          else document.documentElement.classList.remove('dark');
+          // Re-apply theme class (permanent dark mode)
+          document.documentElement.classList.add('dark');
         }
       } else if (res.status === 403) {
         const data = await res.json().catch(() => ({}));
@@ -3408,16 +3401,16 @@ function AppContent({ isPreview = false }) {
     // High-contrast clean Apple styling: checked turns solid white/themeColor with black text, unchecked uses semi-transparent liquid glass
     const cardBg = isAllChecked 
       ? (themeColor || '#ffffff') 
-      : (theme === 'dark' ? 'rgba(20, 20, 22, 0.25)' : 'rgba(255, 255, 255, 0.2)');
+      : 'rgba(20, 20, 22, 0.4)';
     const cardColor = isAllChecked 
       ? '#000000' 
-      : (theme === 'dark' ? '#ffffff' : '#000000');
+      : '#ffffff';
     const cardBorder = isAllChecked 
       ? '1px solid transparent' 
-      : (theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.18)' : '1px solid rgba(0, 0, 0, 0.1)');
+      : '1px solid rgba(255, 255, 255, 0.15)';
     const cardShadow = isAllChecked 
       ? `0 10px 25px -8px ${themeColor}66` 
-      : '0 4px 20px rgba(0, 0, 0, 0.3)';
+      : '0 4px 20px rgba(0, 0, 0, 0.4)';
 
     return (
       <motion.div
@@ -3445,7 +3438,7 @@ function AppContent({ isPreview = false }) {
             >
               <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className={`text-[15px] font-bold tracking-tight truncate ${isAllChecked ? 'text-black' : (theme === 'dark' ? 'text-white' : 'text-black')}`}>
+                  <span className={`text-[15px] font-bold tracking-tight truncate ${isAllChecked ? 'text-black' : 'text-white'}`}>
                     {habit.name}
                   </span>
                   {streak > 0 && (
@@ -3459,7 +3452,7 @@ function AppContent({ isPreview = false }) {
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {habit.time && (
                       <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
-                        isAllChecked ? 'bg-black/10 text-black/80' : (theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-black/5 text-black/70')
+                        isAllChecked ? 'bg-black/10 text-black/80' : 'bg-white/10 text-white/70'
                       }`}>
                         <Clock size={9} />
                         {habit.time}
@@ -3467,7 +3460,7 @@ function AppContent({ isPreview = false }) {
                     )}
                     {habit.duration && (
                       <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
-                        isAllChecked ? 'bg-black/10 text-black/80' : (theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-black/5 text-black/70')
+                        isAllChecked ? 'bg-black/10 text-black/80' : 'bg-white/10 text-white/70'
                       }`}>
                         <Hourglass size={9} />
                         {habit.duration}
@@ -3475,7 +3468,7 @@ function AppContent({ isPreview = false }) {
                     )}
                     {habit.location && (
                       <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
-                        isAllChecked ? 'bg-black/10 text-black/80' : (theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-black/5 text-black/70')
+                        isAllChecked ? 'bg-black/10 text-black/80' : 'bg-white/10 text-white/70'
                       }`}>
                         <MapPin size={9} />
                         {habit.location}
@@ -3497,26 +3490,26 @@ function AppContent({ isPreview = false }) {
                           isAllChecked 
                             ? 'bg-black' 
                             : (isSubDone 
-                                ? (theme === 'dark' ? 'bg-white' : 'bg-black') 
-                                : (theme === 'dark' ? 'bg-white/20' : 'bg-black/20'))
+                                ? 'bg-white' 
+                                : 'bg-white/20')
                         }`} 
                       />
                     );
                   })}
                 </div>
-                <span className={`text-xs font-bold font-mono tracking-wider ${isAllChecked ? 'text-black/60' : (theme === 'dark' ? 'text-white/40' : 'text-black/40')}`}>
+                <span className={`text-xs font-bold font-mono tracking-wider ${isAllChecked ? 'text-black/60' : 'text-white/40'}`}>
                   {checkedCount}/{(habit.subItems || []).length}
                 </span>
                 <ChevronDown 
                   size={16} 
-                  className={`transition-transform duration-300 ${isAllChecked ? 'text-black/60' : (theme === 'dark' ? 'text-white/40' : 'text-black/40')} ${isExpanded ? 'rotate-180' : ''}`} 
+                  className={`transition-transform duration-300 ${isAllChecked ? 'text-black/60' : 'text-white/40'} ${isExpanded ? 'rotate-180' : ''}`} 
                 />
               </div>
             </div>
 
             {/* Expanded sub-items */}
             {isExpanded && (
-              <div className="flex flex-col gap-2 px-4 pb-4 pt-1 border-t border-black/5 dark:border-white/10 transition-all duration-300 animate-fadeIn">
+              <div className="flex flex-col gap-2 px-4 pb-4 pt-1 border-t border-white/10 transition-all duration-300 animate-fadeIn">
                 {(habit.subItems || []).map((sub, idx) => {
                   const isSubChecked = !!dailyData[`${activeDateStr}-${habit.id}-${sub}`];
                   return (
@@ -3528,16 +3521,16 @@ function AppContent({ isPreview = false }) {
                       }}
                       className="flex justify-between items-center p-3 rounded-xl cursor-pointer transition-all duration-200 active:scale-[0.99]"
                       style={{ 
-                        backgroundColor: isAllChecked ? 'rgba(0,0,0,0.06)' : (theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'),
-                        border: theme === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)'
+                        backgroundColor: isAllChecked ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.06)'
                       }}
                     >
-                      <span className={`text-sm font-semibold tracking-tight ${isAllChecked ? 'text-black' : (theme === 'dark' ? 'text-white/90' : 'text-black/90')}`}>{sub}</span>
+                      <span className={`text-sm font-semibold tracking-tight ${isAllChecked ? 'text-black' : 'text-white/90'}`}>{sub}</span>
                       <div 
                         className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border-2 transition-all duration-200 ${
                           isSubChecked 
-                            ? (isAllChecked ? 'bg-black border-black text-white' : (theme === 'dark' ? 'bg-white border-white text-black' : 'bg-black border-black text-white'))
-                            : (theme === 'dark' ? 'border-white/20' : 'border-black/20')
+                            ? (isAllChecked ? 'bg-black border-black text-white' : 'bg-white border-white text-black')
+                            : 'border-white/20'
                         }`}
                       >
                         {isSubChecked && <Check size={11} strokeWidth={4} />}
@@ -3556,7 +3549,7 @@ function AppContent({ isPreview = false }) {
           >
             <div className="flex flex-col gap-1 min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className={`text-[15px] font-bold tracking-tight truncate ${isAllChecked ? 'text-black' : (theme === 'dark' ? 'text-white' : 'text-black')}`}>
+                <span className={`text-[15px] font-bold tracking-tight truncate ${isAllChecked ? 'text-black' : 'text-white'}`}>
                   {habit.name}
                 </span>
                 {streak > 0 && (
@@ -3571,7 +3564,7 @@ function AppContent({ isPreview = false }) {
               <div className="flex items-center gap-1.5 flex-wrap">
                 {habit.time && (
                   <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
-                    isAllChecked ? 'bg-black/10 text-black/80' : (theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-black/5 text-black/70')
+                    isAllChecked ? 'bg-black/10 text-black/80' : 'bg-white/10 text-white/70'
                   }`}>
                     <Clock size={9} />
                     {habit.time}
@@ -3579,7 +3572,7 @@ function AppContent({ isPreview = false }) {
                 )}
                 {habit.duration && (
                   <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
-                    isAllChecked ? 'bg-black/10 text-black/80' : (theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-black/5 text-black/70')
+                    isAllChecked ? 'bg-black/10 text-black/80' : 'bg-white/10 text-white/70'
                   }`}>
                     <Hourglass size={9} />
                     {habit.duration}
@@ -3587,7 +3580,7 @@ function AppContent({ isPreview = false }) {
                 )}
                 {habit.location && (
                   <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
-                    isAllChecked ? 'bg-black/10 text-black/80' : (theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-black/5 text-black/70')
+                    isAllChecked ? 'bg-black/10 text-black/80' : 'bg-white/10 text-white/70'
                   }`}>
                     <MapPin size={9} />
                     {habit.location}
@@ -3595,7 +3588,7 @@ function AppContent({ isPreview = false }) {
                 )}
                 {habit.frequency && habit.frequency !== 'daily' && (
                   <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
-                    isAllChecked ? 'bg-black/10 text-black/80' : (theme === 'dark' ? 'bg-white/10 text-white/70' : 'bg-black/5 text-black/70')
+                    isAllChecked ? 'bg-black/10 text-black/80' : 'bg-white/10 text-white/70'
                   }`}>
                     <Calendar size={9} />
                     {habit.frequency === 'once' ? (habit.scheduleDate || t('once')) : t(habit.frequency)}
@@ -3609,7 +3602,7 @@ function AppContent({ isPreview = false }) {
               className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all duration-200 ${
                 isAllChecked 
                   ? 'bg-black text-white shadow-sm' 
-                  : (theme === 'dark' ? 'border-2 border-white/20 hover:border-white/40' : 'border-2 border-black/20 hover:border-black/40')
+                  : 'border-2 border-white/20 hover:border-white/40'
               }`}
             >
               {isAllChecked && <Check size={14} strokeWidth={3.5} />}
@@ -3622,7 +3615,7 @@ function AppContent({ isPreview = false }) {
             className="flex items-center justify-between px-4 py-3 h-full cursor-pointer select-none gap-2 w-full min-h-[58px]"
           >
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
-              <span className={`text-[15px] font-bold tracking-tight truncate ${isAllChecked ? 'text-black' : (theme === 'dark' ? 'text-white' : 'text-black')}`}>
+              <span className={`text-[15px] font-bold tracking-tight truncate ${isAllChecked ? 'text-black' : 'text-white'}`}>
                 {habit.name}
               </span>
               {streak > 0 && (
@@ -3638,7 +3631,7 @@ function AppContent({ isPreview = false }) {
               className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all duration-200 ${
                 isAllChecked 
                   ? 'bg-black text-white shadow-sm' 
-                  : (theme === 'dark' ? 'border-2 border-white/20 hover:border-white/40' : 'border-2 border-black/20 hover:border-black/40')
+                  : 'border-2 border-white/20 hover:border-white/40'
               }`}
             >
               {isAllChecked && <Check size={14} strokeWidth={3.5} />}
@@ -3681,7 +3674,7 @@ function AppContent({ isPreview = false }) {
             key="pomodoro-widget"
             onClick={() => { recordPomodoroActivity(); setIsPomodoroOpen(true); }} 
             data-no-day-swipe="true"
-            className="col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 dark:border-white/18 shadow-lg active:scale-[0.99] transition-all select-none min-h-[58px]"
+            className="col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/15 shadow-lg active:scale-[0.99] transition-all select-none min-h-[58px]"
           >
             {/* Left: Mini Ring + Play/Pause */}
             <div className="flex items-center gap-2.5 min-w-0">
@@ -3769,7 +3762,7 @@ function AppContent({ isPreview = false }) {
           key="pomodoro-widget"
           onClick={() => { recordPomodoroActivity(); setIsPomodoroOpen(true); }} 
           data-no-day-swipe="true"
-          className="col-span-2 w-full px-4 sm:px-5 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/10 dark:border-white/18 shadow-lg active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
+          className="col-span-2 w-full px-4 sm:px-5 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/15 shadow-lg active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
         >
           {/* Left: Progress Ring + Play/Pause button and Title + 4 Progress Dots */}
           <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
@@ -3879,7 +3872,7 @@ function AppContent({ isPreview = false }) {
             key="flight-widget"
             onClick={() => { recordFlightActivity(); setIsFlightFocusOpen(true); }} 
             data-no-day-swipe="true"
-            className="col-span-1 w-full px-3.5 py-2.5 rounded-[20px] liquid-panel flex flex-col justify-between gap-1.5 cursor-pointer border border-white/10 dark:border-white/15 shadow-md hover:border-white/20 active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
+            className="col-span-1 w-full px-3.5 py-2.5 rounded-[20px] liquid-panel flex flex-col justify-between gap-1.5 cursor-pointer border border-white/15 shadow-md hover:border-white/20 active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
           >
             <div className="flex items-center justify-between gap-1.5 min-w-0">
               <div className="flex flex-col min-w-0">
@@ -3930,7 +3923,7 @@ function AppContent({ isPreview = false }) {
           key="flight-widget"
           onClick={() => { recordFlightActivity(); setIsFlightFocusOpen(true); }} 
           data-no-day-swipe="true"
-          className="col-span-2 w-full px-4 py-2.5 sm:px-4.5 sm:py-3 rounded-[20px] liquid-panel flex flex-col justify-between gap-2 cursor-pointer border border-white/10 dark:border-white/15 shadow-lg hover:border-white/20 active:scale-[0.99] transition-all duration-200 select-none min-h-[62px]"
+          className="col-span-2 w-full px-4 py-2.5 sm:px-4.5 sm:py-3 rounded-[20px] liquid-panel flex flex-col justify-between gap-2 cursor-pointer border border-white/15 shadow-lg hover:border-white/20 active:scale-[0.99] transition-all duration-200 select-none min-h-[62px]"
         >
           {/* Top Row: Route & Airline on Left, Split Timer or Fly Button on Right */}
           <div className="flex items-center justify-between gap-3 min-w-0 pt-0.5">
@@ -4029,7 +4022,7 @@ function AppContent({ isPreview = false }) {
               setIsFriendsModalOpen(true);
             }}
             data-no-day-swipe="true"
-            className="col-span-1 w-full px-2.5 sm:px-3 py-2.5 rounded-[20px] liquid-panel flex items-center justify-between gap-2 border border-white/10 dark:border-white/18 shadow-lg cursor-pointer active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
+            className="col-span-1 w-full px-2.5 sm:px-3 py-2.5 rounded-[20px] liquid-panel flex items-center justify-between gap-2 border border-white/15 shadow-lg cursor-pointer active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
           >
             {/* Left: Avatar + Friend First Name (Always visible) */}
             <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -4095,7 +4088,7 @@ function AppContent({ isPreview = false }) {
             setIsFriendsModalOpen(true);
           }}
           data-no-day-swipe="true"
-          className="col-span-2 w-full px-3.5 sm:px-4 py-2.5 rounded-[24px] liquid-panel flex items-center justify-between gap-3 border border-white/10 dark:border-white/18 shadow-lg cursor-pointer active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
+          className="col-span-2 w-full px-3.5 sm:px-4 py-2.5 rounded-[24px] liquid-panel flex items-center justify-between gap-3 border border-white/15 shadow-lg cursor-pointer active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
         >
           {/* Left: Avatar + Friend First Name */}
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
@@ -4174,7 +4167,7 @@ function AppContent({ isPreview = false }) {
   };
 
   return (
-    <div dir="ltr" className={`min-h-screen text-black dark:text-white transition-colors duration-500 font-sans`}>
+    <div dir="ltr" className={`min-h-screen text-white transition-colors duration-500 font-sans`}>
       <style>
         {`
           body, html, #root {
@@ -5519,11 +5512,11 @@ function AppContent({ isPreview = false }) {
 
               {!selectedFlight && flightDurationFilter === null ? (
                 <div className="flex flex-col gap-6 py-6 px-2 animate-in fade-in zoom-in-95 duration-300">
-                  <p className="text-sm text-center text-gray-500 dark:text-white/60 font-bold tracking-widest uppercase mb-2">
+                  <p className="text-sm text-center text-white/60 font-bold tracking-widest uppercase mb-2">
                     {'Ready for a focus flight?'}
                   </p>
                   
-                  <div className="flex flex-col items-center gap-4 bg-black/5 dark:bg-white/5 p-6 rounded-3xl border border-black/5 dark:border-white/10">
+                  <div className="flex flex-col items-center gap-4 bg-white/5 p-6 rounded-3xl border border-white/10">
                     <form 
                       onSubmit={async (e) => {
                         e.preventDefault();
@@ -5551,25 +5544,25 @@ function AppContent({ isPreview = false }) {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder={'Flight Number (e.g. EK1)'}
-                        className="flex-1 min-w-0 bg-white dark:bg-black/40 text-black dark:text-white rounded-2xl px-4 py-4 text-sm font-bold border border-black/10 dark:border-white/10 outline-none focus:border-black/40 dark:focus:border-white/40 uppercase tracking-widest"
+                        className="flex-1 min-w-0 bg-black/40 text-white rounded-2xl px-4 py-4 text-sm font-bold border border-white/10 outline-none focus:border-white/40 uppercase tracking-widest"
                       />
                       <button 
                         type="submit"
                         disabled={isSearching}
-                        className="bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 px-6 rounded-2xl font-black tracking-widest disabled:opacity-50 transition-all shadow-lg active:scale-95"
+                        className="bg-white text-black hover:bg-white/90 px-6 rounded-2xl font-black tracking-widest disabled:opacity-50 transition-all shadow-lg active:scale-95"
                       >
                         {isSearching ? <Loader2 size={20} className="animate-spin" /> : <PlaneTakeoff size={20} />}
                       </button>
                     </form>
 
-                    <div className="w-full h-[1px] bg-black/10 dark:bg-white/10 my-2" />
+                    <div className="w-full h-[1px] bg-white/10 my-2" />
 
                     <button
                       onClick={() => {
                         setFlightDurationFilter(0);
                         fetchFlights(0);
                       }}
-                      className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-white dark:bg-white/5 text-black dark:text-white text-sm font-bold tracking-widest transition-all active:scale-95 shadow-sm border border-black/5 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10"
+                      className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-white/5 text-white text-sm font-bold tracking-widest transition-all active:scale-95 shadow-sm border border-white/10 hover:bg-white/10"
                     >
                       <Globe size={18} />
                       {'Browse Live Flights'}
@@ -5578,8 +5571,8 @@ function AppContent({ isPreview = false }) {
                 </div>
               ) : flightLoading ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-4">
-                  <Loader2 className="animate-spin text-gray-400 dark:text-white/30" size={32} />
-                  <span className="text-xs font-bold tracking-widest text-gray-500 dark:text-white/30 uppercase animate-pulse">{t('findingFlights')}</span>
+                  <Loader2 className="animate-spin text-white/30" size={32} />
+                  <span className="text-xs font-bold tracking-widest text-white/30 uppercase animate-pulse">{t('findingFlights')}</span>
                 </div>
               ) : selectedFlight ? (
                 <div className="flex flex-col items-center w-full">
@@ -5587,45 +5580,45 @@ function AppContent({ isPreview = false }) {
                   {/* Route & Airline for portrait small screens only */}
                   <div className="w-full md:hidden landscape:hidden flex flex-col items-center mb-6 px-1">
                     <div className="flex items-center justify-between w-full mb-2 text-center">
-                      <span className="text-2xl font-black text-black dark:text-white">{selectedFlight.origin}</span>
-                      <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-black/20 dark:via-white/20 to-transparent mx-3" />
+                      <span className="text-2xl font-black text-white">{selectedFlight.origin}</span>
+                      <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent mx-3" />
                       <PlaneTakeoff size={18} color={themeColor} className="animate-pulse rotate-45" />
-                      <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-black/20 dark:via-white/20 to-transparent mx-3" />
-                      <span className="text-2xl font-black text-black dark:text-white">{selectedFlight.destination}</span>
+                      <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent mx-3" />
+                      <span className="text-2xl font-black text-white">{selectedFlight.destination}</span>
                     </div>
                     
-                    <span className="text-xs font-bold text-gray-600 dark:text-white/60 text-center">
-                      {selectedFlight.airline} <span className="text-black/10 dark:text-white/20 px-1">|</span> {selectedFlight.callsign}
+                    <span className="text-xs font-bold text-white/60 text-center">
+                      {selectedFlight.airline} <span className="text-white/20 px-1">|</span> {selectedFlight.callsign}
                     </span>
-                    <span className="text-[10px] text-gray-400 dark:text-white/30 uppercase font-mono tracking-widest mt-0.5">{selectedFlight.model}</span>
+                    <span className="text-[10px] text-white/30 uppercase font-mono tracking-widest mt-0.5">{selectedFlight.model}</span>
                   </div>
 
                   {/* TWO COLUMN GRID FOR LANDSCAPE / LAPTOP */}
                   <div className="w-full grid grid-cols-1 md:grid-cols-12 landscape:grid-cols-12 gap-6 items-stretch">
                     
                     {/* LEFT COLUMN: Aviation details & curved path radar */}
-                    <div className="col-span-1 md:col-span-6 landscape:col-span-6 flex flex-col justify-between bg-white/10 dark:bg-black/20 border border-black/5 dark:border-white/5 p-4 sm:p-5 rounded-3xl shadow-inner">
+                    <div className="col-span-1 md:col-span-6 landscape:col-span-6 flex flex-col justify-between bg-black/20 border border-white/5 p-4 sm:p-5 rounded-3xl shadow-inner">
                       
                       {/* Desktop Route Info (Visible on large screens and landscape mode) */}
                       <div className="hidden md:flex landscape:flex flex-col w-full mb-4">
                         <div className="flex items-center justify-between w-full mb-1 text-center">
-                          <span className="text-3xl font-black tracking-tight text-black dark:text-white">{selectedFlight.origin}</span>
-                          <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-black/10 dark:via-white/10 to-transparent mx-4" />
+                          <span className="text-3xl font-black tracking-tight text-white">{selectedFlight.origin}</span>
+                          <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent mx-4" />
                           <PlaneTakeoff size={20} color={themeColor} className="rotate-45" />
-                          <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-black/10 dark:via-white/10 to-transparent mx-4" />
-                          <span className="text-3xl font-black tracking-tight text-black dark:text-white">{selectedFlight.destination}</span>
+                          <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent mx-4" />
+                          <span className="text-3xl font-black tracking-tight text-white">{selectedFlight.destination}</span>
                         </div>
                         
-                        <div className="flex justify-between items-center text-[10px] font-black text-gray-400 dark:text-white/30 uppercase tracking-widest mb-3 px-1">
+                        <div className="flex justify-between items-center text-[10px] font-black text-white/30 uppercase tracking-widest mb-3 px-1">
                           <span>{t('departure')}</span>
                           <span>{t('arrival')}</span>
                         </div>
                         
-                        <div className="text-left bg-black/5 dark:bg-black/20 p-3 rounded-xl border border-black/5 dark:border-white/5">
-                          <span className="text-xs font-bold text-gray-800 dark:text-white/80 block">
+                        <div className="text-left bg-black/20 p-3 rounded-xl border border-white/5">
+                          <span className="text-xs font-bold text-white/80 block">
                             {selectedFlight.airline} • {selectedFlight.callsign}
                           </span>
-                          <span className="text-[10px] text-gray-500 dark:text-white/40 font-mono tracking-tight uppercase block mt-0.5">
+                          <span className="text-[10px] text-white/40 font-mono tracking-tight uppercase block mt-0.5">
                             {selectedFlight.model}
                           </span>
                         </div>
@@ -5695,14 +5688,14 @@ function AppContent({ isPreview = false }) {
                                       setIsFlightTimerRunning(false);
                                     }
                                   }}
-                                  className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
+                                  className="w-8 h-8 rounded-full bg-black/75 hover:bg-black/90 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
                                   title={isFlightTimerRunning ? 'Pause' : 'Play'}
                                 >
                                   {isFlightTimerRunning ? <Pause size={12} fill="currentColor" /> : <Play size={12} className="ml-0.5" fill="currentColor" />}
                                 </button>
                                 <button 
                                   onClick={toggleCabinHum}
-                                  className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-lg backdrop-blur-md active:scale-95 transition-all select-none ${isCabinHumPlaying ? 'bg-white text-black border-white' : 'bg-black/60 dark:bg-black/75 text-white border-white/10'}`}
+                                  className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-lg backdrop-blur-md active:scale-95 transition-all select-none ${isCabinHumPlaying ? 'bg-white text-black border-white' : 'bg-black/75 text-white border-white/10'}`}
                                   title={'Cabin Noise'}
                                 >
                                   {isCabinHumPlaying ? (
@@ -5723,28 +5716,28 @@ function AppContent({ isPreview = false }) {
                               <div className="absolute top-3 right-3 flex flex-col gap-2 z-[1000]">
                                 <button 
                                   onClick={() => setIsMapView(false)}
-                                  className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
+                                  className="w-8 h-8 rounded-full bg-black/75 hover:bg-black/90 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
                                   title={'Radar View'}
                                 >
                                   <Compass size={12} className="animate-[spin_20s_linear_infinite]" />
                                 </button>
                                 <button 
                                   onClick={() => setIsCameraLocked(!isCameraLocked)}
-                                  className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-lg backdrop-blur-md active:scale-95 transition-all select-none ${isCameraLocked ? 'bg-white text-black border-white' : 'bg-black/60 dark:bg-black/75 text-white border-white/10'}`}
+                                  className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-lg backdrop-blur-md active:scale-95 transition-all select-none ${isCameraLocked ? 'bg-white text-black border-white' : 'bg-black/75 text-white border-white/10'}`}
                                   title={'Camera Lock'}
                                 >
                                   <Navigation size={12} className={isCameraLocked ? 'fill-current rotate-45' : 'rotate-45'} />
                                 </button>
                                 <button 
                                   onClick={() => setIsCameraLocked(false)}
-                                  className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
+                                  className="w-8 h-8 rounded-full bg-black/75 hover:bg-black/90 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
                                   title={'Full Route'}
                                 >
                                   <Map size={12} />
                                 </button>
                                 <button 
                                   onClick={() => { haptic('light'); setIsWindowSeatOpen(true); }} 
-                                  className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
+                                  className="w-8 h-8 rounded-full bg-black/75 hover:bg-black/90 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
                                   title={'Window Seat'}
                                 >
                                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="3" width="14" height="18" rx="5" /><line x1="5" y1="15" x2="19" y2="15" opacity="0.4" /></svg>
@@ -5754,7 +5747,7 @@ function AppContent({ isPreview = false }) {
                                     haptic('medium');
                                     setIsScreensaverOpen(true);
                                   }}
-                                  className="w-8 h-8 rounded-full bg-black/60 dark:bg-black/75 hover:bg-black/80 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
+                                  className="w-8 h-8 rounded-full bg-black/75 hover:bg-black/90 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
                                   title={'Screensaver Mode'}
                                 >
                                   <Maximize size={12} />
@@ -5776,11 +5769,11 @@ function AppContent({ isPreview = false }) {
                           );
                         })()
                       ) : (
-                        <div className="w-full relative py-2 mb-4 bg-black/5 dark:bg-black/40 border border-black/5 dark:border-white/5 rounded-2xl p-3 flex flex-col justify-center">
+                        <div className="w-full relative py-2 mb-4 bg-black/40 border border-white/5 rounded-2xl p-3 flex flex-col justify-center">
                           <div className="absolute top-2.5 right-2.5 z-10 flex gap-2">
                             <button
                               onClick={() => { haptic('light'); setIsWindowSeatOpen(true); }}
-                              className="px-2.5 py-1.5 rounded-xl bg-black/50 hover:bg-black/75 dark:bg-white/10 dark:hover:bg-white/20 border border-white/5 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 active:scale-95 select-none"
+                              className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 active:scale-95 select-none"
                               title={'Window Seat'}
                             >
                               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="3" width="14" height="18" rx="5" /><line x1="5" y1="15" x2="19" y2="15" opacity="0.4" /></svg>
@@ -5788,7 +5781,7 @@ function AppContent({ isPreview = false }) {
                             </button>
                             <button
                               onClick={() => setIsMapView(true)}
-                              className="px-2.5 py-1.5 rounded-xl bg-black/50 hover:bg-black/75 dark:bg-white/10 dark:hover:bg-white/20 border border-white/5 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 active:scale-95 select-none"
+                              className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 active:scale-95 select-none"
                               title={'Live Map'}
                             >
                               <Map size={11} className="text-white" />
@@ -5833,7 +5826,7 @@ function AppContent({ isPreview = false }) {
                                   <path 
                                     d="M 30 65 Q 150 15 270 65" 
                                     fill="none" 
-                                    className="stroke-gray-300 dark:stroke-white/10" 
+                                    className="stroke-white/10" 
                                     strokeWidth="1.5" 
                                     strokeDasharray="4 4" 
                                   />
@@ -5858,8 +5851,8 @@ function AppContent({ isPreview = false }) {
                                   
                                   {/* Destination Node */}
                                   <g transform="translate(270, 65)">
-                                    <circle r="5" className="fill-gray-400/20 dark:fill-white/10" />
-                                    <circle r="2.5" className="fill-gray-400 dark:fill-white/40" />
+                                    <circle r="5" className="fill-white/10" />
+                                    <circle r="2.5" className="fill-white/40" />
                                   </g>
                                   
                                   {/* Flying Jet */}
@@ -5883,7 +5876,7 @@ function AppContent({ isPreview = false }) {
                                     </g>
                                 </svg>
                                 
-                                <div className="flex justify-between items-center mt-1 px-1 text-[9px] font-mono text-gray-400 dark:text-white/30 uppercase tracking-widest font-black">
+                                <div className="flex justify-between items-center mt-1 px-1 text-[9px] font-mono text-white/30 uppercase tracking-widest font-black">
                                   <span>{selectedFlight.origin}</span>
                                   <span className="font-bold" style={{ color: themeColor }}>{Math.round(progress * 100)}% {'completed'}</span>
                                   <span>{selectedFlight.destination}</span>
@@ -5900,14 +5893,14 @@ function AppContent({ isPreview = false }) {
                         const { altitude, speed } = getTelemetry(progress);
                         
                         return (
-                          <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-gray-500 dark:text-white/40 border-t border-black/5 dark:border-white/5 pt-3">
+                          <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-white/40 border-t border-white/5 pt-3">
                             <div className="flex flex-col">
                               <span>{'ALTITUDE:'}</span>
-                              <span className="font-black text-gray-800 dark:text-white/80">{altitude.toLocaleString()} FT</span>
+                              <span className="font-black text-white/80">{altitude.toLocaleString()} FT</span>
                             </div>
                             <div className="flex flex-col text-right">
                               <span>{'SPEED:'}</span>
-                              <span className="font-black text-gray-800 dark:text-white/80">{speed} KTS</span>
+                              <span className="font-black text-white/80">{speed} KTS</span>
                             </div>
                           </div>
                         );
@@ -5915,14 +5908,14 @@ function AppContent({ isPreview = false }) {
                     </div>
 
                     {/* RIGHT COLUMN: Futuristic glowing digital chronograph & control actions */}
-                    <div className="col-span-1 md:col-span-6 landscape:col-span-6 flex flex-col justify-between gap-4 p-4 sm:p-5 rounded-3xl bg-white/10 dark:bg-black/20 border border-black/5 dark:border-white/5 shadow-inner">
+                    <div className="col-span-1 md:col-span-6 landscape:col-span-6 flex flex-col justify-between gap-4 p-4 sm:p-5 rounded-3xl bg-black/20 border border-white/5 shadow-inner">
                       
                       {/* Top status header for timer column */}
-                      <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-white/40 px-1 select-none">
+                      <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-white/40 px-1 select-none">
                         <span>{'FLIGHT STATUS:'}</span>
                         {isFlightTimerRunning ? (
-                          <span className="text-black dark:text-white flex items-center gap-1 font-bold">
-                            <span className="w-1.5 h-1.5 bg-black dark:bg-white rounded-full animate-ping" />
+                          <span className="text-white flex items-center gap-1 font-bold">
+                            <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
                             {'FOCUS ACTIVE'}
                           </span>
                         ) : (
@@ -5935,7 +5928,7 @@ function AppContent({ isPreview = false }) {
 
                       {/* Futuristic Digital Cockpit Chronograph */}
                       <div className="flex flex-col items-center justify-center py-6 px-4 rounded-2xl w-full relative mb-4">
-                         <span className="text-[9px] uppercase tracking-widest font-black mb-4 flex items-center gap-1.5 select-none" style={{ color: theme === 'dark' ? `${themeColor}cc` : themeColor }}>
+                         <span className="text-[9px] uppercase tracking-widest font-black mb-4 flex items-center gap-1.5 select-none" style={{ color: `${themeColor}cc` }}>
                             <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: themeColor }} />
                             {t('remainingTime')}
                          </span>
@@ -5947,7 +5940,7 @@ function AppContent({ isPreview = false }) {
                            size="md" 
                          />
                          
-                         <div className="flex justify-between w-full mt-6 text-[9px] font-mono text-gray-500 dark:text-white/30 uppercase tracking-widest px-1">
+                         <div className="flex justify-between w-full mt-6 text-[9px] font-mono text-white/30 uppercase tracking-widest px-1">
                             <span>SYS: ACTIVE</span>
                             <span>ETA: {new Date(selectedFlight.estimatedArrival * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                          </div>
@@ -5970,14 +5963,14 @@ function AppContent({ isPreview = false }) {
                                 setSelectedFlight(null);
                                 // Go back to flight list, not exit completely
                               }}
-                              className="px-6 py-3 bg-red-500/10 border border-red-500/30 text-red-500 dark:text-red-400 rounded-2xl font-bold tracking-widest hover:bg-red-500/20 transition-colors active:scale-95 shadow-xl w-full"
+                              className="px-6 py-3 bg-red-500/10 border border-red-500/30 text-red-400 rounded-2xl font-bold tracking-widest hover:bg-red-500/20 transition-colors active:scale-95 shadow-xl w-full"
                             >
                               {t('giveUp')}
                             </button>
                           )}
                         </div>
                       ) : (
-                        <span className="text-black dark:text-white font-bold tracking-widest uppercase text-sm text-center animate-pulse mt-4 w-full">{t('landed')}</span>
+                        <span className="text-white font-bold tracking-widest uppercase text-sm text-center animate-pulse mt-4 w-full">{t('landed')}</span>
                       )}
 
                     </div>
@@ -5988,13 +5981,13 @@ function AppContent({ isPreview = false }) {
               ) : (
                 <div className="flex flex-col gap-3 w-full">
                   <div className="flex justify-between items-center px-1 mb-2">
-                    <span className="text-xs font-bold text-gray-500 dark:text-white/40 uppercase tracking-widest">{t('flightFocus')}</span>
+                    <span className="text-xs font-bold text-white/40 uppercase tracking-widest">{t('flightFocus')}</span>
                     <button 
                       onClick={() => {
                         setFlightDurationFilter(null);
                         setFlightOptions([]);
                       }}
-                      className="text-xs font-bold text-black/50 hover:text-black dark:text-white/50 dark:hover:text-white transition-colors"
+                      className="text-xs font-bold text-white/50 hover:text-white transition-colors"
                     >
                       {'New Search'}
                     </button>
@@ -6007,31 +6000,31 @@ function AppContent({ isPreview = false }) {
                         setSelectedFlight({...f, initialSeconds: f.totalSeconds || liveRemaining}); 
                         setFlightTimer(Math.max(0, liveRemaining)); 
                         setIsSeatSelectionOpen(true);
-                      }} className="bg-white/10 dark:bg-black/30 border border-black/5 dark:border-white/5 p-4 rounded-2xl cursor-pointer hover:bg-white/30 dark:hover:bg-black/50 transition-colors active:scale-95 shrink-0">
+                      }} className="bg-black/30 border border-white/5 p-4 rounded-2xl cursor-pointer hover:bg-black/50 transition-colors active:scale-95 shrink-0">
                         <div className="flex justify-between items-start mb-2">
-                          <span className="font-bold text-sm flex items-center gap-2 text-black dark:text-white">
+                          <span className="font-bold text-sm flex items-center gap-2 text-white">
                             {f.airline}
-                            <span className="text-[10px] bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 px-1.5 py-0.5 rounded text-gray-500 dark:text-white/50">{f.callsign}</span>
+                            <span className="text-[10px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-white/50">{f.callsign}</span>
                           </span>
-                          <span className="text-[10px] font-bold text-black/70 dark:text-white/70 bg-black/5 dark:bg-white/10 px-2 py-1 rounded-md">
+                          <span className="text-[10px] font-bold text-white/70 bg-white/10 px-2 py-1 rounded-md">
                             {Math.floor(Math.floor(f.remainingSeconds / 60) / 60) > 0 ? `${Math.floor(Math.floor(f.remainingSeconds / 60) / 60)}h ` : ''}{Math.floor(f.remainingSeconds / 60) % 60}m
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 text-gray-500 dark:text-white/50 text-sm font-semibold">
+                        <div className="flex items-center gap-2 text-white/50 text-sm font-semibold">
                           <span>{f.origin}</span>
-                          <PlaneTakeoff size={14} className="text-gray-400 dark:text-white/30" />
+                          <PlaneTakeoff size={14} className="text-white/30" />
                           <span>{f.destination}</span>
                         </div>
                       </div>
                     ))}
                     {flightOptions.length === 0 && (
                         <div className="text-center py-10 flex flex-col items-center gap-3">
-                          <span className="text-sm font-bold text-red-500/80 dark:text-red-400/80">{'No flights found'}</span>
+                          <span className="text-sm font-bold text-red-400/80">{'No flights found'}</span>
                           <button 
                             onClick={() => {
                               fetchFlights(0);
                             }}
-                            className="px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-xl text-xs font-bold transition-colors"
+                            className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold transition-colors"
                           >
                             {'Try Again'}
                           </button>
@@ -6115,7 +6108,7 @@ function AppContent({ isPreview = false }) {
                     color: 'rgba(128,128,128,0.8)', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    {isTimerRunning ? <ChevronDown size={18} className="text-black dark:text-white" /> : <X size={16} className="text-black dark:text-white" />}
+                    {isTimerRunning ? <ChevronDown size={18} className="text-white" /> : <X size={16} className="text-white" />}
                   </button>
 
                   {/* Task Configuration (Before Start) */}
@@ -6126,7 +6119,7 @@ function AppContent({ isPreview = false }) {
                           placeholder="What are you focusing on? (e.g. Python)" 
                           value={activePomodoroTask.name}
                           onChange={(e) => setActivePomodoroTask(prev => ({ ...prev, name: e.target.value }))}
-                          className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl px-4 py-2 text-sm text-center outline-none focus:border-black/30 dark:focus:border-white/30 text-black dark:text-white placeholder:text-black/30 dark:placeholder:text-white/30"
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-center outline-none focus:border-white/30 text-white placeholder:text-white/30"
                         />
                      </div>
                   )}
@@ -6139,7 +6132,7 @@ function AppContent({ isPreview = false }) {
 
                     {!isEditingPomodoro ? (
                       <>
-                        <div className="text-black dark:text-white" style={{ fontSize: '32px', fontWeight: 900, letterSpacing: '4px', lineHeight: 1, fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'baseline', gap: '16px' }}>
+                        <div className="text-white" style={{ fontSize: '32px', fontWeight: 900, letterSpacing: '4px', lineHeight: 1, fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'baseline', gap: '16px' }}>
                           <span>{String(Math.floor(pomodoroTime / 60)).padStart(2,'0')}</span>
                           <span style={{ color: neon, opacity: 0.8, fontSize: '24px' }}>:</span>
                           <span>{String(pomodoroTime % 60).padStart(2,'0')}</span>
@@ -6158,7 +6151,7 @@ function AppContent({ isPreview = false }) {
                                 fontSize: '13px', background: neon, color: '#000', border: 'none', cursor: 'pointer',
                                 boxShadow: `0 0 20px ${neon}88`,
                               }}>{t('start')}</button>
-                              <button onClick={() => setIsEditingPomodoro(true)} className="bg-white/20 dark:bg-white/5 text-black dark:text-white/50 border border-black/10 dark:border-white/10" style={{
+                              <button onClick={() => setIsEditingPomodoro(true)} className="bg-white/5 text-white/50 border border-white/10" style={{
                                 padding: '9px 14px', borderRadius: '999px', fontWeight: 700,
                                 fontSize: '12px', cursor: 'pointer',
                                 display: 'flex', alignItems: 'center', gap: '4px',
@@ -6169,17 +6162,17 @@ function AppContent({ isPreview = false }) {
                       </>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                        <label className="text-gray-500 dark:text-white/30" style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em' }}>{t('minutes')}</label>
+                        <label className="text-white/30" style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em' }}>{t('minutes')}</label>
                         <input type="number" defaultValue={Math.floor(pomodoroInitialTime / 60)}
                           onChange={e => {
                             const secs = (parseInt(e.target.value) || 0) * 60;
                             setPomodoroInitialTime(secs);
                             setPomodoroTime(secs);
                           }}
-                          className="bg-white/50 dark:bg-[#000] text-black dark:text-white"
+                          className="bg-[#000] text-white"
                           style={{ width: '100px', border: `1px solid ${neon}55`, padding: '10px 12px', borderRadius: '16px', fontSize: '24px', fontWeight: 900, outline: 'none', textAlign: 'center' }}
                         />
-                        <button onClick={() => setIsEditingPomodoro(false)} className="bg-black text-white dark:bg-white dark:text-black" style={{
+                        <button onClick={() => setIsEditingPomodoro(false)} className="bg-white text-black" style={{
                           padding: '9px 20px', borderRadius: '999px', fontWeight: 700, fontSize: '13px',
                           border: 'none', cursor: 'pointer', width: 'fit-content',
                         }}>{t('save')}</button>
@@ -6356,9 +6349,9 @@ function AppContent({ isPreview = false }) {
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-black transition-colors duration-500">
           {bgStyle === 'aurora' && (
             <>
-              <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full opacity-40 blur-[80px] mix-blend-multiply dark:mix-blend-screen aurora-anim-1" style={{ background: themeColor }}></div>
-              <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full opacity-30 blur-[90px] mix-blend-multiply dark:mix-blend-screen aurora-anim-2" style={{ background: themeColor }}></div>
-              <div className="absolute top-[30%] left-[40%] w-[35vw] h-[35vw] rounded-full opacity-20 blur-[70px] mix-blend-multiply dark:mix-blend-screen aurora-anim-3" style={{ background: themeColor }}></div>
+              <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full opacity-40 blur-[80px] mix-blend-screen aurora-anim-1" style={{ background: themeColor }}></div>
+              <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full opacity-30 blur-[90px] mix-blend-screen aurora-anim-2" style={{ background: themeColor }}></div>
+              <div className="absolute top-[30%] left-[40%] w-[35vw] h-[35vw] rounded-full opacity-20 blur-[70px] mix-blend-screen aurora-anim-3" style={{ background: themeColor }}></div>
             </>
           )}
         </div>
@@ -6719,7 +6712,7 @@ function AppContent({ isPreview = false }) {
                   </button>
                 </div>
               ) : activeScheduledHabits.length === 0 ? (
-                <div className="col-span-2 text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-10 select-none">
+                <div className="col-span-2 text-center text-white/30 text-xs font-bold uppercase tracking-widest py-10 select-none">
                   {t('noHabitsScheduledToday')}
                 </div>
               ) : null}
@@ -6830,7 +6823,7 @@ function AppContent({ isPreview = false }) {
                     </button>
                   </div>
                 ) : activeScheduledHabits.length === 0 ? (
-                  <div className="col-span-2 text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-10 select-none">
+                  <div className="col-span-2 text-center text-white/30 text-xs font-bold uppercase tracking-widest py-10 select-none">
                     {t('noHabitsScheduledToday')}
                   </div>
                 ) : null}
@@ -6846,7 +6839,7 @@ function AppContent({ isPreview = false }) {
                 <div className="flex items-center justify-between mb-4 select-none">
                   <div className="flex items-center gap-2">
                     <ListChecks size={18} style={{ color: themeColor }} />
-                    <h3 className="text-sm font-bold tracking-widest text-gray-700 dark:text-white/80 uppercase">{t('todaysTasks')}</h3>
+                    <h3 className="text-sm font-bold tracking-widest text-white/80 uppercase">{t('todaysTasks')}</h3>
                   </div>
                   <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold" style={{ backgroundColor: `${themeColor}22`, color: themeColor }}>
                     {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈') && t.completed).length}/{dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).length}
@@ -6861,8 +6854,8 @@ function AppContent({ isPreview = false }) {
                         key={task.text + idx} 
                         className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-200 ${
                           isOverdue 
-                            ? 'bg-rose-500/10 border-rose-500/30 dark:bg-rose-950/30 dark:border-rose-500/40 shadow-sm shadow-rose-950/20' 
-                            : 'bg-white/20 dark:bg-black/20 border-black/5 dark:border-white/5'
+                            ? 'bg-rose-950/30 border-rose-500/40 shadow-sm shadow-rose-950/20' 
+                            : 'bg-black/20 border-white/5'
                         }`}
                       >
                         <div 
@@ -6875,27 +6868,27 @@ function AppContent({ isPreview = false }) {
                           <div 
                             className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
                               task.completed 
-                                ? 'bg-black dark:bg-white border-transparent' 
+                                ? 'bg-white border-transparent' 
                                 : isOverdue 
-                                  ? 'border-rose-500 dark:border-rose-400 bg-rose-500/15' 
-                                  : 'border-black/20 dark:border-white/20'
+                                  ? 'border-rose-400 bg-rose-500/15' 
+                                  : 'border-white/20'
                             }`} 
                             style={{ borderColor: task.completed ? themeColor : undefined }}
                           >
-                            {task.completed && <Check size={12} strokeWidth={4} style={{ color: theme === 'dark' ? themeColor : '#fff' }} />}
+                            {task.completed && <Check size={12} strokeWidth={4} style={{ color: themeColor }} />}
                           </div>
                           <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
                             <span className={`text-sm font-semibold truncate transition-all ${
                               task.completed 
-                                ? 'text-gray-400 dark:text-white/30 line-through' 
+                                ? 'text-white/30 line-through' 
                                 : isOverdue
-                                  ? 'text-rose-900 dark:text-rose-200 font-bold'
-                                  : 'text-black dark:text-white/90'
+                                  ? 'text-rose-200 font-bold'
+                                  : 'text-white/90'
                             }`}>
                               {task.text}
                             </span>
                             {isOverdue && (
-                              <span className="text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-500/30 uppercase select-none flex items-center gap-1 shrink-0">
+                              <span className="text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30 uppercase select-none flex items-center gap-1 shrink-0">
                                 <Clock size={10} strokeWidth={2.5} />
                                 {t('overdueTask')}
                               </span>
@@ -6904,7 +6897,7 @@ function AppContent({ isPreview = false }) {
                         </div>
                         <button 
                           onClick={() => updateDailyTasks(prev => prev.filter(t => t.text !== task.text))} 
-                          className="text-gray-400 dark:text-white/20 hover:text-red-500 dark:hover:text-red-400 p-1 transition-colors shrink-0"
+                          className="text-white/20 hover:text-red-400 p-1 transition-colors shrink-0"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -6912,7 +6905,7 @@ function AppContent({ isPreview = false }) {
                     );
                   })}
                   {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).length === 0 && (
-                    <div className="text-center text-gray-500 dark:text-white/30 text-xs font-bold uppercase tracking-widest py-8 border border-dashed border-black/10 dark:border-white/10 rounded-2xl bg-black/5 dark:bg-white/5 select-none">{t('noTasks')}</div>
+                    <div className="text-center text-white/30 text-xs font-bold uppercase tracking-widest py-8 border border-dashed border-white/10 rounded-2xl bg-white/5 select-none">{t('noTasks')}</div>
                   )}
                 </div>
 
@@ -6929,7 +6922,7 @@ function AppContent({ isPreview = false }) {
                         setNewTaskInput("");
                       }
                     }}
-                    className="flex-1 bg-white/50 dark:bg-black/20 border border-black/10 dark:border-white/5 text-black dark:text-white px-4 py-3 rounded-2xl outline-none text-sm font-semibold focus:border-black/30 dark:focus:border-white/30 transition-colors placeholder:text-gray-400 dark:placeholder:text-white/30" 
+                    className="flex-1 bg-black/20 border border-white/5 text-white px-4 py-3 rounded-2xl outline-none text-sm font-semibold focus:border-white/30 transition-colors placeholder:text-white/30" 
                   />
                   <button onClick={() => {
                     if (newTaskInput.trim() !== '') {
@@ -7699,7 +7692,7 @@ function AppContent({ isPreview = false }) {
                               }`} 
                               style={{ borderColor: task.completed ? themeColor : undefined }}
                             >
-                              {task.completed && <Check size={14} strokeWidth={4} style={{ color: theme === 'dark' ? themeColor : '#000' }} />}
+                              {task.completed && <Check size={14} strokeWidth={4} style={{ color: themeColor }} />}
                             </div>
                             <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
                               <span className={`text-sm font-bold truncate transition-all ${
@@ -7916,24 +7909,24 @@ function AppContent({ isPreview = false }) {
               padding: '24px', background: 'rgba(0,0,0,0.65)',
               backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
             }}>
-              <div className="liquid-panel shadow-2xl border border-black/10 dark:border-white/10" style={{
+              <div className="liquid-panel shadow-2xl border border-white/10" style={{
                 width: '100%', maxWidth: '420px',
                 borderRadius: '32px',
                 padding: '32px 24px', position: 'relative',
                 display: 'flex', flexDirection: 'column',
                 alignItems: 'center',
                 textAlign: 'center',
-                background: theme === 'dark' ? 'rgba(28,28,30,0.85)' : 'rgba(255,255,255,0.85)',
+                background: 'rgba(28,28,30,0.85)',
               }}>
-                <div className="w-16 h-16 rounded-full bg-black/10 dark:bg-white/10 flex items-center justify-center mb-6 animate-bounce shadow-lg">
-                  <PlaneTakeoff size={28} className="text-black dark:text-white rotate-45" />
+                <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mb-6 animate-bounce shadow-lg">
+                  <PlaneTakeoff size={28} className="text-white rotate-45" />
                 </div>
                 
-                <h3 className="text-xl font-extrabold tracking-tight text-gray-900 dark:text-white mb-3">
+                <h3 className="text-xl font-extrabold tracking-tight text-white mb-3">
                   {t('flightModeAdviceTitle')}
                 </h3>
                 
-                <p className="text-sm font-semibold text-gray-600 dark:text-white/70 leading-relaxed mb-8 px-2">
+                <p className="text-sm font-semibold text-white/70 leading-relaxed mb-8 px-2">
                   {t('flightModeAdviceText')}
                 </p>
                 
@@ -7944,13 +7937,13 @@ function AppContent({ isPreview = false }) {
                       setIsFlightTimerRunning(true);
                       setShowFlightModeAdvice(false);
                     }}
-                    className="w-full py-4 rounded-2xl font-black text-sm tracking-wider uppercase transition-all duration-300 active:scale-[0.98] shadow-lg text-white dark:text-black bg-black dark:bg-white hover:opacity-90"
+                    className="w-full py-4 rounded-2xl font-black text-sm tracking-wider uppercase transition-all duration-300 active:scale-[0.98] shadow-lg text-black bg-white hover:opacity-90"
                   >
                     {t('flightModeAdviceStart')}
                   </button>
                   <button 
                     onClick={() => setShowFlightModeAdvice(false)}
-                    className="w-full py-3.5 rounded-2xl font-bold text-sm tracking-wider uppercase transition-all duration-300 active:scale-[0.98] hover:bg-black/5 dark:hover:bg-white/5 text-gray-500 dark:text-white/40 border border-transparent"
+                    className="w-full py-3.5 rounded-2xl font-bold text-sm tracking-wider uppercase transition-all duration-300 active:scale-[0.98] hover:bg-white/5 text-white/40 border border-transparent"
                   >
                     {t('cancel')}
                   </button>
@@ -8158,9 +8151,9 @@ function AppContent({ isPreview = false }) {
         {/* --- FLOATING NAV --- */}
         <div className="fixed bottom-0 left-0 w-full flex justify-center pt-3 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none z-[10000] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] sm:pb-6">
           <div className="w-full max-w-[428px] md:max-w-2xl lg:max-w-3xl px-6 flex justify-between items-center pointer-events-auto">
-            <div className="bg-white/50 dark:bg-[#1C1C1E]/80 backdrop-blur-xl border border-black/10 dark:border-white/5 rounded-full flex items-center p-1.5 gap-1.5 shadow-2xl dark:shadow-black/80">
-              <button onClick={() => navTo('home')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white transition-all duration-200 active:scale-90"><Home size={18} /></button>
-              <button onClick={() => navTo('tasks')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
+            <div className="bg-[#1C1C1E]/80 backdrop-blur-xl border border-white/10 rounded-full flex items-center p-1.5 gap-1.5 shadow-2xl shadow-black/80">
+              <button onClick={() => navTo('home')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/10 text-white transition-all duration-200 active:scale-90"><Home size={18} /></button>
+              <button onClick={() => navTo('tasks')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/10 text-white/50 hover:text-white transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
               <button 
                 onClick={() => {
                   setSelectedFriendForModal(null);
@@ -8170,8 +8163,8 @@ function AppContent({ isPreview = false }) {
                 }} 
                 className={`relative w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${
                   isFriendsModalOpen 
-                    ? 'bg-black/10 dark:bg-white/15 text-black dark:text-white' 
-                    : 'hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60'
+                    ? 'bg-white/20 text-white shadow-sm' 
+                    : 'hover:bg-white/10 text-white/50 hover:text-white'
                 }`}
                 title={t('friendsTitle')}
                 aria-label={t('friendsTitle')}
@@ -8190,8 +8183,8 @@ function AppContent({ isPreview = false }) {
                   }} 
                   className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${
                     isFocusMenuOpen || isPomodoroOpen || isFlightFocusOpen 
-                      ? 'bg-black/10 dark:bg-white/15 text-black dark:text-white' 
-                      : 'hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60'
+                      ? 'bg-white/20 text-white shadow-sm' 
+                      : 'hover:bg-white/10 text-white/50 hover:text-white'
                   }`}
                   title={t('focus')}
                   aria-label={t('focus')}
@@ -8264,7 +8257,7 @@ function AppContent({ isPreview = false }) {
                     setIsSettingsMenuOpen(!isSettingsMenuOpen);
                     setIsFocusMenuOpen(false);
                   }} 
-                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${isSettingsMenuOpen ? 'bg-black/10 dark:bg-white/15 text-black dark:text-white' : 'hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60'}`}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${isSettingsMenuOpen ? 'bg-white/20 text-white shadow-sm' : 'hover:bg-white/10 text-white/50 hover:text-white'}`}
                   title="Settings"
                   aria-label="Settings"
                 >
@@ -8668,7 +8661,7 @@ function AppContent({ isPreview = false }) {
               )}
 
             </div>
-            <button onClick={handleOpenManage} className="w-13 h-13 rounded-full bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-[#2C2C2E] transition-all duration-200 active:scale-90 shadow-2xl dark:shadow-black/60"><Edit2 size={18} className="text-black dark:text-white/90" /></button>
+            <button onClick={handleOpenManage} className="w-13 h-13 rounded-full bg-[#1C1C1E] border border-white/10 flex items-center justify-center hover:bg-[#2C2C2E] transition-all duration-200 active:scale-90 shadow-2xl shadow-black/60"><Edit2 size={18} className="text-white/90" /></button>
           </div>
           {/* Window Seat Screensaver */}
           {isWindowSeatOpen && createPortal(
