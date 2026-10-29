@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Download, RotateCcw, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut } from 'lucide-react';
+import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Download, RotateCcw, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut, Award, Bot } from 'lucide-react';
 import React, { useState, useEffect, useRef, useCallback, useMemo, Component } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -2747,28 +2747,45 @@ function AppContent({ isPreview = false }) {
     handleCloseAdd();
   };
 
-  const handleImportLectures = (importedLectures, replaceExisting = false) => {
+  const handleImportLectures = (importedLectures, replaceExisting = false, importedExams = [], importedTasks = []) => {
     if (!requireAuth()) return;
-    if (!importedLectures || importedLectures.length === 0) return;
+    const combinedNewHabits = [...(importedLectures || []), ...(importedExams || [])];
+    if (combinedNewHabits.length === 0 && (!importedTasks || importedTasks.length === 0)) return;
+
     haptic('medium');
     markLocalMutation();
 
-    setHabits(prev => {
-      let baseHabits = prev;
-      if (replaceExisting) {
-        const removed = prev.filter(h => h.category === 'lecture');
-        removed.forEach(h => deletedHabitIdsRef.current.add(h.id));
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('daybase_deleted_habits', JSON.stringify(Array.from(deletedHabitIdsRef.current)));
+    if (combinedNewHabits.length > 0) {
+      setHabits(prev => {
+        let baseHabits = prev;
+        if (replaceExisting) {
+          const removed = prev.filter(h => h.category === 'lecture' || h.category === 'exam');
+          removed.forEach(h => deletedHabitIdsRef.current.add(h.id));
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('daybase_deleted_habits', JSON.stringify(Array.from(deletedHabitIdsRef.current)));
+          }
+          baseHabits = prev.filter(h => h.category !== 'lecture' && h.category !== 'exam');
         }
-        baseHabits = prev.filter(h => h.category !== 'lecture');
-      }
-      const updated = [...baseHabits, ...importedLectures];
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('daybase_habits_v4', JSON.stringify(updated));
-      }
-      return updated;
-    });
+        const updated = [...baseHabits, ...combinedNewHabits];
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('daybase_habits_v4', JSON.stringify(updated));
+        }
+        return updated;
+      });
+    }
+
+    if (importedTasks && importedTasks.length > 0) {
+      const todayKey = dailyTasksDateStr || activeDateStr;
+      setDailyTasks(prev => [...(prev || []), ...importedTasks]);
+      setPomodoroTasksData(prev => {
+        const current = prev?.[todayKey] || [];
+        const next = [...current, ...importedTasks];
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('daybase_pomodoro_tasks_v4', JSON.stringify({ ...(prev || {}), [todayKey]: next }));
+        }
+        return { ...(prev || {}), [todayKey]: next };
+      });
+    }
   };
 
   const deleteHabit = (habitId) => {
@@ -3064,7 +3081,7 @@ function AppContent({ isPreview = false }) {
                     </span>
                   )}
                 </div>
-                {(habit.time || habit.duration || habit.location || habit.category === 'lecture') && (
+                {(habit.time || habit.duration || habit.location || habit.category === 'lecture' || habit.category === 'exam') && (
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {habit.category === 'lecture' && (
                       <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
@@ -3072,6 +3089,14 @@ function AppContent({ isPreview = false }) {
                       }`}>
                         <GraduationCap size={9} />
                         {t('typeLecture')}
+                      </span>
+                    )}
+                    {habit.category === 'exam' && (
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
+                        isAllChecked ? 'bg-black/10 text-black/80' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                      }`}>
+                        <Award size={9} />
+                        {t('typeExam')}
                       </span>
                     )}
                     {habit.time && (
@@ -3192,6 +3217,14 @@ function AppContent({ isPreview = false }) {
                   }`}>
                     <GraduationCap size={9} />
                     {t('typeLecture')}
+                  </span>
+                )}
+                {habit.category === 'exam' && (
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                    isAllChecked ? 'bg-black/10 text-black/80' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                  }`}>
+                    <Award size={9} />
+                    {t('typeExam')}
                   </span>
                 )}
                 {habit.time && (
