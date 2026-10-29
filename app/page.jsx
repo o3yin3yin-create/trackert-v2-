@@ -8326,33 +8326,6 @@ function AppContent({ isPreview = false }) {
             />
           )}
 
-          {/* Floating Sign-In Reminder Pill for Unauthenticated Guests */}
-          {!isSignedIn && !isPreview && (
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9990] w-[calc(100%-2.5rem)] max-w-md pointer-events-auto select-none animate-in fade-in slide-in-from-bottom-4 duration-300">
-              <div className="w-full px-4 py-3 rounded-2xl bg-[#121214]/90 backdrop-blur-xl border border-white/15 shadow-2xl flex items-center justify-between gap-3 text-white">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
-                  <span className="text-xs font-semibold text-white/80 truncate">
-                    {lang === 'ar' ? 'سجل دخولك لتسجيل العادات وحفظ تقدمك' : 'Sign in to start tracking habits & streaks'}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
-                      window.open('https://bokra101.vercel.app/desktop-auth', '_blank');
-                    } else {
-                      window.location.href = '/sign-in';
-                    }
-                  }}
-                  className="px-4 py-1.5 rounded-xl bg-white text-black font-bold text-xs hover:bg-white/90 active:scale-95 transition-all shrink-0 cursor-pointer shadow-sm"
-                >
-                  {lang === 'ar' ? 'تسجيل الدخول' : 'Sign In'}
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* ---------------- SIGN IN REQUIRED MODAL ---------------- */}
           {isAuthPromptOpen && typeof document !== 'undefined' && createPortal(
             <div 
