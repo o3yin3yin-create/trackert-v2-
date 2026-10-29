@@ -1,12 +1,362 @@
 import { NextResponse } from 'next/server';
-import { parsePortalSchedule } from '@/lib/scheduleParsers';
+import { parsePortalSchedule, normalizeTimeTo12H, calculateDuration } from '@/lib/scheduleParsers';
 import { parseAcademicEvents } from '@/lib/academicParser';
 
-export async function POST(req) {
-  let browser = null;
+/**
+ * Detects Arab Open University (AOU) SIS portals across all regional branches:
+ * Egypt, Kuwait, Jordan, Lebanon, Oman, Bahrain, Saudi Arabia, Sudan.
+ */
+function isAouPortal(urlStr) {
+  const u = (urlStr || '').toLowerCase();
+  return (
+    u.includes('arabou.edu') ||
+    u.includes('sisegy') ||
+    u.includes('siskwt') ||
+    u.includes('sisjor') ||
+    u.includes('sislbn') ||
+    u.includes('sisomn') ||
+    u.includes('sisbhr') ||
+    u.includes('sissau') ||
+    u.includes('spegy')
+  );
+}
 
+function getAouApiBase(urlStr) {
+  const u = (urlStr || '').toLowerCase();
+  if (u.includes('siskwt') || u.includes('kwt')) return 'https://siskwt.arabou.edu.kw/SPAPIKWT';
+  if (u.includes('sisjor') || u.includes('jor')) return 'https://sisjor.arabou.edu.kw/SPAPIJOR';
+  if (u.includes('sislbn') || u.includes('lbn')) return 'https://sislbn.arabou.edu.kw/SPAPILBN';
+  if (u.includes('sisomn') || u.includes('omn')) return 'https://sisomn.arabou.edu.kw/SPAPIOMN';
+  if (u.includes('sisbhr') || u.includes('bhr')) return 'https://sisbhr.arabou.edu.kw/SPAPIBHR';
+  if (u.includes('sissau') || u.includes('sau')) return 'https://sissau.arabou.edu.kw/SPAPISAU';
+  // Default to Egypt
+  return 'https://sisegy.arabou.edu.kw/SPAPIEGY';
+}
+
+/**
+ * Dedicated Direct REST API Connector for Arab Open University (AOU).
+ * Works 100% on Vercel Serverless with zero browser dependencies.
+ */
+async function crawlAouPortal(portalUrl, username, password) {
+  const apiBase = getAouApiBase(portalUrl);
+
+  // 1. Authenticate with Student Credentials
+  const loginRes = await fetch(`${apiBase}/api/Student/GetStudentByCredentials`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'User-Agent': 'Mozilla/5.0 (bokra-academic-bot/2.0)'
+    },
+    body: JSON.stringify({
+      Username: username.trim(),
+      Password: password
+    })
+  });
+
+  if (!loginRes.ok) {
+    throw new Error(`University API responded with status ${loginRes.status}`);
+  }
+
+  const studentData = await loginRes.json();
+
+  if (!studentData.IsValid) {
+    const errorMsg = studentData.Error || 'Invalid student ID or password.';
+    throw new Error(errorMsg);
+  }
+
+  const token = studentData.Token;
+  const studentId = studentData.StudentId || studentData.Id;
+  const sessionId = studentData.StudentSharedInfo?.UserSessionId || `${studentId}_0000`;
+
+  const authHeaders = {
+    'Accept': 'application/json',
+    'User-Agent': 'Mozilla/5.0 (bokra-academic-bot/2.0)',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+
+  const lectures = [];
+  const exams = [];
+  const quizzes = [];
+  const assignments = [];
+
+  // 2. Fetch Student Weekly Timetable
   try {
-    const { portalUrl, username, password, customApiKey } = await req.json();
+    const schedRes = await fetch(`${apiBase}/api/StudentSchedule/GetStudentSchedules?sessionId=${encodeURIComponent(sessionId)}`, {
+      headers: authHeaders
+    });
+
+    if (schedRes.ok) {
+      const schedList = await schedRes.json();
+      if (Array.isArray(schedList)) {
+        // FullCalendar items map
+        const weekDayMap = new Map();
+
+        schedList.forEach((item, idx) => {
+          if (!item || !item.title) return;
+          const courseTitle = (item.title || item.CourseName || item.SectionName || 'Course').trim();
+          const location = (item.location || item.room || item.Hall || item.Building || '').trim();
+
+          // Extract date or day
+          let dayNum = 0;
+          let startTime = '09:00 AM';
+          let duration = '1h 30m';
+
+          if (item.start) {
+            const startDate = new Date(item.start);
+            if (!isNaN(startDate.getTime())) {
+              dayNum = startDate.getDay();
+              const hours = startDate.getHours();
+              const mins = startDate.getMinutes();
+              const period = hours >= 12 ? 'PM' : 'AM';
+              const h12 = hours % 12 === 0 ? 12 : hours % 12;
+              startTime = `${String(h12).padStart(2, '0')}:${String(mins).padStart(2, '0')} ${period}`;
+            }
+          }
+
+          if (item.start && item.end) {
+            duration = calculateDuration(item.start, item.end);
+          }
+
+          // Deduplicate recurring weekly slot
+          const slotKey = `${courseTitle.toLowerCase()}_${dayNum}_${startTime}`;
+          if (!weekDayMap.has(slotKey)) {
+            weekDayMap.set(slotKey, {
+              id: `aou-lec-${Date.now()}-${idx}`,
+              name: courseTitle,
+              type: 'single',
+              subItems: [],
+              frequency: 'weekly',
+              scheduleDays: [dayNum],
+              time: startTime,
+              duration,
+              location,
+              category: 'lecture',
+              isNotifyEnabled: true,
+              notifyBefore: 15,
+              isPrivate: false,
+              source: 'aou-api'
+            });
+          }
+        });
+
+        lectures.push(...Array.from(weekDayMap.values()));
+      }
+    }
+  } catch (schedErr) {
+    console.warn('AOU schedule fetch error:', schedErr);
+  }
+
+  // 3. Fetch Exam Slips (Midterms and Finals)
+  try {
+    const examRes = await fetch(`${apiBase}/api/ExamSlips/GetExamSlipsDataList?FinalsSessionId=0&SessionId=${encodeURIComponent(sessionId)}`, {
+      headers: authHeaders
+    });
+
+    if (examRes.ok) {
+      const examData = await examRes.json();
+      const examList = Array.isArray(examData) ? examData : (examData.ExamSlips || examData.Data || []);
+
+      if (Array.isArray(examList)) {
+        examList.forEach((eItem, idx) => {
+          const title = eItem.CourseTitle || eItem.CourseName || eItem.ExamName || eItem.Title || 'University Exam';
+          const dateRaw = eItem.ExamDate || eItem.Date;
+          const hall = eItem.Room || eItem.Hall || eItem.CenterName || '';
+          const startTimeRaw = eItem.StartTime || eItem.Time;
+          const duration = eItem.Duration || '2h';
+          const isMidterm = /mid|نصف|منتصف/i.test(title);
+
+          let scheduleDate = null;
+          if (dateRaw) {
+            const dObj = new Date(dateRaw);
+            if (!isNaN(dObj.getTime())) {
+              scheduleDate = dObj.toISOString().split('T')[0];
+            }
+          }
+
+          exams.push({
+            id: `aou-exam-${Date.now()}-${idx}`,
+            name: title,
+            type: 'single',
+            subItems: [],
+            frequency: 'once',
+            scheduleDays: [],
+            scheduleDate,
+            time: startTimeRaw ? normalizeTimeTo12H(startTimeRaw) : '09:00 AM',
+            duration,
+            location: hall,
+            category: 'exam',
+            eventType: isMidterm ? 'midterm' : 'final',
+            isNotifyEnabled: true,
+            notifyBefore: 1440,
+            isPrivate: false
+          });
+        });
+      }
+    }
+  } catch (examErr) {
+    console.warn('AOU exam slips fetch error:', examErr);
+  }
+
+  // 4. Fetch Course Assessments & Quizzes
+  try {
+    const assessRes = await fetch(`${apiBase}/api/ViewIStudentSectionAssessment/GetIStudentSectionAssessments`, {
+      headers: authHeaders
+    });
+
+    if (assessRes.ok) {
+      const assessData = await assessRes.json();
+      const assessList = Array.isArray(assessData) ? assessData : [];
+
+      assessList.forEach((aItem, idx) => {
+        const title = aItem.AssessmentName || aItem.Title || 'Assessment';
+        const isQuiz = /quiz|كويز|test/i.test(title);
+        const dateRaw = aItem.AssessmentDate || aItem.DueDate || aItem.Date;
+
+        let scheduleDate = null;
+        if (dateRaw) {
+          const dObj = new Date(dateRaw);
+          if (!isNaN(dObj.getTime())) {
+            scheduleDate = dObj.toISOString().split('T')[0];
+          }
+        }
+
+        if (isQuiz) {
+          quizzes.push({
+            id: `aou-quiz-${Date.now()}-${idx}`,
+            name: `${aItem.CourseCode ? `[${aItem.CourseCode}] ` : ''}${title}`,
+            type: 'single',
+            subItems: [],
+            frequency: 'once',
+            scheduleDays: [],
+            scheduleDate,
+            time: '10:00 AM',
+            duration: '45m',
+            location: aItem.Room || '',
+            category: 'exam',
+            eventType: 'quiz',
+            isNotifyEnabled: true,
+            notifyBefore: 1440,
+            isPrivate: false
+          });
+        } else if (scheduleDate) {
+          assignments.push({
+            id: `aou-task-${Date.now()}-${idx}`,
+            text: `${aItem.CourseCode ? `[${aItem.CourseCode}] ` : ''}${title}`,
+            date: scheduleDate,
+            completed: false,
+            tag: 'Academic'
+          });
+        }
+      });
+    }
+  } catch (assessErr) {
+    console.warn('AOU assessments fetch error:', assessErr);
+  }
+
+  return {
+    lectures,
+    exams,
+    quizzes,
+    assignments,
+    studentName: studentData.StudentArabicName || studentData.StudentEnglishName || ''
+  };
+}
+
+/**
+ * Universal Native HTTP Crawler for general portals (Moodle, Blackboard, PHP, ASP.NET).
+ * Uses pure fetch with cookie management; 100% serverless compatible.
+ */
+async function crawlGenericPortalHttp(portalUrl, username, password) {
+  let targetUrl = portalUrl.trim();
+  if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+    targetUrl = 'https://' + targetUrl;
+  }
+
+  // 1. Initial GET to obtain session cookies and form inputs
+  const initialRes = await fetch(targetUrl, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+    },
+    redirect: 'follow'
+  });
+
+  const html = await initialRes.text();
+  const cookies = initialRes.headers.get('set-cookie') || '';
+
+  // Extract hidden form inputs (__VIEWSTATE, CSRF tokens, etc.)
+  const hiddenInputs = {};
+  const inputMatches = html.matchAll(/<input[^>]+type=["']?hidden["']?[^>]*>/gi);
+  for (const match of inputMatches) {
+    const inputStr = match[0];
+    const nameMatch = inputStr.match(/name=["']([^"']+)["']/i);
+    const valMatch = inputStr.match(/value=["']([^"']*)["']/i);
+    if (nameMatch) {
+      hiddenInputs[nameMatch[1]] = valMatch ? valMatch[1] : '';
+    }
+  }
+
+  // Find username & password field names
+  const userFieldMatch = html.match(/<input[^>]+name=["']([^"']*(?:user|login|email|id|account|matric)[^"']*)["'][^>]*>/i);
+  const passFieldMatch = html.match(/<input[^>]+type=["']?password["']?[^>]+name=["']([^"']+)["'][^>]*>/i);
+
+  const userFieldName = userFieldMatch ? userFieldMatch[1] : 'username';
+  const passFieldName = passFieldMatch ? passFieldMatch[1] : 'password';
+
+  // Find form action
+  const formMatch = html.match(/<form[^>]+action=["']([^"']+)["'][^>]*>/i);
+  let actionUrl = targetUrl;
+  if (formMatch && formMatch[1]) {
+    try {
+      actionUrl = new URL(formMatch[1], targetUrl).href;
+    } catch {}
+  }
+
+  // 2. Submit credentials via POST
+  const formData = new URLSearchParams();
+  Object.entries(hiddenInputs).forEach(([k, v]) => formData.append(k, v));
+  formData.append(userFieldName, username.trim());
+  formData.append(passFieldName, password);
+
+  const postRes = await fetch(actionUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      ...(cookies ? { 'Cookie': cookies } : {}),
+      'Referer': targetUrl
+    },
+    body: formData.toString(),
+    redirect: 'follow'
+  });
+
+  const postHtml = await postRes.text();
+
+  if (/invalid|incorrect|خطأ|غير صحيحة|كلمة المرور/i.test(postHtml) && /<input[^>]+type=["']?password/i.test(postHtml)) {
+    throw new Error('Invalid student username or password.');
+  }
+
+  if (/captcha|recaptcha|turnstile|cloudflare|otp|رمز التحقق/i.test(postHtml)) {
+    throw new Error('Portal has 2FA or Captcha verification. Please log in directly in your browser and use the Paste Table tab.');
+  }
+
+  // 3. Parse extracted content
+  const lectures = parsePortalSchedule(postHtml);
+  const events = parseAcademicEvents(postHtml);
+
+  return {
+    lectures,
+    exams: events.exams || [],
+    quizzes: events.quizzes || [],
+    assignments: events.assignments || [],
+    studentName: ''
+  };
+}
+
+export async function POST(req) {
+  try {
+    const { portalUrl, username, password } = await req.json();
 
     if (!portalUrl || !username || !password) {
       return NextResponse.json(
@@ -15,372 +365,50 @@ export async function POST(req) {
       );
     }
 
-    // Validate URL
-    let targetUrl = portalUrl.trim();
-    if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
-      targetUrl = 'https://' + targetUrl;
+    // Branch 1: If Arab Open University (AOU), use direct REST API connector
+    if (isAouPortal(portalUrl)) {
+      try {
+        const result = await crawlAouPortal(portalUrl, username, password);
+        return NextResponse.json({
+          success: true,
+          lectures: result.lectures,
+          exams: result.exams,
+          quizzes: result.quizzes,
+          assignments: result.assignments,
+          studentName: result.studentName,
+          totalCount: result.lectures.length + result.exams.length + result.quizzes.length + result.assignments.length
+        });
+      } catch (aouErr) {
+        return NextResponse.json(
+          { error: aouErr.message || 'Error communicating with university portal.' },
+          { status: 401 }
+        );
+      }
     }
 
-    // Launch Playwright headless browser
-    const { chromium } = await import('playwright');
-    browser = await chromium.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
-
-    const context = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      viewport: { width: 1280, height: 800 }
-    });
-
-    const page = await context.newPage();
-
-    // Step 1: Navigate to portal login URL
+    // Branch 2: General university portal (Universal HTTP Crawler)
     try {
-      await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
-    } catch (navErr) {
+      const result = await crawlGenericPortalHttp(portalUrl, username, password);
+      return NextResponse.json({
+        success: true,
+        lectures: result.lectures,
+        exams: result.exams,
+        quizzes: result.quizzes,
+        assignments: result.assignments,
+        totalCount: result.lectures.length + result.exams.length + result.quizzes.length + result.assignments.length
+      });
+    } catch (httpErr) {
       return NextResponse.json(
-        { error: `Could not reach portal URL: ${navErr.message}` },
-        { status: 502 }
+        { error: httpErr.message || 'Could not automatically log in to portal. Please verify URL or use Paste Table.' },
+        { status: 422 }
       );
     }
 
-    // Step 2: Detect Login Form Fields
-    const usernameSelectors = [
-      'input[name*="user" i]',
-      'input[id*="user" i]',
-      'input[name*="login" i]',
-      'input[name*="email" i]',
-      'input[type="email"]',
-      'input[name*="id" i]',
-      'input[type="text"]'
-    ];
-
-    let userField = null;
-    for (const sel of usernameSelectors) {
-      const el = await page.$(sel);
-      if (el && await el.isVisible()) {
-        userField = el;
-        break;
-      }
-    }
-
-    const passField = await page.$('input[type="password"]:visible');
-
-    if (!userField || !passField) {
-      // Check if user is already logged in or page has a direct "Login" button redirect
-      const directLoginLink = await page.$('a:has-text("Login"), a:has-text("Sign in"), a:has-text("تسجيل الدخول"), a:has-text("دخول")');
-      if (directLoginLink && await directLoginLink.isVisible()) {
-        await directLoginLink.click();
-        await page.waitForTimeout(3000);
-      }
-    }
-
-    // Re-check after redirect if needed
-    const finalUserField = userField || await page.$('input[type="text"]:visible, input[type="email"]:visible');
-    const finalPassField = passField || await page.$('input[type="password"]:visible');
-
-    if (!finalUserField || !finalPassField) {
-      // The page does not seem to have a standard login form
-      const pageText = await page.innerText('body').catch(() => '');
-      if (/captcha|recaptcha|turnstile|cloudflare/i.test(pageText)) {
-        return NextResponse.json({
-          error: 'Portal has Captcha protection. Please log in directly in your browser and use the Portal Table Paste tab.'
-        }, { status: 403 });
-      }
-
-      return NextResponse.json({
-        error: 'Could not detect login inputs on the portal page. Check the URL.'
-      }, { status: 422 });
-    }
-
-    // Fill credentials
-    await finalUserField.fill(username.trim());
-    await finalPassField.fill(password);
-
-    // Locate Submit button
-    const submitSelectors = [
-      'button[type="submit"]',
-      'input[type="submit"]',
-      'button:has-text("Login")',
-      'button:has-text("تسجيل الدخول")',
-      'button:has-text("دخول")',
-      'button:has-text("Sign in")',
-      'input[value*="دخول"]',
-      'input[value*="Login" i]'
-    ];
-
-    let submitBtn = null;
-    for (const sSel of submitSelectors) {
-      const sEl = await page.$(sSel);
-      if (sEl && await sEl.isVisible()) {
-        submitBtn = sEl;
-        break;
-      }
-    }
-
-    if (submitBtn) {
-      await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle', timeout: 15000 }).catch(() => {}),
-        submitBtn.click()
-      ]);
-    } else {
-      await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle', timeout: 15000 }).catch(() => {}),
-        finalPassField.press('Enter')
-      ]);
-    }
-
-    await page.waitForTimeout(3000);
-
-    // Step 3: Check if login was successful
-    const postLoginPass = await page.$('input[type="password"]:visible');
-    const postLoginText = await page.innerText('body').catch(() => '');
-
-    if (postLoginPass) {
-      if (/invalid|incorrect|خطأ|غير صحيحة|كلمة المرور/i.test(postLoginText)) {
-        return NextResponse.json({
-          error: 'Invalid student username or password according to the portal.'
-        }, { status: 401 });
-      }
-
-      if (/verification|two-factor|2fa|otp|رمز التحقق/i.test(postLoginText)) {
-        return NextResponse.json({
-          error: '2-Factor Authentication (OTP) is required on this portal. Please log in in your browser and copy your schedule.'
-        }, { status: 403 });
-      }
-    }
-
-    // Step 4: Successfully logged in! Search for Timetable & Exam Sections
-    let combinedHtml = await page.content();
-    let combinedText = postLoginText;
-
-    // Search for academic navigation links
-    const targetLinkSelectors = [
-      'a:has-text("جدول")',
-      'a:has-text("المحاضرات")',
-      'a:has-text("الدراسي")',
-      'a:has-text("Schedule")',
-      'a:has-text("Timetable")',
-      'a:has-text("Calendar")',
-      'a:has-text("الامتحانات")',
-      'a:has-text("الاختبارات")',
-      'a:has-text("Exam")',
-      'a:has-text("Quiz")',
-      'a:has-text("ميدتيرم")',
-      'a:has-text("فاينال")'
-    ];
-
-    const visitedHrefs = new Set([page.url()]);
-    const linksToVisit = [];
-
-    for (const linkSel of targetLinkSelectors) {
-      const links = await page.$$(linkSel);
-      for (const l of links) {
-        if (linksToVisit.length >= 4) break;
-        const href = await l.getAttribute('href');
-        if (href && !href.startsWith('#') && !href.startsWith('javascript:')) {
-          try {
-            const absoluteUrl = new URL(href, page.url()).href;
-            if (!visitedHrefs.has(absoluteUrl)) {
-              visitedHrefs.add(absoluteUrl);
-              linksToVisit.push(absoluteUrl);
-            }
-          } catch {}
-        }
-      }
-      if (linksToVisit.length >= 4) break;
-    }
-
-    // Crawl discovered subpages (up to 3)
-    for (const subUrl of linksToVisit.slice(0, 3)) {
-      try {
-        const subPage = await context.newPage();
-        await subPage.goto(subUrl, { waitUntil: 'domcontentloaded', timeout: 12000 });
-        await subPage.waitForTimeout(1500);
-        const subHtml = await subPage.content();
-        const subText = await subPage.innerText('body').catch(() => '');
-        combinedHtml += '\n' + subHtml;
-        combinedText += '\n' + subText;
-        await subPage.close();
-      } catch (subErr) {
-        console.warn('Subpage crawl failed:', subUrl, subErr.message);
-      }
-    }
-
-    // Step 5: AI or Deterministic Parsing of Collected Academic Content
-    const apiKey = customApiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-
-    let lectures = [];
-    let exams = [];
-    let quizzes = [];
-    let assignments = [];
-
-    if (apiKey) {
-      // Use Gemini Flash for comprehensive structured extraction
-      try {
-        const prompt = `
-You are an expert university academic portal parser.
-Analyze this scraped portal content (text and HTML).
-Extract:
-1. "lectures": Weekly scheduled classes (name, days: [0..6 where 0=Sunday], time: "hh:mm AM/PM", duration: "1h 30m", location)
-2. "quizzes": Quizzes / class tests (name, date: "YYYY-MM-DD", time, duration, location)
-3. "midterms": Midterm exams (name, date: "YYYY-MM-DD", time, duration, location)
-4. "finals": Final exams (name, date: "YYYY-MM-DD", time, duration, location)
-5. "assignments": Homework / assignments (title, dueDate: "YYYY-MM-DD", course)
-
-Return pure JSON ONLY with schema:
-{
-  "lectures": [{ "name": "...", "days": [0], "time": "09:00 AM", "duration": "1h 30m", "location": "Hall 302" }],
-  "quizzes": [{ "name": "...", "date": "2026-11-10", "time": "10:00 AM", "duration": "45m", "location": "Room 101" }],
-  "midterms": [{ "name": "...", "date": "2026-11-20", "time": "09:00 AM", "duration": "1h 30m", "location": "Hall A" }],
-  "finals": [{ "name": "...", "date": "2026-12-28", "time": "09:00 AM", "duration": "2h", "location": "Auditorium" }],
-  "assignments": [{ "title": "...", "dueDate": "2026-11-05", "course": "..." }]
-}
-`;
-
-        const truncatedContent = combinedText.substring(0, 20000); // Send up to 20,000 characters
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: `${prompt}\n\nPORTAL CONTENT:\n${truncatedContent}` }] }],
-              generationConfig: { temperature: 0.1, responseMimeType: 'application/json' }
-            })
-          }
-        );
-
-        if (geminiRes.ok) {
-          const gemData = await geminiRes.json();
-          const rawText = gemData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-          const aiParsed = JSON.parse(rawText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim());
-
-          if (Array.isArray(aiParsed.lectures)) {
-            lectures = aiParsed.lectures.map((item, idx) => ({
-              id: `bot-lec-${Date.now()}-${idx}`,
-              name: item.name || 'Lecture',
-              type: 'single',
-              subItems: [],
-              frequency: 'weekly',
-              scheduleDays: Array.isArray(item.days) && item.days.length > 0 ? item.days : [0],
-              time: item.time || '09:00 AM',
-              duration: item.duration || '1h 30m',
-              location: item.location || '',
-              category: 'lecture',
-              isNotifyEnabled: true,
-              notifyBefore: 15,
-              isPrivate: false,
-              source: 'portal-bot'
-            }));
-          }
-
-          if (Array.isArray(aiParsed.quizzes)) {
-            quizzes = aiParsed.quizzes.map((q, idx) => ({
-              id: `bot-quiz-${Date.now()}-${idx}`,
-              name: q.name || 'Quiz',
-              type: 'single',
-              subItems: [],
-              frequency: 'once',
-              scheduleDays: [],
-              scheduleDate: q.date || null,
-              time: q.time || '10:00 AM',
-              duration: q.duration || '45m',
-              location: q.location || '',
-              category: 'exam',
-              eventType: 'quiz',
-              isNotifyEnabled: true,
-              notifyBefore: 1440,
-              isPrivate: false
-            }));
-          }
-
-          if (Array.isArray(aiParsed.midterms)) {
-            exams.push(...aiParsed.midterms.map((m, idx) => ({
-              id: `bot-mid-${Date.now()}-${idx}`,
-              name: m.name || 'Midterm Exam',
-              type: 'single',
-              subItems: [],
-              frequency: 'once',
-              scheduleDays: [],
-              scheduleDate: m.date || null,
-              time: m.time || '09:00 AM',
-              duration: m.duration || '1h 30m',
-              location: m.location || '',
-              category: 'exam',
-              eventType: 'midterm',
-              isNotifyEnabled: true,
-              notifyBefore: 1440,
-              isPrivate: false
-            })));
-          }
-
-          if (Array.isArray(aiParsed.finals)) {
-            exams.push(...aiParsed.finals.map((f, idx) => ({
-              id: `bot-fin-${Date.now()}-${idx}`,
-              name: f.name || 'Final Exam',
-              type: 'single',
-              subItems: [],
-              frequency: 'once',
-              scheduleDays: [],
-              scheduleDate: f.date || null,
-              time: f.time || '09:00 AM',
-              duration: f.duration || '2h',
-              location: f.location || '',
-              category: 'exam',
-              eventType: 'final',
-              isNotifyEnabled: true,
-              notifyBefore: 1440,
-              isPrivate: false
-            })));
-          }
-
-          if (Array.isArray(aiParsed.assignments)) {
-            assignments = aiParsed.assignments.map((a, idx) => ({
-              id: `bot-task-${Date.now()}-${idx}`,
-              text: `${a.course ? `[${a.course}] ` : ''}${a.title || 'Assignment'}`,
-              date: a.dueDate || null,
-              completed: false,
-              tag: 'Academic'
-            }));
-          }
-        }
-      } catch (gemErr) {
-        console.warn('Gemini extraction failed, using fallback regex:', gemErr);
-      }
-    }
-
-    // Fallback if AI not used or returned empty:
-    if (lectures.length === 0) {
-      lectures = parsePortalSchedule(combinedHtml);
-    }
-
-    if (exams.length === 0 && quizzes.length === 0) {
-      const extractedEvents = parseAcademicEvents(combinedText);
-      exams = extractedEvents.exams;
-      quizzes = extractedEvents.quizzes;
-      assignments = extractedEvents.assignments;
-    }
-
-    return NextResponse.json({
-      success: true,
-      lectures,
-      exams,
-      quizzes,
-      assignments,
-      totalCount: lectures.length + exams.length + quizzes.length + assignments.length
-    });
-
   } catch (error) {
-    console.error('Portal bot crawler error:', error);
+    console.error('Portal bot error:', error);
     return NextResponse.json(
-      { error: error.message || 'Error occurred while running portal crawler.' },
+      { error: error.message || 'Internal error while running academic portal bot.' },
       { status: 500 }
     );
-  } finally {
-    if (browser) {
-      await browser.close().catch(() => {});
-    }
   }
 }
