@@ -29,11 +29,10 @@ export default function DownloadPage() {
 
   const isAr = lang === 'ar';
 
-  const GITHUB_RELEASES_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases";
+  const GITHUB_RELEASES_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/tag/v0.1.0";
   const MAC_DMG_URL = "/bokra.dmg";
-  const WIN_EXE_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/latest";
-  const LINUX_APPIMAGE_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/latest";
-  const LINUX_DEB_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/latest";
+  const LINUX_APPIMAGE_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.0/bokra_0.1.0_amd64.AppImage";
+  const LINUX_DEB_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.0/bokra_0.1.0_amd64.deb";
   const ANDROID_APK_URL = "/bokra.apk";
 
   return (
@@ -177,29 +176,24 @@ export default function DownloadPage() {
                 </h3>
                 <p className="text-xs text-white/50 leading-relaxed">
                   {isAr 
-                    ? 'برنامج تثبيت خفيف وسريع بنظام .EXE يدعم العمل في الخلفية وتشغيل بدون متصفح.'
-                    : 'Fast and lightweight standalone desktop setup with background support and native window frame.'}
+                    ? 'تطبيق سطح مكتب سريع ومستقل يعمل بدون متصفح مع حفظ بيانات أوفلاين كامل ودعم الإشعارات.'
+                    : 'Fast standalone desktop application with offline caching and native window integration.'}
                 </p>
               </div>
             </div>
 
             <div className="flex flex-col gap-2 pt-2">
-              <a
-                href={WIN_EXE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href="/"
                 className="w-full h-12 rounded-xl bg-white text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
               >
                 <Download size={15} />
-                <span>{isAr ? 'تحميل نسخة ويندوز (.EXE)' : 'Download for Windows (.EXE)'}</span>
-              </a>
+                <span>{isAr ? 'تثبيت تطبيق سطح المكتب للويندوز' : 'Install Desktop App for Windows'}</span>
+              </Link>
               <div className="flex items-center justify-center gap-1.5 pt-0.5">
-                <Link
-                  href="/"
-                  className="text-[11px] text-white/50 hover:text-white underline font-mono transition-colors"
-                >
-                  {isAr ? 'أو افتح وثبت تطبيق الويب المكتبي فوراً' : 'or install Desktop Web App instantly'}
-                </Link>
+                <span className="text-[10px] text-center text-white/40 font-mono">
+                  {isAr ? 'تثبيت فوري مباشر بضغطة واحدة على جهازك' : 'Instant 1-click standalone desktop install'}
+                </span>
               </div>
             </div>
           </div>
