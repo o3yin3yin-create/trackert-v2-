@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getCorsHeaders, handleCorsOptions } from './lib/cors';
 
 const isPublicRoute = createRouteMatcher([
+  '/',
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/desktop-auth(.*)',

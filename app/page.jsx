@@ -2112,7 +2112,20 @@ function AppContent({ isPreview = false }) {
   const [editTimePeriod, setEditTimePeriod] = useState("PM");
   const [editHabitIsPrivate, setEditHabitIsPrivate] = useState(false);
 
+  // Auth gate prompt for unauthenticated browsing
+  const [isAuthPromptOpen, setIsAuthPromptOpen] = useState(false);
+
+  const requireAuth = (callback) => {
+    if (!isSignedIn && !isPreview) {
+      setIsAuthPromptOpen(true);
+      return false;
+    }
+    if (callback) callback();
+    return true;
+  };
+
   const handleOpenAdd = () => {
+    if (!requireAuth()) return;
     setIsAddMounted(true);
     setTimeout(() => setIsAddVisible(true), 10);
   };
@@ -2122,6 +2135,7 @@ function AppContent({ isPreview = false }) {
   };
 
   const handleOpenManage = () => {
+    if (!requireAuth()) return;
     closeAllModals(true);
     setIsManageMounted(true);
     setTimeout(() => setIsManageVisible(true), 10);
@@ -2614,6 +2628,7 @@ function AppContent({ isPreview = false }) {
 
   // --- Functions ---
   const toggleCheck = (habitId, subItem = null) => {
+    if (!requireAuth()) return;
     const todayStr = getFormatDateStr(new Date());
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
@@ -2631,6 +2646,7 @@ function AppContent({ isPreview = false }) {
   };
 
   const updateDailyTasks = (updater) => {
+    if (!requireAuth()) return;
     markLocalMutation(dailyTasksDateStr || activeDateStr);
     setDailyTasks(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
@@ -2647,6 +2663,10 @@ function AppContent({ isPreview = false }) {
   };
 
   const saveMission = () => {
+    if (!requireAuth()) {
+      setIsEditingMission(false);
+      return;
+    }
     markLocalMutation();
     setMission(missionInput);
     setIsEditingMission(false);
@@ -2937,51 +2957,6 @@ function AppContent({ isPreview = false }) {
         <p className="text-white/60 font-bold max-w-sm mx-auto">
           {'Your account has been blocked due to a violation of our terms. You can no longer use this application.'}
         </p>
-      </div>
-    );
-  }
-
-  // Strict Authentication Gate: Prevent anyone from using the application without signing in
-  const isAuthFailed = isLoaded ? !isSignedIn : (authTimeoutPassed && !isSignedIn);
-
-  if (isAuthFailed && !isPreview) {
-    if (typeof window !== 'undefined' && !window.__TAURI_INTERNALS__) {
-      window.location.replace('/sign-in');
-      return (
-        <div className="min-h-screen bg-[#000000] text-white flex flex-col items-center justify-center p-6 select-none font-sans">
-          <img
-            src="/logo-transparent.png"
-            alt="bokra"
-            className="h-12 w-auto object-contain animate-pulse select-none drop-shadow-2xl opacity-80"
-          />
-        </div>
-      );
-    }
-
-    // Native / Desktop / APK Gate
-    return (
-      <div className="min-h-screen bg-[#000000] text-white flex flex-col items-center justify-center p-6 text-center select-none font-sans">
-        <div className="w-full max-w-sm bg-[#121214] border border-white/10 rounded-3xl p-8 shadow-2xl flex flex-col items-center backdrop-blur-xl">
-          <img
-            src="/logo-transparent.png"
-            alt="bokra"
-            className="h-12 w-auto object-contain mb-4 select-none drop-shadow-xl"
-          />
-          <h2 className="text-xl font-bold tracking-tight text-white mb-2">
-            Sign In to bokra
-          </h2>
-          <p className="text-xs text-white/50 mb-6 leading-relaxed">
-            Please sign in to access your habits, streaks, and focus companion.
-          </p>
-          <SignInButton>
-            <button
-              type="button"
-              className="w-full py-3.5 px-6 rounded-2xl bg-white hover:bg-white/90 text-black font-bold text-sm transition-all active:scale-[0.98] shadow-lg cursor-pointer"
-            >
-              Sign In
-            </button>
-          </SignInButton>
-        </div>
       </div>
     );
   }
@@ -6245,7 +6220,7 @@ function AppContent({ isPreview = false }) {
                     <span className="text-[10px] font-bold tracking-widest uppercase">{t('myMission')}</span>
                   </div>
                 ) : (
-                  <button onClick={() => setIsEditingMission(true)} className="flex items-center gap-1.5 hover:opacity-60 transition-opacity">
+                  <button onClick={() => requireAuth(() => setIsEditingMission(true))} className="flex items-center gap-1.5 hover:opacity-60 transition-opacity">
                     <Target size={13} strokeWidth={2.5} />
                     <span className="text-[10px] font-bold tracking-widest uppercase">{t('setMission')}</span>
                   </button>
@@ -6263,7 +6238,7 @@ function AppContent({ isPreview = false }) {
                 />
               ) : (
                 mission && (
-                  <h2 onClick={() => setIsEditingMission(true)} className="text-xl sm:text-2xl font-black tracking-tight mb-3 cursor-pointer break-words active:opacity-80 transition-opacity">
+                  <h2 onClick={() => requireAuth(() => setIsEditingMission(true))} className="text-xl sm:text-2xl font-black tracking-tight mb-3 cursor-pointer break-words active:opacity-80 transition-opacity">
                     {mission}
                   </h2>
                 )
@@ -6356,7 +6331,7 @@ function AppContent({ isPreview = false }) {
                       <span className="text-[10px] font-bold tracking-widest uppercase">{t('myMission')}</span>
                     </div>
                   ) : (
-                    <button onClick={() => setIsEditingMission(true)} className="flex items-center gap-1.5 hover:opacity-60 transition-opacity">
+                    <button onClick={() => requireAuth(() => setIsEditingMission(true))} className="flex items-center gap-1.5 hover:opacity-60 transition-opacity">
                       <Target size={13} strokeWidth={2.5} />
                       <span className="text-[10px] font-bold tracking-widest uppercase">{t('setMission')}</span>
                     </button>
@@ -6374,7 +6349,7 @@ function AppContent({ isPreview = false }) {
                   />
                 ) : (
                   mission && (
-                    <h2 onClick={() => setIsEditingMission(true)} className="text-xl sm:text-2xl font-black tracking-tight mb-3 cursor-pointer break-words active:opacity-80 transition-opacity">
+                    <h2 onClick={() => requireAuth(() => setIsEditingMission(true))} className="text-xl sm:text-2xl font-black tracking-tight mb-3 cursor-pointer break-words active:opacity-80 transition-opacity">
                       {mission}
                     </h2>
                   )
@@ -8349,6 +8324,94 @@ function AppContent({ isPreview = false }) {
               onSuccess={() => setHasSpotifyAccess(true)}
               isSignedIn={Boolean(isSignedIn && user)}
             />
+          )}
+
+          {/* Floating Sign-In Reminder Pill for Unauthenticated Guests */}
+          {!isSignedIn && !isPreview && (
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9990] w-[calc(100%-2.5rem)] max-w-md pointer-events-auto select-none animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="w-full px-4 py-3 rounded-2xl bg-[#121214]/90 backdrop-blur-xl border border-white/15 shadow-2xl flex items-center justify-between gap-3 text-white">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                  <span className="text-xs font-semibold text-white/80 truncate">
+                    {lang === 'ar' ? 'سجل دخولك لتسجيل العادات وحفظ تقدمك' : 'Sign in to start tracking habits & streaks'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
+                      window.open('https://bokra101.vercel.app/desktop-auth', '_blank');
+                    } else {
+                      window.location.href = '/sign-in';
+                    }
+                  }}
+                  className="px-4 py-1.5 rounded-xl bg-white text-black font-bold text-xs hover:bg-white/90 active:scale-95 transition-all shrink-0 cursor-pointer shadow-sm"
+                >
+                  {lang === 'ar' ? 'تسجيل الدخول' : 'Sign In'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ---------------- SIGN IN REQUIRED MODAL ---------------- */}
+          {isAuthPromptOpen && typeof document !== 'undefined' && createPortal(
+            <div 
+              className="fixed inset-0 z-[100005] bg-black/80 backdrop-blur-md flex items-center justify-center p-5 animate-in fade-in duration-200"
+              onClick={() => setIsAuthPromptOpen(false)}
+            >
+              <div 
+                className="w-full max-w-sm bg-[#161618] border border-white/10 rounded-[28px] p-7 shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-200 select-none relative"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => setIsAuthPromptOpen(false)}
+                  className="absolute top-4 right-4 p-2 rounded-full text-white/40 hover:text-white transition-colors cursor-pointer"
+                  aria-label="Close"
+                >
+                  <X size={18} />
+                </button>
+
+                <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4 text-white shadow-inner">
+                  <Shield size={26} strokeWidth={2.2} />
+                </div>
+
+                <h3 className="text-xl font-bold tracking-tight text-white mb-2">
+                  {lang === 'ar' ? 'تسجيل الدخول مطلوب' : 'Sign In Required'}
+                </h3>
+
+                <p className="text-xs text-white/55 leading-relaxed mb-6 max-w-xs">
+                  {lang === 'ar' 
+                    ? 'يمكنك تصفح الواجهة بحرية، لكن لتسجيل العادات وإنجاز المهام وحفظ الستريك تحتاج إلى تسجيل الدخول أولا.' 
+                    : 'You can explore the interface, but logging habits, completing tasks, and tracking streaks requires signing in.'}
+                </p>
+
+                <div className="flex flex-col gap-2.5 w-full">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
+                        window.open('https://bokra101.vercel.app/desktop-auth', '_blank');
+                      } else {
+                        window.location.href = '/sign-in';
+                      }
+                    }}
+                    className="w-full py-3.5 px-6 rounded-2xl bg-white hover:bg-white/90 text-black font-bold text-sm transition-all active:scale-[0.98] shadow-lg cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <User size={16} />
+                    <span>{lang === 'ar' ? 'تسجيل الدخول / إنشاء حساب' : 'Sign In / Create Account'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsAuthPromptOpen(false)}
+                    className="w-full py-3 px-6 rounded-2xl text-white/40 hover:text-white font-semibold text-xs transition-colors cursor-pointer"
+                  >
+                    {lang === 'ar' ? 'تصفح فقط' : 'Just Browsing'}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
           )}
 
         </div>
