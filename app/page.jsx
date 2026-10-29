@@ -7855,21 +7855,6 @@ function AppContent({ isPreview = false }) {
               <button onClick={() => navTo('tasks')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60 transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
               <button 
                 onClick={() => {
-                  closeAllModals();
-                  setIsScheduleCalendarOpen(true);
-                }} 
-                className={`relative w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${
-                  isScheduleCalendarOpen 
-                    ? 'bg-black/10 dark:bg-white/15 text-black dark:text-white' 
-                    : 'hover:bg-black/5 dark:hover:bg-white/5 text-gray-400 hover:text-black dark:text-white/40 dark:hover:text-white/60'
-                }`}
-                title={lang === 'ar' ? 'الجدول الأسبوعي' : 'Weekly Schedule'}
-                aria-label={lang === 'ar' ? 'الجدول الأسبوعي' : 'Weekly Schedule'}
-              >
-                <Calendar size={18} />
-              </button>
-              <button 
-                onClick={() => {
                   setSelectedFriendForModal(null);
                   setIsFriendsModalOpen(true);
                   setIsSettingsMenuOpen(false);
