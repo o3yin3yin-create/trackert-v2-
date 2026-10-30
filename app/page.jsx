@@ -1755,7 +1755,17 @@ function AppContent({ isPreview = false }) {
           if (localState.dailyData && Object.keys(localState.dailyData).length > 0) setDailyData(localState.dailyData);
           if (localState.sleepData && Object.keys(localState.sleepData).length > 0) setSleepData(localState.sleepData);
           if (localState.focusTimeData && Object.keys(localState.focusTimeData).length > 0) setFocusTimeData(localState.focusTimeData);
-          if (localState.pomodoroTasksData && Object.keys(localState.pomodoroTasksData).length > 0) setPomodoroTasksData(localState.pomodoroTasksData);
+          if (localState.pomodoroTasksData && Object.keys(localState.pomodoroTasksData).length > 0) {
+            setPomodoroTasksData(localState.pomodoroTasksData);
+            const todayStr = getFormatDateStr(new Date());
+            if (Array.isArray(localState.pomodoroTasksData[todayStr])) {
+              const todayTasks = localState.pomodoroTasksData[todayStr].filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈'));
+              if (todayTasks.length > 0) {
+                setDailyTasks(todayTasks);
+                setDailyTasksDateStr(todayStr);
+              }
+            }
+          }
           setTheme('dark');
           if (localState.bgStyle) setBgStyle(localState.bgStyle);
           if (localState.lang) setLang(localState.lang);
@@ -1768,6 +1778,8 @@ function AppContent({ isPreview = false }) {
         }
       } catch (err) {
         console.warn("[bokra Offline] Could not load from IndexedDB:", err);
+      } finally {
+        setIsCloudLoaded(true);
       }
     }
     initFromLocalDb();
@@ -1789,15 +1801,20 @@ function AppContent({ isPreview = false }) {
   // --- 2. Persist to local IndexedDB on state changes ---
   useEffect(() => {
     if (!isMounted) return;
+    const activeTasks = {
+      ...(pomodoroTasksData || {}),
+      ...(dailyTasksDateStr && dailyTasks ? { [dailyTasksDateStr]: dailyTasks } : {})
+    };
     const currentSnapshot = {
       habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
-      theme, bgStyle, lang, focusTimeData, pomodoroTasksData, emergencyCards: habitCards,
+      theme, bgStyle, lang, focusTimeData, pomodoroTasksData: activeTasks, emergencyCards: habitCards,
       finishedTickets, mission, avatar, updatedAt: Date.now()
     };
     saveLocalOfflineState(currentSnapshot);
   }, [
     habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
-    theme, bgStyle, lang, focusTimeData, pomodoroTasksData, finishedTickets, mission, avatar, isMounted
+    theme, bgStyle, lang, focusTimeData, pomodoroTasksData,
+    finishedTickets, mission, avatar, isMounted, dailyTasks, dailyTasksDateStr
   ]);
 
   const lastServerUpdatedAtRef = useRef(0);
@@ -1832,11 +1849,12 @@ function AppContent({ isPreview = false }) {
     }
     if (typeof window !== 'undefined') {
       localStorage.setItem('daybase_last_local_update', String(Date.now()));
+      localStorage.setItem('bokra_has_pending_sync', 'true');
     }
   }, []);
 
 
-  // --- 3. Cloud Sync with Server-Authoritative State ---
+  // --- 3. Cloud Sync with Server-Authoritative State & Offline-First Merge ---
   const fetchCloudState = useCallback(async (isSilent = false) => {
     if (!user) return;
     if ((isSyncingRef.current || isPushingRef.current) && isSilent) return;
@@ -1853,13 +1871,24 @@ function AppContent({ isPreview = false }) {
     isSyncingRef.current = true;
 
     try {
-      // 1. Clear any stale offline queue on online load so old snapshots never poison server state
-      if (!isSilent && typeof navigator !== 'undefined' && navigator.onLine) {
+      // 1. Check if client has pending offline changes that need to be merged and pushed to server
+      let pendingQueue = [];
+      try {
+        pendingQueue = await getPendingSyncQueue();
+      } catch (_) {}
+
+      const hasPendingQueue = Array.isArray(pendingQueue) && pendingQueue.length > 0;
+      const hasPendingFlag = typeof window !== 'undefined' && localStorage.getItem('bokra_has_pending_sync') === 'true';
+      const hasUnsyncedMemory = localMutationVersionRef.current > pushedMutationVersionRef.current;
+      const hasPendingChanges = hasPendingQueue || hasPendingFlag || hasUnsyncedMemory;
+
+      // Only clear pending queue if there are NO pending changes needing to be synced
+      if (!hasPendingChanges && !isSilent && typeof navigator !== 'undefined' && navigator.onLine) {
         clearPendingSyncQueue().catch(() => {});
       }
 
-      // 2. Fetch cloud state (conditionally with ?since= if silent)
-      const url = (isSilent && lastServerUpdatedAtRef.current > 0)
+      // 2. Fetch cloud state (conditionally with ?since= if silent AND no pending changes)
+      const url = (isSilent && !hasPendingChanges && lastServerUpdatedAtRef.current > 0)
         ? `/api/sync?since=${lastServerUpdatedAtRef.current}`
         : '/api/sync';
 
@@ -1867,8 +1896,8 @@ function AppContent({ isPreview = false }) {
       if (res.ok) {
         const resData = await res.json();
 
-        // If server hasn't changed since our last check, do nothing
-        if (resData.unchanged) {
+        // If server hasn't changed AND client has no pending changes, do nothing
+        if (resData.unchanged && !hasPendingChanges) {
           if (resData.updatedAt) lastServerUpdatedAtRef.current = resData.updatedAt;
           return;
         }
@@ -1879,24 +1908,38 @@ function AppContent({ isPreview = false }) {
             lastServerUpdatedAtRef.current = state.updatedAt;
           }
 
-          // SERVER STATE IS 100% AUTHORITATIVE EXCEPT ON FIRST-TIME GUEST LOGIN
           let authoritative = state;
 
-          // First-login guest data migration:
-          // If the cloud account has 0 habits, but the user has created local guest habits prior to signing in,
-          // migrate the local guest data into the cloud account instead of wiping it out!
-          const localHasHabits = (latestStateRef.current?.habits?.length || 0) > 0;
+          // If client has pending offline changes OR first-login guest data,
+          // resolve conflict using Last-Write-Wins and merge local offline work with cloud state!
+          let localStateToMerge = latestStateRef.current;
+          const localHasHabits = (localStateToMerge?.habits?.length || 0) > 0;
           const remoteIsEmpty = !state.habits || state.habits.length === 0;
-          if (!isSilent && localHasHabits && remoteIsEmpty) {
-            authoritative = resolveConflict(
-              {
-                ...latestStateRef.current,
-                hasPendingChanges: true,
-              },
-              state
-            );
-            // Trigger automatic sync push so guest habits are saved into the newly linked cloud account
+
+          if (hasPendingChanges || (!isSilent && localHasHabits && remoteIsEmpty)) {
+            const activeTasks = {
+              ...(pomodoroTasksData || {}),
+              ...(dailyTasksDateStr && dailyTasks ? { [dailyTasksDateStr]: dailyTasks } : {})
+            };
+            const localSnapshot = {
+              ...(localStateToMerge || {}),
+              habits: habits.length > 0 ? habits : localStateToMerge?.habits || [],
+              dailyData: Object.keys(dailyData).length > 0 ? dailyData : localStateToMerge?.dailyData || {},
+              pomodoroTasksData: Object.keys(activeTasks).length > 0 ? activeTasks : localStateToMerge?.pomodoroTasksData || {},
+              sleepData: Object.keys(sleepData).length > 0 ? sleepData : localStateToMerge?.sleepData || {},
+              focusTimeData: Object.keys(focusTimeData).length > 0 ? focusTimeData : localStateToMerge?.focusTimeData || {},
+              hasPendingChanges: true,
+            };
+
+            authoritative = resolveConflict(localSnapshot, state);
+
+            // Increment local mutation version and schedule push so offline edits are saved on server
             localMutationVersionRef.current += 1;
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('bokra_has_pending_sync', 'true');
+            }
+            if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
+            pushTimerRef.current = setTimeout(executePush, 100);
           }
 
           isApplyingRemoteRef.current = true;
@@ -2320,6 +2363,9 @@ function AppContent({ isPreview = false }) {
     // If offline right now, queue locally
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       console.log("[bokra Sync] Offline: queuing mutation directly.");
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('bokra_has_pending_sync', 'true');
+      }
       queueSyncMutation('STATE_SNAPSHOT', latestStateRef.current);
       return;
     }
@@ -2370,6 +2416,7 @@ function AppContent({ isPreview = false }) {
             localStorage.setItem('daybase_deleted_habits', JSON.stringify(Array.from(deletedHabitIdsRef.current)));
           }
         }
+        clearPendingSyncQueue().catch(() => {});
 
         // Broadcast to other tabs on THIS device only AFTER server confirms successful save
         if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
@@ -2384,6 +2431,10 @@ function AppContent({ isPreview = false }) {
       }
     } catch (err) {
       console.warn("[bokra Sync] Push failed:", err);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('bokra_has_pending_sync', 'true');
+      }
+      queueSyncMutation('STATE_SNAPSHOT', latestStateRef.current);
     } finally {
       isPushingRef.current = false;
       setIsSyncing(false);
@@ -3127,11 +3178,17 @@ function AppContent({ isPreview = false }) {
 
   const updateDailyTasks = (updater) => {
     if (!requireAuth()) return;
-    markLocalMutation(dailyTasksDateStr || activeDateStr);
+    const targetDate = dailyTasksDateStr || activeDateStr || getFormatDateStr(new Date());
+    markLocalMutation(targetDate);
     setDailyTasks(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
       if (!Array.isArray(next)) return [];
-      return next.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈'));
+      const clean = next.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈'));
+      setPomodoroTasksData(p => ({
+        ...(p || {}),
+        [targetDate]: clean
+      }));
+      return clean;
     });
   };
 
@@ -3207,6 +3264,7 @@ function AppContent({ isPreview = false }) {
     };
 
     setHabits([...habits, newHabit]);
+    markLocalMutation();
     
     // Reset fields
     setNewHabitName("");
