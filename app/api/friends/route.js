@@ -42,7 +42,30 @@ export async function GET(req) {
 
     if (r.status === 'accepted') {
       const presence = computeRealPresence(otherUser, r)
-      out.friends.push({ friendshipId: r.id, user: other, presence })
+
+      // Schedule sharing checks
+      const otherPriv = (otherUser.privacySettings && typeof otherUser.privacySettings === 'object')
+        ? otherUser.privacySettings
+        : {}
+      const otherSharedList = Array.isArray(otherPriv.sharedScheduleUsers) ? otherPriv.sharedScheduleUsers : []
+      const hasSharedWithMe = Boolean(me.username && otherSharedList.some(u => String(u || '').toLowerCase() === me.username.toLowerCase()))
+
+      const myPriv = (me.privacySettings && typeof me.privacySettings === 'object')
+        ? me.privacySettings
+        : {}
+      const mySharedList = Array.isArray(myPriv.sharedScheduleUsers) ? myPriv.sharedScheduleUsers : []
+      const iSharedWithThem = Boolean(otherUser.username && mySharedList.some(u => String(u || '').toLowerCase() === otherUser.username.toLowerCase()))
+
+      const userWithSchedule = {
+        ...other,
+        hasSharedScheduleWithMe: hasSharedWithMe,
+        iSharedScheduleWithThem: iSharedWithThem,
+        weeklySchedule: hasSharedWithMe
+          ? (Array.isArray(otherUser.habits) ? otherUser.habits.filter(h => !h.isPrivate) : [])
+          : []
+      }
+
+      out.friends.push({ friendshipId: r.id, user: userWithSchedule, presence })
     } else if (r.status === 'pending') {
       const item = { friendshipId: r.id, user: other }
       ;(iAmRequester ? out.outgoing : out.incoming).push(item)

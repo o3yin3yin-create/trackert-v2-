@@ -5,7 +5,7 @@ import {
   Users, Plus, X, Search, Check, Copy, Share2, 
   Shield, AlertCircle, Loader2, ChevronLeft, ChevronRight,
   Music, Plane, Clock, Sparkles, MoreHorizontal, ShieldAlert, Trash2, Lock,
-  Pin
+  Pin, CalendarDays, Eye
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { translations } from '@/lib/translations';
@@ -24,6 +24,7 @@ export default function FriendsModal({
   pinnedFriendUsername: propPinnedUsername,
   onTogglePinFriend,
   onJoinSession,
+  onOpenFriendSchedule,
 }) {
   const isRtl = lang === 'ar';
   const t = useCallback((k) => translations[lang]?.[k] || translations.en[k] || k, [lang]);
@@ -81,6 +82,51 @@ export default function FriendsModal({
   const [selectedFriend, setSelectedFriend] = useState(initialSelectedFriend);
   const [showManageSheet, setShowManageSheet] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+  const [sharingScheduleLoading, setSharingScheduleLoading] = useState(false);
+
+  const handleToggleShareScheduleWithFriend = async (targetUsername, currentlyShared) => {
+    if (!targetUsername || sharingScheduleLoading) return;
+    setSharingScheduleLoading(true);
+    const nextAction = currentlyShared ? 'unshare' : 'share';
+    try {
+      const res = await apiFetch('/api/friends/schedule/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUsername, action: nextAction }),
+      });
+      if (res.ok) {
+        showToast(nextAction === 'share' ? (isRtl ? 'تمت مشاركة جدولك بنجاح' : 'Schedule shared successfully') : (isRtl ? 'تم إلغاء مشاركة الجدول' : 'Schedule unshared'));
+        setSelectedFriend(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            user: {
+              ...prev.user,
+              iSharedScheduleWithThem: nextAction === 'share'
+            }
+          };
+        });
+        setFriends(prev => prev.map(f => {
+          if (f.user?.username?.toLowerCase() === targetUsername.toLowerCase()) {
+            return {
+              ...f,
+              user: {
+                ...f.user,
+                iSharedScheduleWithThem: nextAction === 'share'
+              }
+            };
+          }
+          return f;
+        }));
+      } else {
+        showToast('Action failed');
+      }
+    } catch (_) {
+      showToast('Network error, please try again.');
+    } finally {
+      setSharingScheduleLoading(false);
+    }
+  };
 
   // Search state in Add Friend view
   const [searchQuery, setSearchQuery] = useState('');
@@ -756,6 +802,88 @@ export default function FriendsModal({
           </div>
         )}
 
+        {/* Shared Weekly Schedule Section */}
+        {selectedFriend.user?.hasSharedScheduleWithMe ? (
+          <div className="bg-[#f5f5f5] rounded-[24px] p-4 flex flex-col gap-3 border border-black/5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-[#0a0a0a] text-white flex items-center justify-center shrink-0">
+                  <CalendarDays size={18} />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[14px] font-bold text-[#0a0a0a] leading-tight truncate">
+                    {isRtl ? `جدول أسبوع ${selectedFriend.displayName}` : `${selectedFriend.displayName}'s Weekly Schedule`}
+                  </span>
+                  <span className="text-[12px] text-[#525252] leading-tight mt-0.5">
+                    {Array.isArray(selectedFriend.user?.weeklySchedule) && selectedFriend.user.weeklySchedule.length > 0
+                      ? (isRtl ? `${selectedFriend.user.weeklySchedule.length} حصص وعادات مسجلة` : `${selectedFriend.user.weeklySchedule.length} entries registered`)
+                      : (isRtl ? 'لا توجد حصص مسجلة هذا الأسبوع' : 'No entries')}
+                  </span>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+                {isRtl ? 'متاح للمشاهدة' : 'SHARED'}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (onOpenFriendSchedule) {
+                  onOpenFriendSchedule({
+                    name: selectedFriend.displayName || selectedFriend.user?.name || selectedFriend.user?.username || 'Friend',
+                    avatar: selectedFriend.user?.avatar,
+                    habits: selectedFriend.user?.weeklySchedule || []
+                  });
+                  handleCloseSelectedSheet();
+                  if (onClose) onClose();
+                }
+              }}
+              className="w-full h-11 rounded-full bg-[#0a0a0a] text-white font-bold text-[13px] flex items-center justify-center gap-2 hover:bg-black/90 active:scale-[0.98] transition-all cursor-pointer shadow-sm"
+            >
+              <Eye size={15} />
+              <span>{isRtl ? 'عرض جدول الأسبوع بالكامل' : 'View Full Weekly Schedule'}</span>
+            </button>
+          </div>
+        ) : (
+          <div className="bg-[#f9f9fb] rounded-[20px] p-3 flex items-center justify-between border border-black/5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <CalendarDays size={16} className="text-[#71717a] shrink-0" />
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-bold text-[#0a0a0a] truncate">
+                  {isRtl ? 'جدول الأسبوع' : 'Weekly Schedule'}
+                </span>
+                <span className="text-[11px] text-[#71717a] truncate">
+                  {isRtl ? 'لم يشارك جدوله معك بعد' : 'Has not shared schedule yet'}
+                </span>
+              </div>
+            </div>
+            {selectedFriend.user?.username && (
+              <button
+                type="button"
+                disabled={sharingScheduleLoading}
+                onClick={() => handleToggleShareScheduleWithFriend(
+                  selectedFriend.user?.username,
+                  Boolean(selectedFriend.user?.iSharedScheduleWithThem)
+                )}
+                className={`h-7 px-3 rounded-full text-xs font-bold transition-all active:scale-95 cursor-pointer shrink-0 ${
+                  selectedFriend.user?.iSharedScheduleWithThem
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                    : 'bg-[#0a0a0a] text-white hover:bg-black/90'
+                }`}
+              >
+                {sharingScheduleLoading ? (
+                  <Loader2 size={11} className="animate-spin" />
+                ) : selectedFriend.user?.iSharedScheduleWithThem ? (
+                  isRtl ? 'شاركت جدولك معه' : 'You shared schedule'
+                ) : (
+                  isRtl ? 'شارك جدولك معه' : 'Share your schedule'
+                )}
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Main Action Buttons */}
         <div className="flex gap-2.5 pt-1">
           <button
@@ -1105,6 +1233,12 @@ export default function FriendsModal({
                                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white text-black text-[9px] font-mono font-black uppercase tracking-wider shrink-0">
                                     <Pin size={8} className="fill-current" />
                                     PINNED
+                                  </span>
+                                )}
+                                {f.user?.hasSharedScheduleWithMe && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[9px] font-mono font-bold shrink-0">
+                                    <CalendarDays size={8} />
+                                    {isRtl ? 'الجدول متاح' : 'SCHEDULE'}
                                   </span>
                                 )}
                               </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { 
   Calendar, 
   CalendarDays,
@@ -21,8 +21,17 @@ import {
   BookOpen, 
   Copy,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Share2,
+  Send,
+  Users,
+  Search,
+  Loader2,
+  Eye,
+  ShieldCheck
 } from 'lucide-react';
+import AvatarIcon from './AvatarIcon';
+import { apiFetch } from '../lib/api';
 
 const DAYS = [
   { id: 0, labelEn: 'Sunday', labelAr: 'الأحد', shortEn: 'Sun', shortAr: 'أحد' },
@@ -48,13 +57,25 @@ export default function WeeklyScheduleCalendar({
   habits = [],
   onUpdateHabits,
   lang = 'ar',
-  themeColor = '#ffffff'
+  themeColor = '#ffffff',
+  readOnly = false,
+  ownerName = null,
+  ownerAvatar = null,
+  friends = [],
+  onFriendScheduleUpdated = null
 }) {
   const isAr = lang === 'ar';
 
   // Active viewed day index (0..6)
   const [selectedDay, setSelectedDay] = useState(() => new Date().getDay());
   const [viewMode, setViewMode] = useState('day'); // 'day' | 'grid'
+
+  // Share Schedule Modal State
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [sharedFriendsMap, setSharedFriendsMap] = useState({});
+  const [sharingLoading, setSharingLoading] = useState(null);
+  const [shareToast, setShareToast] = useState('');
+  const [friendSearch, setFriendSearch] = useState('');
 
   // Inline Add / Edit Drawer State
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -239,40 +260,122 @@ export default function WeeklyScheduleCalendar({
     onUpdateHabits(updated);
   };
 
+  // Accepted friends list
+  const acceptedFriends = useMemo(() => {
+    if (!Array.isArray(friends)) return [];
+    return friends.filter(f => f && f.user);
+  }, [friends]);
+
+  // Filtered friends in share modal
+  const filteredShareFriends = useMemo(() => {
+    const q = friendSearch.trim().toLowerCase();
+    if (!q) return acceptedFriends;
+    return acceptedFriends.filter(f => {
+      const name = String(f.displayName || f.user?.name || '').toLowerCase();
+      const uname = String(f.user?.username || '').toLowerCase();
+      return name.includes(q) || uname.includes(q);
+    });
+  }, [acceptedFriends, friendSearch]);
+
+  const handleToggleShareWithFriend = async (targetUsername, currentIsShared) => {
+    if (!targetUsername || sharingLoading) return;
+    const nextAction = currentIsShared ? 'unshare' : 'share';
+    setSharingLoading(targetUsername);
+
+    // Optimistic UI update
+    setSharedFriendsMap(prev => ({ ...prev, [targetUsername.toLowerCase()]: !currentIsShared }));
+
+    try {
+      const res = await apiFetch('/api/friends/schedule/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUsername, action: nextAction })
+      });
+      if (res.ok) {
+        const msg = nextAction === 'share'
+          ? (isAr ? `تمت مشاركة جدولك بنجاح مع @${targetUsername}` : `Schedule shared with @${targetUsername}`)
+          : (isAr ? `تم إلغاء مشاركة جدولك مع @${targetUsername}` : `Revoked schedule share from @${targetUsername}`);
+        setShareToast(msg);
+        setTimeout(() => setShareToast(''), 3000);
+        if (onFriendScheduleUpdated) onFriendScheduleUpdated();
+      } else {
+        setSharedFriendsMap(prev => ({ ...prev, [targetUsername.toLowerCase()]: currentIsShared }));
+      }
+    } catch (_) {
+      setSharedFriendsMap(prev => ({ ...prev, [targetUsername.toLowerCase()]: currentIsShared }));
+    }
+    setSharingLoading(null);
+  };
+
   const currentDayHabits = habitsByDay[selectedDay] || [];
 
   return (
     <div className="fixed inset-0 z-[10001] bg-black/90 backdrop-blur-2xl overflow-y-auto animate-in fade-in duration-200">
+      {/* Toast Alert */}
+      {shareToast && (
+        <div className="fixed top-5 z-[10020] left-1/2 -translate-x-1/2 bg-white text-black px-4 py-2 rounded-full font-bold text-xs shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-4">
+          <Check size={14} className="text-emerald-600" />
+          <span>{shareToast}</span>
+        </div>
+      )}
+
       <div className="min-h-screen w-full max-w-4xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+3rem)] flex flex-col justify-between">
         
         <div>
           {/* Header */}
           <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-5">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <div 
-                className="w-11 h-11 rounded-2xl flex items-center justify-center border shadow-lg"
+                className="w-11 h-11 rounded-2xl flex items-center justify-center border shadow-lg shrink-0 overflow-hidden"
                 style={{
                   backgroundColor: `${themeColor}20`,
                   borderColor: `${themeColor}40`,
                   color: themeColor || '#ffffff'
                 }}
               >
-                <CalendarDays size={22} strokeWidth={2.2} />
+                {readOnly && ownerAvatar ? (
+                  <AvatarIcon name={ownerAvatar} size={24} />
+                ) : (
+                  <CalendarDays size={22} strokeWidth={2.2} />
+                )}
               </div>
-              <div>
-                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                  {isAr ? 'جدول الأسبوع والروتين المجدول' : 'Weekly Schedule & Routine'}
-                </h2>
-                <p className="text-xs text-white/50 font-medium">
-                  {isAr ? 'نظم مواعيد محاضراتك، تمرينك، وروتينك وتظهر تلقائياً في عادات اليوم' : 'Plan your weekly classes, workouts, and habits in one interactive calendar'}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight truncate">
+                    {readOnly 
+                      ? (isAr ? `جدول أسبوع ${ownerName || 'الصديق'}` : `${ownerName || 'Friend'}'s Weekly Schedule`)
+                      : (isAr ? 'جدول الأسبوع والروتين المجدول' : 'Weekly Schedule & Routine')}
+                  </h2>
+                  {readOnly && (
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-mono text-[10px] font-bold shrink-0">
+                      {isAr ? 'عرض فقط' : 'READ ONLY'}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-white/50 font-medium truncate mt-0.5">
+                  {readOnly
+                    ? (isAr ? `جدول مواعيد ${ownerName || 'صديقك'} المشترك معك دون أي تأثير على جدولك الخاص` : `Shared with you by ${ownerName || 'your friend'}. Your schedule is unchanged.`)
+                    : (isAr ? 'نظم مواعيد محاضراتك، تمرينك، وروتينك وتظهر تلقائياً في عادات اليوم' : 'Plan your weekly classes, workouts, and habits in one interactive calendar')}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={() => setIsShareModalOpen(true)}
+                  className="h-9 px-3.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-sm"
+                  title={isAr ? 'مشاركة جدولك مع الأصدقاء' : 'Share schedule with friends'}
+                >
+                  <Share2 size={14} />
+                  <span>{isAr ? 'مشاركة الجدول' : 'Share Schedule'}</span>
+                </button>
+              )}
+
               <button 
                 onClick={onClose} 
-                className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all active:scale-95"
+                className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all active:scale-95 cursor-pointer"
                 aria-label="Close"
               >
                 <X size={18} />
@@ -317,20 +420,22 @@ export default function WeeklyScheduleCalendar({
               <button
                 type="button"
                 onClick={() => setViewMode(viewMode === 'day' ? 'grid' : 'day')}
-                className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
+                className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
               >
                 <Layers size={14} />
                 <span>{viewMode === 'day' ? (isAr ? 'عرض الأسبوع كاملاً' : 'Full Week Grid') : (isAr ? 'عرض اليوم' : 'Day View')}</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => handleOpenAdd(selectedDay)}
-                className="px-4 py-2 rounded-xl bg-white text-black hover:bg-white/90 text-xs font-black flex items-center gap-1.5 transition-all active:scale-95 shadow-lg cursor-pointer"
-              >
-                <Plus size={15} strokeWidth={3} />
-                <span>{isAr ? 'إضافة موعد' : 'Add Slot'}</span>
-              </button>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={() => handleOpenAdd(selectedDay)}
+                  className="px-4 py-2 rounded-xl bg-white text-black hover:bg-white/90 text-xs font-black flex items-center gap-1.5 transition-all active:scale-95 shadow-lg cursor-pointer"
+                >
+                  <Plus size={15} strokeWidth={3} />
+                  <span>{isAr ? 'إضافة موعد' : 'Add Slot'}</span>
+                </button>
+              )}
             </div>
 
           </div>
@@ -347,14 +452,16 @@ export default function WeeklyScheduleCalendar({
                   </span>
                 </span>
                 
-                <button
-                  type="button"
-                  onClick={() => handleOpenAdd(selectedDay)}
-                  className="text-xs text-white/60 hover:text-white flex items-center gap-1 font-bold"
-                >
-                  <Plus size={13} />
-                  <span>{isAr ? `إضافة إلى يوم ${DAYS[selectedDay].shortAr}` : `Add to ${DAYS[selectedDay].shortEn}`}</span>
-                </button>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenAdd(selectedDay)}
+                    className="text-xs text-white/60 hover:text-white flex items-center gap-1 font-bold cursor-pointer"
+                  >
+                    <Plus size={13} />
+                    <span>{isAr ? `إضافة إلى يوم ${DAYS[selectedDay].shortAr}` : `Add to ${DAYS[selectedDay].shortEn}`}</span>
+                  </button>
+                )}
               </div>
 
               {currentDayHabits.length === 0 ? (
@@ -367,16 +474,20 @@ export default function WeeklyScheduleCalendar({
                       {isAr ? `لا توجد مواعيد مجدولة ليوم ${DAYS[selectedDay].labelAr}` : `No habits scheduled for ${DAYS[selectedDay].labelEn}`}
                     </h3>
                     <p className="text-xs text-white/40">
-                      {isAr ? 'أضف محاضراتك أو روتينك اليومي هنا وهيظهر تلقائياً في صفحتك الرئيسية كل أسبوع.' : 'Add your classes or routine here to appear on your home screen every week.'}
+                      {readOnly
+                        ? (isAr ? 'لم يضف صديقك أي مواعيد لهذا اليوم في جدوله.' : 'Your friend has no scheduled slots for this day.')
+                        : (isAr ? 'أضف محاضراتك أو روتينك اليومي هنا وهيظهر تلقائياً في صفحتك الرئيسية كل أسبوع.' : 'Add your classes or routine here to appear on your home screen every week.')}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenAdd(selectedDay)}
-                    className="mt-2 px-5 py-2.5 rounded-full bg-white text-black text-xs font-black active:scale-95 transition-all shadow-lg"
-                  >
-                    {isAr ? 'إضافة أول موعد لهذا اليوم' : 'Add First Slot'}
-                  </button>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenAdd(selectedDay)}
+                      className="mt-2 px-5 py-2.5 rounded-full bg-white text-black text-xs font-black active:scale-95 transition-all shadow-lg cursor-pointer"
+                    >
+                      {isAr ? 'إضافة أول موعد لهذا اليوم' : 'Add First Slot'}
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2.5">
@@ -425,25 +536,27 @@ export default function WeeklyScheduleCalendar({
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEdit(habit)}
-                            className="p-2 rounded-xl bg-white/5 hover:bg-white/15 text-white/60 hover:text-white transition-all active:scale-90"
-                            title="Edit"
-                          >
-                            <Edit2 size={14} />
-                          </button>
+                        {!readOnly && (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(habit)}
+                              className="p-2 rounded-xl bg-white/5 hover:bg-white/15 text-white/60 hover:text-white transition-all active:scale-90 cursor-pointer"
+                              title="Edit"
+                            >
+                              <Edit2 size={14} />
+                            </button>
 
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteHabit(habit.id)}
-                            className="p-2 rounded-xl bg-white/5 hover:bg-red-500/20 text-white/60 hover:text-red-400 transition-all active:scale-90"
-                            title="Delete"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteHabit(habit.id)}
+                              className="p-2 rounded-xl bg-white/5 hover:bg-red-500/20 text-white/60 hover:text-red-400 transition-all active:scale-90 cursor-pointer"
+                              title="Delete"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -471,14 +584,16 @@ export default function WeeklyScheduleCalendar({
                       <span className={`text-xs font-black ${isToday ? 'text-white' : 'text-white/60'}`}>
                         {isAr ? day.labelAr : day.shortEn}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenAdd(day.id)}
-                        className="p-1 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors"
-                        title="Add slot"
-                      >
-                        <Plus size={12} />
-                      </button>
+                      {!readOnly && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenAdd(day.id)}
+                          className="p-1 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors cursor-pointer"
+                          title="Add slot"
+                        >
+                          <Plus size={12} />
+                        </button>
+                      )}
                     </div>
 
                     <div className="space-y-1.5 min-h-[100px]">
@@ -492,8 +607,10 @@ export default function WeeklyScheduleCalendar({
                           return (
                             <div 
                               key={item.id}
-                              onClick={() => handleOpenEdit(item)}
-                              className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 cursor-pointer transition-all flex flex-col gap-0.5 active:scale-95"
+                              onClick={() => !readOnly && handleOpenEdit(item)}
+                              className={`p-2 rounded-xl bg-white/[0.05] border border-white/10 flex flex-col gap-0.5 ${
+                                readOnly ? '' : 'hover:bg-white/[0.1] cursor-pointer transition-all active:scale-95'
+                              }`}
                             >
                               <span className="text-[11px] font-bold text-white truncate leading-tight">
                                 {item.name}
@@ -689,6 +806,132 @@ export default function WeeklyScheduleCalendar({
                 </button>
               </div>
 
+            </div>
+          </div>
+        )}
+
+        {/* --- SHARE SCHEDULE MODAL --- */}
+        {isShareModalOpen && (
+          <div 
+            className="fixed inset-0 z-[10010] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150"
+            onClick={() => setIsShareModalOpen(false)}
+          >
+            <div 
+              className="bg-[#121215] border border-white/15 rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-200 select-none"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-10 h-10 rounded-2xl bg-white/10 text-white flex items-center justify-center shrink-0">
+                    <Share2 size={18} />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <h3 className="text-base font-bold text-white truncate">
+                      {isAr ? 'مشاركة الجدول مع الأصدقاء' : 'Share Schedule with Friends'}
+                    </h3>
+                    <p className="text-[11px] text-white/50 truncate">
+                      {isAr ? 'اختر الأصدقاء الذين يمكنهم الاطلاع على جدولك' : 'Select friends who can view your weekly schedule'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsShareModalOpen(false)}
+                  className="p-1.5 rounded-full bg-white/5 hover:bg-white/15 text-white/60 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Search Friends if > 3 friends */}
+              {acceptedFriends.length > 3 && (
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+                  <input
+                    type="text"
+                    value={friendSearch}
+                    onChange={(e) => setFriendSearch(e.target.value)}
+                    placeholder={isAr ? 'بحث في الأصدقاء...' : 'Search friends...'}
+                    className="w-full h-9 pl-9 pr-3 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-white/30 outline-none focus:border-white/30"
+                  />
+                </div>
+              )}
+
+              {/* Friends List */}
+              <div className="max-h-[340px] overflow-y-auto space-y-2 py-1 pr-1 scrollbar-hide">
+                {filteredShareFriends.length === 0 ? (
+                  <div className="py-10 text-center text-xs text-white/40 flex flex-col items-center gap-2">
+                    <Users size={24} className="text-white/20" />
+                    <span>
+                      {acceptedFriends.length === 0
+                        ? (isAr ? 'لا يوجد لديك أصدقاء حالياً لمشاركة الجدول معهم.' : 'No friends yet to share your schedule with.')
+                        : (isAr ? 'لا يوجد أصدقاء يطابقون البحث.' : 'No friends match your search.')}
+                    </span>
+                  </div>
+                ) : (
+                  filteredShareFriends.map(f => {
+                    const username = f.user?.username || f.displayName;
+                    const isShared = sharedFriendsMap[username.toLowerCase()] !== undefined
+                      ? sharedFriendsMap[username.toLowerCase()]
+                      : Boolean(f.user?.iSharedScheduleWithThem);
+                    const isPending = sharingLoading === username;
+
+                    return (
+                      <div
+                        key={f.friendshipId || username}
+                        className="p-3 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-between gap-3 hover:border-white/20 transition-all"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-full bg-[#1e1e22] text-white flex items-center justify-center font-bold text-sm uppercase shrink-0 border border-white/10">
+                            <AvatarIcon name={f.user?.avatar || 'user'} size={20} className="text-white" />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-sm font-bold text-white truncate">
+                              {f.displayName || username}
+                            </span>
+                            <span className="text-[11px] font-mono text-white/40 truncate">
+                              @{username}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={() => handleToggleShareWithFriend(username, isShared)}
+                          className={`h-8 px-3 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0 ${
+                            isShared
+                              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-red-500/15 hover:text-red-400 hover:border-red-500/30'
+                              : 'bg-white text-black hover:bg-white/90 shadow-sm'
+                          }`}
+                        >
+                          {isPending ? (
+                            <Loader2 size={13} className="animate-spin" />
+                          ) : isShared ? (
+                            <>
+                              <Check size={13} strokeWidth={2.5} />
+                              <span>{isAr ? 'تمت المشاركة' : 'Shared'}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Send size={12} />
+                              <span>{isAr ? 'إرسال الجدول' : 'Share'}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Informative Note */}
+              <div className="pt-3 border-t border-white/10 text-[11px] text-white/40 leading-relaxed text-center">
+                {isAr 
+                  ? 'جدول أصدقائك لن يتغير أبداً عند الاستلام، بل سيتمكنون فقط من تصفح جدول أسبوعك بالكامل عند الضغط على ملفك الشخصي.'
+                  : 'Your friends\' schedules will remain completely unchanged. They will simply be able to view your weekly routine when opening your profile.'}
+              </div>
             </div>
           </div>
         )}

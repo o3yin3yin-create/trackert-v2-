@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Download, RotateCcw, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut } from 'lucide-react';
+import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Download, RotateCcw, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, CalendarDays, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut } from 'lucide-react';
 import React, { useState, useEffect, useRef, useCallback, useMemo, Component } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -1318,6 +1318,27 @@ function AppContent({ isPreview = false }) {
   const [isSpotifyInviteModalOpen, setIsSpotifyInviteModalOpen] = useState(false);
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [cacheClearedSuccess, setCacheClearedSuccess] = useState(false);
+  const [appLinkCopied, setAppLinkCopied] = useState(false);
+
+  const handleShareApp = async () => {
+    const downloadUrl = typeof window !== 'undefined' ? `${window.location.origin}/download` : 'https://bokra101.vercel.app/download';
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(downloadUrl);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = downloadUrl;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setAppLinkCopied(true);
+      setTimeout(() => setAppLinkCopied(false), 2500);
+    } catch (_) {
+      setAppLinkCopied(false);
+    }
+  };
 
   const handleClearCache = async () => {
     setIsClearingCache(true);
@@ -1392,6 +1413,10 @@ function AppContent({ isPreview = false }) {
   const touchStartXRef = useRef(null);
   const touchStartYRef = useRef(null);
 
+  // --- Language State ---
+  const [lang, setLang] = useState('en');
+  const isAr = lang === 'ar';
+
   // --- In-App Notifications & Friends Widget State ---
   const [friendsIncomingCount, setFriendsIncomingCount] = useState(0);
   const [activeInAppNotification, setActiveInAppNotification] = useState(null);
@@ -1412,6 +1437,8 @@ function AppContent({ isPreview = false }) {
     }
     return '';
   });
+  const [viewedFriendSchedule, setViewedFriendSchedule] = useState(null);
+  const [friendsRefreshTrigger, setFriendsRefreshTrigger] = useState(0);
 
   useEffect(() => {
     const handlePinnedChange = (e) => {
@@ -1452,11 +1479,18 @@ function AppContent({ isPreview = false }) {
 
         if (notifs.length > 0) {
           const latest = notifs[0];
+          const notifMsg = latest.type === 'cheer'
+            ? (isAr ? 'شجعك الآن' : 'cheered you on')
+            : latest.type === 'study'
+              ? (isAr ? 'طلب المذاكرة معك' : 'asked to study together')
+              : latest.type === 'schedule_share'
+                ? (isAr ? 'شارك جدول أسبوعه معك' : 'shared their weekly schedule with you')
+                : (isAr ? 'أرسل لك نغزة' : 'nudged you');
           setActiveInAppNotification({
             id: latest.id,
             type: latest.type || 'nudge',
             user: { username: latest.fromUsername, name: latest.fromName, avatar: latest.fromAvatar },
-            message: latest.type === 'cheer' ? 'cheered you on' : latest.type === 'study' ? 'asked to study together' : 'nudged you',
+            message: notifMsg,
             isRequest: false,
           });
         } else if (incomingReqs.length > 0) {
@@ -1478,7 +1512,7 @@ function AppContent({ isPreview = false }) {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [isSignedIn]);
+  }, [isSignedIn, friendsRefreshTrigger, isAr]);
 
   const handleAcceptRequest = async (friendshipId) => {
     try {
@@ -1504,8 +1538,7 @@ function AppContent({ isPreview = false }) {
     }
   };
 
-  // --- Theme, Language & Background ---
-  const [lang, setLang] = useState('en');
+  // --- Theme & Background ---
   const [theme, setTheme] = useState('dark');
   const [bgStyle, setBgStyle] = useState('aurora'); // 'aurora' | 'solid'
   const t = (key) => translations[lang][key] || key;
@@ -6337,7 +6370,23 @@ function AppContent({ isPreview = false }) {
                 </>
               ) : (
                 <>
-                  {activeInAppNotification.type === 'study' ? (
+                  {activeInAppNotification.type === 'schedule_share' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleDismissNotification(activeInAppNotification.id, false);
+                        const friendObj = friendsList.find(f => (f.user?.username || '').toLowerCase() === (activeInAppNotification.user?.username || '').toLowerCase());
+                        if (friendObj) {
+                          setSelectedFriendForModal(friendObj);
+                        }
+                        setIsFriendsModalOpen(true);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-white text-black font-bold text-xs hover:bg-white/90 active:scale-95 transition-all shadow-sm cursor-pointer flex items-center gap-1"
+                    >
+                      <CalendarDays size={13} strokeWidth={2.5} />
+                      <span>{isAr ? 'عرض الجدول' : 'View Schedule'}</span>
+                    </button>
+                  ) : activeInAppNotification.type === 'study' ? (
                     <button
                       type="button"
                       onClick={() => {
@@ -8585,6 +8634,38 @@ function AppContent({ isPreview = false }) {
                               <ChevronRight size={18} className="text-white/40" />
                             </a>
 
+                            {/* Share App (Copy Download Link) */}
+                            <button 
+                              type="button"
+                              onClick={handleShareApp} 
+                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors cursor-pointer"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center">
+                                  {appLinkCopied ? (
+                                    <Check size={18} className="text-emerald-400" />
+                                  ) : (
+                                    <Share2 size={18} />
+                                  )}
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-white">
+                                    {appLinkCopied ? (isAr ? 'تم نسخ الرابط!' : 'Link Copied!') : (isAr ? 'مشاركة التطبيق' : 'Share App')}
+                                  </span>
+                                  <span className="text-[11px] text-white/40 font-normal">
+                                    {isAr ? 'نسخ رابط تحميل التطبيق للأصدقاء' : 'Copy download page link'}
+                                  </span>
+                                </div>
+                              </div>
+                              {appLinkCopied ? (
+                                <span className="text-xs font-mono font-bold text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                                  {isAr ? 'تم النسخ' : 'Copied'}
+                                </span>
+                              ) : (
+                                <ChevronRight size={18} className="text-white/40" />
+                              )}
+                            </button>
+
                             {/* Clear Cache */}
                             <button 
                               type="button"
@@ -8764,6 +8845,12 @@ function AppContent({ isPreview = false }) {
                 setSelectedFriendForModal(null);
               }}
               onJoinSession={handleJoinFriendSession}
+              onOpenFriendSchedule={(friendData) => {
+                setViewedFriendSchedule(friendData);
+                setIsFriendsModalOpen(false);
+                setSelectedFriendForModal(null);
+                setIsScheduleCalendarOpen(true);
+              }}
               initialSelectedFriend={selectedFriendForModal}
               myUsername={user?.username || ''}
               myName={user?.fullName || user?.firstName || 'Explorer'}
@@ -8787,11 +8874,21 @@ function AppContent({ isPreview = false }) {
           {isScheduleCalendarOpen && typeof document !== 'undefined' && createPortal(
             <WeeklyScheduleCalendar
               isOpen={isScheduleCalendarOpen}
-              onClose={() => setIsScheduleCalendarOpen(false)}
-              habits={habits}
+              onClose={() => {
+                setIsScheduleCalendarOpen(false);
+                setViewedFriendSchedule(null);
+              }}
+              habits={viewedFriendSchedule ? viewedFriendSchedule.habits : habits}
               onUpdateHabits={handleUpdateScheduleHabits}
               lang={lang}
               themeColor={themeColor}
+              readOnly={Boolean(viewedFriendSchedule)}
+              ownerName={viewedFriendSchedule ? viewedFriendSchedule.name : null}
+              ownerAvatar={viewedFriendSchedule ? viewedFriendSchedule.avatar : null}
+              friends={friendsList}
+              onFriendScheduleUpdated={() => {
+                setFriendsRefreshTrigger(prev => prev + 1);
+              }}
             />,
             document.body
           )}
