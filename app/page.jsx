@@ -29,8 +29,37 @@ import FriendsModal from '../components/FriendsModal';
 import WeeklyScheduleCalendar from '../components/WeeklyScheduleCalendar';
 import PrivacyModal from '../components/PrivacyModal';
 import SpotifyInviteModal from '../components/SpotifyInviteModal';
+import UpdateModal from '../components/UpdateModal';
 import { guideSections } from '../lib/guideContent';
 import { getDisplayFriend, formatBriefActivity, getActivityBadge, getSafeTrackArt, getIslandDetails, PRESENCE_PRESETS } from '../lib/friendsPresets';
+
+const APP_CLIENT_VERSION = '0.1.0';
+
+function compareSemver(v1, v2) {
+  if (!v1 || !v2) return 0;
+  const p1 = String(v1).replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
+  const p2 = String(v2).replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
+    const num1 = p1[i] || 0;
+    const num2 = p2[i] || 0;
+    if (num1 > num2) return 1;
+    if (num1 < num2) return -1;
+  }
+  return 0;
+}
+
+function detectClientPlatform() {
+  if (typeof window === 'undefined') return 'web';
+  const ua = navigator.userAgent || '';
+  const isTauri = !!(window.__TAURI_INTERNALS__ || window.__TAURI__ || window.isTauri);
+  
+  if (/Android/i.test(ua)) return 'android';
+  if (/iPhone|iPad|iPod/i.test(ua)) return 'ios';
+  if (/Macintosh|Mac OS/i.test(ua)) return isTauri ? 'mac-tauri' : 'mac';
+  if (/Windows/i.test(ua)) return isTauri ? 'windows-tauri' : 'windows';
+  if (/Linux/i.test(ua)) return isTauri ? 'linux-tauri' : 'linux';
+  return 'web';
+}
 
 let globalAudioCtx = null;
 const getAudioCtx = () => {
@@ -1319,6 +1348,56 @@ function AppContent({ isPreview = false }) {
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [cacheClearedSuccess, setCacheClearedSuccess] = useState(false);
   const [appLinkCopied, setAppLinkCopied] = useState(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState({
+    hasUpdate: false,
+    latestVersion: APP_CLIENT_VERSION,
+    currentVersion: APP_CLIENT_VERSION,
+    downloadUrl: '/bokra-windows.zip',
+    platform: 'web',
+    notes: '',
+    isChecking: false,
+    downloads: null
+  });
+
+  const checkForAppUpdates = useCallback(async (manual = false) => {
+    setUpdateInfo(prev => ({ ...prev, isChecking: true }));
+    try {
+      const res = await fetch('/api/version');
+      if (!res.ok) throw new Error('Failed to fetch version');
+      const data = await res.json();
+      const detected = detectClientPlatform();
+      const hasUpdate = compareSemver(data.version, APP_CLIENT_VERSION) > 0;
+      
+      let targetUrl = '/download';
+      if (detected.startsWith('mac')) targetUrl = data.downloads?.mac || targetUrl;
+      else if (detected.startsWith('windows')) targetUrl = data.downloads?.windows || targetUrl;
+      else if (detected === 'android') targetUrl = data.downloads?.android || targetUrl;
+      else if (detected.startsWith('linux')) targetUrl = data.downloads?.linuxAppImage || data.downloads?.linuxDeb || targetUrl;
+
+      setUpdateInfo({
+        hasUpdate,
+        latestVersion: data.version || APP_CLIENT_VERSION,
+        currentVersion: APP_CLIENT_VERSION,
+        downloadUrl: targetUrl,
+        platform: detected,
+        notes: data.notes || '',
+        isChecking: false,
+        downloads: data.downloads || null
+      });
+    } catch {
+      setUpdateInfo(prev => ({ ...prev, isChecking: false }));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const timer = setTimeout(() => {
+        checkForAppUpdates(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [checkForAppUpdates]);
 
   const handleShareApp = async () => {
     const downloadUrl = typeof window !== 'undefined' ? `${window.location.origin}/download` : 'https://bokra101.vercel.app/download';
@@ -8420,11 +8499,14 @@ function AppContent({ isPreview = false }) {
                     setIsSettingsMenuOpen(!isSettingsMenuOpen);
                     setIsFocusMenuOpen(false);
                   }} 
-                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${isSettingsMenuOpen ? 'bg-white/20 text-white shadow-sm' : 'hover:bg-white/10 text-white/50 hover:text-white'}`}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 relative ${isSettingsMenuOpen ? 'bg-white/20 text-white shadow-sm' : 'hover:bg-white/10 text-white/50 hover:text-white'}`}
                   title="Settings"
                   aria-label="Settings"
                 >
                   <Settings size={18} />
+                  {updateInfo.hasUpdate && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] border border-black animate-pulse" />
+                  )}
                 </button>
 
                 {isSettingsMenuOpen && createPortal(
@@ -8683,6 +8765,54 @@ function AppContent({ isPreview = false }) {
                               </div>
                               <ChevronRight size={18} className="text-white/40" />
                             </a>
+
+                            {/* Check for Updates / Package Updater */}
+                            <button 
+                              type="button"
+                              onClick={() => {
+                                setIsSettingsMenuOpen(false);
+                                setIsUpdateModalOpen(true);
+                                checkForAppUpdates(true);
+                              }} 
+                              className={`w-full text-left p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between text-base font-bold text-white ${
+                                updateInfo.hasUpdate 
+                                  ? 'bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-teal-500/15 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.25)] ring-1 ring-emerald-500/40 animate-pulse' 
+                                  : 'bg-white/5 hover:bg-white/10 border-white/10'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                                  updateInfo.hasUpdate ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white'
+                                }`}>
+                                  <RotateCcw size={18} className={updateInfo.isChecking ? 'animate-spin' : ''} />
+                                </div>
+                                <div className="flex flex-col">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-bold text-white">{t('checkUpdates')}</span>
+                                    {updateInfo.hasUpdate ? (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500 text-black text-[10px] font-mono font-black uppercase tracking-wider shadow-sm">
+                                        {isAr ? 'تحديث متاح' : 'UPDATE'}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] font-mono text-white/40">
+                                        v{APP_CLIENT_VERSION}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[11px] text-white/40 font-normal">
+                                    {updateInfo.hasUpdate 
+                                      ? (isAr ? `إصدار جديد متوفر: v${updateInfo.latestVersion}` : `New version available: v${updateInfo.latestVersion}`)
+                                      : t('updateDesc')}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {updateInfo.hasUpdate && (
+                                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                                )}
+                                <ChevronRight size={18} className="text-white/40" />
+                              </div>
+                            </button>
 
                             {/* Download Apps */}
                             <a 
@@ -9032,6 +9162,18 @@ function AppContent({ isPreview = false }) {
                 </div>
               </div>
             </div>,
+            document.body
+          )}
+
+          {/* ---------------- UPDATE MODAL ---------------- */}
+          {isUpdateModalOpen && typeof document !== 'undefined' && createPortal(
+            <UpdateModal 
+              isOpen={isUpdateModalOpen}
+              onClose={() => setIsUpdateModalOpen(false)}
+              updateInfo={updateInfo}
+              onCheckAgain={checkForAppUpdates}
+              lang={lang}
+            />,
             document.body
           )}
 
