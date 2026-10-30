@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -47,13 +48,25 @@ next-env.d.ts
 .env
 .env.local
 service-account.json
+
+# large binary installers (hosted on GitHub Releases, not git)
+*.dmg
+public/*.dmg
+*.apk
+!public/bokra.apk
 node_modules
 bokra-android.zip
 *.keystore
 assetlinks.json
-/bokra.apk
 .next
 dist
 src-tauri/target/
 .api_backup/
 db_backup_*.json
+tests/
+audit-screenshots/
+audit-results*.json
+lh*.json
+lighthouse*.json
+*-report.json
+scripts/run-*.mjs

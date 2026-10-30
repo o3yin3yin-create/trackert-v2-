@@ -2,6 +2,14 @@ import { SignIn } from '@clerk/nextjs';
 import Link from 'next/link';
 import { X } from 'lucide-react';
 
+export const metadata = {
+  title: 'Sign In | bokra',
+  description: 'Sign in to your bokra account to sync your habits and focus sessions.',
+  alternates: {
+    canonical: '/sign-in',
+  },
+};
+
 export default function SignInPage() {
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center bg-black px-4 py-8 select-none">

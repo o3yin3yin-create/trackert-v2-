@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { X, Users, Shield, Loader2, UserX, Check, ShieldAlert, BarChart3, Activity, Target } from 'lucide-react';
 import { translations } from '../lib/translations';
@@ -14,13 +14,7 @@ export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl })
 
   const t = translations[lang] || translations.en;
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchData();
-    }
-  }, [isOpen, activeTab]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -45,7 +39,13 @@ export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl })
       setError('An error occurred');
     }
     setLoading(false);
-  };
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchData();
+    }
+  }, [isOpen, fetchData]);
 
   const handleToggleBlock = async (userId, currentStatus) => {
     try {

@@ -540,7 +540,7 @@ export default function WindowSeat({
       cloudLight: gl.getUniformLocation(program, "u_cloudLight"),
     };
 
-    let startTime = Date.now();
+    let startTime = 0;
 
     const resizeCanvas = () => {
       const rect = canvas.getBoundingClientRect();
@@ -554,8 +554,9 @@ export default function WindowSeat({
     window.addEventListener('resize', resizeCanvas);
 
     // Animation frame render loop
-    const render = () => {
-      const timeMs = Date.now() - startTime;
+    const drawFrame = (timestamp) => {
+      if (!startTime) startTime = timestamp || 0;
+      const timeMs = (timestamp || 0) - startTime;
       const timeSec = timeMs / 1000.0;
 
       // Sync active parameters using ref to avoid WebGL context tear-downs
@@ -583,10 +584,10 @@ export default function WindowSeat({
       // Draw
       gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-      animationFrameRef.current = requestAnimationFrame(render);
+      animationFrameRef.current = requestAnimationFrame(drawFrame);
     };
 
-    render();
+    animationFrameRef.current = requestAnimationFrame(drawFrame);
 
     return () => {
       window.removeEventListener('resize', resizeCanvas);

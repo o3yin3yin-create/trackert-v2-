@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthUserId } from '@/lib/auth-server';
 import prisma from '@/lib/prisma';
-import { rateLimit } from '@/lib/rateLimit';
+import { rateLimit, getClientIp } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +18,11 @@ function cleanStaleSessionCache() {
 }
 
 export async function GET(req) {
+  const ip = getClientIp(req);
+  if (!await rateLimit(`session-get-ip:${ip}`, 120, 60_000)) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+
   const userId = await getAuthUserId(req);
   if (!userId) return NextResponse.json({ activeSessionType: null, activeSessionData: null });
 
@@ -48,6 +53,11 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
+  const ip = getClientIp(req);
+  if (!await rateLimit(`session-post-ip:${ip}`, 60, 60_000)) {
+    return NextResponse.json({ error: 'Too many requests from this IP' }, { status: 429 });
+  }
+
   const userId = await getAuthUserId(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 

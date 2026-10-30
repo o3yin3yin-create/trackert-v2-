@@ -1826,8 +1826,25 @@ function AppContent({ isPreview = false }) {
             lastServerUpdatedAtRef.current = state.updatedAt;
           }
 
-          // SERVER STATE IS 100% AUTHORITATIVE — OVERWRITES LOCAL OFFLINE CACHE
-          const authoritative = state;
+          // SERVER STATE IS 100% AUTHORITATIVE EXCEPT ON FIRST-TIME GUEST LOGIN
+          let authoritative = state;
+
+          // First-login guest data migration:
+          // If the cloud account has 0 habits, but the user has created local guest habits prior to signing in,
+          // migrate the local guest data into the cloud account instead of wiping it out!
+          const localHasHabits = (latestStateRef.current?.habits?.length || 0) > 0;
+          const remoteIsEmpty = !state.habits || state.habits.length === 0;
+          if (!isSilent && localHasHabits && remoteIsEmpty) {
+            authoritative = resolveConflict(
+              {
+                ...latestStateRef.current,
+                hasPendingChanges: true,
+              },
+              state
+            );
+            // Trigger automatic sync push so guest habits are saved into the newly linked cloud account
+            localMutationVersionRef.current += 1;
+          }
 
           isApplyingRemoteRef.current = true;
           if (authoritative.isAdmin !== undefined) setIsAdmin(authoritative.isAdmin);
@@ -2835,7 +2852,7 @@ function AppContent({ isPreview = false }) {
       pomodoroLastTickRef.current = Date.now();
     }
     
-    const interval = setInterval(() => {
+    const tick = () => {
       const now = Date.now();
       const deltaMs = now - pomodoroLastTickRef.current;
       const deltaSecs = Math.floor(deltaMs / 1000);
@@ -2900,9 +2917,17 @@ function AppContent({ isPreview = false }) {
           return updated;
         });
       }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isTimerRunning, activePomodoroTask]);
+    };
+
+    const interval = setInterval(tick, 1000);
+    window.addEventListener('visibilitychange', tick);
+    window.addEventListener('focus', tick);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('visibilitychange', tick);
+      window.removeEventListener('focus', tick);
+    };
+  }, [isTimerRunning, activePomodoroTask, t]);
 
   // ─── Sync Engine ───
   useEffect(() => {
@@ -3499,12 +3524,12 @@ function AppContent({ isPreview = false }) {
                     );
                   })}
                 </div>
-                <span className={`text-xs font-bold font-mono tracking-wider ${isAllChecked ? 'text-black/60' : 'text-white/40'}`}>
+                <span className={`text-xs font-bold font-mono tracking-wider ${isAllChecked ? 'text-black/60' : 'text-white/70'}`}>
                   {checkedCount}/{(habit.subItems || []).length}
                 </span>
                 <ChevronDown 
                   size={16} 
-                  className={`transition-transform duration-300 ${isAllChecked ? 'text-black/60' : 'text-white/40'} ${isExpanded ? 'rotate-180' : ''}`} 
+                  className={`transition-transform duration-300 ${isAllChecked ? 'text-black/60' : 'text-white/70'} ${isExpanded ? 'rotate-180' : ''}`} 
                 />
               </div>
             </div>
@@ -4169,7 +4194,7 @@ function AppContent({ isPreview = false }) {
   };
 
   return (
-    <div dir="ltr" className={`min-h-screen text-white transition-colors duration-500 font-sans`}>
+    <main dir="ltr" id="main-content" role="main" className={`min-h-screen text-white transition-colors duration-500 font-sans`}>
       <style>
         {`
           body, html, #root {
@@ -6444,7 +6469,7 @@ function AppContent({ isPreview = false }) {
                   <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white group-hover:text-white/90 transition-colors">
                     {dayName}
                   </h1>
-                  <span className="text-xl sm:text-2xl font-medium text-white/40 group-hover:text-white/60 transition-colors">
+                  <span className="text-xl sm:text-2xl font-medium text-white/70 group-hover:text-white transition-colors">
                     {dayNum}
                   </span>
                   {activeDateStr !== realTodayStr && (
@@ -6637,12 +6662,16 @@ function AppContent({ isPreview = false }) {
                     <span className="text-[10px] font-bold tracking-widest uppercase">{t('myMission')}</span>
                   </div>
                 ) : (
-                  <button onClick={() => requireAuth(() => setIsEditingMission(true))} className="flex items-center gap-1.5 hover:opacity-60 transition-opacity">
+                  <button 
+                    onClick={() => requireAuth(() => setIsEditingMission(true))} 
+                    className="inline-flex items-center gap-1.5 hover:opacity-60 transition-opacity min-h-[44px] min-w-[44px] py-2 px-1 rounded-md"
+                    aria-label="Set Mission"
+                  >
                     <Target size={13} strokeWidth={2.5} />
                     <span className="text-[10px] font-bold tracking-widest uppercase">{t('setMission')}</span>
                   </button>
                 )}
-                <span className="text-[9px] font-bold tracking-widest opacity-50 uppercase">
+                <span className="text-[9px] font-bold tracking-widest opacity-80 uppercase">
                   {t('score')} ({activeDateStr === realTodayStr ? t('today') : t('viewed')})
                 </span>
               </div>
@@ -6714,7 +6743,7 @@ function AppContent({ isPreview = false }) {
                   </button>
                 </div>
               ) : activeScheduledHabits.length === 0 ? (
-                <div className="col-span-2 text-center text-white/30 text-xs font-bold uppercase tracking-widest py-10 select-none">
+                <div className="col-span-2 text-center text-white/60 text-xs font-bold uppercase tracking-widest py-10 select-none">
                   {t('noHabitsScheduledToday')}
                 </div>
               ) : null}
@@ -6748,12 +6777,16 @@ function AppContent({ isPreview = false }) {
                       <span className="text-[10px] font-bold tracking-widest uppercase">{t('myMission')}</span>
                     </div>
                   ) : (
-                    <button onClick={() => requireAuth(() => setIsEditingMission(true))} className="flex items-center gap-1.5 hover:opacity-60 transition-opacity">
+                    <button 
+                      onClick={() => requireAuth(() => setIsEditingMission(true))} 
+                      className="inline-flex items-center gap-1.5 hover:opacity-60 transition-opacity min-h-[44px] min-w-[44px] py-2 px-1 rounded-md"
+                      aria-label="Set Mission"
+                    >
                       <Target size={13} strokeWidth={2.5} />
                       <span className="text-[10px] font-bold tracking-widest uppercase">{t('setMission')}</span>
                     </button>
                   )}
-                  <span className="text-[9px] font-bold tracking-widest opacity-50 uppercase">
+                  <span className="text-[9px] font-bold tracking-widest opacity-80 uppercase">
                     {t('score')} ({activeDateStr === realTodayStr ? t('today') : t('viewed')})
                   </span>
                 </div>
@@ -6825,7 +6858,7 @@ function AppContent({ isPreview = false }) {
                     </button>
                   </div>
                 ) : activeScheduledHabits.length === 0 ? (
-                  <div className="col-span-2 text-center text-white/30 text-xs font-bold uppercase tracking-widest py-10 select-none">
+                  <div className="col-span-2 text-center text-white/60 text-xs font-bold uppercase tracking-widest py-10 select-none">
                     {t('noHabitsScheduledToday')}
                   </div>
                 ) : null}
@@ -6841,7 +6874,7 @@ function AppContent({ isPreview = false }) {
                 <div className="flex items-center justify-between mb-4 select-none">
                   <div className="flex items-center gap-2">
                     <ListChecks size={18} style={{ color: themeColor }} />
-                    <h3 className="text-sm font-bold tracking-widest text-white/80 uppercase">{t('todaysTasks')}</h3>
+                    <h2 className="text-sm font-bold tracking-widest text-white/80 uppercase">{t('todaysTasks')}</h2>
                   </div>
                   <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold" style={{ backgroundColor: `${themeColor}22`, color: themeColor }}>
                     {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈') && t.completed).length}/{dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).length}
@@ -6899,6 +6932,8 @@ function AppContent({ isPreview = false }) {
                         </div>
                         <button 
                           onClick={() => updateDailyTasks(prev => prev.filter(t => t.text !== task.text))} 
+                          aria-label="Delete Task"
+                          title="Delete Task"
                           className="text-white/20 hover:text-red-400 p-1 transition-colors shrink-0"
                         >
                           <Trash2 size={16} />
@@ -6907,7 +6942,7 @@ function AppContent({ isPreview = false }) {
                     );
                   })}
                   {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).length === 0 && (
-                    <div className="text-center text-white/30 text-xs font-bold uppercase tracking-widest py-8 border border-dashed border-white/10 rounded-2xl bg-white/5 select-none">{t('noTasks')}</div>
+                    <div className="text-center text-white/60 text-xs font-bold uppercase tracking-widest py-8 border border-dashed border-white/10 rounded-2xl bg-white/5 select-none">{t('noTasks')}</div>
                   )}
                 </div>
 
@@ -6932,7 +6967,7 @@ function AppContent({ isPreview = false }) {
                       updateDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
                       setNewTaskInput("");
                     }
-                  }} className="px-4 py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 hover:opacity-90" style={{ backgroundColor: themeColor, color: '#000' }}>
+                  }} aria-label="Add Task" title="Add Task" className="px-4 py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 hover:opacity-90" style={{ backgroundColor: themeColor, color: '#000' }}>
                     <Plus size={18} strokeWidth={3} />
                   </button>
                 </div>
@@ -8154,8 +8189,8 @@ function AppContent({ isPreview = false }) {
         <div className="fixed bottom-0 left-0 w-full flex justify-center pt-3 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none z-[10000] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] sm:pb-6">
           <div className="w-full max-w-[428px] md:max-w-2xl lg:max-w-3xl px-6 flex justify-between items-center pointer-events-auto">
             <div className="bg-[#1C1C1E]/80 backdrop-blur-xl border border-white/10 rounded-full flex items-center p-1.5 gap-1.5 shadow-2xl shadow-black/80">
-              <button onClick={() => navTo('home')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/10 text-white transition-all duration-200 active:scale-90"><Home size={18} /></button>
-              <button onClick={() => navTo('tasks')} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/10 text-white/50 hover:text-white transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
+              <button onClick={() => navTo('home')} aria-label="Home" title="Home" className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/10 text-white transition-all duration-200 active:scale-90"><Home size={18} /></button>
+              <button onClick={() => navTo('tasks')} aria-label="Tasks" title="Tasks" className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/10 text-white/50 hover:text-white transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
               <button 
                 onClick={() => {
                   setSelectedFriendForModal(null);
@@ -8663,7 +8698,7 @@ function AppContent({ isPreview = false }) {
               )}
 
             </div>
-            <button onClick={handleOpenManage} className="w-13 h-13 rounded-full bg-[#1C1C1E] border border-white/10 flex items-center justify-center hover:bg-[#2C2C2E] transition-all duration-200 active:scale-90 shadow-2xl shadow-black/60"><Edit2 size={18} className="text-white/90" /></button>
+            <button onClick={handleOpenManage} aria-label="Manage Habits" title="Manage Habits" className="w-13 h-13 rounded-full bg-[#1C1C1E] border border-white/10 flex items-center justify-center hover:bg-[#2C2C2E] transition-all duration-200 active:scale-90 shadow-2xl shadow-black/60"><Edit2 size={18} className="text-white/90" /></button>
           </div>
           {/* Window Seat Screensaver */}
           {isWindowSeatOpen && createPortal(
@@ -8820,7 +8855,7 @@ function AppContent({ isPreview = false }) {
 
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 

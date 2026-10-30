@@ -29,6 +29,7 @@ model User {
   hasSpotifyAccess    Boolean    @default(false) // صلاحية الوصول لميزة سبوتيفاي بكود دعوة
   isAdmin        Boolean    @default(false)
   isBlocked      Boolean    @default(false)
+  tokenVersion   Int        @default(1) // إصدار التوكن لإبطال الجلسات المسربة فوريا
   notifications  Json?      @default("[]") // In-app notifications (requests, nudges, cheers)
   privacySettings Json?     @default("{}") // إعدادات الخصوصية للأصدقاء
   timezone       String?    @default("Africa/Cairo") // المنطقة الزمنية لحساب الوقت بدقة

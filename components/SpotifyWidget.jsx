@@ -39,7 +39,7 @@ export default function SpotifyWidget({
   };
 
   useEffect(() => {
-    setArtError(false);
+    queueMicrotask(() => setArtError(false));
   }, [data.albumArt, data.title]);
   const [loadingAction, setLoadingAction] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
@@ -52,6 +52,18 @@ export default function SpotifyWidget({
     }
     return 0;
   });
+
+  const [isWithinGrace, setIsWithinGrace] = useState(true);
+
+  useEffect(() => {
+    const THIRTY_MINS_MS = 30 * 60 * 1000;
+    const checkGrace = () => {
+      setIsWithinGrace((Date.now() - lastActiveTime) < THIRTY_MINS_MS);
+    };
+    checkGrace();
+    const timer = setInterval(checkGrace, 60000);
+    return () => clearInterval(timer);
+  }, [lastActiveTime]);
 
   const recordActivity = () => {
     const now = Date.now();
@@ -150,7 +162,7 @@ export default function SpotifyWidget({
   // Record activity whenever track is playing
   useEffect(() => {
     if (data.isPlaying) {
-      recordActivity();
+      queueMicrotask(recordActivity);
     }
   }, [data.isPlaying]);
 
@@ -317,8 +329,6 @@ export default function SpotifyWidget({
     if (!data.isConnected || !data.title) {
       return null;
     }
-    const THIRTY_MINS_MS = 30 * 60 * 1000;
-    const isWithinGrace = (Date.now() - lastActiveTime) < THIRTY_MINS_MS;
     if (!data.isPlaying && !isWithinGrace) {
       return null;
     }
@@ -365,7 +375,7 @@ export default function SpotifyWidget({
         className={`col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel spotify-widget flex items-center justify-between cursor-pointer border border-white/10 dark:border-white/18 shadow-lg active:scale-[0.99] select-none min-h-[58px] relative overflow-hidden transition-transform touch-none ${className}`}
         style={{
           transform: `translateX(${dragOffset}px)`,
-          transition: isDraggingRef.current ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)'
+          transition: dragOffset !== 0 ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)'
         }}
         title="Swipe left/right to skip • Tap to play/pause"
       >
@@ -547,7 +557,7 @@ export default function SpotifyWidget({
       className={`col-span-2 w-full px-3.5 py-2.5 rounded-[20px] liquid-panel spotify-widget flex items-center justify-between shadow-lg relative overflow-hidden select-none cursor-pointer active:scale-[0.99] border border-white/10 min-h-[58px] transition-transform touch-none ${className}`}
       style={{
         transform: `translateX(${dragOffset}px)`,
-        transition: isDraggingRef.current ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)'
+        transition: dragOffset !== 0 ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)'
       }}
       title="Swipe left/right to skip • Tap to play/pause"
     >

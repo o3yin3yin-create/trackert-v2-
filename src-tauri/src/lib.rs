@@ -1,9 +1,118 @@
 use std::net::TcpListener;
 use std::io::{Read, Write};
 use std::sync::atomic::{AtomicU16, Ordering};
+use std::sync::Mutex;
+use std::time::{Instant, Duration};
 use tauri::{Emitter, Manager};
 
 static ACTIVE_PORT: AtomicU16 = AtomicU16::new(0);
+
+struct AuthSession {
+    state: String,
+    created_at: Instant,
+}
+
+static PENDING_AUTH: Mutex<Option<AuthSession>> = Mutex::new(None);
+
+fn generate_secure_nonce() -> Result<String, String> {
+    let mut bytes = [0u8; 32];
+    getrandom::fill(&mut bytes)
+        .map_err(|e| format!("Failed to acquire CSPRNG randomness: {}", e))?;
+    Ok(bytes.iter().map(|b| format!("{:02x}", b)).collect())
+}
+
+fn constant_time_eq(a: &str, b: &str) -> bool {
+    let a_bytes = a.as_bytes();
+    let b_bytes = b.as_bytes();
+    if a_bytes.len() != b_bytes.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for (x, y) in a_bytes.iter().zip(b_bytes.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
+}
+
+fn url_decode(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let Ok(val) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
+                result.push(val as char);
+                i += 3;
+                continue;
+            }
+        } else if bytes[i] == b'+' {
+            result.push(' ');
+            i += 1;
+            continue;
+        }
+        result.push(bytes[i] as char);
+        i += 1;
+    }
+    result
+}
+
+fn parse_query_params(query: &str) -> std::collections::HashMap<String, String> {
+    let mut map = std::collections::HashMap::new();
+    for pair in query.split('&') {
+        if pair.is_empty() { continue; }
+        let mut parts = pair.splitn(2, '=');
+        let key = parts.next().unwrap_or("").to_string();
+        let val = parts.next().unwrap_or("").to_string();
+        map.insert(key, url_decode(&val));
+    }
+    map
+}
+
+#[derive(serde::Serialize, Clone, Debug, PartialEq, Eq)]
+pub struct DesktopAuthPayload {
+    pub token: Option<String>,
+    pub user: Option<String>,
+    pub spotify_token: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum CallbackResult {
+    Success(DesktopAuthPayload),
+    Forbidden(String),
+}
+
+pub fn process_callback_query_at(query: &str, now: Instant) -> CallbackResult {
+    let params = parse_query_params(query);
+    let received_state = params.get("state").cloned().unwrap_or_default();
+    let token = params.get("token").cloned();
+    let user = params.get("user").cloned();
+    let spotify_token = params.get("spotify_token").cloned();
+
+    let mut state_valid = false;
+    if let Ok(mut lock) = PENDING_AUTH.lock() {
+        if let Some(session) = lock.take() {
+            if now.saturating_duration_since(session.created_at) <= Duration::from_secs(300) {
+                if !received_state.is_empty() && constant_time_eq(&received_state, &session.state) {
+                    state_valid = true;
+                }
+            }
+        }
+    }
+
+    if token.is_some() && !state_valid {
+        return CallbackResult::Forbidden("State nonce missing, invalid, or expired".to_string());
+    }
+
+    CallbackResult::Success(DesktopAuthPayload {
+        token,
+        user,
+        spotify_token,
+    })
+}
+
+pub fn process_callback_query(query: &str) -> CallbackResult {
+    process_callback_query_at(query, Instant::now())
+}
 
 #[tauri::command]
 fn open_system_browser(url: String) -> Result<(), String> {
@@ -67,6 +176,44 @@ fn run_auth_server(app_handle: tauri::AppHandle) -> u16 {
                         has_callback = true;
                     }
                 }
+
+                if !has_callback {
+                    continue;
+                }
+
+                let callback_result = process_callback_query(&query);
+                let payload = match callback_result {
+                    CallbackResult::Forbidden(_) => {
+                        let err_html = r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>bokra — Verification Failed</title>
+    <style>
+        body { background: #000; color: #fff; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .card { background: #111; border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 32px; max-width: 380px; text-align: center; }
+        h1 { font-size: 20px; color: #EF4444; margin-bottom: 8px; }
+        p { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Authentication Rejected</h1>
+        <p>Security validation failed: The state nonce was missing, mismatched, or expired. Please initiate authentication again from the desktop app.</p>
+    </div>
+</body>
+</html>"#;
+                        let response = format!(
+                            "HTTP/1.1 403 Forbidden\r\nContent-Type: text/html; charset=UTF-8\r\nConnection: close\r\nContent-Length: {}\r\n\r\n{}",
+                            err_html.as_bytes().len(),
+                            err_html
+                        );
+                        let _ = stream.write_all(response.as_bytes());
+                        let _ = stream.flush();
+                        continue;
+                    }
+                    CallbackResult::Success(p) => p,
+                };
 
                 let html_body = r##"<!DOCTYPE html>
 <html lang="en">
@@ -168,42 +315,12 @@ fn run_auth_server(app_handle: tauri::AppHandle) -> u16 {
                 let _ = stream.write_all(response.as_bytes());
                 let _ = stream.flush();
 
-                if has_callback {
-                    // Notify webview with query parameters
-                    let _ = app_handle.emit("desktop-auth-callback", &query);
+                // Safe dispatch without script interpolation: Emit structured serde payload
+                let _ = app_handle.emit("desktop-auth-callback", &payload);
 
-                    // Focus window on macOS and execute direct JS evaluation as bulletproof fallback
-                    if let Some(window) = app_handle.get_webview_window("main") {
-                        let _ = window.emit("desktop-auth-callback", &query);
-
-                        let eval_js = format!(
-                            r#"
-                            (function() {{
-                                try {{
-                                    var q = "{}";
-                                    var sp = new URLSearchParams(q);
-                                    var sToken = sp.get("spotify_token");
-                                    if (sToken) {{
-                                        localStorage.setItem("daybase_spotify_refresh_token", sToken);
-                                        window.dispatchEvent(new CustomEvent("spotify-token-updated", {{ detail: sToken }}));
-                                    }}
-                                    var uToken = sp.get("token");
-                                    var uStr = sp.get("user");
-                                    if (uToken) {{
-                                        localStorage.setItem("bokra_desktop_token", uToken);
-                                        if (uStr) localStorage.setItem("bokra_desktop_user", uStr);
-                                        window.dispatchEvent(new CustomEvent("bokra-desktop-auth-success", {{ detail: {{ token: uToken }} }}));
-                                    }}
-                                }} catch(e) {{
-                                    console.error("[bokra eval callback error]", e);
-                                }}
-                            }})();
-                            "#,
-                            query.replace('\\', "\\\\").replace('"', "\\\"")
-                        );
-                        let _ = window.eval(&eval_js);
-                        let _ = window.set_focus();
-                    }
+                if let Some(window) = app_handle.get_webview_window("main") {
+                    let _ = window.emit("desktop-auth-callback", &payload);
+                    let _ = window.set_focus();
                 }
             }
         }
@@ -212,13 +329,26 @@ fn run_auth_server(app_handle: tauri::AppHandle) -> u16 {
     port
 }
 
+#[derive(serde::Serialize)]
+struct AuthServerInfo {
+    port: u16,
+    state: String,
+}
+
 #[tauri::command]
-async fn start_auth_server(app: tauri::AppHandle) -> Result<u16, String> {
+async fn start_auth_server(app: tauri::AppHandle) -> Result<AuthServerInfo, String> {
+    let state = generate_secure_nonce()?;
     let port = run_auth_server(app);
     if port == 0 {
         Err("Failed to start auth server".into())
     } else {
-        Ok(port)
+        if let Ok(mut lock) = PENDING_AUTH.lock() {
+            *lock = Some(AuthSession {
+                state: state.clone(),
+                created_at: Instant::now(),
+            });
+        }
+        Ok(AuthServerInfo { port, state })
     }
 }
 
@@ -241,4 +371,111 @@ pub fn run() {
     })
     .run(tauri::generate_context!())
     .expect("error while building tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    static TEST_LOCK: Mutex<()> = Mutex::new(());
+
+    fn set_test_pending_state(state: &str, age_secs: u64) {
+        let mut lock = PENDING_AUTH.lock().unwrap();
+        *lock = Some(AuthSession {
+            state: state.to_string(),
+            created_at: Instant::now() - Duration::from_secs(age_secs),
+        });
+    }
+
+    #[test]
+    fn test_valid_state_accepted_once() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let test_state = "valid_state_nonce_1234567890abcdef";
+        set_test_pending_state(test_state, 10);
+
+        let query = format!("state={}&token=jwt_test_token_ok&user=alice", test_state);
+        let res = process_callback_query(&query);
+
+        match res {
+            CallbackResult::Success(payload) => {
+                assert_eq!(payload.token.as_deref(), Some("jwt_test_token_ok"));
+                assert_eq!(payload.user.as_deref(), Some("alice"));
+            }
+            CallbackResult::Forbidden(err) => panic!("Expected success, got forbidden: {}", err),
+        }
+    }
+
+    #[test]
+    fn test_same_state_replayed_rejected_403() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let test_state = "replay_nonce_abc123";
+        set_test_pending_state(test_state, 5);
+
+        let query = format!("state={}&token=jwt_test_token_replay", test_state);
+        // First attempt succeeds and consumes the state
+        let res1 = process_callback_query(&query);
+        assert!(matches!(res1, CallbackResult::Success(_)));
+
+        // Replay of the exact same state MUST fail with 403 Forbidden
+        let res2 = process_callback_query(&query);
+        assert!(matches!(res2, CallbackResult::Forbidden(_)));
+    }
+
+    #[test]
+    fn test_wrong_state_rejected_403() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        set_test_pending_state("expected_secret_state", 10);
+
+        let query = "state=wrong_attacker_state&token=jwt_attacker_token";
+        let res = process_callback_query(query);
+        assert!(matches!(res, CallbackResult::Forbidden(_)));
+    }
+
+    #[test]
+    fn test_missing_state_rejected_403() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        set_test_pending_state("expected_secret_state", 10);
+
+        let query = "token=jwt_token_without_state";
+        let res = process_callback_query(query);
+        assert!(matches!(res, CallbackResult::Forbidden(_)));
+    }
+
+    #[test]
+    fn test_expired_state_rejected_403() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let test_state = "expired_state_nonce";
+        // Created 301 seconds ago (exceeds 300-second TTL)
+        set_test_pending_state(test_state, 301);
+
+        let query = format!("state={}&token=jwt_expired_test", test_state);
+        let res = process_callback_query(&query);
+        assert!(matches!(res, CallbackResult::Forbidden(_)));
+    }
+
+    #[test]
+    fn test_token_with_script_characters_safe() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let test_state = "script_test_state";
+        set_test_pending_state(test_state, 10);
+
+        let malicious_token = "malicious\"';<script>alert(1)</script>";
+        // URL-encoded: "malicious%22'%3B%3Cscript%3Ealert(1)%3C%2Fscript%3E"
+        let query = format!(
+            "state={}&token=malicious%22'%3B%3Cscript%3Ealert(1)%3C%2Fscript%3E&user=bob",
+            test_state
+        );
+
+        let res = process_callback_query(&query);
+        match res {
+            CallbackResult::Success(payload) => {
+                // Token is parsed as a plain data string without execution
+                assert_eq!(payload.token.as_deref(), Some(malicious_token));
+                // Serialization to JSON properly escapes quotes and avoids script injection
+                let json = serde_json::to_string(&payload).expect("Failed to serialize");
+                assert!(json.contains(r#"malicious\"';<script>alert(1)</script>"#));
+            }
+            CallbackResult::Forbidden(err) => panic!("Expected success, got: {}", err),
+        }
+    }
 }

@@ -1,10 +1,13 @@
 import { prisma } from '@/lib/prisma'
-import { PUBLIC_SELECT, pub, json, normUsername, requireMe, findBetween, rateLimit, OPTIONS } from '@/lib/friends'
+import { PUBLIC_SELECT, pub, json, normUsername, requireMe, findBetween, rateLimit, getClientIp, OPTIONS } from '@/lib/friends'
 
 export { OPTIONS }
 
 // GET /api/friends/search?username=ahmed  -> مطابقة تامة بس
 export async function GET(req) {
+  const ip = getClientIp(req)
+  if (!await rateLimit(`search-ip:${ip}`, 40, 60_000)) return json({ error: 'too_many_requests' }, 429, req)
+
   const me = await requireMe(req)
   if (!me) return json({ error: 'unauthorized' }, 401, req)
   if (!await rateLimit(`search:${me.id}`, 40)) return json({ error: 'too_many_requests' }, 429, req)

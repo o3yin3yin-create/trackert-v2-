@@ -19,9 +19,35 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata = {
-  title: 'bokra',
-  description: 'Habit Tracker & Focus Companion',
+  metadataBase: new URL('https://bokra101.vercel.app'),
+  title: {
+    default: 'bokra - Habit Tracker & Focus Companion',
+    template: '%s | bokra',
+  },
+  description: 'Habit Tracker & Ambient Focus Companion with live flight tracking and offline-first habit streaks.',
   manifest: '/manifest.json',
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://bokra101.vercel.app',
+    siteName: 'bokra',
+    title: 'bokra - Habit Tracker & Focus Companion',
+    description: 'Master your daily habits, Pomodoro sessions, and flight focus in an Apple-grade dark dashboard.',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'bokra - Habit Tracker & Ambient Focus Companion',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'bokra - Habit Tracker & Focus Companion',
+    description: 'Master your daily habits, Pomodoro sessions, and flight focus in an Apple-grade dark dashboard.',
+    images: ['/og-image.png'],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -38,8 +64,6 @@ export const viewport = {
   themeColor: '#000000',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: 'cover',
 }
 
@@ -61,7 +85,6 @@ export default function RootLayout({ children }) {
         style={{ backgroundColor: '#000000', colorScheme: 'dark' }}
       >
         <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
           <meta name="HandheldFriendly" content="true" />
           <meta name="MobileOptimized" content="width" />
           <meta name="format-detection" content="telephone=no" />

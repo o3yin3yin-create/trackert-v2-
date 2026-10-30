@@ -3,7 +3,7 @@ import { currentUser } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { getAuthUserId } from '@/lib/auth-server';
 import { getCorsHeaders, handleCorsOptions } from '@/lib/cors';
-import { rateLimit } from '@/lib/rateLimit';
+import { rateLimit, getClientIp } from '@/lib/rateLimit';
 
 export async function OPTIONS(req) {
   return handleCorsOptions(req);
@@ -11,6 +11,11 @@ export async function OPTIONS(req) {
 
 // Fetch the complete state for the user
 export async function GET(req) {
+  const ip = getClientIp(req);
+  if (!await rateLimit(`sync-get-ip:${ip}`, 120, 60_000)) {
+    return NextResponse.json({ error: 'Too many sync requests from this IP' }, { status: 429, headers: getCorsHeaders(req) });
+  }
+
   const userId = await getAuthUserId(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: getCorsHeaders(req) });
 
@@ -211,6 +216,11 @@ export async function GET(req) {
 
 // Save the complete state to the database
 export async function POST(req) {
+  const ip = getClientIp(req);
+  if (!await rateLimit(`sync-post-ip:${ip}`, 60, 60_000)) {
+    return NextResponse.json({ error: 'Too many sync updates from this IP. Please slow down.' }, { status: 429, headers: getCorsHeaders(req) });
+  }
+
   const userId = await getAuthUserId(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: getCorsHeaders(req) });
 

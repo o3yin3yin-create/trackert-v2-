@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /desktop-auth/
+
+Sitemap: https://bokra101.vercel.app/sitemap.xml

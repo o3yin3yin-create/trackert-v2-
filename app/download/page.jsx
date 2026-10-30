@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { 
   Download, Monitor, Smartphone, Apple, Share, 
   PlusSquare, BookOpen, ExternalLink, ChevronLeft, 
-  Terminal, Laptop, Check, ArrowRight, ArrowLeft
+  Terminal, ArrowRight, ArrowLeft
 } from 'lucide-react';
 
 export default function DownloadPage() {
@@ -15,7 +15,7 @@ export default function DownloadPage() {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('daybase_guide_lang');
       if (saved === 'ar' || saved === 'en') {
-        setLang(saved);
+        queueMicrotask(() => setLang(saved));
       }
     }
   }, []);
@@ -30,10 +30,11 @@ export default function DownloadPage() {
   const isAr = lang === 'ar';
 
   const GITHUB_RELEASES_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/tag/v0.1.0";
-  const MAC_DMG_URL = "/bokra.dmg";
+  const MAC_DMG_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.0/bokra_0.1.0_universal.dmg";
   const WIN_ZIP_URL = "/bokra-windows.zip";
-  const LINUX_APPIMAGE_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.0/bokra_0.1.0_amd64.AppImage";
   const LINUX_DEB_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.0/bokra_0.1.0_amd64.deb";
+  const LINUX_APPIMAGE_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.0/bokra_0.1.0_amd64.AppImage";
+  const LINUX_RPM_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.0/bokra-0.1.0-1.x86_64.rpm";
   const ANDROID_APK_URL = "/bokra.apk";
 
   return (
@@ -128,33 +129,42 @@ export default function DownloadPage() {
                   <Apple size={24} />
                 </div>
                 <span className="text-[11px] font-mono font-bold px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/60">
-                  Universal (M1/M2/M3/M4 & Intel)
+                  Universal (Apple Silicon & Intel)
                 </span>
               </div>
 
               <div className="flex flex-col gap-1">
                 <h3 className="text-lg font-bold text-white">
-                  {isAr ? 'ماك (macOS)' : 'macOS'}
+                  {isAr ? 'ماك (macOS Universal)' : 'macOS (Universal - Apple Silicon & Intel)'}
                 </h3>
                 <p className="text-xs text-white/50 leading-relaxed">
                   {isAr 
-                    ? 'حزمة تثبيت رسمية .DMG متوافقة مع أجهزة Apple Silicon ومعالجات Intel.'
-                    : 'Native macOS desktop bundle with custom retina installer for Apple Silicon and Intel.'}
+                    ? 'حزمة .DMG رسمية شاملة لكافة أجهزة ماك (Apple Silicon M1/M2/M3/M4 ومعالجات Intel 64-bit). بناء موقع ذاتياً (Ad-hoc build).'
+                    : 'Universal macOS bundle compatible with both Apple Silicon (ARM64) and Intel (x86_64) Macs. Ad-hoc self-signed (unnotarized).'}
                 </p>
+                <div className="mt-2 p-2.5 rounded-xl bg-white/5 border border-white/10 text-[11px] text-white/70 leading-relaxed">
+                  <span className="font-semibold text-white block mb-1">
+                    {isAr ? 'طريقة التشغيل لتجاوز تنبيه الأمان (Gatekeeper):' : 'Bypass Gatekeeper Warning:'}
+                  </span>
+                  {isAr ? (
+                    <>بعد سحب التطبيق لمجلد Applications، اضغط بزر الماوس الأيمن واختر <strong className="text-white">Open</strong>، أو نفذ الأمر في Terminal:<br/><code className="font-mono text-[10px] text-white/90 bg-black/40 px-1 py-0.5 rounded">xattr -cr /Applications/bokra.app</code></>
+                  ) : (
+                    <>After moving to Applications, right-click and choose <strong className="text-white">Open</strong>, or run in Terminal:<br/><code className="font-mono text-[10px] text-white/90 bg-black/40 px-1 py-0.5 rounded">xattr -cr /Applications/bokra.app</code></>
+                  )}
+                </div>
               </div>
             </div>
 
             <div className="flex flex-col gap-2 pt-2">
               <a
                 href={MAC_DMG_URL}
-                download="bokra.dmg"
                 className="w-full h-12 rounded-xl bg-white text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
               >
                 <Download size={15} />
-                <span>{isAr ? 'تحميل مباشر للماك (.DMG)' : 'Direct Download for Mac (.DMG)'}</span>
+                <span>{isAr ? 'تحميل مباشر للماك (.DMG)' : 'Download for Mac (.DMG)'}</span>
               </a>
               <span className="text-[10px] text-center text-white/40 font-mono">
-                {isAr ? 'تحميل مباشر فوري من السيرفر (6.1 MB)' : 'Direct download from server (6.1 MB)'}
+                {isAr ? 'تحميل عبر GitHub Releases (حجم: 10.3 MB - ARM64)' : 'Hosted on GitHub Releases (10.3 MB - ARM64)'}
               </span>
             </div>
           </div>
@@ -177,8 +187,8 @@ export default function DownloadPage() {
                 </h3>
                 <p className="text-xs text-white/50 leading-relaxed">
                   {isAr 
-                    ? 'تطبيق سطح مكتب سريع ومستقل يعمل بدون متصفح مع حفظ بيانات أوفلاين كامل ودعم الإشعارات.'
-                    : 'Fast standalone desktop application with offline caching and native window integration.'}
+                    ? 'حزمة اختصار سطح المكتب ومشغل نافذة الويب المستقلة (PWA Launcher) مع أيقونة bokra وحفظ البيانات محليا.'
+                    : 'Lightweight desktop shortcut installer & standalone app window launcher for Windows.'}
                 </p>
               </div>
             </div>
@@ -190,11 +200,11 @@ export default function DownloadPage() {
                 className="w-full h-12 rounded-xl bg-white text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
               >
                 <Download size={15} />
-                <span>{isAr ? 'تحميل حزمة ويندوز (.ZIP)' : 'Download for Windows (.ZIP)'}</span>
+                <span>{isAr ? 'تحميل حزمة المشغل (.ZIP خفيف)' : 'Download Launcher (.ZIP)'}</span>
               </a>
               <div className="flex items-center justify-center gap-1.5 pt-0.5">
                 <span className="text-[10px] text-center text-white/40 font-mono">
-                  {isAr ? 'تحميل مباشر فوري (تطبيق مستقل مع اختصار سطح المكتب)' : 'Direct fast download (standalone desktop app & shortcut)'}
+                  {isAr ? 'مشغل نافذة مستقلة وأداة تثبيت اختصار سطح المكتب' : 'Standalone app window launcher & desktop shortcut tool'}
                 </span>
               </div>
             </div>
@@ -218,30 +228,39 @@ export default function DownloadPage() {
                 </h3>
                 <p className="text-xs text-white/50 leading-relaxed">
                   {isAr 
-                    ? 'نسخة جاهزة بصيغة AppImage تعمل على أي توزيعة، مع حزمة .DEB لأوبونتو وديبيان.'
-                    : 'Universal AppImage binary compatible with any Linux distro, plus .DEB package for Ubuntu and Debian.'}
+                    ? 'حزمة .DEB سريعة وخفيفة لأوبونتو وديبيان ومينت (7.6 MB)، أو ملف AppImage الشامل لجميع التوزيعات (86 MB).'
+                    : 'Lightweight fast .DEB package for Ubuntu/Debian/Mint (7.6 MB), or universal standalone AppImage (86 MB).'}
                 </p>
               </div>
             </div>
 
             <div className="flex flex-col gap-2 pt-2">
               <a
-                href={LINUX_APPIMAGE_URL}
+                href={LINUX_DEB_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full h-12 rounded-xl bg-white text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
               >
                 <Download size={15} />
-                <span>{isAr ? 'تحميل (.AppImage)' : 'Download (.AppImage)'}</span>
+                <span>{isAr ? 'تحميل حزمة دبيان السريعة (.DEB - 7.6 MB)' : 'Download Fast .DEB (7.6 MB)'}</span>
               </a>
-              <div className="text-center">
+              <div className="flex items-center justify-center gap-3 pt-1 text-[11px] font-mono text-white/50">
                 <a 
-                  href={LINUX_DEB_URL} 
+                  href={LINUX_APPIMAGE_URL} 
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[11px] text-white/40 hover:text-white underline font-mono transition-colors"
+                  className="hover:text-white underline transition-colors"
                 >
-                  {isAr ? 'أو حمّل حزمة دبيان (.DEB)' : 'or download .DEB package'}
+                  {isAr ? 'AppImage شامل (86 MB)' : 'Universal AppImage (86 MB)'}
+                </a>
+                <span>·</span>
+                <a 
+                  href={LINUX_RPM_URL} 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white underline transition-colors"
+                >
+                  {isAr ? 'Fedora / RHEL (.RPM - 7.6 MB)' : 'Fedora / RHEL (.RPM - 7.6 MB)'}
                 </a>
               </div>
             </div>
@@ -278,10 +297,10 @@ export default function DownloadPage() {
                 className="w-full h-12 rounded-xl bg-white text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
               >
                 <Download size={15} />
-                <span>{isAr ? 'تحميل ملف APK المباشر' : 'Download Android APK'}</span>
+                <span>{isAr ? 'تحميل ملف APK المباشر (1.67 MB)' : 'Download Android APK (1.67 MB)'}</span>
               </a>
               <span className="text-[10px] text-center text-white/30 font-mono">
-                {isAr ? 'تحميل فوري مباشر من السيرفر' : 'Fast direct download from host'}
+                {isAr ? 'تحميل فوري مباشر - تثبيت محلي بدون متجر' : 'Direct host download - 1.67 MB standalone package'}
               </span>
             </div>
           </div>

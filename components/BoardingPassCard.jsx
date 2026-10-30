@@ -50,7 +50,7 @@ const BoardingPassCard = ({ flight, seat, date, isArrived, lang, isExpanded, onT
             <Plane size={isExpanded ? 24 : 16} className="text-black mb-1 transition-all duration-300" />
             <div className="w-full h-[2px] bg-gray-200 border-t-2 border-dashed border-gray-300"></div>
             <span className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest text-center">
-              'Duration'
+              Duration
             </span>
             <span className={`${isExpanded ? 'text-sm' : 'text-xs'} font-black text-black transition-all duration-300`}>
               {Math.floor((flight.totalSeconds || flight.remainingSeconds) / 3600)}h {Math.floor(((flight.totalSeconds || flight.remainingSeconds) % 3600) / 60)}m
@@ -74,23 +74,23 @@ const BoardingPassCard = ({ flight, seat, date, isArrived, lang, isExpanded, onT
         {isExpanded && (
           <div className="grid grid-cols-2 gap-y-6 gap-x-4 mt-8">
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">'Flight No.'</span>
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Flight No.</span>
               <span className="text-lg font-black">{flight.callsign}</span>
             </div>
             <div className="flex flex-col items-end">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">'Distance'</span>
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Distance</span>
               <span className="text-lg font-black">{distance} km</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">'Boarding'</span>
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Boarding</span>
               <span className="text-lg font-black text-black">{currentTime}</span>
             </div>
             <div className="flex flex-col items-end">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">'Date'</span>
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Date</span>
               <span className="text-lg font-black">{date}</span>
             </div>
             <div className="flex flex-col col-span-2 items-center text-center mt-2">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">'Seat'</span>
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Seat</span>
               <span className="text-3xl font-black text-black">{seat || '12A'}</span>
             </div>
           </div>
@@ -131,8 +131,8 @@ const BoardingPassCard = ({ flight, seat, date, isArrived, lang, isExpanded, onT
                   <rect x="5" y="5" width="230" height="90" fill="none" stroke="#1e293b" strokeWidth="6" />
                   <rect x="12" y="12" width="216" height="76" fill="none" stroke="#1e293b" strokeWidth="2" />
                   <line x1="12" y1="54" x2="228" y2="54" stroke="#1e293b" strokeWidth="3" />
-                  <text x="120" y="42" fill="#1e293b" fontSize="28" fontFamily="Arial, Helvetica, sans-serif" fontWeight="900" textAnchor="middle" letterSpacing="4">'ARRIVED'</text>
-                  <text x="25" y="78" fill="#1e293b" fontSize="14" fontFamily="Arial, Helvetica, sans-serif" fontWeight="bold">'FLIGHT'</text>
+                  <text x="120" y="42" fill="#1e293b" fontSize="28" fontFamily="Arial, Helvetica, sans-serif" fontWeight="900" textAnchor="middle" letterSpacing="4">ARRIVED</text>
+                  <text x="25" y="78" fill="#1e293b" fontSize="14" fontFamily="Arial, Helvetica, sans-serif" fontWeight="bold">FLIGHT</text>
                   <text x="120" y="80" fill="#1e293b" fontSize="22" fontFamily="Arial, Helvetica, sans-serif" fontWeight="900" textAnchor="middle">{flight.callsign}</text>
                   <text x="215" y="78" fill="#1e293b" fontSize="14" fontFamily="Arial, Helvetica, sans-serif" fontWeight="bold" textAnchor="end">{date.split('/')[0]}</text>
                 </g>

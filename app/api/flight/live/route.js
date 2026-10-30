@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { FlightRadar24API } from 'flightradarapi';
-import { rateLimit } from '@/lib/rateLimit';
+import { rateLimit, getClientIp } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +9,7 @@ const CACHE_TTL_MS = 5000; // 5 seconds cache
 
 export async function GET(request) {
   try {
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anon';
+    const ip = getClientIp(request);
     if (!await rateLimit(`flight-live:${ip}`, 45, 60_000)) {
       return NextResponse.json({ error: "Too many live tracking requests" }, { status: 429 });
     }

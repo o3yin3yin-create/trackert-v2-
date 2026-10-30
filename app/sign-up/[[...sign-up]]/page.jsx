@@ -2,6 +2,14 @@ import { SignUp } from '@clerk/nextjs';
 import Link from 'next/link';
 import { X } from 'lucide-react';
 
+export const metadata = {
+  title: 'Create Account | bokra',
+  description: 'Create your free bokra account to track habits, master focus, and compete with friends.',
+  alternates: {
+    canonical: '/sign-up',
+  },
+};
+
 export default function SignUpPage() {
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center bg-black px-4 py-8 select-none">

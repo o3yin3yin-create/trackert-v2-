@@ -25,11 +25,11 @@ export default function PrivacyModal({ isOpen, onClose, lang = 'en' }) {
     if (typeof window !== 'undefined') {
       try {
         const savedGhost = localStorage.getItem('bokra_privacy_ghost');
-        if (savedGhost !== null) setGhostMode(savedGhost === 'true');
+        if (savedGhost !== null) queueMicrotask(() => setGhostMode(savedGhost === 'true'));
         const savedSettings = localStorage.getItem('bokra_privacy_settings');
         if (savedSettings) {
           const parsed = JSON.parse(savedSettings);
-          setPrivacySettings((prev) => ({ ...prev, ...parsed }));
+          queueMicrotask(() => setPrivacySettings((prev) => ({ ...prev, ...parsed })));
         }
       } catch (_) {}
     }

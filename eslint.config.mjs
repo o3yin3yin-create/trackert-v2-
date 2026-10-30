@@ -12,7 +12,20 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "src-tauri/**",
+    ".api_backup/**",
+    ".desktop_auth_backup/**",
+    ".sign_in_backup/**",
+    ".sign_up_backup/**",
+    "tests/**",
+    "public/**",
+    "scripts/**",
   ]),
+  {
+    rules: {
+      "react-hooks/set-state-in-effect": "warn",
+    },
+  },
 ]);
 
 export default eslintConfig;

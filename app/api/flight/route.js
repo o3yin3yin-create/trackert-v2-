@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import { FlightRadar24API } from 'flightradarapi';
-
-
-
+import { rateLimit, getClientIp } from '@/lib/rateLimit';
 
 export async function GET(request) {
   try {
+    const ip = getClientIp(request);
+    if (!await rateLimit(`flight-list:${ip}`, 20, 60_000)) {
+      return NextResponse.json({ error: 'Too many flight requests. Please slow down.' }, { status: 429 });
+    }
+
     const frapi = new FlightRadar24API();
     const flights = await frapi.getFlights();
     
@@ -92,19 +95,21 @@ export async function GET(request) {
     // Sort longest first
     validFlights.sort((a, b) => b.remainingSeconds - a.remainingSeconds);
 
-    // Inject a 1-minute test flight
-    validFlights.unshift({
-      id: "TEST-1MIN",
-      airline: "Test Airlines",
-      callsign: "TST001",
-      origin: "TST",
-      destination: "TST",
-      originCoords: { lat: 0, lng: 0 },
-      destCoords: { lat: 1, lng: 1 },
-      remainingSeconds: 60,
-      estimatedArrival: Math.floor(Date.now() / 1000) + 60,
-      model: "Test Aircraft"
-    });
+    // Inject a 1-minute test flight only in development environment
+    if (process.env.NODE_ENV !== 'production') {
+      validFlights.unshift({
+        id: "TEST-1MIN",
+        airline: "Test Airlines",
+        callsign: "TST001",
+        origin: "TST",
+        destination: "TST",
+        originCoords: { lat: 0, lng: 0 },
+        destCoords: { lat: 1, lng: 1 },
+        remainingSeconds: 60,
+        estimatedArrival: Math.floor(Date.now() / 1000) + 60,
+        model: "Test Aircraft"
+      });
+    }
 
     return NextResponse.json({ flights: validFlights.slice(0, 25) });
   } catch (error) {

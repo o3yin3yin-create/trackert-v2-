@@ -70,15 +70,15 @@ export default function WeeklyScheduleCalendar({
   const [formDuration, setFormDuration] = useState('1h 30m');
   const [formLocation, setFormLocation] = useState('');
 
-  if (!isOpen) return null;
-
   // Filter weekly scheduled habits
   const weeklyHabits = useMemo(() => {
+    if (!isOpen) return [];
     return habits.filter(h => h && (h.frequency === 'weekly' || (Array.isArray(h.scheduleDays) && h.scheduleDays.length > 0)));
-  }, [habits]);
+  }, [habits, isOpen]);
 
   // Group habits by day (0..6) and sort chronologically by time
   const habitsByDay = useMemo(() => {
+    if (!isOpen) return { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
     const map = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
 
     weeklyHabits.forEach(h => {
@@ -108,7 +108,9 @@ export default function WeeklyScheduleCalendar({
     });
 
     return map;
-  }, [weeklyHabits]);
+  }, [weeklyHabits, isOpen]);
+
+  if (!isOpen) return null;
 
   // Open Form for Adding New Item
   const handleOpenAdd = (targetDay = selectedDay) => {

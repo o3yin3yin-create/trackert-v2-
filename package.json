@@ -11,7 +11,7 @@
     "tauri:build": "source $HOME/.cargo/env && tauri build -b app && ./scripts/build_dmg.sh",
     "dmg:build": "./scripts/build_dmg.sh",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -41,6 +41,7 @@
   "devDependencies": {
     "@capacitor/cli": "^7.0.0",
     "@capacitor/ios": "^7.0.0",
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4",
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/cli": "^2.12.3",

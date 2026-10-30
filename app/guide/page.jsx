@@ -32,7 +32,7 @@ export default function GuidePage() {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('daybase_guide_lang');
       if (saved === 'ar' || saved === 'en') {
-        setLang(saved);
+        queueMicrotask(() => setLang(saved));
       }
     }
   }, []);

@@ -1,38 +1,39 @@
 "use client";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Check } from 'lucide-react';
 import { useUser, SignIn } from '@clerk/nextjs';
-import { dark } from '@clerk/themes';
 import { clerkAppearance } from '@/lib/clerkTheme';
 
 export default function DesktopAuthPage() {
   const { isSignedIn, isLoaded, user } = useUser();
-  const [port, setPort] = useState(28282);
-  const [status, setStatus] = useState('login_required'); // login_required, authenticating, success, error
-  const [tokenData, setTokenData] = useState(null);
-  const [errorMessage, setErrorMessage] = useState('');
-
-  useEffect(() => {
+  const [port] = useState(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const portParam = params.get('port');
       if (portParam) {
         const parsed = parseInt(portParam, 10);
         if (!isNaN(parsed) && parsed > 1024 && parsed < 65535) {
-          setPort(parsed);
+          return parsed;
         }
       }
     }
-  }, []);
-
-  // When user is signed in (or completes login), automatically complete authentication and link desktop app
-  useEffect(() => {
-    if (isLoaded && isSignedIn && user) {
-      handleCompleteAuth();
+    return 28282;
+  });
+  const [stateNonce] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const s = params.get('state');
+      if (s && /^[a-zA-Z0-9_\-]{6,128}$/.test(s)) {
+        return s;
+      }
     }
-  }, [isLoaded, isSignedIn, user, port]);
+    return null;
+  });
+  const [status, setStatus] = useState('login_required'); // login_required, authenticating, success, error
+  const [tokenData, setTokenData] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const handleCompleteAuth = async () => {
+  const handleCompleteAuth = useCallback(async () => {
     setStatus('authenticating');
     try {
       const res = await fetch('/api/auth/desktop-token', {
@@ -52,22 +53,31 @@ export default function DesktopAuthPage() {
       setTokenData(data);
       setStatus('success');
 
-      const localCallbackUrl = `http://127.0.0.1:${port}/callback?token=${encodeURIComponent(data.token)}&user=${encodeURIComponent(JSON.stringify(data.user))}`;
+      // Restrict callback strictly to loopback interface on the validated port, including state nonce
+      const stateQuery = stateNonce ? `&state=${encodeURIComponent(stateNonce)}` : '';
+      const localCallbackUrl = `http://127.0.0.1:${port}/callback?token=${encodeURIComponent(data.token)}&user=${encodeURIComponent(JSON.stringify(data.user))}${stateQuery}`;
       
       try {
         fetch(localCallbackUrl, { mode: 'no-cors' }).catch(() => {});
       } catch (e) {}
 
+      // Use location.replace so token does not linger in browser back/forward history
       setTimeout(() => {
-        window.location.href = localCallbackUrl;
+        window.location.replace(localCallbackUrl);
       }, 500);
 
     } catch (err) {
-      console.error('Desktop Auth Error:', err);
       setStatus('error');
-      setErrorMessage(err.message || 'Error communicating with bokra desktop');
+      setErrorMessage(err?.message || 'Error communicating with bokra desktop');
     }
-  };
+  }, [port, stateNonce]);
+
+  // When user is signed in (or completes login), automatically complete authentication and link desktop app
+  useEffect(() => {
+    if (isLoaded && isSignedIn && user) {
+      queueMicrotask(handleCompleteAuth);
+    }
+  }, [isLoaded, isSignedIn, user, handleCompleteAuth]);
 
   const copyToken = () => {
     if (tokenData?.token) {

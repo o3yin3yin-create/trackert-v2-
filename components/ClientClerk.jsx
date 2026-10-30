@@ -1,5 +1,5 @@
 "use client";
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { isTauri, invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { LogOut, ExternalLink, KeyRound } from 'lucide-react';
@@ -20,7 +20,7 @@ export const ClerkProvider = ({ children }) => {
   const [manualCode, setManualCode] = useState('');
   const [showManualInput, setShowManualInput] = useState(false);
 
-  const attachUserMethods = (rawUser) => {
+  function attachUserMethods(rawUser) {
     if (!rawUser) return null;
     return {
       ...rawUser,
@@ -51,7 +51,39 @@ export const ClerkProvider = ({ children }) => {
         return rawUser;
       }
     };
-  };
+  }
+
+  const applyLoginData = useCallback((token, userStr) => {
+    localStorage.setItem('bokra_desktop_token', token);
+    let parsedUser = { id: 'user_' + Date.now(), name: 'User' };
+    if (userStr) {
+      try {
+        parsedUser = typeof userStr === 'string' ? JSON.parse(userStr) : userStr;
+      } catch (e) {}
+    }
+    localStorage.setItem('bokra_desktop_user', JSON.stringify(parsedUser));
+    setUser(attachUserMethods(parsedUser));
+    setIsWaitingForBrowser(false);
+    setShowManualInput(false);
+
+    // Sync latest user profile if username is missing
+    if (!parsedUser.username) {
+      apiFetch('/api/user/username')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.username) {
+            const refreshed = { ...parsedUser, username: data.username };
+            if (data.name) refreshed.name = data.name;
+            if (data.avatar) refreshed.avatar = data.avatar;
+            localStorage.setItem('bokra_desktop_user', JSON.stringify(refreshed));
+            setUser(attachUserMethods(refreshed));
+          }
+        })
+        .catch(() => {});
+    }
+
+    window.dispatchEvent(new CustomEvent('bokra-desktop-auth-success', { detail: { token, user: parsedUser } }));
+  }, [attachUserMethods]);
 
   // Load saved session on startup
   useEffect(() => {
@@ -83,7 +115,7 @@ export const ClerkProvider = ({ children }) => {
       }
       setIsLoaded(true);
     }
-  }, []);
+  }, [attachUserMethods]);
 
   // Listen for callback from Tauri loopback server
   useEffect(() => {
@@ -96,11 +128,14 @@ export const ClerkProvider = ({ children }) => {
           listen('desktop-auth-callback', (event) => {
             if (!isSubscribed) return;
             try {
-              const queryString = event.payload || '';
-              const params = new URLSearchParams(queryString);
-              const token = params.get('token');
-              const userStr = params.get('user');
-              const spotifyToken = params.get('spotify_token');
+              // Handle structured serde_json payload or fallback query string
+              const payload = event.payload && typeof event.payload === 'object'
+                ? event.payload
+                : Object.fromEntries(new URLSearchParams(typeof event.payload === 'string' ? event.payload : ''));
+
+              const token = payload.token || null;
+              const userStr = payload.user || null;
+              const spotifyToken = payload.spotify_token || null;
 
               if (spotifyToken) {
                 localStorage.setItem('daybase_spotify_refresh_token', spotifyToken);
@@ -128,54 +163,30 @@ export const ClerkProvider = ({ children }) => {
       isSubscribed = false;
       if (unlisten) unlisten();
     };
-  }, []);
-
-  const applyLoginData = (token, userStr) => {
-    localStorage.setItem('bokra_desktop_token', token);
-    let parsedUser = { id: 'user_' + Date.now(), name: 'User' };
-    if (userStr) {
-      try {
-        parsedUser = typeof userStr === 'string' ? JSON.parse(userStr) : userStr;
-      } catch (e) {}
-    }
-    localStorage.setItem('bokra_desktop_user', JSON.stringify(parsedUser));
-    setUser(attachUserMethods(parsedUser));
-    setIsWaitingForBrowser(false);
-    setShowManualInput(false);
-
-    // Sync latest user profile if username is missing
-    if (!parsedUser.username) {
-      apiFetch('/api/user/username')
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          if (data?.username) {
-            const refreshed = { ...parsedUser, username: data.username };
-            if (data.name) refreshed.name = data.name;
-            if (data.avatar) refreshed.avatar = data.avatar;
-            localStorage.setItem('bokra_desktop_user', JSON.stringify(refreshed));
-            setUser(attachUserMethods(refreshed));
-          }
-        })
-        .catch(() => {});
-    }
-
-    window.dispatchEvent(new CustomEvent('bokra-desktop-auth-success', { detail: { token, user: parsedUser } }));
-  };
+  }, [applyLoginData]);
 
   const openLoginInBrowser = async () => {
     try {
       setIsWaitingForBrowser(true);
       let port = 28282;
+      let state = '';
 
       try {
         if (isTauri()) {
-          port = await invoke('start_auth_server');
+          const authInfo = await invoke('start_auth_server');
+          if (authInfo && typeof authInfo === 'object') {
+            port = authInfo.port || 28282;
+            state = authInfo.state || '';
+          } else if (typeof authInfo === 'number') {
+            port = authInfo;
+          }
         }
       } catch (e) {
         console.warn('Tauri start_auth_server fallback to port 28282', e);
       }
 
-      const loginUrl = `https://bokra101.vercel.app/desktop-auth?port=${port}`;
+      const stateParam = state ? `&state=${encodeURIComponent(state)}` : '';
+      const loginUrl = `https://bokra101.vercel.app/desktop-auth?port=${port}${stateParam}`;
 
       try {
         if (isTauri()) {

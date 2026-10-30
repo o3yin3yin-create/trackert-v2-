@@ -1,12 +1,21 @@
 import { prisma } from '@/lib/prisma'
-import { PUBLIC_SELECT, PRESENCE_SELECT, pub, json, requireMe, computeRealPresence, OPTIONS } from '@/lib/friends'
+import { PUBLIC_SELECT, PRESENCE_SELECT, pub, json, requireMe, computeRealPresence, OPTIONS, rateLimit, getClientIp } from '@/lib/friends'
 
 export { OPTIONS }
 
 // GET /api/friends -> { friends, incoming, outgoing, blocked }
 export async function GET(req) {
+  const ip = getClientIp(req)
+  if (!await rateLimit(`friends-list-ip:${ip}`, 60, 60_000)) {
+    return json({ error: 'too_many_requests' }, 429, req)
+  }
+
   const me = await requireMe(req)
   if (!me) return json({ error: 'unauthorized' }, 401, req)
+
+  if (!await rateLimit(`friends-list-user:${me.id}`, 60, 60_000)) {
+    return json({ error: 'too_many_requests' }, 429, req)
+  }
 
   const include = {
     requester: { select: PRESENCE_SELECT },

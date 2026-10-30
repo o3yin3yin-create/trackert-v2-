@@ -1,12 +1,17 @@
 import { prisma } from '@/lib/prisma'
 import { json, requireMe, normUsername, OPTIONS } from '@/lib/friends'
-import { rateLimit } from '@/lib/rateLimit'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 
 export { OPTIONS }
 
 const ALLOWED_NUDGE_TYPES = ['nudge', 'poke', 'cheer', 'study']
 
 export async function POST(req) {
+  const ip = getClientIp(req)
+  if (!await rateLimit(`nudge-ip:${ip}`, 20, 60_000)) {
+    return json({ error: 'too_many_requests' }, 429, req)
+  }
+
   const me = await requireMe(req)
   if (!me) return json({ error: 'unauthorized' }, 401, req)
 

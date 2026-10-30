@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { FlightRadar24API } from 'flightradarapi';
-import { rateLimit } from '@/lib/rateLimit';
+import { rateLimit, getClientIp } from '@/lib/rateLimit';
 
 export async function GET(request) {
   try {
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anon';
+    const ip = getClientIp(request);
     if (!await rateLimit(`flight-search:${ip}`, 20, 60_000)) {
       return NextResponse.json({ error: "Too many flight searches. Please wait a moment." }, { status: 429 });
     }
