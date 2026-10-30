@@ -8461,14 +8461,13 @@ function AppContent({ isPreview = false }) {
                                   <AvatarIcon name={isMounted ? avatar : 'user'} size={24} />
                                 </div>
                                 <div className="flex flex-col min-w-0">
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
                                     <span className="text-base font-bold text-white truncate">
                                       {user.fullName || user.firstName || 'Explorer'}
                                     </span>
                                     {isAdmin && (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-black tracking-wider uppercase shrink-0 shadow-sm">
-                                        <Sparkles size={10} className="text-amber-400" />
-                                        <span>{isAr ? 'مطور التطبيق' : 'CREATOR & DEV'}</span>
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[9px] font-mono font-bold tracking-wider uppercase shrink-0">
+                                        DEV
                                       </span>
                                     )}
                                   </div>

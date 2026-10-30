@@ -1281,42 +1281,41 @@ export default function FriendsModal({
 
             {/* Bottom Card: Your Username (Distinguished for Creator / Developer) */}
             {myUsername && (
-              <div className={`mt-8 rounded-3xl p-4 flex items-center justify-between shadow-2xl transition-all ${
+              <div className={`mt-8 rounded-3xl p-3.5 sm:p-4 flex items-center justify-between gap-3 shadow-2xl transition-all ${
                 isAdmin 
-                  ? 'bg-gradient-to-br from-[#16130b] via-[#0d0d0f] to-[#0c0c0e] border border-amber-500/40 shadow-[0_0_25px_rgba(245,158,11,0.12)]' 
+                  ? 'bg-[#12100b] border border-amber-500/30' 
                   : 'bg-[#0c0c0e] border border-white/10'
               }`}>
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-base uppercase shrink-0 ${
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-base uppercase shrink-0 ${
                     isAdmin 
-                      ? 'bg-[#1c1810] text-amber-300 border border-amber-500/40 shadow-inner' 
+                      ? 'bg-[#1c1810] text-amber-300 border border-amber-500/40' 
                       : 'bg-black text-white border border-white/15'
                   }`}>
-                    <AvatarIcon name={myAvatar || 'user'} size={22} className={isAdmin ? 'text-amber-300' : 'text-white'} />
+                    <AvatarIcon name={myAvatar || 'user'} size={20} className={isAdmin ? 'text-amber-300' : 'text-white'} />
                   </div>
-                  <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base font-black font-mono text-white truncate">
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-sm font-bold font-mono text-white truncate">
                         @{myUsername}
                       </span>
                       {isAdmin && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500/25 via-amber-400/20 to-orange-500/25 text-amber-300 border border-amber-500/50 text-[10px] font-mono font-black tracking-wider uppercase shrink-0 shadow-[0_0_12px_rgba(245,158,11,0.25)]">
-                          <Sparkles size={10} className="text-amber-400" />
-                          <span>{isRtl ? 'مطور التطبيق' : 'CREATOR & DEV'}</span>
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[9px] font-mono font-bold tracking-wider uppercase shrink-0">
+                          DEV
                         </span>
                       )}
                     </div>
-                    <span className="text-[11px] font-mono truncate mt-0.5 text-white/40">
-                      {isAdmin ? (isRtl ? 'المطور وصاحب المنصة' : 'Lead Creator & Developer') : (t('yourUsername'))}
+                    <span className="text-[11px] font-mono truncate text-white/40 mt-0.5">
+                      {isAdmin ? (isRtl ? 'المطور' : 'Developer') : t('yourUsername')}
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     type="button"
                     onClick={handleCopyUsername}
-                    className="px-3.5 py-2 rounded-full border border-white/20 text-white font-bold text-xs hover:bg-white/10 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-full border border-white/20 text-white font-bold text-xs hover:bg-white/10 active:scale-95 transition-all cursor-pointer flex items-center gap-1"
                   >
                     {copied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
                     <span>{t('copy')}</span>
@@ -1324,7 +1323,7 @@ export default function FriendsModal({
                   <button
                     type="button"
                     onClick={handleShare}
-                    className="px-3.5 py-2 rounded-full bg-white text-black font-bold text-xs hover:bg-white/90 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-full bg-white text-black font-bold text-xs hover:bg-white/90 active:scale-95 transition-all cursor-pointer flex items-center gap-1"
                   >
                     <Share2 size={12} />
                     <span>{t('share')}</span>
