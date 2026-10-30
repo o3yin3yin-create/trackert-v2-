@@ -14,6 +14,8 @@ export async function GET(req) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const nowMs = Date.now();
+
     // 1. Core database aggregates in parallel
     const [
       totalUsers,
@@ -21,7 +23,7 @@ export async function GET(req) {
       habitsList,
       dailyLogs,
       friendships,
-      liveActiveUsers,
+      rawActiveUsers,
       spotifyUsersCount
     ] = await Promise.all([
       prisma.user.count(),
@@ -49,6 +51,18 @@ export async function GET(req) {
       }),
       prisma.user.count({ where: { hasSpotifyAccess: true } })
     ]);
+
+    // Filter live active users by checking if flight is still in progress or session is fresh
+    const liveActiveUsers = rawActiveUsers.filter(u => {
+      if (u.activeSessionType === 'flight') {
+        const flightData = u.activeSessionData?.flight;
+        if (flightData?.estimatedArrival && (flightData.estimatedArrival * 1000) > nowMs) {
+          return true;
+        }
+        return (nowMs - new Date(u.updatedAt).getTime()) < 2 * 3600 * 1000;
+      }
+      return (nowMs - new Date(u.updatedAt).getTime()) < 2 * 3600 * 1000;
+    });
 
     // 2. Compute focus hours, habit completion counts, and per-user focus
     let totalFocusSeconds = 0;
@@ -128,6 +142,7 @@ export async function GET(req) {
         totalUsers,
         totalHabitsConfigured: totalHabits,
         totalHabitCompletions,
+        totalDailyLogs: dailyLogs.length,
         totalFocusHours: Math.round((totalFocusSeconds / 3600) * 10) / 10,
         activeNowCount: liveActiveUsers.length,
         totalFriendships: acceptedFriendships.length,
