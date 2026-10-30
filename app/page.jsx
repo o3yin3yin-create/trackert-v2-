@@ -957,7 +957,27 @@ function AppContent({ isPreview = false }) {
     return false;
   }, [isPreview, clerkAuth.isSignedIn, user]);
   const { getToken: getClerkToken } = useAuth();
-  const { signOut } = useClerk();
+  const { signOut, openSignIn } = useClerk();
+
+  const handleAuthAction = useCallback(() => {
+    const isDesktop = typeof window !== 'undefined' && (
+      window.__TAURI_INTERNALS__ !== undefined || 
+      window.__TAURI__ !== undefined ||
+      window.isTauri === true ||
+      window.location.protocol === 'tauri:' || 
+      window.location.protocol === 'asset:' ||
+      window.location.hostname === 'tauri.localhost' ||
+      process.env.NEXT_PUBLIC_IS_DESKTOP === 'true'
+    );
+
+    if (isDesktop && openSignIn) {
+      openSignIn();
+    } else if (openSignIn) {
+      openSignIn();
+    } else if (typeof window !== 'undefined') {
+      window.location.href = '/sign-in';
+    }
+  }, [openSignIn]);
   const [authModal, setAuthModal] = useState(null); // 'sign-in' | 'sign-up' | null
   const [isMounted, setIsMounted] = useState(false);
   const [authTimeoutPassed, setAuthTimeoutPassed] = useState(false);
@@ -6596,14 +6616,15 @@ function AppContent({ isPreview = false }) {
                 ) : (
                   <>
                     <Show when="signed-out">
-                      <Link 
-                        href="/sign-in"
+                      <button 
+                        type="button"
+                        onClick={handleAuthAction}
                         className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-all active:scale-95 border border-white/20 shadow-sm"
                         title={!isOnline ? 'Offline' : 'Sign In'}
                         aria-label="Account"
                       >
                         <User size={16} className="text-white/80" />
-                      </Link>
+                      </button>
                     </Show>
                     
                     <Show when="signed-in">
@@ -8372,13 +8393,16 @@ function AppContent({ isPreview = false }) {
                                     <span className="text-[11px] text-white/50 font-normal">Sync habits & backup your progress</span>
                                   </div>
                                 </div>
-                                <Link
-                                  href="/sign-in"
-                                  onClick={() => setIsSettingsMenuOpen(false)}
-                                  className="px-4 py-2 rounded-xl bg-white text-black text-xs font-bold hover:bg-white/90 transition-all active:scale-95 shadow-sm"
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setIsSettingsMenuOpen(false);
+                                    handleAuthAction();
+                                  }}
+                                  className="px-4 py-2 rounded-xl bg-white text-black text-xs font-bold hover:bg-white/90 transition-all active:scale-95 shadow-sm cursor-pointer"
                                 >
                                   Sign In
-                                </Link>
+                                </button>
                               </div>
                               <div className="pt-2 border-t border-white/5 flex items-center justify-between">
                                 <span className="text-[11px] text-white/40">Using app in guest mode</span>
@@ -8828,11 +8852,8 @@ function AppContent({ isPreview = false }) {
                   <button
                     type="button"
                     onClick={() => {
-                      if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
-                        window.open('https://bokra101.vercel.app/desktop-auth', '_blank');
-                      } else {
-                        window.location.href = '/sign-in';
-                      }
+                      setIsAuthPromptOpen(false);
+                      handleAuthAction();
                     }}
                     className="w-full py-3.5 px-6 rounded-2xl bg-white hover:bg-white/90 text-black font-bold text-sm transition-all active:scale-[0.98] shadow-lg cursor-pointer flex items-center justify-center gap-2"
                   >

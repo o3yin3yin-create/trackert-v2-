@@ -1,9 +1,34 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { isTauri, invoke } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { LogOut, ExternalLink, KeyRound } from 'lucide-react';
+import { LogOut, ExternalLink, KeyRound, Copy, Check } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+
+export const isTauriEnv = () => {
+  if (typeof window === 'undefined') return false;
+  return !!(
+    window.__TAURI_INTERNALS__ !== undefined ||
+    window.__TAURI__ !== undefined ||
+    window.isTauri === true ||
+    window.location.protocol === 'tauri:' ||
+    window.location.protocol === 'asset:' ||
+    window.location.hostname === 'tauri.localhost' ||
+    process.env.NEXT_PUBLIC_IS_DESKTOP === 'true'
+  );
+};
+
+if (typeof window !== 'undefined') {
+  if (
+    window.__TAURI_INTERNALS__ !== undefined ||
+    window.__TAURI__ !== undefined ||
+    window.location.protocol === 'tauri:' ||
+    window.location.hostname === 'tauri.localhost' ||
+    process.env.NEXT_PUBLIC_IS_DESKTOP === 'true'
+  ) {
+    window.isTauri = true;
+  }
+}
 
 const AuthContext = createContext({
   user: null,
@@ -117,46 +142,53 @@ export const ClerkProvider = ({ children }) => {
     }
   }, [attachUserMethods]);
 
+  // Current login URL for browser / manual opening
+  const [currentLoginUrl, setCurrentLoginUrl] = useState('');
+  const [copiedUrl, setCopiedUrl] = useState(false);
+
   // Listen for callback from Tauri loopback server
   useEffect(() => {
     let unlisten = null;
     let isSubscribed = true;
 
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && isTauriEnv()) {
       try {
-        if (isTauri()) {
-          listen('desktop-auth-callback', (event) => {
-            if (!isSubscribed) return;
-            try {
-              // Handle structured serde_json payload or fallback query string
-              const payload = event.payload && typeof event.payload === 'object'
-                ? event.payload
-                : Object.fromEntries(new URLSearchParams(typeof event.payload === 'string' ? event.payload : ''));
+        listen('desktop-auth-callback', (event) => {
+          if (!isSubscribed) return;
+          try {
+            // Handle structured serde_json payload or fallback query string
+            const payload = event.payload && typeof event.payload === 'object'
+              ? event.payload
+              : Object.fromEntries(new URLSearchParams(typeof event.payload === 'string' ? event.payload : ''));
 
-              const token = payload.token || null;
-              const userStr = payload.user || null;
-              const spotifyToken = payload.spotify_token || null;
+            const token = payload.token || null;
+            const userStr = payload.user || null;
+            const spotifyToken = payload.spotify_token || null;
 
-              if (spotifyToken) {
-                localStorage.setItem('daybase_spotify_refresh_token', spotifyToken);
-                apiFetch('/api/spotify/save-token', {
-                  method: 'POST',
-                  body: JSON.stringify({ token: spotifyToken })
-                }).catch(() => {});
-                window.dispatchEvent(new CustomEvent('spotify-token-updated'));
-              }
-
-              if (token) {
-                applyLoginData(token, userStr);
-              }
-            } catch (err) {
-              console.error('[bokra desktop-auth-callback Error]', err);
+            if (spotifyToken) {
+              localStorage.setItem('daybase_spotify_refresh_token', spotifyToken);
+              apiFetch('/api/spotify/save-token', {
+                method: 'POST',
+                body: JSON.stringify({ token: spotifyToken })
+              }).catch(() => {});
+              window.dispatchEvent(new CustomEvent('spotify-token-updated'));
             }
-          }).then((fn) => {
-            unlisten = fn;
-          }).catch(() => {});
-        }
-      } catch (e) {}
+
+            if (token) {
+              applyLoginData(token, userStr);
+              setIsWaitingForBrowser(false);
+            }
+          } catch (err) {
+            console.error('[bokra desktop-auth-callback Error]', err);
+          }
+        }).then((fn) => {
+          unlisten = fn;
+        }).catch((err) => {
+          console.error('[bokra listen Error]', err);
+        });
+      } catch (e) {
+        console.error('[bokra listen exception]', e);
+      }
     }
 
     return () => {
@@ -170,9 +202,10 @@ export const ClerkProvider = ({ children }) => {
       setIsWaitingForBrowser(true);
       let port = 28282;
       let state = '';
+      const isDesktop = isTauriEnv();
 
-      try {
-        if (isTauri()) {
+      if (isDesktop) {
+        try {
           const authInfo = await invoke('start_auth_server');
           if (authInfo && typeof authInfo === 'object') {
             port = authInfo.port || 28282;
@@ -180,22 +213,23 @@ export const ClerkProvider = ({ children }) => {
           } else if (typeof authInfo === 'number') {
             port = authInfo;
           }
+        } catch (e) {
+          console.warn('Tauri start_auth_server fallback to port 28282', e);
         }
-      } catch (e) {
-        console.warn('Tauri start_auth_server fallback to port 28282', e);
       }
 
       const stateParam = state ? `&state=${encodeURIComponent(state)}` : '';
       const loginUrl = `https://bokra101.vercel.app/desktop-auth?port=${port}${stateParam}`;
+      setCurrentLoginUrl(loginUrl);
 
-      try {
-        if (isTauri()) {
+      if (isDesktop) {
+        try {
           await invoke('open_system_browser', { url: loginUrl });
-        } else {
+        } catch (openErr) {
+          console.warn('Tauri open_system_browser fallback:', openErr);
           window.open(loginUrl, '_blank');
         }
-      } catch (openErr) {
-        console.warn('Tauri open_system_browser fallback:', openErr);
+      } else {
         window.open(loginUrl, '_blank');
       }
     } catch (err) {
@@ -259,11 +293,28 @@ export const ClerkProvider = ({ children }) => {
               <button
                 type="button"
                 onClick={openLoginInBrowser}
-                className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-xs transition-colors cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-xl bg-white text-black font-bold text-xs transition-colors cursor-pointer active:scale-95 flex items-center justify-center gap-2 shadow-sm hover:bg-white/90"
               >
                 <ExternalLink size={14} />
-                Reopen Browser
+                Open / Reopen Browser
               </button>
+
+              {currentLoginUrl && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (navigator.clipboard) {
+                      navigator.clipboard.writeText(currentLoginUrl);
+                      setCopiedUrl(true);
+                      setTimeout(() => setCopiedUrl(false), 2000);
+                    }
+                  }}
+                  className="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white font-mono text-[11px] transition-colors cursor-pointer flex items-center justify-center gap-1.5 border border-white/5"
+                >
+                  {copiedUrl ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                  <span>{copiedUrl ? 'Link Copied!' : 'Copy Login Link'}</span>
+                </button>
+              )}
 
               <button
                 type="button"

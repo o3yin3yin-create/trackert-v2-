@@ -118,14 +118,30 @@ pub fn process_callback_query(query: &str) -> CallbackResult {
 fn open_system_browser(url: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        std::process::Command::new("open")
+        let res = std::process::Command::new("/usr/bin/open")
+            .arg(&url)
+            .spawn();
+        if let Err(e) = res {
+            eprintln!("[bokra open browser error] /usr/bin/open failed: {}. Falling back to 'open'.", e);
+            std::process::Command::new("open")
+                .arg(&url)
+                .spawn()
+                .map_err(|e2| format!("Failed to open system browser: {}", e2))?;
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", &url])
+            .spawn()
+            .map_err(|e| format!("Failed to open browser on Windows: {}", e))?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
             .arg(&url)
             .spawn()
-            .map_err(|e| e.to_string())?;
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        let _ = url;
+            .map_err(|e| format!("Failed to open browser on Linux: {}", e))?;
     }
     Ok(())
 }

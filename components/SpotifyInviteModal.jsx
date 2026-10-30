@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Radio, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
-import Link from 'next/link';
+import { useClerk } from './AuthBridge';
 
 export default function SpotifyInviteModal({ 
   isOpen, 
@@ -12,6 +12,7 @@ export default function SpotifyInviteModal({
   onSuccess,
   isSignedIn = false
 }) {
+  const { openSignIn } = useClerk();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -105,13 +106,16 @@ export default function SpotifyInviteModal({
             <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 text-center text-xs text-white/60">
               Please sign in to your account first so the invite code binds permanently to your profile.
             </div>
-            <Link
-              href="/sign-in"
-              onClick={onClose}
-              className="w-full h-12 rounded-2xl bg-white text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center hover:bg-white/90 active:scale-[0.98] transition-all shadow-md"
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                if (openSignIn) openSignIn();
+              }}
+              className="w-full h-12 rounded-2xl bg-white text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center hover:bg-white/90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
             >
               Sign In to Continue
-            </Link>
+            </button>
           </div>
         ) : (
           <form onSubmit={handleRedeem} className="flex flex-col gap-3.5">
