@@ -907,7 +907,7 @@ export default function WeeklyScheduleCalendar({
                           }`}
                         >
                           {isPending ? (
-                            <Loader2 size={13} className="animate-spin" />
+                            <span className="w-10 h-3 bg-current opacity-30 rounded animate-pulse inline-block" />
                           ) : isShared ? (
                             <>
                               <Check size={13} strokeWidth={2.5} />

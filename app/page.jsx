@@ -4166,17 +4166,15 @@ function AppContent({ isPreview = false }) {
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <div className="relative w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center shrink-0 border border-white/10">
                 <AvatarIcon name={friendAvatar} size={15} className="text-white" />
-                {isPinned && (
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-white text-black flex items-center justify-center border border-black shadow-sm">
-                    <Pin size={6} className="fill-current" />
-                  </span>
-                )}
               </div>
 
-              <div className="flex items-center gap-1 min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <span className="text-[13px] font-bold text-white tracking-tight truncate leading-tight">
                   {friendFirstName}
                 </span>
+                {isPinned && (
+                  <Pin size={11} className="text-white/40 fill-white/20 shrink-0" />
+                )}
                 {friendsIncomingCount > 0 && (
                   <span className="px-1.5 py-0.2 rounded-full bg-red-500 text-white font-black text-[9px] leading-tight shrink-0">
                     {friendsIncomingCount}
@@ -4232,17 +4230,15 @@ function AppContent({ isPreview = false }) {
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 text-white flex items-center justify-center font-bold text-base uppercase shrink-0 border border-white/10">
               <AvatarIcon name={friendAvatar} size={18} className="text-white" />
-              {isPinned && (
-                <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-white text-black flex items-center justify-center border border-black shadow-sm">
-                  <Pin size={8} className="fill-current" />
-                </span>
-              )}
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="font-bold text-white text-[15px] sm:text-[16px] tracking-tight leading-tight shrink-0">
                 {friendFirstName}
               </span>
+              {isPinned && (
+                <Pin size={12} className="text-white/40 fill-white/20 shrink-0" />
+              )}
               {friendsIncomingCount > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full bg-red-500 text-white font-black text-[9px] leading-tight shrink-0">
                   {friendsIncomingCount}
@@ -6737,7 +6733,9 @@ function AppContent({ isPreview = false }) {
                     <Show when="signed-in">
                       <div 
                         className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 border ${
-                          !isOnline 
+                          isAdmin 
+                            ? 'border-amber-400/60 shadow-[0_0_12px_rgba(245,158,11,0.35)]'
+                            : !isOnline 
                             ? 'border-white/10 opacity-70' 
                             : isSyncing 
                             ? 'border-white/60 shadow-[0_0_10px_rgba(255,255,255,0.4)]' 
@@ -8463,9 +8461,17 @@ function AppContent({ isPreview = false }) {
                                   <AvatarIcon name={isMounted ? avatar : 'user'} size={24} />
                                 </div>
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-base font-bold text-white truncate">
-                                    {user.fullName || user.firstName || 'Explorer'}
-                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-base font-bold text-white truncate">
+                                      {user.fullName || user.firstName || 'Explorer'}
+                                    </span>
+                                    {isAdmin && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-black tracking-wider uppercase shrink-0 shadow-sm">
+                                        <Sparkles size={10} className="text-amber-400" />
+                                        <span>{isAr ? 'مطور التطبيق' : 'CREATOR & DEV'}</span>
+                                      </span>
+                                    )}
+                                  </div>
                                   <span className="text-xs text-white/40 truncate">
                                     {user.primaryEmailAddress?.emailAddress || 'bokra companion'}
                                   </span>
@@ -8915,6 +8921,7 @@ function AppContent({ isPreview = false }) {
               myAvatar={avatar}
               lang={lang}
               themeColor={themeColor}
+              isAdmin={isAdmin}
               pinnedFriendUsername={pinnedFriendUsername}
               onTogglePinFriend={(username) => {
                 const next = (pinnedFriendUsername || '').toLowerCase() === (username || '').toLowerCase() ? '' : username;

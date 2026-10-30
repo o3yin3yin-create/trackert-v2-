@@ -25,6 +25,7 @@ export default function FriendsModal({
   onTogglePinFriend,
   onJoinSession,
   onOpenFriendSchedule,
+  isAdmin = false,
 }) {
   const isRtl = lang === 'ar';
   const t = useCallback((k) => translations[lang]?.[k] || translations.en[k] || k, [lang]);
@@ -478,32 +479,49 @@ export default function FriendsModal({
     const prevFriends = [...friends];
     const prevBlocked = [...blocked];
 
+    const target = friends.find((f) => f.friendshipId === friendshipId) || selectedFriend;
+    const realFriendshipId = friendshipId || target?.friendshipId;
+
     if (action === 'remove' || action === 'block') {
-      const target = friends.find((f) => f.friendshipId === friendshipId);
-      setFriends((prev) => prev.filter((f) => f.friendshipId !== friendshipId));
+      setFriends((prev) => prev.filter((f) => f.friendshipId !== realFriendshipId));
       if (action === 'block' && target) {
         setBlocked((prev) => [target, ...prev]);
       }
       setSelectedFriend(null);
       setShowManageSheet(false);
+
+      // If removed/blocked friend was pinned to home screen, unpin them
+      const targetUname = target?.user?.username || target?.displayName;
+      if (targetUname && (pinnedFriendUsername || '').toLowerCase() === targetUname.toLowerCase()) {
+        handleTogglePin(targetUname, target?.displayName);
+      }
+
       if (initialSelectedFriend) {
         onClose();
       }
     } else if (action === 'unblock') {
-      setBlocked((prev) => prev.filter((b) => b.friendshipId !== friendshipId));
+      setBlocked((prev) => prev.filter((b) => b.friendshipId !== realFriendshipId));
     }
 
     try {
+      if (!realFriendshipId || String(realFriendshipId).startsWith('demo_')) {
+        showToast(action === 'block' ? (isRtl ? 'تم حظر المستخدم' : 'User blocked') : (isRtl ? 'تم حذف الصديق' : 'Friend removed'));
+        return;
+      }
+
       const res = await apiFetch('/api/friends/remove', {
         method: 'POST',
-        body: JSON.stringify({ friendshipId, action }),
+        body: JSON.stringify({ friendshipId: realFriendshipId, action }),
       });
       if (!res.ok) throw new Error('Action failed');
-      showToast(action === 'block' ? 'User blocked' : action === 'unblock' ? 'User unblocked' : 'Friend removed');
+      showToast(action === 'block' ? (isRtl ? 'تم حظر المستخدم' : 'User blocked') : action === 'unblock' ? (isRtl ? 'تم إلغاء الحظر' : 'User unblocked') : (isRtl ? 'تم حذف الصديق' : 'Friend removed'));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('daybase_friends_refresh'));
+      }
     } catch (err) {
       setFriends(prevFriends);
       setBlocked(prevBlocked);
-      showToast('Action failed. Rolling back.');
+      showToast(isRtl ? 'فشلت العملية، يرجى المحاولة لاحقاً' : 'Action failed. Rolling back.');
     }
   };
 
@@ -592,28 +610,13 @@ export default function FriendsModal({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Pin / Unpin Button */}
-            <button
-              type="button"
-              onClick={() => handleTogglePin(selectedFriend.user?.username, selectedFriend.displayName)}
-              className={`h-9 px-3 rounded-full flex items-center gap-1.5 font-bold text-xs transition-all cursor-pointer active:scale-95 ${
-                isCurrentFriendPinned
-                  ? 'bg-black text-white shadow-sm'
-                  : 'bg-[#f0f0f0] hover:bg-[#e4e4e7] text-[#0a0a0a]'
-              }`}
-              title={isCurrentFriendPinned ? 'Unpin from Home' : 'Pin to Home'}
-            >
-              <Pin size={13} className={isCurrentFriendPinned ? 'fill-current' : ''} />
-              <span>
-                {isCurrentFriendPinned ? 'Pinned' : 'Pin'}
-              </span>
-            </button>
-
-            {/* Manage trigger (remove / block) */}
+            {/* Manage trigger (Pin, Share Schedule, remove / block) */}
             <button
               type="button"
               onClick={() => setShowManageSheet(!showManageSheet)}
-              className="w-9 h-9 rounded-full bg-[#f0f0f0] hover:bg-[#e4e4e7] flex items-center justify-center text-[#0a0a0a] active:scale-90 transition-all cursor-pointer"
+              className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer ${
+                showManageSheet ? 'bg-black text-white' : 'bg-[#f0f0f0] hover:bg-[#e4e4e7] text-[#0a0a0a]'
+              }`}
               title="Options"
             >
               <MoreHorizontal size={18} />
@@ -635,9 +638,10 @@ export default function FriendsModal({
         {showManageSheet && (
           <div className="bg-[#f7f7f8] rounded-2xl p-4 flex flex-col gap-3 border border-black/5 animate-in fade-in zoom-in-95 duration-150">
             <span className="text-[10px] font-bold tracking-widest text-[#525252] uppercase">
-              MANAGE FRIENDSHIP
+              {isRtl ? 'إدارة الصداقة' : 'MANAGE FRIENDSHIP'}
             </span>
             <div className="flex flex-col divide-y divide-black/10">
+              {/* Pin / Unpin from Home Screen */}
               <button
                 type="button"
                 onClick={() => {
@@ -648,17 +652,50 @@ export default function FriendsModal({
               >
                 <div className="flex flex-col">
                   <span className="text-sm font-bold">
-                    {isCurrentFriendPinned ? 'Unpin from Home' : 'Pin to Home Screen'}
+                    {isCurrentFriendPinned 
+                      ? (isRtl ? 'إلغاء التثبيت من الشاشة الرئيسية' : 'Unpin from Home Screen') 
+                      : (isRtl ? 'تثبيت في الشاشة الرئيسية' : 'Pin to Home Screen')}
                   </span>
                   <span className="text-[11px] text-[#71717a]">
                     {isCurrentFriendPinned
-                      ? 'Home widget will switch to auto-showing active friends'
-                      : 'Keep this friend fixed on your home screen widget'}
+                      ? (isRtl ? 'ستعود أداة الشاشة الرئيسية لعرض الأصدقاء النشطين تلقائياً' : 'Home widget will switch to auto-showing active friends')
+                      : (isRtl ? 'إبقاء هذا الصديق ثابتاً في أداة الشاشة الرئيسية' : 'Keep this friend fixed on your home screen widget')}
                   </span>
                 </div>
                 <Pin size={16} className={`shrink-0 ${isCurrentFriendPinned ? 'text-black fill-current' : 'text-[#71717a]'}`} />
               </button>
 
+              {/* Share My Schedule with this friend */}
+              {selectedFriend.user?.username && (
+                <button
+                  type="button"
+                  disabled={sharingScheduleLoading}
+                  onClick={() => {
+                    handleToggleShareScheduleWithFriend(
+                      selectedFriend.user?.username,
+                      Boolean(selectedFriend.user?.iSharedScheduleWithThem)
+                    );
+                    setShowManageSheet(false);
+                  }}
+                  className="py-2.5 text-start flex items-center justify-between text-black hover:text-black/70 cursor-pointer"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold">
+                      {selectedFriend.user?.iSharedScheduleWithThem
+                        ? (isRtl ? 'إلغاء مشاركة جدولي معه' : 'Stop Sharing My Schedule')
+                        : (isRtl ? 'مشاركة جدولي معه' : 'Share My Schedule')}
+                    </span>
+                    <span className="text-[11px] text-[#71717a]">
+                      {selectedFriend.user?.iSharedScheduleWithThem
+                        ? (isRtl ? 'الصديق يتمكن حالياً من مشاهدة جدول أسبوعك' : 'This friend can currently view your weekly schedule')
+                        : (isRtl ? 'السماح لهذا الصديق بمشاهدة جدول أسبوعك' : 'Allow this friend to view your weekly routine')}
+                    </span>
+                  </div>
+                  <Share2 size={16} className={`shrink-0 ${selectedFriend.user?.iSharedScheduleWithThem ? 'text-emerald-600' : 'text-[#71717a]'}`} />
+                </button>
+              )}
+
+              {/* Remove Friend */}
               <button
                 type="button"
                 onClick={() => handleRemoveOrBlock(selectedFriend.friendshipId, 'remove')}
@@ -671,6 +708,7 @@ export default function FriendsModal({
                 <Trash2 size={16} className="text-[#71717a] shrink-0" />
               </button>
 
+              {/* Block Friend */}
               <button
                 type="button"
                 onClick={() => handleRemoveOrBlock(selectedFriend.friendshipId, 'block')}
@@ -803,7 +841,7 @@ export default function FriendsModal({
         )}
 
         {/* Shared Weekly Schedule Section */}
-        {selectedFriend.user?.hasSharedScheduleWithMe ? (
+        {selectedFriend.user?.hasSharedScheduleWithMe && (
           <div className="bg-[#f5f5f5] rounded-[24px] p-4 flex flex-col gap-3 border border-black/5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -844,43 +882,6 @@ export default function FriendsModal({
               <Eye size={15} />
               <span>{isRtl ? 'عرض جدول الأسبوع بالكامل' : 'View Full Weekly Schedule'}</span>
             </button>
-          </div>
-        ) : (
-          <div className="bg-[#f9f9fb] rounded-[20px] p-3 flex items-center justify-between border border-black/5">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <CalendarDays size={16} className="text-[#71717a] shrink-0" />
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs font-bold text-[#0a0a0a] truncate">
-                  {isRtl ? 'جدول الأسبوع' : 'Weekly Schedule'}
-                </span>
-                <span className="text-[11px] text-[#71717a] truncate">
-                  {isRtl ? 'لم يشارك جدوله معك بعد' : 'Has not shared schedule yet'}
-                </span>
-              </div>
-            </div>
-            {selectedFriend.user?.username && (
-              <button
-                type="button"
-                disabled={sharingScheduleLoading}
-                onClick={() => handleToggleShareScheduleWithFriend(
-                  selectedFriend.user?.username,
-                  Boolean(selectedFriend.user?.iSharedScheduleWithThem)
-                )}
-                className={`h-7 px-3 rounded-full text-xs font-bold transition-all active:scale-95 cursor-pointer shrink-0 ${
-                  selectedFriend.user?.iSharedScheduleWithThem
-                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                    : 'bg-[#0a0a0a] text-white hover:bg-black/90'
-                }`}
-              >
-                {sharingScheduleLoading ? (
-                  <Loader2 size={11} className="animate-spin" />
-                ) : selectedFriend.user?.iSharedScheduleWithThem ? (
-                  isRtl ? 'شاركت جدولك معه' : 'You shared schedule'
-                ) : (
-                  isRtl ? 'شارك جدولك معه' : 'Share your schedule'
-                )}
-              </button>
-            )}
           </div>
         )}
 
@@ -1030,7 +1031,16 @@ export default function FriendsModal({
             </div>
 
             {/* Top Horizontal Presence Avatar Bar (Story Ring Bar) */}
-            {!isEmpty && friendsWithPresence.length > 0 && (
+            {loading ? (
+              <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-3 mb-3 -mx-2 px-2 animate-pulse">
+                {[1, 2, 3, 4, 5].map((idx) => (
+                  <div key={idx} className="flex flex-col items-center gap-1.5 shrink-0">
+                    <div className="w-[58px] h-[58px] rounded-full bg-white/[0.06] border border-white/5" />
+                    <div className="w-10 h-2 bg-white/[0.05] rounded-full" />
+                  </div>
+                ))}
+              </div>
+            ) : !isEmpty && friendsWithPresence.length > 0 && (
               <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-3 mb-3 -mx-2 px-2">
                 {friendsWithPresence.map((f) => {
                   const ring = getRingStyle(f.presence.kind, f.presence.pct);
@@ -1091,11 +1101,24 @@ export default function FriendsModal({
               </div>
             )}
 
-            {/* Loading State */}
+            {/* Loading State: Sleek Skeleton Rows */}
             {loading ? (
-              <div className="flex-1 flex flex-col items-center justify-center py-20 text-white/40 gap-3">
-                <Loader2 size={24} className="animate-spin text-white/60" />
-                <span className="text-xs font-medium">Loading friends...</span>
+              <div className="flex-1 flex flex-col gap-3 py-1 animate-pulse">
+                {[1, 2, 3, 4, 5].map((idx) => (
+                  <div
+                    key={idx}
+                    className="bg-[#0d0d0d] border border-white/5 rounded-[22px] px-3.5 py-3 h-[76px] flex items-center justify-between select-none"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-[48px] h-[48px] rounded-full bg-white/[0.06] shrink-0" />
+                      <div className="flex flex-col gap-2 min-w-0 flex-1 pr-2">
+                        <div className="h-4 w-28 bg-white/[0.08] rounded-md" />
+                        <div className="h-3 w-40 bg-white/[0.04] rounded-md" />
+                      </div>
+                    </div>
+                    <div className="h-4 w-12 bg-white/[0.05] rounded-md shrink-0" />
+                  </div>
+                ))}
               </div>
             ) : isEmpty ? (
               /* EMPTY STATE: Study is better together */
@@ -1230,10 +1253,7 @@ export default function FriendsModal({
                                   {f.displayName}
                                 </span>
                                 {pinnedFriendUsername && (pinnedFriendUsername.toLowerCase() === (f.user?.username || f.displayName || '').toLowerCase()) && (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white text-black text-[9px] font-mono font-black uppercase tracking-wider shrink-0">
-                                    <Pin size={8} className="fill-current" />
-                                    PINNED
-                                  </span>
+                                  <Pin size={12} className="text-white/50 fill-white/20 shrink-0" title="Pinned to Home" />
                                 )}
                                 {f.user?.hasSharedScheduleWithMe && (
                                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[9px] font-mono font-bold shrink-0">
@@ -1259,17 +1279,39 @@ export default function FriendsModal({
               </div>
             )}
 
-            {/* Bottom Card: Your Username */}
+            {/* Bottom Card: Your Username (Distinguished for Creator / Developer) */}
             {myUsername && (
-              <div className="mt-8 bg-[#0c0c0e] border border-white/10 rounded-3xl p-4 flex items-center justify-between shadow-2xl">
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[10px] font-bold tracking-widest text-white/40 uppercase">
-                    {t('yourUsername')}
-                  </span>
-                  <span className="text-base font-black font-mono text-white truncate mt-0.5">
-                    @{myUsername}
-                  </span>
+              <div className={`mt-8 rounded-3xl p-4 flex items-center justify-between shadow-2xl transition-all ${
+                isAdmin 
+                  ? 'bg-gradient-to-br from-[#16130b] via-[#0d0d0f] to-[#0c0c0e] border border-amber-500/40 shadow-[0_0_25px_rgba(245,158,11,0.12)]' 
+                  : 'bg-[#0c0c0e] border border-white/10'
+              }`}>
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-base uppercase shrink-0 ${
+                    isAdmin 
+                      ? 'bg-[#1c1810] text-amber-300 border border-amber-500/40 shadow-inner' 
+                      : 'bg-black text-white border border-white/15'
+                  }`}>
+                    <AvatarIcon name={myAvatar || 'user'} size={22} className={isAdmin ? 'text-amber-300' : 'text-white'} />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base font-black font-mono text-white truncate">
+                        @{myUsername}
+                      </span>
+                      {isAdmin && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500/25 via-amber-400/20 to-orange-500/25 text-amber-300 border border-amber-500/50 text-[10px] font-mono font-black tracking-wider uppercase shrink-0 shadow-[0_0_12px_rgba(245,158,11,0.25)]">
+                          <Sparkles size={10} className="text-amber-400" />
+                          <span>{isRtl ? 'مطور التطبيق' : 'CREATOR & DEV'}</span>
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] font-mono truncate mt-0.5 text-white/40">
+                      {isAdmin ? (isRtl ? 'المطور وصاحب المنصة' : 'Lead Creator & Developer') : (t('yourUsername'))}
+                    </span>
+                  </div>
                 </div>
+
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
@@ -1330,8 +1372,8 @@ export default function FriendsModal({
                   className="w-full bg-[#0c0c0e] border border-white/15 focus:border-white/40 pl-9 pr-10 py-3.5 rounded-2xl text-white text-base font-mono font-bold outline-none transition-all placeholder:text-white/20"
                 />
                 {searching ? (
-                  <div className="absolute right-4 text-white/40">
-                    <Loader2 size={16} className="animate-spin" />
+                  <div className="absolute right-4 flex items-center justify-center">
+                    <span className="w-2.5 h-2.5 rounded-full bg-white/40 animate-ping" />
                   </div>
                 ) : searchQuery ? (
                   <button
@@ -1343,6 +1385,20 @@ export default function FriendsModal({
                   </button>
                 ) : null}
               </div>
+
+              {/* Skeleton Searching Result Card */}
+              {searching && (
+                <div className="bg-[#121214] border border-white/10 rounded-3xl p-4 flex items-center justify-between animate-pulse mb-6 select-none">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-full bg-white/[0.08]" />
+                    <div className="flex flex-col gap-2">
+                      <div className="w-28 h-4 bg-white/[0.08] rounded-md" />
+                      <div className="w-36 h-3 bg-white/[0.04] rounded-md" />
+                    </div>
+                  </div>
+                  <div className="w-20 h-9 bg-white/[0.08] rounded-full" />
+                </div>
+              )}
 
               {/* Result States */}
               {searchPerformed && !searching && (
