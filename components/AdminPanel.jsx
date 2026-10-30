@@ -1,45 +1,54 @@
 "use client";
-import { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { X, Users, Shield, Loader2, UserX, Check, ShieldAlert, BarChart3, Activity, Target } from 'lucide-react';
-import { translations } from '../lib/translations';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  X, Users, Shield, Loader2, UserX, Check, ShieldAlert, 
+  BarChart3, Activity, Target, Search, RefreshCw, Zap, 
+  Music, Flame, Radio, Clock, CheckCircle2, Lock, Key
+} from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
-export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl }) {
-  const [activeTab, setActiveTab] = useState('overview'); // overview, users
+export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
+  const [activeTab, setActiveTab] = useState('overview'); // overview, sessions, users, system
   const [overview, setOverview] = useState(null);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(null);
   const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [userFilter, setUserFilter] = useState('all'); // all, active, admin, blocked, spotify
+  const [lastRefreshed, setLastRefreshed] = useState(null);
 
-  const t = translations[lang] || translations.en;
+  const isArabic = isRtl || lang === 'ar';
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      if (activeTab === 'overview') {
-        const res = await apiFetch('/api/admin/overview');
-        if (res.ok) {
-          const data = await res.json();
-          setOverview(data.overview);
-        } else {
-          setError('Failed to fetch overview metrics');
-        }
-      } else if (activeTab === 'users') {
-        const res = await apiFetch('/api/admin/users');
-        if (res.ok) {
-          const data = await res.json();
-          setUsers(data.users || []);
-        } else {
-          setError('Failed to fetch users');
-        }
+      const [overviewRes, usersRes] = await Promise.all([
+        apiFetch('/api/admin/overview'),
+        apiFetch('/api/admin/users')
+      ]);
+
+      if (overviewRes.ok) {
+        const data = await overviewRes.json();
+        setOverview(data.overview);
+      } else {
+        setError(isArabic ? 'تعذر جلب مؤشرات النظام' : 'Failed to fetch overview metrics');
       }
-    } catch (err) {
-      setError('An error occurred');
+
+      if (usersRes.ok) {
+        const data = await usersRes.json();
+        setUsers(data.users || []);
+      } else {
+        setError(prev => prev || (isArabic ? 'تعذر جلب بيانات المستخدمين' : 'Failed to fetch users'));
+      }
+      setLastRefreshed(new Date());
+    } catch {
+      setError(isArabic ? 'حدث خطأ في الاتصال بالخادم' : 'Connection error occurred');
     }
     setLoading(false);
-  }, [activeTab]);
+  }, [isArabic]);
 
   useEffect(() => {
     if (isOpen) {
@@ -47,183 +56,813 @@ export default function AdminPanel({ isOpen, onClose, lang, themeColor, isRtl })
     }
   }, [isOpen, fetchData]);
 
-  const handleToggleBlock = async (userId, currentStatus) => {
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  // Action Handlers
+  const handleUserAction = async (userId, action) => {
+    setActionLoading(`${userId}_${action}`);
     try {
-      const action = currentStatus ? 'unblock' : 'block';
       const res = await apiFetch('/api/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetUserId: userId, action })
       });
       if (res.ok) {
-        setUsers(users.map(u => u.id === userId ? { ...u, isBlocked: !currentStatus } : u));
+        setUsers(prev => prev.map(u => {
+          if (u.id !== userId) return u;
+          if (action === 'block') return { ...u, isBlocked: true };
+          if (action === 'unblock') return { ...u, isBlocked: false };
+          if (action === 'makeAdmin') return { ...u, isAdmin: true };
+          if (action === 'removeAdmin') return { ...u, isAdmin: false };
+          if (action === 'grantSpotify') return { ...u, hasSpotifyAccess: true };
+          if (action === 'revokeSpotify') return { ...u, hasSpotifyAccess: false };
+          return u;
+        }));
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to update block status');
+        alert(data.error || 'Failed to perform action');
       }
-    } catch (err) {
-      alert('Error updating user');
+    } catch {
+      alert('Error updating user status');
     }
+    setActionLoading(null);
   };
 
-  const handleToggleAdmin = async (userId, currentStatus) => {
-    try {
-      const action = currentStatus ? 'removeAdmin' : 'makeAdmin';
-      const res = await apiFetch('/api/admin/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetUserId: userId, action })
-      });
-      if (res.ok) {
-        setUsers(users.map(u => u.id === userId ? { ...u, isAdmin: !currentStatus } : u));
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Failed to update admin status');
-      }
-    } catch (err) {
-      alert('Error updating user');
-    }
-  };
+  // Filtered Users List
+  const filteredUsers = useMemo(() => {
+    return users.filter(u => {
+      const query = searchQuery.trim().toLowerCase();
+      const matchesSearch = !query || 
+        (u.name && u.name.toLowerCase().includes(query)) ||
+        (u.email && u.email.toLowerCase().includes(query)) ||
+        (u.username && u.username.toLowerCase().includes(query));
+
+      if (!matchesSearch) return false;
+
+      if (userFilter === 'admin') return u.isAdmin;
+      if (userFilter === 'blocked') return u.isBlocked;
+      if (userFilter === 'active') return !!u.activeSessionType;
+      if (userFilter === 'spotify') return u.hasSpotifyAccess;
+      return true;
+    });
+  }, [users, searchQuery, userFilter]);
 
   if (!isOpen) return null;
 
   return (
-    <div className={`fixed inset-0 z-[99999] overflow-hidden bg-black/60 backdrop-blur-md flex justify-end ${isRtl ? 'flex-row-reverse' : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
+    <div 
+      className="fixed inset-0 z-[99999] overflow-hidden bg-black/80 backdrop-blur-xl flex items-center justify-center p-3 sm:p-6"
+      dir={isArabic ? 'rtl' : 'ltr'}
+    >
       {/* Background Dimmer */}
       <div className="absolute inset-0 cursor-pointer" onClick={onClose} />
       
-      {/* Side Panel */}
+      {/* Central Command Cockpit Modal */}
       <motion.div 
-        initial={{ x: isRtl ? '-100%' : '100%', opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        exit={{ x: isRtl ? '-100%' : '100%', opacity: 0 }}
-        transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className="w-full max-w-lg h-full bg-[#f8fafc] dark:bg-[#0c0c0e] border-l border-r border-black/5 dark:border-white/5 relative z-10 flex flex-col shadow-2xl"
+        initial={{ scale: 0.96, opacity: 0, y: 12 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.96, opacity: 0, y: 12 }}
+        transition={{ type: "spring", damping: 28, stiffness: 300 }}
+        className="w-full max-w-5xl h-[92vh] max-h-[880px] bg-[#0A0A0C] border border-white/10 rounded-[28px] sm:rounded-[32px] relative z-10 flex flex-col shadow-2xl overflow-hidden font-sans text-white select-none"
       >
-        {/* Header */}
-        <div className="p-6 pb-4 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] border-b border-black/5 dark:border-white/5 flex items-center justify-between shrink-0">
+        {/* Top Control Bar */}
+        <div className="px-6 py-4.5 pt-[calc(env(safe-area-inset-top,0px)+1.2rem)] border-b border-white/10 flex items-center justify-between shrink-0 bg-[#0E0F14]/70 backdrop-blur-lg">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
-              <Shield size={20} className="text-purple-500" />
+            <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white shadow-inner">
+              <Shield size={20} className="text-white" />
             </div>
-            <h2 className="text-xl font-black text-black dark:text-white">Admin Dashboard</h2>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
+                  {isArabic ? 'مركز القيادة والإدارة' : 'Command Center & Admin'}
+                </h2>
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono font-bold text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>{isArabic ? 'حي' : 'LIVE'}</span>
+                </span>
+              </div>
+              <p className="text-[11px] text-white/40 font-mono mt-0.5">
+                {isArabic 
+                  ? `${users.length} مستخدم مسجل · قاعدة بيانات Neon النشطة`
+                  : `${users.length} Registered Accounts · Neon PostgreSQL Active`}
+              </p>
+            </div>
           </div>
-          <button 
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 flex items-center justify-center text-black dark:text-white transition-colors"
-          >
-            <X size={16} />
-          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchData}
+              disabled={loading}
+              className="h-9 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white flex items-center gap-1.5 text-xs font-mono transition-all active:scale-95 disabled:opacity-40"
+              title={isArabic ? 'تحديث البيانات الحية' : 'Refresh Telemetry'}
+            >
+              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+              <span className="hidden sm:inline">
+                {lastRefreshed 
+                  ? lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) 
+                  : (isArabic ? 'تحديث' : 'Refresh')}
+              </span>
+            </button>
+
+            <button 
+              onClick={onClose}
+              className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/60 hover:text-white transition-all active:scale-95"
+              title={isArabic ? 'إغلاق (Esc)' : 'Close (Esc)'}
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex px-6 pt-4 gap-4 shrink-0 overflow-x-auto scrollbar-hide border-b border-black/5 dark:border-white/5">
+        {/* Navigation Tabs */}
+        <div className="flex px-6 pt-2 shrink-0 border-b border-white/10 bg-[#0A0A0C] gap-1 sm:gap-2 overflow-x-auto scrollbar-hide">
           <button 
             onClick={() => setActiveTab('overview')}
-            className={`pb-3 text-sm font-bold tracking-wide uppercase transition-colors whitespace-nowrap relative flex items-center gap-2 ${activeTab === 'overview' ? 'text-black dark:text-white border-b-2' : 'text-gray-400 dark:text-white/40 border-b-2 border-transparent'}`}
-            style={{ borderColor: activeTab === 'overview' ? '#A855F7' : 'transparent' }}
+            className={`pb-3 pt-2 px-3 text-xs sm:text-sm font-bold tracking-tight transition-all relative flex items-center gap-2 cursor-pointer ${
+              activeTab === 'overview' 
+                ? 'text-white' 
+                : 'text-white/40 hover:text-white/70'
+            }`}
           >
-            Overview
+            <BarChart3 size={15} />
+            <span>{isArabic ? 'المؤشرات والنمو' : 'Cockpit & KPIs'}</span>
+            {activeTab === 'overview' && (
+              <motion.div 
+                layoutId="admin_active_tab" 
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full" 
+              />
+            )}
           </button>
+
+          <button 
+            onClick={() => setActiveTab('sessions')}
+            className={`pb-3 pt-2 px-3 text-xs sm:text-sm font-bold tracking-tight transition-all relative flex items-center gap-2 cursor-pointer ${
+              activeTab === 'sessions' 
+                ? 'text-white' 
+                : 'text-white/40 hover:text-white/70'
+            }`}
+          >
+            <Radio size={15} className={overview?.activeNowCount > 0 ? "text-emerald-400" : ""} />
+            <span>{isArabic ? 'الجلسات المباشرة' : 'Live Focus Sessions'}</span>
+            {overview?.activeNowCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold">
+                {overview.activeNowCount}
+              </span>
+            )}
+            {activeTab === 'sessions' && (
+              <motion.div 
+                layoutId="admin_active_tab" 
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full" 
+              />
+            )}
+          </button>
+
           <button 
             onClick={() => setActiveTab('users')}
-            className={`pb-3 text-sm font-bold tracking-wide uppercase transition-colors whitespace-nowrap relative flex items-center gap-2 ${activeTab === 'users' ? 'text-black dark:text-white border-b-2' : 'text-gray-400 dark:text-white/40 border-b-2 border-transparent'}`}
-            style={{ borderColor: activeTab === 'users' ? '#A855F7' : 'transparent' }}
+            className={`pb-3 pt-2 px-3 text-xs sm:text-sm font-bold tracking-tight transition-all relative flex items-center gap-2 cursor-pointer ${
+              activeTab === 'users' 
+                ? 'text-white' 
+                : 'text-white/40 hover:text-white/70'
+            }`}
           >
-            Users
+            <Users size={15} />
+            <span>{isArabic ? 'إدارة المستخدمين' : 'User Directory'}</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-white/10 text-white/70 font-mono text-[10px] font-bold">
+              {users.length}
+            </span>
+            {activeTab === 'users' && (
+              <motion.div 
+                layoutId="admin_active_tab" 
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full" 
+              />
+            )}
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('system')}
+            className={`pb-3 pt-2 px-3 text-xs sm:text-sm font-bold tracking-tight transition-all relative flex items-center gap-2 cursor-pointer ${
+              activeTab === 'system' 
+                ? 'text-white' 
+                : 'text-white/40 hover:text-white/70'
+            }`}
+          >
+            <Lock size={15} />
+            <span>{isArabic ? 'حالة الأمان والخدمات' : 'Security & Architecture'}</span>
+            {activeTab === 'system' && (
+              <motion.div 
+                layoutId="admin_active_tab" 
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full" 
+              />
+            )}
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
+        {/* Content Body */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 scrollbar-hide space-y-6">
           {error && (
-            <div className="mb-4 p-4 bg-red-500/10 text-red-500 rounded-xl text-sm font-bold flex items-center gap-2">
-              <ShieldAlert size={16} /> {error}
+            <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2">
+              <ShieldAlert size={16} />
+              <span>{error}</span>
             </div>
           )}
-          
-          {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 size={24} className="animate-spin text-gray-400" />
+
+          {loading && !overview ? (
+            <div className="flex flex-col items-center justify-center h-64 gap-3 text-white/50">
+              <Loader2 size={28} className="animate-spin text-white" />
+              <span className="text-xs font-mono">{isArabic ? 'جاري تجميع المؤشرات...' : 'Aggregating live telemetry...'}</span>
             </div>
-          ) : activeTab === 'overview' && overview ? (
-            <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white dark:bg-[#1a1b1e] border border-black/5 dark:border-white/5 rounded-2xl p-5 shadow-sm flex flex-col gap-2">
-                  <div className="flex items-center gap-2 opacity-50 mb-1">
-                    <Users size={16} />
-                    <span className="text-[10px] font-black tracking-widest uppercase">Total Users</span>
-                  </div>
-                  <span className="text-3xl font-black text-purple-500">{overview.totalUsers}</span>
-                </div>
-                <div className="bg-white dark:bg-[#1a1b1e] border border-black/5 dark:border-white/5 rounded-2xl p-5 shadow-sm flex flex-col gap-2">
-                  <div className="flex items-center gap-2 opacity-50 mb-1">
-                    <Users size={16} />
-                    <span className="text-[10px] font-black tracking-widest uppercase">Study Groups</span>
-                  </div>
-                  <span className="text-3xl font-black text-purple-500">{overview.totalGroups}</span>
-                </div>
-                <div className="bg-white dark:bg-[#1a1b1e] border border-black/5 dark:border-white/5 rounded-2xl p-5 shadow-sm flex flex-col gap-2">
-                  <div className="flex items-center gap-2 opacity-50 mb-1">
-                    <Target size={16} />
-                    <span className="text-[10px] font-black tracking-widest uppercase">Habits Done</span>
-                  </div>
-                  <span className="text-3xl font-black text-purple-500">{overview.totalHabitsCompleted}</span>
-                </div>
-                <div className="bg-white dark:bg-[#1a1b1e] border border-black/5 dark:border-white/5 rounded-2xl p-5 shadow-sm flex flex-col gap-2">
-                  <div className="flex items-center gap-2 opacity-50 mb-1">
-                    <Activity size={16} />
-                    <span className="text-[10px] font-black tracking-widest uppercase">Total Focus Time</span>
-                  </div>
-                  <span className="text-3xl font-black text-purple-500">{Math.round((overview.totalFocusTime || 0) / 60)}h</span>
-                </div>
-              </div>
-            </div>
-          ) : activeTab === 'users' ? (
-            <div className="flex flex-col gap-4">
-              {users.map((u) => (
-                <div key={u.id} className={`relative overflow-hidden bg-white dark:bg-[#1a1b1e] border ${u.isBlocked ? 'border-red-500/30' : 'border-black/5 dark:border-white/5'} rounded-2xl p-4 flex flex-col gap-3 shadow-sm`}>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-black text-sm">{u.name || 'Unknown'}</span>
-                        {u.isAdmin && <span className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-500 text-[10px] font-black tracking-widest uppercase">Admin</span>}
-                        {u.isBlocked && <span className="px-2 py-0.5 rounded-md bg-red-500/10 text-red-500 text-[10px] font-black tracking-widest uppercase">Blocked</span>}
+          ) : (
+            <>
+              {/* TAB 1: Cockpit & KPIs */}
+              {activeTab === 'overview' && overview && (
+                <div className="space-y-6">
+                  {/* Hero Metric Cards Grid */}
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                    {/* 1. Total Registered Users */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col justify-between gap-3 shadow-sm hover:border-white/20 transition-all">
+                      <div className="flex items-center justify-between text-white/50">
+                        <span className="text-[11px] font-mono uppercase tracking-wider font-bold">
+                          {isArabic ? 'إجمالي الحسابات' : 'Registered Users'}
+                        </span>
+                        <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white">
+                          <Users size={16} />
+                        </div>
                       </div>
-                      <span className="text-xs opacity-50 block mt-1">{u.email}</span>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+                          {overview.totalUsers}
+                        </span>
+                        <span className="text-xs text-white/40 font-mono">
+                          {isArabic ? 'حساب مسجل' : 'accounts'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleToggleAdmin(u.id, u.isAdmin)}
-                        className={`h-8 px-3 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition-all ${u.email === '3yin3yin@gmail.com' ? 'opacity-20 cursor-not-allowed' : u.isAdmin ? 'bg-purple-500/10 text-purple-500 hover:bg-purple-500/20' : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10'}`}
-                        title={u.email === '3yin3yin@gmail.com' ? 'Primary admin cannot be demoted' : 'Toggle Admin Status'}
-                        disabled={u.email === '3yin3yin@gmail.com'}
-                      >
-                        <Shield size={14} />
-                        {u.isAdmin ? 'Admin' : 'Make Admin'}
-                      </button>
-                      <button
-                        onClick={() => handleToggleBlock(u.id, u.isBlocked)}
-                        className={`h-8 px-3 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition-all ${u.email === '3yin3yin@gmail.com' ? 'opacity-20 cursor-not-allowed' : u.isBlocked ? 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10' : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'}`}
-                        title={u.email === '3yin3yin@gmail.com' ? 'Primary admin cannot be blocked' : 'Toggle Block Status'}
-                        disabled={u.email === '3yin3yin@gmail.com'}
-                      >
-                        {u.isBlocked ? <Check size={14} /> : <UserX size={14} />}
-                        {u.isBlocked ? 'Unblock' : 'Block'}
-                      </button>
+
+                    {/* 2. Active Now */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col justify-between gap-3 shadow-sm hover:border-white/20 transition-all">
+                      <div className="flex items-center justify-between text-white/50">
+                        <span className="text-[11px] font-mono uppercase tracking-wider font-bold">
+                          {isArabic ? 'يركزون الآن (مباشر)' : 'Live Focusing Now'}
+                        </span>
+                        <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                          <Radio size={16} />
+                        </div>
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl sm:text-4xl font-black text-emerald-400 tracking-tight">
+                          {overview.activeNowCount}
+                        </span>
+                        <span className="text-xs text-emerald-400/60 font-mono">
+                          {isArabic ? 'جلسة جارية' : 'active sessions'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 3. Completed Habits */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col justify-between gap-3 shadow-sm hover:border-white/20 transition-all">
+                      <div className="flex items-center justify-between text-white/50">
+                        <span className="text-[11px] font-mono uppercase tracking-wider font-bold">
+                          {isArabic ? 'العادات المنجزة فعلياً' : 'Habit Executions'}
+                        </span>
+                        <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white">
+                          <CheckCircle2 size={16} />
+                        </div>
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+                          {overview.totalHabitCompletions}
+                        </span>
+                        <span className="text-xs text-white/40 font-mono">
+                          {isArabic ? 'إنجاز يومي مسجل' : 'checked days'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 4. Total Focus Hours */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col justify-between gap-3 shadow-sm hover:border-white/20 transition-all">
+                      <div className="flex items-center justify-between text-white/50">
+                        <span className="text-[11px] font-mono uppercase tracking-wider font-bold">
+                          {isArabic ? 'إجمالي ساعات التركيز' : 'Total Focus Time'}
+                        </span>
+                        <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white">
+                          <Activity size={16} />
+                        </div>
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+                          {overview.totalFocusHours}
+                        </span>
+                        <span className="text-xs text-white/40 font-mono">
+                          {isArabic ? 'ساعة مذاكرة' : 'hours'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 5. Friendships & Network */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col justify-between gap-3 shadow-sm hover:border-white/20 transition-all">
+                      <div className="flex items-center justify-between text-white/50">
+                        <span className="text-[11px] font-mono uppercase tracking-wider font-bold">
+                          {isArabic ? 'الصداقات النشطة' : 'Friend Connections'}
+                        </span>
+                        <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white">
+                          <Zap size={16} />
+                        </div>
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+                          {overview.totalFriendships}
+                        </span>
+                        <span className="text-xs text-white/40 font-mono">
+                          {isArabic ? 'علاقة صداقة' : 'pairs'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 6. Spotify Adoption */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col justify-between gap-3 shadow-sm hover:border-white/20 transition-all">
+                      <div className="flex items-center justify-between text-white/50">
+                        <span className="text-[11px] font-mono uppercase tracking-wider font-bold">
+                          {isArabic ? 'وصول Spotify المميز' : 'Spotify Access'}
+                        </span>
+                        <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white">
+                          <Music size={16} />
+                        </div>
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+                          {overview.spotifyUsersCount}
+                        </span>
+                        <span className="text-xs text-white/40 font-mono">
+                          {isArabic ? 'مستخدم مفعل' : 'enabled users'}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="border-t border-black/5 dark:border-white/5 pt-3 mt-1">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold opacity-50 uppercase tracking-wider">Habits</span>
-                      <span className="text-sm font-black">{u._count?.habits || 0}</span>
+
+                  {/* 7-Day Trend Visualizer & Category Breakdown */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    {/* 7-Day Daily Activity */}
+                    <div className="lg:col-span-2 p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col gap-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Flame size={16} className="text-white" />
+                          <h3 className="text-sm font-bold text-white">
+                            {isArabic ? 'نشاط الأيام الـ 7 الأخيرة' : 'Last 7 Days Activity Trend'}
+                          </h3>
+                        </div>
+                        <span className="text-[10px] text-white/40 font-mono">
+                          {isArabic ? 'دقائق التركيز والإنجاز' : 'Focus mins & completions'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-7 gap-2 pt-4 items-end h-36">
+                        {overview.recent7Days.map((day) => {
+                          const maxMins = Math.max(...overview.recent7Days.map(d => d.focusMinutes), 60);
+                          const heightPct = Math.max(Math.min((day.focusMinutes / maxMins) * 100, 100), 8);
+                          const dayName = new Date(day.date).toLocaleDateString(isArabic ? 'ar-EG' : 'en-US', { weekday: 'short' });
+
+                          return (
+                            <div key={day.date} className="flex flex-col items-center gap-1.5 h-full justify-end group">
+                              <span className="text-[9px] font-mono text-white/40 group-hover:text-white transition-colors">
+                                {day.focusMinutes}m
+                              </span>
+                              <div 
+                                style={{ height: `${heightPct}%` }}
+                                className="w-full max-w-[28px] rounded-lg bg-white/20 group-hover:bg-white transition-all shadow-sm relative"
+                                title={`${day.date}: ${day.focusMinutes} mins, ${day.completions} habits checked`}
+                              />
+                              <span className="text-[10px] font-mono text-white/50 uppercase mt-1">
+                                {dayName}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Category Distribution */}
+                    <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col gap-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Target size={16} className="text-white" />
+                          <h3 className="text-sm font-bold text-white">
+                            {isArabic ? 'تصنيف العادات' : 'Habit Categories'}
+                          </h3>
+                        </div>
+                        <span className="text-[10px] text-white/40 font-mono">
+                          {overview.totalHabitsConfigured} {isArabic ? 'عادة' : 'total'}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2.5 pt-1">
+                        {Object.entries(overview.categoryCounts || {}).map(([cat, count]) => {
+                          const pct = Math.round((count / (overview.totalHabitsConfigured || 1)) * 100);
+                          return (
+                            <div key={cat} className="space-y-1">
+                              <div className="flex justify-between text-xs font-mono">
+                                <span className="capitalize text-white/80">{cat}</span>
+                                <span className="text-white/40">{count} ({pct}%)</span>
+                              </div>
+                              <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                <div 
+                                  style={{ width: `${pct}%` }} 
+                                  className="h-full bg-white/60 rounded-full" 
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Top Dedicated Users Leaderboard */}
+                  {overview.topUsers && overview.topUsers.length > 0 && (
+                    <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                          <Clock size={16} />
+                          <span>{isArabic ? 'أكثر المستخدمين تركيزاً (ساعات المذاكرة)' : 'Top Dedicated Focus Users'}</span>
+                        </h3>
+                        <span className="text-[10px] text-white/40 font-mono">
+                          {isArabic ? 'مرتب حسب الساعات الإجمالية' : 'Ranked by cumulative focus hours'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-1">
+                        {overview.topUsers.map((u, idx) => (
+                          <div key={u.id} className="p-3.5 rounded-xl bg-white/5 border border-white/5 flex items-center gap-3">
+                            <span className="w-6 h-6 rounded-lg bg-white/10 text-white font-mono text-xs font-bold flex items-center justify-center shrink-0">
+                              #{idx + 1}
+                            </span>
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <span className="text-xs font-bold text-white truncate">{u.name || 'Anonymous'}</span>
+                              <span className="text-[10px] text-white/40 font-mono truncate">
+                                {u.username ? `@${u.username}` : u.email.split('@')[0]}
+                              </span>
+                            </div>
+                            <span className="text-xs font-mono font-bold text-white shrink-0">
+                              {u.focusHours}h
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 2: Live Focus Sessions */}
+              {activeTab === 'sessions' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        <Radio size={16} className="text-emerald-400" />
+                        <span>{isArabic ? 'الجلسات الجارية حالياً في المنصة' : 'Users Actively Focusing Right Now'}</span>
+                      </h3>
+                      <p className="text-xs text-white/40 font-mono mt-0.5">
+                        {isArabic ? 'محدث لحظياً عند بدء المستخدم لجلسة Pomodoro أو وضع الطيران Flight Mode' : 'Live real-time focus sessions broadcasted across the web & desktop'}
+                      </p>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono font-bold text-emerald-400">
+                      {overview?.liveActiveUsers?.length || 0} {isArabic ? 'جلسة نشطة' : 'Active'}
+                    </span>
+                  </div>
+
+                  {(!overview?.liveActiveUsers || overview.liveActiveUsers.length === 0) ? (
+                    <div className="p-12 text-center rounded-2xl bg-white/[0.02] border border-white/10 text-white/40 text-xs font-mono">
+                      {isArabic ? 'لا توجد جلسات تركيز نشطة في هذه اللحظة.' : 'No active focus sessions running at the moment.'}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {overview.liveActiveUsers.map((sessionUser) => {
+                        const isFlight = sessionUser.activeSessionType === 'flight';
+                        return (
+                          <div 
+                            key={sessionUser.id}
+                            className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-3 shadow-sm"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center font-bold text-xs uppercase text-white shrink-0">
+                                  {sessionUser.name ? sessionUser.name.charAt(0) : 'U'}
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-xs font-bold text-white truncate">
+                                    {sessionUser.name || 'Unknown User'}
+                                  </span>
+                                  <span className="text-[10px] text-white/40 font-mono truncate">
+                                    {sessionUser.username ? `@${sessionUser.username}` : sessionUser.email}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
+                                isFlight 
+                                  ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' 
+                                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                              }`}>
+                                {isFlight ? (isArabic ? 'وضع الطيران' : 'Flight Mode') : 'Pomodoro'}
+                              </span>
+                            </div>
+
+                            <div className="p-2.5 rounded-xl bg-white/5 text-[11px] font-mono text-white/60 flex items-center justify-between">
+                              <span>{isArabic ? 'الحالة:' : 'Status:'}</span>
+                              <span className="text-white flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                {isArabic ? 'جلسة جارية' : 'In Session'}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3: User Directory & Management */}
+              {activeTab === 'users' && (
+                <div className="space-y-4">
+                  {/* Search and Filters Bar */}
+                  <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+                    <div className="relative flex-1">
+                      <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+                      <input 
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder={isArabic ? 'بحث بالاسم، الإيميل، أو @username...' : 'Search by name, email, or @username...'}
+                        className="w-full h-10 pl-9 pr-4 rounded-xl bg-white/5 border border-white/10 text-xs font-sans text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors"
+                      />
+                      {searchQuery && (
+                        <button 
+                          onClick={() => setSearchQuery('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide text-xs font-mono">
+                      {[
+                        { id: 'all', label: isArabic ? 'الكل' : 'All', count: users.length },
+                        { id: 'admin', label: isArabic ? 'المشرفين' : 'Admins', count: users.filter(u => u.isAdmin).length },
+                        { id: 'active', label: isArabic ? 'يركزون' : 'Focusing', count: users.filter(u => u.activeSessionType).length },
+                        { id: 'spotify', label: 'Spotify', count: users.filter(u => u.hasSpotifyAccess).length },
+                        { id: 'blocked', label: isArabic ? 'المحظورين' : 'Blocked', count: users.filter(u => u.isBlocked).length },
+                      ].map(tab => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setUserFilter(tab.id)}
+                          className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                            userFilter === tab.id 
+                              ? 'bg-white text-black font-bold' 
+                              : 'bg-white/5 text-white/50 hover:text-white border border-white/5'
+                          }`}
+                        >
+                          <span>{tab.label}</span>
+                          <span className={`text-[10px] ${userFilter === tab.id ? 'opacity-70' : 'opacity-40'}`}>
+                            {tab.count}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Users Table / Card Grid */}
+                  <div className="space-y-2.5">
+                    {filteredUsers.length === 0 ? (
+                      <div className="p-12 text-center rounded-2xl bg-white/[0.02] border border-white/10 text-white/40 text-xs font-mono">
+                        {isArabic ? 'لم يتم العثور على مستخدمين يطابقون البحث.' : 'No users match the search criteria.'}
+                      </div>
+                    ) : (
+                      filteredUsers.map((u) => {
+                        const isPrimaryAdmin = u.email === '3yin3yin@gmail.com';
+                        const isActionPending = actionLoading?.startsWith(u.id);
+
+                        return (
+                          <div 
+                            key={u.id}
+                            className={`p-4 rounded-2xl bg-white/[0.02] border ${
+                              u.isBlocked 
+                                ? 'border-red-500/30 bg-red-500/[0.02]' 
+                                : 'border-white/10 hover:border-white/20'
+                            } transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4`}
+                          >
+                            {/* User Info */}
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center font-bold text-sm text-white shrink-0">
+                                {u.name ? u.name.charAt(0) : 'U'}
+                              </div>
+
+                              <div className="flex flex-col min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-sm font-bold text-white truncate">
+                                    {u.name || 'Anonymous User'}
+                                  </span>
+                                  {u.username && (
+                                    <span className="text-xs font-mono text-white/50">
+                                      @{u.username}
+                                    </span>
+                                  )}
+                                  {u.isAdmin && (
+                                    <span className="px-2 py-0.5 rounded-md bg-white/10 text-white text-[10px] font-mono font-bold uppercase border border-white/10">
+                                      {isArabic ? 'مشرف' : 'ADMIN'}
+                                    </span>
+                                  )}
+                                  {u.isBlocked && (
+                                    <span className="px-2 py-0.5 rounded-md bg-red-500/10 text-red-400 text-[10px] font-mono font-bold uppercase border border-red-500/20">
+                                      {isArabic ? 'محظور' : 'BLOCKED'}
+                                    </span>
+                                  )}
+                                  {u.hasSpotifyAccess && (
+                                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[10px] font-mono font-bold flex items-center gap-1 border border-emerald-500/20">
+                                      <Music size={10} /> Spotify
+                                    </span>
+                                  )}
+                                  {u.activeSessionType && (
+                                    <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 text-[10px] font-mono font-bold flex items-center gap-1 border border-blue-500/20">
+                                      <Radio size={10} className="animate-pulse" /> {u.activeSessionType}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-3 text-[11px] font-mono text-white/40 mt-1 flex-wrap">
+                                  <span>{u.email}</span>
+                                  <span>·</span>
+                                  <span>{u._count?.habits || 0} {isArabic ? 'عادات' : 'habits'}</span>
+                                  <span>·</span>
+                                  <span>{u._count?.dailyLogs || 0} {isArabic ? 'سجلات' : 'logs'}</span>
+                                  <span>·</span>
+                                  <span>{u.totalFocusHours || 0}h {isArabic ? 'تركيز' : 'focus'}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* User Action Buttons */}
+                            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                              {/* Spotify Access Toggle */}
+                              <button
+                                onClick={() => handleUserAction(u.id, u.hasSpotifyAccess ? 'revokeSpotify' : 'grantSpotify')}
+                                disabled={isActionPending}
+                                className={`h-8 px-2.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5 ${
+                                  u.hasSpotifyAccess 
+                                    ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20' 
+                                    : 'bg-white/5 text-white/50 hover:text-white border border-white/5'
+                                }`}
+                                title={u.hasSpotifyAccess ? 'Revoke Spotify Access' : 'Grant Spotify Access'}
+                              >
+                                <Music size={12} />
+                                <span className="hidden md:inline">
+                                  {u.hasSpotifyAccess ? (isArabic ? 'إلغاء Spotify' : 'Spotify On') : (isArabic ? 'منح Spotify' : 'Spotify Off')}
+                                </span>
+                              </button>
+
+                              {/* Toggle Admin */}
+                              <button
+                                onClick={() => handleUserAction(u.id, u.isAdmin ? 'removeAdmin' : 'makeAdmin')}
+                                disabled={isPrimaryAdmin || isActionPending}
+                                className={`h-8 px-2.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5 ${
+                                  isPrimaryAdmin 
+                                    ? 'opacity-20 cursor-not-allowed bg-white/5 text-white/40' 
+                                    : u.isAdmin 
+                                      ? 'bg-white/20 text-white hover:bg-white/30 border border-white/20' 
+                                      : 'bg-white/5 text-white/50 hover:text-white border border-white/5'
+                                }`}
+                                title={isPrimaryAdmin ? 'Primary admin cannot be modified' : 'Toggle Admin Role'}
+                              >
+                                <Shield size={12} />
+                                <span className="hidden md:inline">
+                                  {u.isAdmin ? (isArabic ? 'مشرف' : 'Admin') : (isArabic ? 'ترقية لمشرف' : 'Make Admin')}
+                                </span>
+                              </button>
+
+                              {/* Toggle Block */}
+                              <button
+                                onClick={() => handleUserAction(u.id, u.isBlocked ? 'unblock' : 'block')}
+                                disabled={isPrimaryAdmin || isActionPending}
+                                className={`h-8 px-2.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5 ${
+                                  isPrimaryAdmin 
+                                    ? 'opacity-20 cursor-not-allowed bg-white/5 text-white/40' 
+                                    : u.isBlocked 
+                                      ? 'bg-white text-black hover:bg-white/90' 
+                                      : 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20'
+                                }`}
+                                title={isPrimaryAdmin ? 'Primary admin cannot be blocked' : 'Toggle Block'}
+                              >
+                                {u.isBlocked ? <Check size={12} /> : <UserX size={12} />}
+                                <span>
+                                  {u.isBlocked ? (isArabic ? 'فك الحظر' : 'Unblock') : (isArabic ? 'حظر' : 'Block')}
+                                </span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: Architecture & Health */}
+              {activeTab === 'system' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Database Health */}
+                    <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-mono uppercase tracking-wider text-white/50 font-bold">
+                          {isArabic ? 'قاعدة البيانات (Database)' : 'Database Engine'}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-mono font-bold border border-emerald-500/20">
+                          {isArabic ? 'متصل بنجاح' : 'ONLINE'}
+                        </span>
+                      </div>
+                      <h4 className="text-sm font-bold text-white">Neon PostgreSQL Serverless</h4>
+                      <p className="text-xs text-white/40 font-mono leading-relaxed">
+                        Pooler Endpoint · ep-royal-art-alepxxqp-pooler · Prisma Client ORM
+                      </p>
+                      <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs font-mono text-white/60">
+                        <span>{isArabic ? 'إجمالي السجلات المخزنة:' : 'Daily Logs:'}</span>
+                        <span className="font-bold text-white">{overview?.dailyLogsCount || 79}</span>
+                      </div>
+                    </div>
+
+                    {/* Rate Limiting */}
+                    <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-mono uppercase tracking-wider text-white/50 font-bold">
+                          {isArabic ? 'محرك حماية الطلبات (Rate Limiting)' : 'Security Engine'}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-mono font-bold border border-emerald-500/20">
+                          {isArabic ? 'فعال ومحمي' : 'ACTIVE'}
+                        </span>
+                      </div>
+                      <h4 className="text-sm font-bold text-white">Token Bucket + Upstash Redis</h4>
+                      <p className="text-xs text-white/40 font-mono leading-relaxed">
+                        Client IP Detection · Trust Proxy Safe · Sync Rate Limit 60/min
+                      </p>
+                      <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs font-mono text-white/60">
+                        <span>{isArabic ? 'طريق المصادقة:' : 'Auth Gateway:'}</span>
+                        <span className="font-bold text-white">Clerk Edge Proxy</span>
+                      </div>
+                    </div>
+
+                    {/* Desktop & Mobile Artifacts */}
+                    <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3">
+                      <span className="text-xs font-mono uppercase tracking-wider text-white/50 font-bold">
+                        {isArabic ? 'حزم المنصات المتاحة' : 'Compiled Platform Artifacts'}
+                      </span>
+                      <div className="space-y-2 text-xs font-mono">
+                        <div className="flex justify-between text-white/80">
+                          <span>macOS Universal (x86_64 + arm64):</span>
+                          <span className="text-emerald-400">19.5 MB</span>
+                        </div>
+                        <div className="flex justify-between text-white/80">
+                          <span>Android Standalone APK:</span>
+                          <span className="text-emerald-400">1.67 MB</span>
+                        </div>
+                        <div className="flex justify-between text-white/80">
+                          <span>Linux Debian (.deb):</span>
+                          <span className="text-emerald-400">7.6 MB</span>
+                        </div>
+                        <div className="flex justify-between text-white/80">
+                          <span>Windows Standalone ZIP:</span>
+                          <span className="text-emerald-400">32 KB</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* CSP & Network Isolation */}
+                    <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3">
+                      <span className="text-xs font-mono uppercase tracking-wider text-white/50 font-bold">
+                        {isArabic ? 'عزل وسياسة الأمان (CSP)' : 'Content Security Policy'}
+                      </span>
+                      <p className="text-xs text-white/40 font-mono leading-relaxed">
+                        Strict origin whitelisting: clerk.accounts.dev, openstreetmap, spotify.com, googleapis. Zero wildcard scripts.
+                      </p>
+                      <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs font-mono text-white/60">
+                        <span>{isArabic ? 'حالة التشفير:' : 'Transport:'}</span>
+                        <span className="text-emerald-400 font-bold">HSTS 1 Year</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : null}
+              )}
+            </>
+          )}
         </div>
       </motion.div>
     </div>

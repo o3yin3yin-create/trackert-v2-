@@ -14,19 +14,44 @@ export async function GET(req) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const users = await prisma.user.findMany({
+    const rawUsers = await prisma.user.findMany({
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
         name: true,
         email: true,
+        username: true,
+        avatar: true,
         isAdmin: true,
         isBlocked: true,
+        hasSpotifyAccess: true,
+        activeSessionType: true,
         createdAt: true,
         _count: {
           select: { habits: true, dailyLogs: true }
+        },
+        dailyLogs: {
+          select: { focusTime: true }
         }
       }
+    });
+
+    const users = rawUsers.map(u => {
+      const totalFocusSec = u.dailyLogs.reduce((acc, l) => acc + (l.focusTime || 0), 0);
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        username: u.username,
+        avatar: u.avatar,
+        isAdmin: u.isAdmin,
+        isBlocked: u.isBlocked,
+        hasSpotifyAccess: u.hasSpotifyAccess,
+        activeSessionType: u.activeSessionType,
+        createdAt: u.createdAt,
+        _count: u._count,
+        totalFocusHours: Math.round((totalFocusSec / 3600) * 10) / 10
+      };
     });
 
     return NextResponse.json({ users });
@@ -88,6 +113,16 @@ export async function POST(req) {
       updatedUser = await prisma.user.update({
         where: { id: targetUserId },
         data: { isAdmin: false }
+      });
+    } else if (action === 'grantSpotify') {
+      updatedUser = await prisma.user.update({
+        where: { id: targetUserId },
+        data: { hasSpotifyAccess: true }
+      });
+    } else if (action === 'revokeSpotify') {
+      updatedUser = await prisma.user.update({
+        where: { id: targetUserId },
+        data: { hasSpotifyAccess: false }
       });
     } else {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
