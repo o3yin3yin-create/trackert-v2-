@@ -5066,7 +5066,7 @@ function AppContent({ isPreview = false }) {
                   className="w-full py-3 mb-6 rounded-2xl font-bold text-xs flex justify-center items-center gap-2 border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-all active:scale-[0.98] cursor-pointer"
                 >
                   <Sparkles size={14} className="text-amber-400" />
-                  <span>{lang === 'ar' ? 'عادات جاهزة ومقترحة (الصلوات، المشي، التخطيط...)' : 'Ready-Made Habits (Prayers, Walk, Plan...)'}</span>
+                  <span>{lang === 'ar' ? 'عادات جاهزة ومقترحة' : 'Ready-Made Habits'}</span>
                 </button>
 
                 {/* List of Habits with Full Scroll */}
@@ -7061,7 +7061,7 @@ function AppContent({ isPreview = false }) {
                       className="px-5 py-3 rounded-full text-xs font-bold transition-all duration-200 active:scale-95 border border-white/15 bg-white/5 hover:bg-white/10 text-white flex items-center gap-2 cursor-pointer"
                     >
                       <Sparkles size={14} className="text-amber-400" />
-                      <span>{lang === 'ar' ? 'عادات جاهزة (الصلوات، المشي...)' : 'Ready Presets (Prayers, Walk...)'}</span>
+                      <span>{lang === 'ar' ? 'عادات جاهزة' : 'Ready Presets'}</span>
                     </button>
                   </div>
                 </div>
