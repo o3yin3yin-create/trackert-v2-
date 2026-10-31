@@ -1501,6 +1501,8 @@ function AppContent({ isPreview = false }) {
   // --- In-App Notifications & Friends Widget State ---
   const [friendsIncomingCount, setFriendsIncomingCount] = useState(0);
   const [activeInAppNotification, setActiveInAppNotification] = useState(null);
+  const dismissedNotifIdsRef = useRef(new Set());
+  const currentNotifIdRef = useRef(null);
   const [friendsList, setFriendsList] = useState(() => {
     if (isPreview) return getPreviewData().friends;
     if (typeof window !== 'undefined') {
@@ -1546,7 +1548,10 @@ function AppContent({ isPreview = false }) {
         if (!isMounted) return;
 
         const incomingReqs = Array.isArray(data.incoming) ? data.incoming : [];
-        const notifs = Array.isArray(data.notifications) ? data.notifications : [];
+        const rawNotifs = Array.isArray(data.notifications) ? data.notifications : [];
+        
+        // Filter out already dismissed notifications
+        const notifs = rawNotifs.filter(n => !dismissedNotifIdsRef.current.has(n.id));
         const totalCount = incomingReqs.length + notifs.length;
         setFriendsIncomingCount(totalCount);
 
@@ -1558,31 +1563,42 @@ function AppContent({ isPreview = false }) {
           } catch (_) {}
         }
 
-        if (notifs.length > 0) {
-          const latest = notifs[0];
-          const notifMsg = latest.type === 'cheer'
-            ? (isAr ? 'شجعك الآن' : 'cheered you on')
-            : latest.type === 'study'
-              ? (isAr ? 'طلب المذاكرة معك' : 'asked to study together')
-              : latest.type === 'schedule_share'
-                ? (isAr ? 'شارك جدول أسبوعه معك' : 'shared their weekly schedule with you')
-                : (isAr ? 'أرسل لك نغزة' : 'nudged you');
-          setActiveInAppNotification({
-            id: latest.id,
-            type: latest.type || 'nudge',
-            user: { username: latest.fromUsername, name: latest.fromName, avatar: latest.fromAvatar },
-            message: notifMsg,
-            isRequest: false,
-          });
+        // If user is currently running a focus timer, filter out study requests and dismiss them
+        const eligibleNotifs = isTimerRunning
+          ? notifs.filter(n => n.type !== 'study')
+          : notifs;
+
+        if (eligibleNotifs.length > 0) {
+          const latest = eligibleNotifs[0];
+          if (latest.id !== currentNotifIdRef.current) {
+            currentNotifIdRef.current = latest.id;
+            const notifMsg = latest.type === 'cheer'
+              ? (isAr ? 'شجعك الآن' : 'cheered you on')
+              : latest.type === 'study'
+                ? (isAr ? 'طلب المذاكرة معك' : 'asked to study together')
+                : latest.type === 'schedule_share'
+                  ? (isAr ? 'شارك جدول أسبوعه معك' : 'shared their weekly schedule with you')
+                  : (isAr ? 'أرسل لك نغزة' : 'nudged you');
+            setActiveInAppNotification({
+              id: latest.id,
+              type: latest.type || 'nudge',
+              user: { username: latest.fromUsername, name: latest.fromName, avatar: latest.fromAvatar },
+              message: notifMsg,
+              isRequest: false,
+            });
+          }
         } else if (incomingReqs.length > 0) {
           const latest = incomingReqs[0];
-          setActiveInAppNotification({
-            id: latest.friendshipId,
-            type: 'request',
-            user: latest.user,
-            message: 'sent you a friend request',
-            isRequest: true,
-          });
+          if (latest.friendshipId !== currentNotifIdRef.current) {
+            currentNotifIdRef.current = latest.friendshipId;
+            setActiveInAppNotification({
+              id: latest.friendshipId,
+              type: 'request',
+              user: latest.user,
+              message: 'sent you a friend request',
+              isRequest: true,
+            });
+          }
         }
       } catch (_) {}
     };
@@ -1593,10 +1609,14 @@ function AppContent({ isPreview = false }) {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [isSignedIn, friendsRefreshTrigger, isAr]);
+  }, [isSignedIn, friendsRefreshTrigger, isAr, isTimerRunning]);
 
   const handleAcceptRequest = async (friendshipId) => {
     try {
+      if (friendshipId) {
+        dismissedNotifIdsRef.current.add(friendshipId);
+      }
+      currentNotifIdRef.current = null;
       await apiFetch('/api/friends/respond', {
         method: 'POST',
         body: JSON.stringify({ friendshipId, action: 'accept' })
@@ -1606,18 +1626,58 @@ function AppContent({ isPreview = false }) {
     } catch (_) {}
   };
 
-  const handleDismissNotification = async (notifId, isRequest) => {
+  const handleDismissNotification = async (notifId, isRequest, notifType, fromUsername) => {
+    if (notifId) {
+      dismissedNotifIdsRef.current.add(notifId);
+    }
+    currentNotifIdRef.current = null;
     setActiveInAppNotification(null);
     if (!isRequest && notifId) {
       try {
         await apiFetch('/api/friends/notifications/dismiss', {
           method: 'POST',
-          body: JSON.stringify({ id: notifId })
+          body: JSON.stringify({ 
+            id: notifId,
+            type: notifType,
+            fromUsername: fromUsername
+          })
         });
         setFriendsIncomingCount(prev => Math.max(0, prev - 1));
       } catch (_) {}
     }
   };
+
+  // Auto-dismiss banner after 10s so it doesn't linger or stay stuck
+  useEffect(() => {
+    if (!activeInAppNotification) return;
+    const timer = setTimeout(() => {
+      handleDismissNotification(
+        activeInAppNotification.id,
+        activeInAppNotification.isRequest,
+        activeInAppNotification.type,
+        activeInAppNotification.user?.username
+      );
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [activeInAppNotification?.id]);
+
+  // If user starts a focus timer, automatically clear any active or pending study notifications
+  useEffect(() => {
+    if (isTimerRunning) {
+      if (activeInAppNotification?.type === 'study') {
+        handleDismissNotification(
+          activeInAppNotification.id,
+          false,
+          'study',
+          activeInAppNotification.user?.username
+        );
+      }
+      apiFetch('/api/friends/notifications/dismiss', {
+        method: 'POST',
+        body: JSON.stringify({ type: 'study' })
+      }).catch(() => {});
+    }
+  }, [isTimerRunning]);
 
   // --- Theme & Background ---
   const [theme, setTheme] = useState('dark');
@@ -6615,7 +6675,7 @@ function AppContent({ isPreview = false }) {
                     <button
                       type="button"
                       onClick={() => {
-                        handleDismissNotification(activeInAppNotification.id, false);
+                        handleDismissNotification(activeInAppNotification.id, false, 'schedule_share', activeInAppNotification.user?.username);
                         const friendObj = friendsList.find(f => (f.user?.username || '').toLowerCase() === (activeInAppNotification.user?.username || '').toLowerCase());
                         if (friendObj) {
                           setSelectedFriendForModal(friendObj);
@@ -6631,7 +6691,7 @@ function AppContent({ isPreview = false }) {
                     <button
                       type="button"
                       onClick={() => {
-                        handleDismissNotification(activeInAppNotification.id, false);
+                        handleDismissNotification(activeInAppNotification.id, false, 'study', activeInAppNotification.user?.username);
                         setIsPomodoroOpen(true);
                       }}
                       className="px-3 py-1.5 rounded-xl bg-white text-black font-black text-xs hover:bg-white/90 active:scale-95 transition-all shadow-sm cursor-pointer flex items-center gap-1"
@@ -6650,7 +6710,7 @@ function AppContent({ isPreview = false }) {
                             body: JSON.stringify({ username: targetUser, type: 'nudge' })
                           }).catch(() => {});
                         }
-                        handleDismissNotification(activeInAppNotification.id, false);
+                        handleDismissNotification(activeInAppNotification.id, false, 'nudge', activeInAppNotification.user?.username);
                       }}
                       className="px-3 py-1.5 rounded-xl bg-white text-black font-bold text-xs hover:bg-white/90 active:scale-95 transition-all shadow-sm cursor-pointer"
                     >
@@ -6660,7 +6720,7 @@ function AppContent({ isPreview = false }) {
                     <button
                       type="button"
                       onClick={() => {
-                        handleDismissNotification(activeInAppNotification.id, false);
+                        handleDismissNotification(activeInAppNotification.id, false, 'cheer', activeInAppNotification.user?.username);
                         setIsPomodoroOpen(true);
                       }}
                       className="px-3 py-1.5 rounded-xl bg-white text-black font-black text-xs hover:bg-white/90 active:scale-95 transition-all shadow-sm cursor-pointer flex items-center gap-1"
@@ -6671,7 +6731,7 @@ function AppContent({ isPreview = false }) {
                   )}
                   <button
                     type="button"
-                    onClick={() => handleDismissNotification(activeInAppNotification.id, false)}
+                    onClick={() => handleDismissNotification(activeInAppNotification.id, false, activeInAppNotification.type, activeInAppNotification.user?.username)}
                     className="p-1.5 rounded-lg text-white/40 hover:text-white transition-colors cursor-pointer"
                   >
                     <X size={14} />

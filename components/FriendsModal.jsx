@@ -84,6 +84,7 @@ export default function FriendsModal({
   const [showManageSheet, setShowManageSheet] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [sharingScheduleLoading, setSharingScheduleLoading] = useState(false);
+  const [nudgingFriendUser, setNudgingFriendUser] = useState(null);
 
   const handleToggleShareScheduleWithFriend = async (targetUsername, currentlyShared) => {
     if (!targetUsername || sharingScheduleLoading) return;
@@ -889,11 +890,14 @@ export default function FriendsModal({
         <div className="flex gap-2.5 pt-1">
           <button
             type="button"
+            disabled={nudgingFriendUser === selectedFriend.user?.username}
             onClick={() => {
               const targetUser = selectedFriend.user?.username;
               const presence = selectedFriend.presence;
 
               if (targetUser) {
+                setNudgingFriendUser(targetUser);
+                setTimeout(() => setNudgingFriendUser(null), 3000);
                 apiFetch('/api/friends/nudge', {
                   method: 'POST',
                   body: JSON.stringify({ 
@@ -914,15 +918,18 @@ export default function FriendsModal({
                 showToast(`${selectedFriend.presence.action} with ${selectedFriend.displayName}!`);
               }
             }}
-            className="flex-1 h-[54px] rounded-full bg-[#0a0a0a] text-white font-bold text-[16px] flex items-center justify-center active:scale-[0.98] hover:bg-black/90 transition-all cursor-pointer shadow-lg"
+            className="flex-1 h-[54px] rounded-full bg-[#0a0a0a] text-white font-bold text-[16px] flex items-center justify-center active:scale-[0.98] hover:bg-black/90 transition-all cursor-pointer shadow-lg disabled:opacity-50"
           >
-            {selectedFriend.presence.action}
+            {nudgingFriendUser === selectedFriend.user?.username ? (isRtl ? 'تم الإرسال' : 'Sent!') : selectedFriend.presence.action}
           </button>
           <button
             type="button"
+            disabled={nudgingFriendUser === selectedFriend.user?.username}
             onClick={() => {
               const targetUser = selectedFriend.user?.username;
               if (targetUser) {
+                setNudgingFriendUser(targetUser);
+                setTimeout(() => setNudgingFriendUser(null), 3000);
                 apiFetch('/api/friends/nudge', {
                   method: 'POST',
                   body: JSON.stringify({ username: targetUser, type: 'nudge' })
@@ -930,9 +937,9 @@ export default function FriendsModal({
               }
               showToast(`Nudge sent to ${selectedFriend.displayName}!`);
             }}
-            className="w-[110px] h-[54px] rounded-full border-2 border-[#0a0a0a] text-[#0a0a0a] font-bold text-[16px] flex items-center justify-center active:scale-[0.98] hover:bg-black/5 transition-all cursor-pointer"
+            className="w-[110px] h-[54px] rounded-full border-2 border-[#0a0a0a] text-[#0a0a0a] font-bold text-[16px] flex items-center justify-center active:scale-[0.98] hover:bg-black/5 transition-all cursor-pointer disabled:opacity-50"
           >
-            Nudge
+            {nudgingFriendUser === selectedFriend.user?.username ? (isRtl ? 'تم' : 'Sent') : 'Nudge'}
           </button>
         </div>
 

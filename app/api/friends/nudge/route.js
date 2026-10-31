@@ -37,8 +37,8 @@ export async function POST(req) {
       return json({ error: 'user_not_found' }, 404, req)
     }
 
-    if (!await rateLimit(`nudge-target:${me.id}:${targetUser.id}`, 4, 60_000)) {
-      return json({ error: 'Please wait before nudging this friend again.' }, 429, req)
+    if (!await rateLimit(`nudge-target:${me.id}:${targetUser.id}:${type}`, 2, 60_000)) {
+      return json({ error: 'Please wait before sending another request to this friend.' }, 429, req)
     }
 
     // Verify friendship status is accepted
@@ -68,7 +68,11 @@ export async function POST(req) {
     }
 
     const existingNotifs = Array.isArray(targetUser.notifications) ? targetUser.notifications : []
-    const updatedNotifs = [notifItem, ...existingNotifs].slice(0, 30)
+    // De-duplicate: replace any previous pending notification of the same type from this user
+    const filteredExisting = existingNotifs.filter(
+      n => !(n.type === type && (n.fromUsername || '').toLowerCase() === (me.username || '').toLowerCase())
+    )
+    const updatedNotifs = [notifItem, ...filteredExisting].slice(0, 30)
 
     await prisma.user.update({
       where: { id: targetUser.id },
