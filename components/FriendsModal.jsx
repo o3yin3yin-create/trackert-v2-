@@ -5,7 +5,7 @@ import {
   Users, Plus, X, Search, Check, Copy, Share2, 
   Shield, AlertCircle, Loader2, ChevronLeft, ChevronRight,
   Music, Plane, Clock, Sparkles, MoreHorizontal, ShieldAlert, Trash2, Lock,
-  Pin, CalendarDays, Eye
+  Pin, CalendarDays, Eye, Timer, BookOpen
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { translations } from '@/lib/translations';
@@ -584,7 +584,33 @@ export default function FriendsModal({
   const renderWhitePresenceSheet = () => {
     if (!selectedFriend) return null;
 
-    const isCurrentFriendPinned = (pinnedFriendUsername || '').toLowerCase() === (selectedFriend.user?.username || selectedFriend.displayName || '').toLowerCase();
+    const friendName = selectedFriend.displayName || selectedFriend.user?.name || selectedFriend.user?.username || 'Friend';
+    const isCurrentFriendPinned = (pinnedFriendUsername || '').toLowerCase() === (selectedFriend.user?.username || friendName || '').toLowerCase();
+    const presence = selectedFriend.presence || {
+      kind: 'idle',
+      tag: 'Idle',
+      line: 'Idle · not active',
+      right: 'Now',
+      status: 'Not active',
+      label: 'IDLE',
+      big: 'Active just now',
+      bigSize: 28,
+      sub: 'No activity right now',
+      pct: 0,
+      hasBar: false,
+      barL: '',
+      barR: '',
+      hasChips: false,
+      chips: [],
+      hasDots: false,
+      dots: [],
+      action: 'Ask to study',
+      together: '0h',
+      hasMusicBadge: false,
+      hasSec: false,
+      hasMultiple: false,
+      activities: []
+    };
 
     return (
       <div 
@@ -602,10 +628,10 @@ export default function FriendsModal({
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-[20px] font-bold tracking-tight text-[#0a0a0a] truncate leading-tight">
-                {selectedFriend.displayName}
+                {friendName}
               </span>
               <span className="text-[13px] text-[#525252] truncate leading-tight mt-0.5">
-                {selectedFriend.presence.status}
+                {presence.status}
               </span>
             </div>
           </div>
@@ -730,117 +756,132 @@ export default function FriendsModal({
         )}
 
         {/* Activity Cards: Multi-Activity or Single */}
-        {selectedFriend.presence.hasMultiple && Array.isArray(selectedFriend.presence.activities) && selectedFriend.presence.activities.length > 1 ? (
+        {presence.hasMultiple && Array.isArray(presence.activities) && presence.activities.length > 1 ? (
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between px-1">
               <span className="font-mono text-[11px] font-bold tracking-[2px] text-[#525252] uppercase flex items-center gap-1.5">
                 <Sparkles size={13} className="text-amber-500" />
-                <span>{isRtl ? `الأنشطة الحالية (${selectedFriend.presence.activities.length})` : `ACTIVE NOW (${selectedFriend.presence.activities.length})`}</span>
+                <span>{isRtl ? `الأنشطة الحالية (${presence.activities.length})` : `ACTIVE NOW (${presence.activities.length})`}</span>
               </span>
               <span className="text-[10px] font-mono font-bold bg-[#0a0a0a] text-white px-2.5 py-0.5 rounded-full">
                 {isRtl ? 'متعدد الأنشطة' : 'MULTI-TASKING'}
               </span>
             </div>
 
-            {selectedFriend.presence.activities.map((act, actIdx) => (
-              <div key={actIdx} className="bg-[#f5f5f5] rounded-[24px] p-4 sm:p-5 flex flex-col gap-2.5 border border-black/5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[11px] font-bold tracking-[2px] text-[#525252] uppercase flex items-center gap-1.5">
-                    {act.kind === 'focus' && <Timer size={13} className="text-[#0a0a0a]" />}
-                    {(act.kind === 'lecture' || act.kind === 'scheduled') && <BookOpen size={13} className="text-[#0a0a0a]" />}
-                    {act.kind === 'flight' && <Plane size={13} className="text-[#0a0a0a]" />}
-                    {act.kind === 'music' && <Music size={13} className="text-[#0a0a0a]" />}
-                    <span>{act.label}</span>
-                  </span>
-                  <span className="font-mono text-[11px] font-bold text-[#0a0a0a] bg-black/5 px-2 py-0.5 rounded-md">
-                    {act.right}
-                  </span>
-                </div>
+            {presence.activities.map((act, actIdx) => {
+              if (!act) return null;
+              const actKind = act.kind || 'focus';
+              const actLabel = act.label ? String(act.label) : '';
+              const actRight = act.right ? String(act.right) : '';
+              const actBig = act.big ? String(act.big) : '';
+              const actSub = act.sub ? String(act.sub) : '';
+              const actBigSize = Number(act.bigSize) || 36;
+              const actPct = Number.isFinite(Number(act.pct)) ? Math.max(0, Math.min(100, Number(act.pct))) : 0;
+              const actBarL = act.barL ? String(act.barL) : '';
+              const actBarR = act.barR ? String(act.barR) : '';
+              const actChips = Array.isArray(act.chips) ? act.chips.filter(Boolean) : [];
+              const actDots = Array.isArray(act.dots) ? act.dots : [];
 
-                {/* Big Title */}
-                <div className="flex items-center gap-3">
-                  {act.kind === 'music' && (act.art || act.secArt) && (
-                    <div className="w-12 h-12 rounded-[14px] overflow-hidden shadow-sm shrink-0 border border-black/10">
-                      <img 
-                        src={getSafeTrackArt(act.art || act.secArt)} 
-                        alt={act.big || 'Album'} 
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover"
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                      />
+              return (
+                <div key={act.id || actIdx} className="bg-[#f5f5f5] rounded-[24px] p-4 sm:p-5 flex flex-col gap-2.5 border border-black/5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[11px] font-bold tracking-[2px] text-[#525252] uppercase flex items-center gap-1.5">
+                      {actKind === 'focus' && <Timer size={13} className="text-[#0a0a0a]" />}
+                      {(actKind === 'lecture' || actKind === 'scheduled') && <BookOpen size={13} className="text-[#0a0a0a]" />}
+                      {actKind === 'flight' && <Plane size={13} className="text-[#0a0a0a]" />}
+                      {actKind === 'music' && <Music size={13} className="text-[#0a0a0a]" />}
+                      <span>{actLabel}</span>
+                    </span>
+                    <span className="font-mono text-[11px] font-bold text-[#0a0a0a] bg-black/5 px-2 py-0.5 rounded-md">
+                      {actRight}
+                    </span>
+                  </div>
+
+                  {/* Big Title */}
+                  <div className="flex items-center gap-3">
+                    {actKind === 'music' && (act.art || act.secArt) && (
+                      <div className="w-12 h-12 rounded-[14px] overflow-hidden shadow-sm shrink-0 border border-black/10">
+                        <img 
+                          src={getSafeTrackArt(act.art || act.secArt)} 
+                          alt={actBig || 'Album'} 
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      </div>
+                    )}
+                    <div className="flex flex-col min-w-0">
+                      <span 
+                        className="font-black tracking-tight text-[#0a0a0a] leading-none select-text truncate"
+                        style={{ fontSize: `${Math.min(actBigSize, 40)}px` }}
+                      >
+                        {actBig}
+                      </span>
+                      <span className="text-[13px] text-[#525252] mt-1 truncate">
+                        {actSub}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar (if hasBar) */}
+                  {act.hasBar && (
+                    <div className="flex flex-col gap-1.5 pt-1">
+                      <div className="h-2 rounded-[4px] bg-[#d4d4d4] overflow-hidden">
+                        <div 
+                          className="h-full rounded-[4px] bg-[#0a0a0a] transition-all duration-500" 
+                          style={{ width: `${actPct}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between font-mono text-[11px] font-bold text-[#404040]">
+                        <span>{actBarL}</span>
+                        <span>{actBarR}</span>
+                      </div>
                     </div>
                   )}
-                  <div className="flex flex-col min-w-0">
-                    <span 
-                      className="font-black tracking-tight text-[#0a0a0a] leading-none select-text truncate"
-                      style={{ fontSize: `${Math.min(act.bigSize || 36, 40)}px` }}
-                    >
-                      {act.big}
-                    </span>
-                    <span className="text-[13px] text-[#525252] mt-1 truncate">
-                      {act.sub}
-                    </span>
-                  </div>
+
+                  {/* Chips (e.g. Lecture) */}
+                  {act.hasChips && actChips.length > 0 && (
+                    <div className="flex gap-1.5 flex-wrap pt-1">
+                      {actChips.map((chip, cIdx) => (
+                        <span 
+                          key={cIdx}
+                          className="font-mono text-[11px] font-bold bg-white text-[#0a0a0a] rounded-[8px] px-2 py-1 shadow-sm border border-black/5"
+                        >
+                          {String(chip)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Dots Indicator (e.g. Cycles) */}
+                  {act.hasDots && actDots.length > 0 && (
+                    <div className="flex gap-1.5 pt-1">
+                      {actDots.map((dot, dIdx) => (
+                        <span 
+                          key={dIdx}
+                          className="w-2.5 h-2.5 rounded-full transition-colors"
+                          style={{ backgroundColor: dot ? '#0a0a0a' : '#c4c4c4' }}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-
-                {/* Progress Bar (if hasBar) */}
-                {act.hasBar && (
-                  <div className="flex flex-col gap-1.5 pt-1">
-                    <div className="h-2 rounded-[4px] bg-[#d4d4d4] overflow-hidden">
-                      <div 
-                        className="h-full rounded-[4px] bg-[#0a0a0a] transition-all duration-500" 
-                        style={{ width: `${act.pct}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between font-mono text-[11px] font-bold text-[#404040]">
-                      <span>{act.barL}</span>
-                      <span>{act.barR}</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Chips (e.g. Lecture) */}
-                {act.hasChips && Array.isArray(act.chips) && act.chips.length > 0 && (
-                  <div className="flex gap-1.5 flex-wrap pt-1">
-                    {act.chips.map((chip, cIdx) => (
-                      <span 
-                        key={cIdx}
-                        className="font-mono text-[11px] font-bold bg-white text-[#0a0a0a] rounded-[8px] px-2 py-1 shadow-sm border border-black/5"
-                      >
-                        {chip}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Dots Indicator (e.g. Cycles) */}
-                {act.hasDots && Array.isArray(act.dots) && (
-                  <div className="flex gap-1.5 pt-1">
-                    {act.dots.map((dot, dIdx) => (
-                      <span 
-                        key={dIdx}
-                        className="w-2.5 h-2.5 rounded-full transition-colors"
-                        style={{ backgroundColor: dot ? '#0a0a0a' : '#c4c4c4' }}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="bg-[#f5f5f5] rounded-[24px] p-5 flex flex-col gap-2.5">
             <span className="font-mono text-[11px] font-bold tracking-[2px] text-[#525252] uppercase">
-              {selectedFriend.presence.label}
+              {presence.label}
             </span>
 
             {/* Big Title */}
             <div className="flex items-center gap-3">
-              {selectedFriend.presence.kind === 'music' && (selectedFriend.presence.art || selectedFriend.presence.secArt) && (
+              {presence.kind === 'music' && (presence.art || presence.secArt) && (
                 <div className="w-14 h-14 rounded-[14px] overflow-hidden shadow-md shrink-0 border border-black/10">
                   <img 
-                    src={getSafeTrackArt(selectedFriend.presence.art || selectedFriend.presence.secArt)} 
-                    alt={selectedFriend.presence.big || 'Album'} 
+                    src={getSafeTrackArt(presence.art || presence.secArt)} 
+                    alt={presence.big || 'Album'} 
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover"
                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
@@ -850,50 +891,50 @@ export default function FriendsModal({
               <div className="flex flex-col min-w-0">
                 <span 
                   className="font-black tracking-tight text-[#0a0a0a] leading-none select-text truncate"
-                  style={{ fontSize: `${selectedFriend.presence.bigSize}px` }}
+                  style={{ fontSize: `${presence.bigSize || 36}px` }}
                 >
-                  {selectedFriend.presence.big}
+                  {presence.big}
                 </span>
                 <span className="text-[14px] text-[#525252] mt-1 truncate">
-                  {selectedFriend.presence.sub}
+                  {presence.sub}
                 </span>
               </div>
             </div>
 
             {/* Progress Bar (if hasBar) */}
-            {selectedFriend.presence.hasBar && (
+            {presence.hasBar && (
               <div className="flex flex-col gap-2 pt-1">
                 <div className="h-2 rounded-[4px] bg-[#d4d4d4] overflow-hidden">
                   <div 
                     className="h-full rounded-[4px] bg-[#0a0a0a] transition-all duration-500" 
-                    style={{ width: `${selectedFriend.presence.pct}%` }}
+                    style={{ width: `${Number.isFinite(Number(presence.pct)) ? presence.pct : 0}%` }}
                   />
                 </div>
                 <div className="flex justify-between font-mono text-[12px] font-bold text-[#404040]">
-                  <span>{selectedFriend.presence.barL}</span>
-                  <span>{selectedFriend.presence.barR}</span>
+                  <span>{presence.barL}</span>
+                  <span>{presence.barR}</span>
                 </div>
               </div>
             )}
 
             {/* Chips (e.g. Lecture) */}
-            {selectedFriend.presence.hasChips && (
+            {presence.hasChips && Array.isArray(presence.chips) && presence.chips.length > 0 && (
               <div className="flex gap-2 flex-wrap pt-1">
-                {selectedFriend.presence.chips.map((chip, idx) => (
+                {presence.chips.map((chip, idx) => (
                   <span 
                     key={idx}
                     className="font-mono text-[12px] font-bold bg-white text-[#0a0a0a] rounded-[10px] px-2.5 py-1.5 shadow-sm"
                   >
-                    {chip}
+                    {String(chip)}
                   </span>
                 ))}
               </div>
             )}
 
             {/* Dots Indicator (e.g. Cycles or Habits) */}
-            {selectedFriend.presence.hasDots && (
+            {presence.hasDots && Array.isArray(presence.dots) && presence.dots.length > 0 && (
               <div className="flex gap-2 pt-1">
-                {selectedFriend.presence.dots.map((dot, idx) => (
+                {presence.dots.map((dot, idx) => (
                   <span 
                     key={idx}
                     className="w-3 h-3 rounded-full transition-colors"
@@ -906,13 +947,13 @@ export default function FriendsModal({
         )}
 
         {/* Secondary Section (e.g. Spotify Track card) */}
-        {selectedFriend.presence.hasSec && (!selectedFriend.presence.hasMultiple || !selectedFriend.presence.activities?.some(a => a.kind === 'music')) && (
+        {presence.hasSec && (!presence.hasMultiple || !presence.activities?.some(a => a?.kind === 'music')) && (
           <div className="flex items-center gap-3 border-2 border-[#e5e5e5] rounded-[20px] p-2.5 px-3">
             <div className="w-11 h-11 rounded-[12px] bg-[#0a0a0a] text-white flex items-center justify-center shrink-0 overflow-hidden relative border border-black/10">
-              {selectedFriend.presence.secArt ? (
+              {presence.secArt ? (
                 <img 
-                  src={getSafeTrackArt(selectedFriend.presence.secArt)} 
-                  alt={selectedFriend.presence.secTitle || 'Spotify'} 
+                  src={getSafeTrackArt(presence.secArt)} 
+                  alt={presence.secTitle || 'Spotify'} 
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover"
                   onError={(e) => { e.currentTarget.style.display = 'none'; }}
@@ -923,21 +964,21 @@ export default function FriendsModal({
             </div>
             <div className="flex-1 min-w-0 flex flex-col gap-1">
               <span className="text-[14px] font-bold text-[#0a0a0a] truncate leading-tight">
-                {selectedFriend.presence.secTitle}
+                {presence.secTitle}
               </span>
               <span className="text-[12px] text-[#525252] truncate leading-tight">
-                {selectedFriend.presence.secSub}
+                {presence.secSub}
               </span>
               <div className="h-1 rounded-full bg-[#d4d4d4] overflow-hidden mt-0.5">
                 <div 
                   className="h-full rounded-full bg-[#0a0a0a]"
-                  style={{ width: `${selectedFriend.presence.secPct}%` }}
+                  style={{ width: `${Number.isFinite(Number(presence.secPct)) ? presence.secPct : 0}%` }}
                 />
               </div>
             </div>
             <button
               type="button"
-              onClick={() => showToast(`Listening along to ${selectedFriend.presence.secTitle}...`)}
+              onClick={() => showToast(`Listening along to ${presence.secTitle}...`)}
               className="h-9 px-3.5 rounded-full bg-[#f0f0f0] hover:bg-[#e4e4e7] font-bold text-[13px] text-[#0a0a0a] transition-all cursor-pointer active:scale-95 shrink-0"
             >
               Listen along
@@ -991,7 +1032,7 @@ export default function FriendsModal({
                 </div>
                 <div className="flex flex-col min-w-0">
                   <span className="text-[14px] font-bold text-[#0a0a0a] leading-tight truncate">
-                    {isRtl ? `جدول أسبوع ${selectedFriend.displayName}` : `${selectedFriend.displayName}'s Weekly Schedule`}
+                    {isRtl ? `جدول أسبوع ${friendName}` : `${friendName}'s Weekly Schedule`}
                   </span>
                   <span className="text-[12px] text-[#525252] leading-tight mt-0.5">
                     {Array.isArray(selectedFriend.user?.weeklySchedule) && selectedFriend.user.weeklySchedule.length > 0
@@ -1010,7 +1051,7 @@ export default function FriendsModal({
               onClick={() => {
                 if (onOpenFriendSchedule) {
                   onOpenFriendSchedule({
-                    name: selectedFriend.displayName || selectedFriend.user?.name || selectedFriend.user?.username || 'Friend',
+                    name: friendName,
                     avatar: selectedFriend.user?.avatar,
                     habits: selectedFriend.user?.weeklySchedule || []
                   });
@@ -1033,7 +1074,6 @@ export default function FriendsModal({
             disabled={nudgingFriendUser === selectedFriend.user?.username}
             onClick={() => {
               const targetUser = selectedFriend.user?.username;
-              const presence = selectedFriend.presence;
 
               if (targetUser) {
                 setNudgingFriendUser(targetUser);
@@ -1049,18 +1089,18 @@ export default function FriendsModal({
 
               if (onJoinSession) {
                 onJoinSession({
-                  friendName: selectedFriend.displayName || targetUser || 'Friend',
+                  friendName: friendName,
                   presence: presence,
                   sessionData: presence?.sessionData
                 });
                 onClose();
               } else {
-                showToast(`${selectedFriend.presence.action} with ${selectedFriend.displayName}!`);
+                showToast(`${presence?.action || 'Activity'} with ${friendName}!`);
               }
             }}
             className="flex-1 h-[54px] rounded-full bg-[#0a0a0a] text-white font-bold text-[16px] flex items-center justify-center active:scale-[0.98] hover:bg-black/90 transition-all cursor-pointer shadow-lg disabled:opacity-50"
           >
-            {nudgingFriendUser === selectedFriend.user?.username ? (isRtl ? 'تم الإرسال' : 'Sent!') : selectedFriend.presence.action}
+            {nudgingFriendUser === selectedFriend.user?.username ? (isRtl ? 'تم الإرسال' : 'Sent!') : (presence?.action || 'Ask to study')}
           </button>
           <button
             type="button"
@@ -1075,7 +1115,7 @@ export default function FriendsModal({
                   body: JSON.stringify({ username: targetUser, type: 'nudge' })
                 }).catch(() => {});
               }
-              showToast(`Nudge sent to ${selectedFriend.displayName}!`);
+              showToast(`Nudge sent to ${friendName}!`);
             }}
             className="w-[110px] h-[54px] rounded-full border-2 border-[#0a0a0a] text-[#0a0a0a] font-bold text-[16px] flex items-center justify-center active:scale-[0.98] hover:bg-black/5 transition-all cursor-pointer disabled:opacity-50"
           >
@@ -1085,7 +1125,7 @@ export default function FriendsModal({
 
         {/* Together this week footer */}
         <span className="text-[13px] text-[#525252] text-center select-none pt-0.5">
-          Together this week: {selectedFriend.presence.together}
+          Together this week: {presence?.together || '0h'}
         </span>
       </div>
     );

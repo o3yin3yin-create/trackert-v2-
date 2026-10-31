@@ -131,6 +131,24 @@ export default function WeeklyScheduleCalendar({
     return map;
   }, [weeklyHabits, isOpen]);
 
+  // Accepted friends list
+  const acceptedFriends = useMemo(() => {
+    if (!isOpen || !Array.isArray(friends)) return [];
+    return friends.filter(f => f && f.user);
+  }, [friends, isOpen]);
+
+  // Filtered friends in share modal
+  const filteredShareFriends = useMemo(() => {
+    if (!isOpen) return [];
+    const q = friendSearch.trim().toLowerCase();
+    if (!q) return acceptedFriends;
+    return acceptedFriends.filter(f => {
+      const name = String(f.displayName || f.user?.name || '').toLowerCase();
+      const uname = String(f.user?.username || '').toLowerCase();
+      return name.includes(q) || uname.includes(q);
+    });
+  }, [acceptedFriends, friendSearch, isOpen]);
+
   if (!isOpen) return null;
 
   // Open Form for Adding New Item
@@ -260,22 +278,7 @@ export default function WeeklyScheduleCalendar({
     onUpdateHabits(updated);
   };
 
-  // Accepted friends list
-  const acceptedFriends = useMemo(() => {
-    if (!Array.isArray(friends)) return [];
-    return friends.filter(f => f && f.user);
-  }, [friends]);
 
-  // Filtered friends in share modal
-  const filteredShareFriends = useMemo(() => {
-    const q = friendSearch.trim().toLowerCase();
-    if (!q) return acceptedFriends;
-    return acceptedFriends.filter(f => {
-      const name = String(f.displayName || f.user?.name || '').toLowerCase();
-      const uname = String(f.user?.username || '').toLowerCase();
-      return name.includes(q) || uname.includes(q);
-    });
-  }, [acceptedFriends, friendSearch]);
 
   const handleToggleShareWithFriend = async (targetUsername, currentIsShared) => {
     if (!targetUsername || sharingLoading) return;
