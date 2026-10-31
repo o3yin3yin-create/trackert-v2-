@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { 
   Users, Plus, X, Search, Check, Copy, Share2, 
   Shield, AlertCircle, Loader2, ChevronLeft, ChevronRight,
-  Music, Plane, Clock, Sparkles, MoreHorizontal, ShieldAlert, Trash2, Lock,
+  Music, Plane, Clock, MoreHorizontal, ShieldAlert, Trash2, Lock,
   Pin, CalendarDays, Eye, Timer, BookOpen
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
@@ -645,11 +645,11 @@ export default function FriendsModal({
                         if (onClose) onClose();
                       }
                     }}
-                    className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0 cursor-pointer transition-colors"
+                    className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 border border-emerald-600/20 shrink-0 cursor-pointer transition-all active:scale-95"
                     title={isRtl ? 'عرض جدول الأسبوع' : 'View Weekly Schedule'}
                   >
-                    <CalendarDays size={11} />
-                    <span>{isRtl ? 'الجدول متاح' : 'Schedule'}</span>
+                    <CalendarDays size={11} className="text-emerald-600" />
+                    <span>{isRtl ? 'الجدول' : 'Schedule'}</span>
                   </button>
                 )}
               </div>
@@ -817,16 +817,6 @@ export default function FriendsModal({
         {/* Activity Cards: Multi-Activity or Single */}
         {presence.hasMultiple && Array.isArray(presence.activities) && presence.activities.length > 1 ? (
           <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between px-1">
-              <span className="font-mono text-[11px] font-bold tracking-[2px] text-[#525252] uppercase flex items-center gap-1.5">
-                <Sparkles size={13} className="text-amber-500" />
-                <span>{isRtl ? `الأنشطة الحالية (${presence.activities.length})` : `ACTIVE NOW (${presence.activities.length})`}</span>
-              </span>
-              <span className="text-[10px] font-mono font-bold bg-[#0a0a0a] text-white px-2.5 py-0.5 rounded-full">
-                {isRtl ? 'متعدد الأنشطة' : 'MULTI-TASKING'}
-              </span>
-            </div>
-
             {presence.activities.map((act, actIdx) => {
               if (!act) return null;
               const actKind = act.kind || 'focus';
@@ -1420,17 +1410,26 @@ export default function FriendsModal({
                                 {pinnedFriendUsername && (pinnedFriendUsername.toLowerCase() === (f.user?.username || f.displayName || '').toLowerCase()) && (
                                   <Pin size={12} className="text-white/50 fill-white/20 shrink-0" title="Pinned to Home" />
                                 )}
-                                {f.presence.hasMultiple && (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[9px] font-mono font-bold shrink-0">
-                                    <Sparkles size={8} />
-                                    {f.presence.multiCount || f.presence.activities?.length || 2} {isRtl ? 'أنشطة' : 'ACTS'}
-                                  </span>
-                                )}
                                 {f.user?.hasSharedScheduleWithMe && (
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[9px] font-mono font-bold shrink-0">
-                                    <CalendarDays size={8} />
-                                    {isRtl ? 'الجدول متاح' : 'SCHEDULE'}
-                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (onOpenFriendSchedule) {
+                                        onOpenFriendSchedule({
+                                          name: f.displayName,
+                                          avatar: f.user?.avatar,
+                                          habits: f.user?.weeklySchedule || []
+                                        });
+                                        if (onClose) onClose();
+                                      }
+                                    }}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/[0.12] hover:bg-emerald-500/[0.22] text-emerald-300 border border-emerald-500/25 text-[10px] font-medium tracking-normal shrink-0 transition-all cursor-pointer active:scale-95"
+                                    title={isRtl ? 'عرض جدول الأسبوع' : 'View Weekly Schedule'}
+                                  >
+                                    <CalendarDays size={10} className="text-emerald-400 shrink-0" />
+                                    <span>{isRtl ? 'الجدول' : 'Schedule'}</span>
+                                  </button>
                                 )}
                               </div>
                               <span className="text-[#b3b3b3] text-[13px] truncate leading-tight mt-0.5">
