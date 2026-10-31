@@ -902,7 +902,7 @@ export default function WeeklyScheduleCalendar({
                           onClick={() => handleToggleShareWithFriend(username, isShared)}
                           className={`h-8 px-3 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0 ${
                             isShared
-                              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-red-500/15 hover:text-red-400 hover:border-red-500/30'
+                              ? 'bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 hover:border-red-500/40'
                               : 'bg-white text-black hover:bg-white/90 shadow-sm'
                           }`}
                         >
@@ -910,13 +910,13 @@ export default function WeeklyScheduleCalendar({
                             <span className="w-10 h-3 bg-current opacity-30 rounded animate-pulse inline-block" />
                           ) : isShared ? (
                             <>
-                              <Check size={13} strokeWidth={2.5} />
-                              <span>{isAr ? 'تمت المشاركة' : 'Shared'}</span>
+                              <X size={13} strokeWidth={2.5} />
+                              <span>{isAr ? 'إيقاف المشاركة' : 'Stop Sharing'}</span>
                             </>
                           ) : (
                             <>
-                              <Send size={12} />
-                              <span>{isAr ? 'إرسال الجدول' : 'Share'}</span>
+                              <Share2 size={12} />
+                              <span>{isAr ? 'مشاركة الجدول' : 'Share'}</span>
                             </>
                           )}
                         </button>

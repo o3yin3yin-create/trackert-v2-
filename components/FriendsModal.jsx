@@ -681,18 +681,22 @@ export default function FriendsModal({
                   className="py-2.5 text-start flex items-center justify-between text-black hover:text-black/70 cursor-pointer"
                 >
                   <div className="flex flex-col">
-                    <span className="text-sm font-bold">
+                    <span className={`text-sm font-bold ${selectedFriend.user?.iSharedScheduleWithThem ? 'text-red-600' : 'text-black'}`}>
                       {selectedFriend.user?.iSharedScheduleWithThem
-                        ? (isRtl ? 'إلغاء مشاركة جدولي معه' : 'Stop Sharing My Schedule')
+                        ? (isRtl ? 'إيقاف مشاركة جدولي معه' : 'Stop Sharing My Schedule')
                         : (isRtl ? 'مشاركة جدولي معه' : 'Share My Schedule')}
                     </span>
                     <span className="text-[11px] text-[#71717a]">
                       {selectedFriend.user?.iSharedScheduleWithThem
-                        ? (isRtl ? 'الصديق يتمكن حالياً من مشاهدة جدول أسبوعك' : 'This friend can currently view your weekly schedule')
+                        ? (isRtl ? 'إلغاء الوصول ومنعه من رؤية جدول أسبوعك' : 'Revoke their access to your weekly routine')
                         : (isRtl ? 'السماح لهذا الصديق بمشاهدة جدول أسبوعك' : 'Allow this friend to view your weekly routine')}
                     </span>
                   </div>
-                  <Share2 size={16} className={`shrink-0 ${selectedFriend.user?.iSharedScheduleWithThem ? 'text-emerald-600' : 'text-[#71717a]'}`} />
+                  {selectedFriend.user?.iSharedScheduleWithThem ? (
+                    <X size={16} className="text-red-500 shrink-0" strokeWidth={2.5} />
+                  ) : (
+                    <Share2 size={16} className="text-[#71717a] shrink-0" />
+                  )}
                 </button>
               )}
 
@@ -941,7 +945,43 @@ export default function FriendsModal({
           </div>
         )}
 
-        {/* Shared Weekly Schedule Section */}
+        {/* Your Schedule Shared with this Friend - Quick Stop Sharing Card */}
+        {selectedFriend.user?.iSharedScheduleWithThem && (
+          <div className="bg-[#fff7ed] border border-[#fed7aa] rounded-[24px] p-4 flex items-center justify-between gap-3 shadow-sm">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <div className="w-9 h-9 rounded-2xl bg-[#ea580c] text-white flex items-center justify-center shrink-0 shadow-sm">
+                <Share2 size={16} />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[13px] font-bold text-[#9a3412] leading-tight truncate">
+                    {isRtl ? 'جدولك متاح لهذا الصديق' : 'Your Schedule is Shared'}
+                  </span>
+                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-[#ea580c]/15 text-[#c2410c] shrink-0">
+                    {isRtl ? 'مشارك' : 'ACTIVE'}
+                  </span>
+                </div>
+                <span className="text-[11px] text-[#c2410c] leading-tight mt-0.5 truncate">
+                  {isRtl ? 'يستطيع تصفح روتينك وحصصك الأسبوعية' : 'They can view your weekly routine'}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={sharingScheduleLoading}
+              onClick={() => {
+                handleToggleShareScheduleWithFriend(selectedFriend.user?.username, true);
+              }}
+              className="px-3.5 py-2 rounded-xl bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 font-bold text-xs transition-all active:scale-95 shadow-sm cursor-pointer shrink-0 flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <X size={13} strokeWidth={2.5} />
+              <span>{isRtl ? 'إيقاف المشاركة' : 'Stop Sharing'}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Shared Weekly Schedule Section (Friend shared with me) */}
         {selectedFriend.user?.hasSharedScheduleWithMe && (
           <div className="bg-[#f5f5f5] rounded-[24px] p-4 flex flex-col gap-3 border border-black/5">
             <div className="flex items-center justify-between">
