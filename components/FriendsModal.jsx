@@ -861,12 +861,12 @@ export default function FriendsModal({
                     )}
                     <div className="flex flex-col min-w-0">
                       <span 
-                        className="font-black tracking-tight text-[#0a0a0a] leading-none select-text truncate"
-                        style={{ fontSize: `${Math.min(actBigSize, 40)}px` }}
+                        className="font-extrabold tracking-tight text-[#0a0a0a] leading-tight select-text truncate"
+                        style={{ fontSize: `${actKind === 'focus' ? Math.min(actBigSize, 32) : Math.min(actBigSize, 22)}px` }}
                       >
                         {actBig}
                       </span>
-                      <span className="text-[13px] text-[#525252] mt-1 truncate">
+                      <span className="text-[13px] text-[#525252] mt-0.5 truncate">
                         {actSub}
                       </span>
                     </div>
@@ -939,12 +939,12 @@ export default function FriendsModal({
               )}
               <div className="flex flex-col min-w-0">
                 <span 
-                  className="font-black tracking-tight text-[#0a0a0a] leading-none select-text truncate"
-                  style={{ fontSize: `${presence.bigSize || 36}px` }}
+                  className="font-extrabold tracking-tight text-[#0a0a0a] leading-tight select-text truncate"
+                  style={{ fontSize: `${presence.kind === 'focus' ? Math.min(presence.bigSize || 56, 34) : Math.min(presence.bigSize || 36, 22)}px` }}
                 >
                   {presence.big}
                 </span>
-                <span className="text-[14px] text-[#525252] mt-1 truncate">
+                <span className="text-[14px] text-[#525252] mt-0.5 truncate">
                   {presence.sub}
                 </span>
               </div>
