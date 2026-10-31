@@ -743,7 +743,7 @@ export default function FriendsModal({
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-[11px] font-bold tracking-[2px] text-[#525252] uppercase flex items-center gap-1.5">
                     {act.kind === 'focus' && <Timer size={13} className="text-[#0a0a0a]" />}
-                    {act.kind === 'lecture' && <BookOpen size={13} className="text-[#0a0a0a]" />}
+                    {(act.kind === 'lecture' || act.kind === 'scheduled') && <BookOpen size={13} className="text-[#0a0a0a]" />}
                     {act.kind === 'flight' && <Plane size={13} className="text-[#0a0a0a]" />}
                     {act.kind === 'music' && <Music size={13} className="text-[#0a0a0a]" />}
                     <span>{act.label}</span>
