@@ -30,6 +30,8 @@ import WeeklyScheduleCalendar from '../components/WeeklyScheduleCalendar';
 import PrivacyModal from '../components/PrivacyModal';
 import SpotifyInviteModal from '../components/SpotifyInviteModal';
 import UpdateModal from '../components/UpdateModal';
+import HabitPresetsModal from '../components/HabitPresetsModal';
+import { HABIT_PRESETS, getLocalizedPreset } from '../lib/habitPresets';
 import { guideSections } from '../lib/guideContent';
 import { getDisplayFriend, formatBriefActivity, getActivityBadge, getSafeTrackArt, getIslandDetails, PRESENCE_PRESETS } from '../lib/friendsPresets';
 
@@ -3362,6 +3364,66 @@ function AppContent({ isPreview = false }) {
     handleCloseAdd();
   };
 
+  const [isPresetsModalOpen, setIsPresetsModalOpen] = useState(false);
+
+  const handleAddPresetDirect = (presetData) => {
+    haptic('medium');
+    markLocalMutation();
+
+    const newHabit = {
+      id: generateId(),
+      name: presetData.name,
+      type: presetData.type,
+      subItems: presetData.type === 'multi' ? (presetData.subItems || []) : [],
+      frequency: presetData.frequency || 'daily',
+      scheduleDays: presetData.frequency === 'weekly' ? (presetData.scheduleDays || [0, 1, 2, 3, 4]) : [],
+      scheduleDate: null,
+      time: presetData.time || null,
+      duration: presetData.duration || null,
+      location: presetData.location || null,
+      category: presetData.category || 'habit',
+      isPrivate: false,
+      updatedAt: Date.now()
+    };
+
+    setHabits(prev => {
+      const nextHabits = [...prev, newHabit];
+      apiFetch('/api/sync', {
+        method: 'POST',
+        body: JSON.stringify({ habits: nextHabits, updatedAt: Date.now() })
+      }).catch(() => {});
+      return nextHabits;
+    });
+  };
+
+  const applyPresetToForm = (preset) => {
+    haptic('light');
+    const localized = getLocalizedPreset(preset, lang);
+    setNewHabitName(localized.name);
+    setNewHabitType(localized.type);
+    if (localized.type === 'multi') {
+      setNewHabitSubItems(localized.subItems.length > 0 ? localized.subItems : ['', '']);
+    }
+    setHabitFrequency(localized.frequency);
+    if (localized.frequency === 'weekly' && localized.scheduleDays) {
+      setHabitScheduleDays(localized.scheduleDays);
+    }
+    if (localized.time) {
+      setHabitTime(localized.time);
+      const match = localized.time.match(/(\d{1,2})[:.](\d{2})\s*(AM|PM)?/i);
+      if (match) {
+        setSelectedTimeHour(parseInt(match[1], 10));
+        setSelectedTimeMinute(match[2]);
+        setSelectedTimePeriod(match[3]?.toUpperCase() || 'AM');
+      }
+    } else {
+      setHabitTime('');
+    }
+    setHabitDuration(localized.duration || '');
+    setHabitLocation(localized.location || '');
+    setHabitCategory(localized.category || 'habit');
+  };
+
   const deleteHabit = (habitId) => {
     haptic('heavy');
     deletedHabitIdsRef.current.add(habitId);
@@ -4453,6 +4515,44 @@ function AppContent({ isPreview = false }) {
                   </button>
                 </div>
                 
+                {/* Ready-Made Habit Quick Selector */}
+                <div className="mb-6 bg-white/[0.03] p-3.5 sm:p-4 rounded-2xl border border-white/10">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="text-[11px] font-bold text-white/50 uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles size={13} className="text-amber-400" />
+                      <span>{lang === 'ar' ? 'عادات جاهزة ومقترحة' : 'Ready-Made Templates'}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsPresetsModalOpen(true)}
+                      className="text-[11px] font-bold text-white/60 hover:text-white transition-colors underline underline-offset-2 cursor-pointer"
+                    >
+                      {lang === 'ar' ? 'عرض الكل' : 'View All'}
+                    </button>
+                  </div>
+
+                  <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                    {HABIT_PRESETS.map(preset => {
+                      const localized = getLocalizedPreset(preset, lang);
+                      const isSelected = newHabitName.toLowerCase() === localized.name.toLowerCase();
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => applyPresetToForm(preset)}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border shrink-0 flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                            isSelected 
+                              ? 'bg-white text-black border-white shadow-sm' 
+                              : 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border-white/10'
+                          }`}
+                        >
+                          <span>{localized.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* Habit Name */}
                 <div className="mb-5">
                   <label className="block text-xs font-bold tracking-wider text-white/50 uppercase mb-2">
@@ -4952,14 +5052,22 @@ function AppContent({ isPreview = false }) {
 
                 
                 {/* Action Buttons inside Manage */}
-                <div className="grid grid-cols-2 gap-2 mb-6">
-                  <button onClick={() => {handleCloseManage(); handleOpenAdd();}} className="w-full py-3.5 rounded-2xl font-black text-xs sm:text-sm flex justify-center items-center gap-2 border border-white/15 bg-white text-black hover:bg-white/90 transition-all duration-200 active:scale-[0.98] shadow-lg">
+                <div className="grid grid-cols-2 gap-2 mb-2.5">
+                  <button onClick={() => {handleCloseManage(); handleOpenAdd();}} className="w-full py-3.5 rounded-2xl font-black text-xs sm:text-sm flex justify-center items-center gap-2 border border-white/15 bg-white text-black hover:bg-white/90 transition-all duration-200 active:scale-[0.98] shadow-lg cursor-pointer">
                     <Plus size={16} strokeWidth={3}/> {t('addNewHabit')}
                   </button>
-                  <button onClick={() => {handleCloseManage(); setIsScheduleCalendarOpen(true);}} className="w-full py-3.5 rounded-2xl font-black text-xs sm:text-sm flex justify-center items-center gap-2 border border-white/15 bg-white/10 text-white hover:bg-white/15 transition-all duration-200 active:scale-[0.98]">
+                  <button onClick={() => {handleCloseManage(); setIsScheduleCalendarOpen(true);}} className="w-full py-3.5 rounded-2xl font-black text-xs sm:text-sm flex justify-center items-center gap-2 border border-white/15 bg-white/10 text-white hover:bg-white/15 transition-all duration-200 active:scale-[0.98] cursor-pointer">
                     <Calendar size={16} /> {lang === 'ar' ? 'الجدول والروتين' : 'Schedule Planner'}
                   </button>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => { handleCloseManage(); setIsPresetsModalOpen(true); }}
+                  className="w-full py-3 mb-6 rounded-2xl font-bold text-xs flex justify-center items-center gap-2 border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  <Sparkles size={14} className="text-amber-400" />
+                  <span>{lang === 'ar' ? 'عادات جاهزة ومقترحة (الصلوات، المشي، التخطيط...)' : 'Ready-Made Habits (Prayers, Walk, Plan...)'}</span>
+                </button>
 
                 {/* List of Habits with Full Scroll */}
                 <div className="space-y-3 pb-8">
@@ -6938,14 +7046,24 @@ function AppContent({ isPreview = false }) {
                     </p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleOpenAdd}
-                    className="mt-1 px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 shadow-xl flex items-center gap-2 cursor-pointer bg-white text-black hover:bg-white/90"
-                  >
-                    <Plus size={15} strokeWidth={3} />
-                    <span>{t('addFirstHabit')}</span>
-                  </button>
+                  <div className="flex flex-col sm:flex-row items-center gap-2 mt-1">
+                    <button
+                      type="button"
+                      onClick={handleOpenAdd}
+                      className="px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 shadow-xl flex items-center gap-2 cursor-pointer bg-white text-black hover:bg-white/90"
+                    >
+                      <Plus size={15} strokeWidth={3} />
+                      <span>{t('addFirstHabit')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsPresetsModalOpen(true)}
+                      className="px-5 py-3 rounded-full text-xs font-bold transition-all duration-200 active:scale-95 border border-white/15 bg-white/5 hover:bg-white/10 text-white flex items-center gap-2 cursor-pointer"
+                    >
+                      <Sparkles size={14} className="text-amber-400" />
+                      <span>{lang === 'ar' ? 'عادات جاهزة (الصلوات، المشي...)' : 'Ready Presets (Prayers, Walk...)'}</span>
+                    </button>
+                  </div>
                 </div>
               ) : activeScheduledHabits.length === 0 ? (
                 <div className="col-span-2 text-center text-white/60 text-xs font-bold uppercase tracking-widest py-10 select-none">
@@ -9173,6 +9291,19 @@ function AppContent({ isPreview = false }) {
               updateInfo={updateInfo}
               onCheckAgain={checkForAppUpdates}
               lang={lang}
+            />,
+            document.body
+          )}
+
+          {/* ---------------- HABIT PRESETS MODAL ---------------- */}
+          {isPresetsModalOpen && typeof document !== 'undefined' && createPortal(
+            <HabitPresetsModal 
+              isOpen={isPresetsModalOpen}
+              onClose={() => setIsPresetsModalOpen(false)}
+              onAddPreset={handleAddPresetDirect}
+              existingHabitNames={habits.map(h => h.name)}
+              lang={lang}
+              themeColor={themeColor}
             />,
             document.body
           )}
