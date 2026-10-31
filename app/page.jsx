@@ -4352,6 +4352,23 @@ function AppContent({ isPreview = false }) {
       const isPinned = Boolean(friend?.isPinned);
       const island = getIslandDetails(friend?.presence);
 
+      const renderIslandIcon = (type, iconSize = 12) => {
+        if (type === 'music') {
+          return (
+            <div className="flex items-end gap-[1.5px] h-3 shrink-0" aria-hidden="true">
+              <span className="w-[2px] h-1.5 bg-black rounded-full" />
+              <span className="w-[2px] h-3 bg-black rounded-full" />
+              <span className="w-[2px] h-1 bg-black rounded-full" />
+            </div>
+          );
+        }
+        if (type === 'flight') return <Plane size={iconSize} className="text-black shrink-0" strokeWidth={2.6} />;
+        if (type === 'focus') return <Timer size={iconSize} className="text-black shrink-0" strokeWidth={2.6} />;
+        if (type === 'lecture') return <BookOpen size={iconSize} className="text-black shrink-0" strokeWidth={2.6} />;
+        if (type === 'habit') return <Check size={iconSize} className="text-black shrink-0" strokeWidth={3} />;
+        return null;
+      };
+
       if (size === 'compact') {
         return (
           <div 
@@ -4387,26 +4404,14 @@ function AppContent({ isPreview = false }) {
             {/* Right: Compact Badge matching container curves */}
             {!island.isOffline ? (
               <div className="h-[28px] bg-white text-black rounded-[12px] px-2 flex items-center gap-1.5 font-mono font-bold text-[10px] shrink-0 shadow-sm">
-                {island.iconType === 'music' && (
-                  <div className="flex items-end gap-[1.5px] h-2.5 shrink-0" aria-hidden="true">
-                    <span className="w-[2px] h-1.5 bg-black rounded-full" />
-                    <span className="w-[2px] h-2.5 bg-black rounded-full" />
-                    <span className="w-[2px] h-1 bg-black rounded-full" />
-                  </div>
+                {renderIslandIcon(island.iconType, 10)}
+                {island.hasMultiple && island.secondaryIconType && (
+                  <>
+                    <span className="text-black/30 font-black text-[9px]">+</span>
+                    {renderIslandIcon(island.secondaryIconType, 10)}
+                  </>
                 )}
-                {island.iconType === 'flight' && (
-                  <Plane size={10} className="text-black shrink-0" strokeWidth={2.6} />
-                )}
-                {island.iconType === 'focus' && (
-                  <Timer size={10} className="text-black shrink-0" strokeWidth={2.6} />
-                )}
-                {island.iconType === 'lecture' && (
-                  <BookOpen size={10} className="text-black shrink-0" strokeWidth={2.6} />
-                )}
-                {island.iconType === 'habit' && (
-                  <Check size={10} className="text-black shrink-0" strokeWidth={3} />
-                )}
-                <span>{island.time}</span>
+                <span>{island.activities?.[0]?.time || island.time}</span>
               </div>
             ) : (
               <div className="h-[28px] border border-dashed border-white/20 rounded-[12px] px-2 flex items-center font-mono text-white/30 text-[10px] shrink-0">
@@ -4450,40 +4455,38 @@ function AppContent({ isPreview = false }) {
 
           {/* Right: Solid White Badge expanding to the left with matching container curves */}
           {!island.isOffline ? (
-            <div className="flex-1 min-w-0 h-[40px] sm:h-[44px] bg-white text-black rounded-[18px] sm:rounded-[20px] px-3.5 sm:px-4 flex items-center justify-between gap-2.5 shadow-md ml-1 sm:ml-2">
-              <div className="flex items-center gap-2 min-w-0">
-                {/* Icon matching Figma Island */}
-                {island.iconType === 'music' && (
-                  <div className="flex items-end gap-[2px] h-3.5 shrink-0" aria-hidden="true">
-                    <span className="w-[2.5px] h-2 bg-black rounded-full" />
-                    <span className="w-[2.5px] h-3.5 bg-black rounded-full" />
-                    <span className="w-[2.5px] h-1.5 bg-black rounded-full" />
+            island.hasMultiple && Array.isArray(island.activities) && island.activities.length > 1 ? (
+              <div className="flex-1 min-w-0 flex items-center gap-1.5 sm:gap-2 justify-end ml-1 sm:ml-2">
+                {island.activities.slice(0, 2).map((act, aIdx) => (
+                  <div 
+                    key={aIdx} 
+                    className="h-[38px] sm:h-[42px] bg-white text-black rounded-[16px] sm:rounded-[18px] px-2.5 sm:px-3 flex items-center justify-between gap-1.5 shadow-md min-w-0 flex-1 max-w-[190px]"
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {renderIslandIcon(act.iconType, 11)}
+                      <span className="font-black text-[10px] sm:text-[11px] tracking-wider uppercase truncate leading-none">
+                        {act.title}
+                      </span>
+                    </div>
+                    <span className="font-mono font-bold text-[10px] sm:text-[11px] text-black tracking-tight shrink-0 leading-none">
+                      {act.time}
+                    </span>
                   </div>
-                )}
-                {island.iconType === 'flight' && (
-                  <Plane size={13} className="text-black shrink-0" strokeWidth={2.6} />
-                )}
-                {island.iconType === 'focus' && (
-                  <Timer size={13} className="text-black shrink-0" strokeWidth={2.6} />
-                )}
-                {island.iconType === 'lecture' && (
-                  <BookOpen size={13} className="text-black shrink-0" strokeWidth={2.6} />
-                )}
-                {island.iconType === 'habit' && (
-                  <Check size={13} className="text-black shrink-0" strokeWidth={3} />
-                )}
-
-                {/* Title */}
-                <span className="font-black text-[11px] sm:text-[12px] tracking-wider uppercase truncate leading-none">
-                  {island.title}
+                ))}
+              </div>
+            ) : (
+              <div className="flex-1 min-w-0 h-[40px] sm:h-[44px] bg-white text-black rounded-[18px] sm:rounded-[20px] px-3.5 sm:px-4 flex items-center justify-between gap-2.5 shadow-md ml-1 sm:ml-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  {renderIslandIcon(island.iconType, 13)}
+                  <span className="font-black text-[11px] sm:text-[12px] tracking-wider uppercase truncate leading-none">
+                    {island.title}
+                  </span>
+                </div>
+                <span className="font-mono font-bold text-[11px] sm:text-[12px] text-black tracking-tight shrink-0 leading-none">
+                  {island.time}
                 </span>
               </div>
-
-              {/* Time / Duration */}
-              <span className="font-mono font-bold text-[11px] sm:text-[12px] text-black tracking-tight shrink-0 leading-none">
-                {island.time}
-              </span>
-            </div>
+            )
           ) : (
             <div className="flex-1 min-w-0 h-[40px] sm:h-[44px] border border-dashed border-white/20 rounded-[18px] sm:rounded-[20px] px-3.5 sm:px-4 flex items-center justify-between gap-2.5 bg-white/[0.02] ml-1 sm:ml-2">
               <span className="text-white/40 font-medium text-[12px] sm:text-[13px] leading-none truncate">

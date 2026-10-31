@@ -725,84 +725,184 @@ export default function FriendsModal({
           </div>
         )}
 
-        {/* Activity Card */}
-        <div className="bg-[#f5f5f5] rounded-[24px] p-5 flex flex-col gap-2.5">
-          <span className="font-mono text-[11px] font-bold tracking-[2px] text-[#525252] uppercase">
-            {selectedFriend.presence.label}
-          </span>
+        {/* Activity Cards: Multi-Activity or Single */}
+        {selectedFriend.presence.hasMultiple && Array.isArray(selectedFriend.presence.activities) && selectedFriend.presence.activities.length > 1 ? (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between px-1">
+              <span className="font-mono text-[11px] font-bold tracking-[2px] text-[#525252] uppercase flex items-center gap-1.5">
+                <Sparkles size={13} className="text-amber-500" />
+                <span>{isRtl ? `الأنشطة الحالية (${selectedFriend.presence.activities.length})` : `ACTIVE NOW (${selectedFriend.presence.activities.length})`}</span>
+              </span>
+              <span className="text-[10px] font-mono font-bold bg-[#0a0a0a] text-white px-2.5 py-0.5 rounded-full">
+                {isRtl ? 'متعدد الأنشطة' : 'MULTI-TASKING'}
+              </span>
+            </div>
 
-          {/* Big Title */}
-          <div className="flex items-center gap-3">
-            {selectedFriend.presence.kind === 'music' && (selectedFriend.presence.art || selectedFriend.presence.secArt) && (
-              <div className="w-14 h-14 rounded-[14px] overflow-hidden shadow-md shrink-0 border border-black/10">
-                <img 
-                  src={getSafeTrackArt(selectedFriend.presence.art || selectedFriend.presence.secArt)} 
-                  alt={selectedFriend.presence.big || 'Album'} 
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover"
-                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                />
+            {selectedFriend.presence.activities.map((act, actIdx) => (
+              <div key={actIdx} className="bg-[#f5f5f5] rounded-[24px] p-4 sm:p-5 flex flex-col gap-2.5 border border-black/5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px] font-bold tracking-[2px] text-[#525252] uppercase flex items-center gap-1.5">
+                    {act.kind === 'focus' && <Timer size={13} className="text-[#0a0a0a]" />}
+                    {act.kind === 'lecture' && <BookOpen size={13} className="text-[#0a0a0a]" />}
+                    {act.kind === 'flight' && <Plane size={13} className="text-[#0a0a0a]" />}
+                    {act.kind === 'music' && <Music size={13} className="text-[#0a0a0a]" />}
+                    <span>{act.label}</span>
+                  </span>
+                  <span className="font-mono text-[11px] font-bold text-[#0a0a0a] bg-black/5 px-2 py-0.5 rounded-md">
+                    {act.right}
+                  </span>
+                </div>
+
+                {/* Big Title */}
+                <div className="flex items-center gap-3">
+                  {act.kind === 'music' && (act.art || act.secArt) && (
+                    <div className="w-12 h-12 rounded-[14px] overflow-hidden shadow-sm shrink-0 border border-black/10">
+                      <img 
+                        src={getSafeTrackArt(act.art || act.secArt)} 
+                        alt={act.big || 'Album'} 
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                    </div>
+                  )}
+                  <div className="flex flex-col min-w-0">
+                    <span 
+                      className="font-black tracking-tight text-[#0a0a0a] leading-none select-text truncate"
+                      style={{ fontSize: `${Math.min(act.bigSize || 36, 40)}px` }}
+                    >
+                      {act.big}
+                    </span>
+                    <span className="text-[13px] text-[#525252] mt-1 truncate">
+                      {act.sub}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Progress Bar (if hasBar) */}
+                {act.hasBar && (
+                  <div className="flex flex-col gap-1.5 pt-1">
+                    <div className="h-2 rounded-[4px] bg-[#d4d4d4] overflow-hidden">
+                      <div 
+                        className="h-full rounded-[4px] bg-[#0a0a0a] transition-all duration-500" 
+                        style={{ width: `${act.pct}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between font-mono text-[11px] font-bold text-[#404040]">
+                      <span>{act.barL}</span>
+                      <span>{act.barR}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Chips (e.g. Lecture) */}
+                {act.hasChips && Array.isArray(act.chips) && act.chips.length > 0 && (
+                  <div className="flex gap-1.5 flex-wrap pt-1">
+                    {act.chips.map((chip, cIdx) => (
+                      <span 
+                        key={cIdx}
+                        className="font-mono text-[11px] font-bold bg-white text-[#0a0a0a] rounded-[8px] px-2 py-1 shadow-sm border border-black/5"
+                      >
+                        {chip}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Dots Indicator (e.g. Cycles) */}
+                {act.hasDots && Array.isArray(act.dots) && (
+                  <div className="flex gap-1.5 pt-1">
+                    {act.dots.map((dot, dIdx) => (
+                      <span 
+                        key={dIdx}
+                        className="w-2.5 h-2.5 rounded-full transition-colors"
+                        style={{ backgroundColor: dot ? '#0a0a0a' : '#c4c4c4' }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-[#f5f5f5] rounded-[24px] p-5 flex flex-col gap-2.5">
+            <span className="font-mono text-[11px] font-bold tracking-[2px] text-[#525252] uppercase">
+              {selectedFriend.presence.label}
+            </span>
+
+            {/* Big Title */}
+            <div className="flex items-center gap-3">
+              {selectedFriend.presence.kind === 'music' && (selectedFriend.presence.art || selectedFriend.presence.secArt) && (
+                <div className="w-14 h-14 rounded-[14px] overflow-hidden shadow-md shrink-0 border border-black/10">
+                  <img 
+                    src={getSafeTrackArt(selectedFriend.presence.art || selectedFriend.presence.secArt)} 
+                    alt={selectedFriend.presence.big || 'Album'} 
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                </div>
+              )}
+              <div className="flex flex-col min-w-0">
+                <span 
+                  className="font-black tracking-tight text-[#0a0a0a] leading-none select-text truncate"
+                  style={{ fontSize: `${selectedFriend.presence.bigSize}px` }}
+                >
+                  {selectedFriend.presence.big}
+                </span>
+                <span className="text-[14px] text-[#525252] mt-1 truncate">
+                  {selectedFriend.presence.sub}
+                </span>
+              </div>
+            </div>
+
+            {/* Progress Bar (if hasBar) */}
+            {selectedFriend.presence.hasBar && (
+              <div className="flex flex-col gap-2 pt-1">
+                <div className="h-2 rounded-[4px] bg-[#d4d4d4] overflow-hidden">
+                  <div 
+                    className="h-full rounded-[4px] bg-[#0a0a0a] transition-all duration-500" 
+                    style={{ width: `${selectedFriend.presence.pct}%` }}
+                  />
+                </div>
+                <div className="flex justify-between font-mono text-[12px] font-bold text-[#404040]">
+                  <span>{selectedFriend.presence.barL}</span>
+                  <span>{selectedFriend.presence.barR}</span>
+                </div>
               </div>
             )}
-            <div className="flex flex-col min-w-0">
-              <span 
-                className="font-black tracking-tight text-[#0a0a0a] leading-none select-text truncate"
-                style={{ fontSize: `${selectedFriend.presence.bigSize}px` }}
-              >
-                {selectedFriend.presence.big}
-              </span>
-              <span className="text-[14px] text-[#525252] mt-1 truncate">
-                {selectedFriend.presence.sub}
-              </span>
-            </div>
+
+            {/* Chips (e.g. Lecture) */}
+            {selectedFriend.presence.hasChips && (
+              <div className="flex gap-2 flex-wrap pt-1">
+                {selectedFriend.presence.chips.map((chip, idx) => (
+                  <span 
+                    key={idx}
+                    className="font-mono text-[12px] font-bold bg-white text-[#0a0a0a] rounded-[10px] px-2.5 py-1.5 shadow-sm"
+                  >
+                    {chip}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Dots Indicator (e.g. Cycles or Habits) */}
+            {selectedFriend.presence.hasDots && (
+              <div className="flex gap-2 pt-1">
+                {selectedFriend.presence.dots.map((dot, idx) => (
+                  <span 
+                    key={idx}
+                    className="w-3 h-3 rounded-full transition-colors"
+                    style={{ backgroundColor: dot ? '#0a0a0a' : '#c4c4c4' }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-
-          {/* Progress Bar (if hasBar) */}
-          {selectedFriend.presence.hasBar && (
-            <div className="flex flex-col gap-2 pt-1">
-              <div className="h-2 rounded-[4px] bg-[#d4d4d4] overflow-hidden">
-                <div 
-                  className="h-full rounded-[4px] bg-[#0a0a0a] transition-all duration-500" 
-                  style={{ width: `${selectedFriend.presence.pct}%` }}
-                />
-              </div>
-              <div className="flex justify-between font-mono text-[12px] font-bold text-[#404040]">
-                <span>{selectedFriend.presence.barL}</span>
-                <span>{selectedFriend.presence.barR}</span>
-              </div>
-            </div>
-          )}
-
-          {/* Chips (e.g. Lecture) */}
-          {selectedFriend.presence.hasChips && (
-            <div className="flex gap-2 flex-wrap pt-1">
-              {selectedFriend.presence.chips.map((chip, idx) => (
-                <span 
-                  key={idx}
-                  className="font-mono text-[12px] font-bold bg-white text-[#0a0a0a] rounded-[10px] px-2.5 py-1.5 shadow-sm"
-                >
-                  {chip}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Dots Indicator (e.g. Cycles or Habits) */}
-          {selectedFriend.presence.hasDots && (
-            <div className="flex gap-2 pt-1">
-              {selectedFriend.presence.dots.map((dot, idx) => (
-                <span 
-                  key={idx}
-                  className="w-3 h-3 rounded-full transition-colors"
-                  style={{ backgroundColor: dot ? '#0a0a0a' : '#c4c4c4' }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Secondary Section (e.g. Spotify Track card) */}
-        {selectedFriend.presence.hasSec && (
+        {selectedFriend.presence.hasSec && (!selectedFriend.presence.hasMultiple || !selectedFriend.presence.activities?.some(a => a.kind === 'music')) && (
           <div className="flex items-center gap-3 border-2 border-[#e5e5e5] rounded-[20px] p-2.5 px-3">
             <div className="w-11 h-11 rounded-[12px] bg-[#0a0a0a] text-white flex items-center justify-center shrink-0 overflow-hidden relative border border-black/10">
               {selectedFriend.presence.secArt ? (
@@ -1261,6 +1361,12 @@ export default function FriendsModal({
                                 </span>
                                 {pinnedFriendUsername && (pinnedFriendUsername.toLowerCase() === (f.user?.username || f.displayName || '').toLowerCase()) && (
                                   <Pin size={12} className="text-white/50 fill-white/20 shrink-0" title="Pinned to Home" />
+                                )}
+                                {f.presence.hasMultiple && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[9px] font-mono font-bold shrink-0">
+                                    <Sparkles size={8} />
+                                    {f.presence.multiCount || f.presence.activities?.length || 2} {isRtl ? 'أنشطة' : 'ACTS'}
+                                  </span>
                                 )}
                                 {f.user?.hasSharedScheduleWithMe && (
                                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[9px] font-mono font-bold shrink-0">
