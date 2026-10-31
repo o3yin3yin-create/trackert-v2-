@@ -627,9 +627,32 @@ export default function FriendsModal({
               <AvatarIcon name={selectedFriend.user?.avatar || 'user'} size={24} className="text-white" />
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-[20px] font-bold tracking-tight text-[#0a0a0a] truncate leading-tight">
-                {friendName}
-              </span>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[20px] font-bold tracking-tight text-[#0a0a0a] truncate leading-tight">
+                  {friendName}
+                </span>
+                {selectedFriend.user?.hasSharedScheduleWithMe && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onOpenFriendSchedule) {
+                        onOpenFriendSchedule({
+                          name: friendName,
+                          avatar: selectedFriend.user?.avatar,
+                          habits: selectedFriend.user?.weeklySchedule || []
+                        });
+                        handleCloseSelectedSheet();
+                        if (onClose) onClose();
+                      }
+                    }}
+                    className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0 cursor-pointer transition-colors"
+                    title={isRtl ? 'عرض جدول الأسبوع' : 'View Weekly Schedule'}
+                  >
+                    <CalendarDays size={11} />
+                    <span>{isRtl ? 'الجدول متاح' : 'Schedule'}</span>
+                  </button>
+                )}
+              </div>
               <span className="text-[13px] text-[#525252] truncate leading-tight mt-0.5">
                 {presence.status}
               </span>
@@ -691,6 +714,42 @@ export default function FriendsModal({
                 </div>
                 <Pin size={16} className={`shrink-0 ${isCurrentFriendPinned ? 'text-black fill-current' : 'text-[#71717a]'}`} />
               </button>
+
+              {/* View Friend's Weekly Schedule (If shared with me) */}
+              {selectedFriend.user?.hasSharedScheduleWithMe && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onOpenFriendSchedule) {
+                      onOpenFriendSchedule({
+                        name: friendName,
+                        avatar: selectedFriend.user?.avatar,
+                        habits: selectedFriend.user?.weeklySchedule || []
+                      });
+                      handleCloseSelectedSheet();
+                      if (onClose) onClose();
+                    }
+                  }}
+                  className="py-2.5 text-start flex items-center justify-between text-black hover:text-black/70 cursor-pointer"
+                >
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-black">
+                        {isRtl ? 'عرض جدول أسبوعه بالكامل' : 'View Full Weekly Schedule'}
+                      </span>
+                      <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        {isRtl ? 'متاح' : 'SHARED'}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-[#71717a]">
+                      {Array.isArray(selectedFriend.user?.weeklySchedule) && selectedFriend.user.weeklySchedule.length > 0
+                        ? (isRtl ? `${selectedFriend.user.weeklySchedule.length} حصص وعادات مسجلة` : `${selectedFriend.user.weeklySchedule.length} entries registered`)
+                        : (isRtl ? 'تصفح جدول وروتين هذا الصديق' : 'Browse their weekly routine')}
+                    </span>
+                  </div>
+                  <CalendarDays size={16} className="text-[#0a0a0a] shrink-0" />
+                </button>
+              )}
 
               {/* Share My Schedule with this friend */}
               {selectedFriend.user?.username && (
@@ -947,7 +1006,7 @@ export default function FriendsModal({
         )}
 
         {/* Secondary Section (e.g. Spotify Track card) */}
-        {presence.hasSec && (!presence.hasMultiple || !presence.activities?.some(a => a?.kind === 'music')) && (
+        {presence.hasSec && Boolean(presence.secTitle) && (!presence.hasMultiple || !presence.activities?.some(a => a?.kind === 'music')) && (
           <div className="flex items-center gap-3 border-2 border-[#e5e5e5] rounded-[20px] p-2.5 px-3">
             <div className="w-11 h-11 rounded-[12px] bg-[#0a0a0a] text-white flex items-center justify-center shrink-0 overflow-hidden relative border border-black/10">
               {presence.secArt ? (
@@ -982,87 +1041,6 @@ export default function FriendsModal({
               className="h-9 px-3.5 rounded-full bg-[#f0f0f0] hover:bg-[#e4e4e7] font-bold text-[13px] text-[#0a0a0a] transition-all cursor-pointer active:scale-95 shrink-0"
             >
               Listen along
-            </button>
-          </div>
-        )}
-
-        {/* Your Schedule Shared with this Friend - Quick Stop Sharing Card */}
-        {selectedFriend.user?.iSharedScheduleWithThem && (
-          <div className="bg-[#fff7ed] border border-[#fed7aa] rounded-[24px] p-4 flex items-center justify-between gap-3 shadow-sm">
-            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-              <div className="w-9 h-9 rounded-2xl bg-[#ea580c] text-white flex items-center justify-center shrink-0 shadow-sm">
-                <Share2 size={16} />
-              </div>
-              <div className="flex flex-col min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[13px] font-bold text-[#9a3412] leading-tight truncate">
-                    {isRtl ? 'جدولك متاح لهذا الصديق' : 'Your Schedule is Shared'}
-                  </span>
-                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-[#ea580c]/15 text-[#c2410c] shrink-0">
-                    {isRtl ? 'مشارك' : 'ACTIVE'}
-                  </span>
-                </div>
-                <span className="text-[11px] text-[#c2410c] leading-tight mt-0.5 truncate">
-                  {isRtl ? 'يستطيع تصفح روتينك وحصصك الأسبوعية' : 'They can view your weekly routine'}
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              disabled={sharingScheduleLoading}
-              onClick={() => {
-                handleToggleShareScheduleWithFriend(selectedFriend.user?.username, true);
-              }}
-              className="px-3.5 py-2 rounded-xl bg-white hover:bg-red-50 text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 font-bold text-xs transition-all active:scale-95 shadow-sm cursor-pointer shrink-0 flex items-center gap-1.5 disabled:opacity-50"
-            >
-              <X size={13} strokeWidth={2.5} />
-              <span>{isRtl ? 'إيقاف المشاركة' : 'Stop Sharing'}</span>
-            </button>
-          </div>
-        )}
-
-        {/* Shared Weekly Schedule Section (Friend shared with me) */}
-        {selectedFriend.user?.hasSharedScheduleWithMe && (
-          <div className="bg-[#f5f5f5] rounded-[24px] p-4 flex flex-col gap-3 border border-black/5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-[#0a0a0a] text-white flex items-center justify-center shrink-0">
-                  <CalendarDays size={18} />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[14px] font-bold text-[#0a0a0a] leading-tight truncate">
-                    {isRtl ? `جدول أسبوع ${friendName}` : `${friendName}'s Weekly Schedule`}
-                  </span>
-                  <span className="text-[12px] text-[#525252] leading-tight mt-0.5">
-                    {Array.isArray(selectedFriend.user?.weeklySchedule) && selectedFriend.user.weeklySchedule.length > 0
-                      ? (isRtl ? `${selectedFriend.user.weeklySchedule.length} حصص وعادات مسجلة` : `${selectedFriend.user.weeklySchedule.length} entries registered`)
-                      : (isRtl ? 'لا توجد حصص مسجلة هذا الأسبوع' : 'No entries')}
-                  </span>
-                </div>
-              </div>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
-                {isRtl ? 'متاح للمشاهدة' : 'SHARED'}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                if (onOpenFriendSchedule) {
-                  onOpenFriendSchedule({
-                    name: friendName,
-                    avatar: selectedFriend.user?.avatar,
-                    habits: selectedFriend.user?.weeklySchedule || []
-                  });
-                  handleCloseSelectedSheet();
-                  if (onClose) onClose();
-                }
-              }}
-              className="w-full h-11 rounded-full bg-[#0a0a0a] text-white font-bold text-[13px] flex items-center justify-center gap-2 hover:bg-black/90 active:scale-[0.98] transition-all cursor-pointer shadow-sm"
-            >
-              <Eye size={15} />
-              <span>{isRtl ? 'عرض جدول الأسبوع بالكامل' : 'View Full Weekly Schedule'}</span>
             </button>
           </div>
         )}
