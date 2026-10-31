@@ -2,7 +2,9 @@
 import os
 
 project_root = os.getcwd()
-app_path = os.path.join(project_root, "src-tauri/target/release/bundle/macos/bokra.app")
+universal_app = os.path.join(project_root, "src-tauri/target/universal-apple-darwin/release/bundle/macos/bokra.app")
+release_app = os.path.join(project_root, "src-tauri/target/release/bundle/macos/bokra.app")
+app_path = universal_app if os.path.exists(universal_app) else release_app
 icon_path = os.path.join(project_root, "src-tauri/icons/icon.icns")
 bg_path = os.path.join(project_root, "src-tauri/assets/dmg-background.png")
 

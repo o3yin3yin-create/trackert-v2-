@@ -3,10 +3,14 @@ set -e
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUTPUT_DMG="$HOME/Desktop/bokra.dmg"
-APP_PATH="$PROJECT_ROOT/src-tauri/target/release/bundle/macos/bokra.app"
-
-if [ ! -d "$APP_PATH" ]; then
-  echo "❌ Error: $APP_PATH not found. Please build the app first."
+if [ -d "$PROJECT_ROOT/src-tauri/target/universal-apple-darwin/release/bundle/macos/bokra.app" ]; then
+  APP_PATH="$PROJECT_ROOT/src-tauri/target/universal-apple-darwin/release/bundle/macos/bokra.app"
+  echo "📦 Using Universal macOS App Bundle (Intel x86_64 + Apple Silicon ARM64)"
+elif [ -d "$PROJECT_ROOT/src-tauri/target/release/bundle/macos/bokra.app" ]; then
+  APP_PATH="$PROJECT_ROOT/src-tauri/target/release/bundle/macos/bokra.app"
+  echo "📦 Using Release macOS App Bundle"
+else
+  echo "❌ Error: bokra.app not found. Please build the app first."
   exit 1
 fi
 

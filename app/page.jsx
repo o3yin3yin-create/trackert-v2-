@@ -435,15 +435,22 @@ function safeJson(val, fallback) {
 class GlobalErrorBoundary extends Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { 
+      hasError: false, 
+      error: null, 
+      errorInfo: null, 
+      showDetails: false, 
+      copied: false 
+    };
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true };
+    return { hasError: true, error };
   }
 
   componentDidCatch(error, errorInfo) {
     console.error('[Bokra Critical Error]:', error, errorInfo);
+    this.setState({ error, errorInfo });
   }
 
   handleReload = () => {
@@ -457,21 +464,88 @@ class GlobalErrorBoundary extends Component {
     }
   };
 
+  handleResetAll = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch (_) {}
+      window.location.reload();
+    }
+  };
+
+  handleCopyError = () => {
+    if (typeof navigator !== 'undefined' && this.state.error) {
+      const errText = `${this.state.error?.name || 'Error'}: ${this.state.error?.message || ''}\n${this.state.error?.stack || ''}\n${this.state.errorInfo?.componentStack || ''}`;
+      navigator.clipboard?.writeText(errText);
+      this.setState({ copied: true });
+      setTimeout(() => this.setState({ copied: false }), 2500);
+    }
+  };
+
   render() {
     if (this.state.hasError) {
+      const errorMessage = this.state.error?.message || (typeof this.state.error === 'string' ? this.state.error : 'Session loading issue');
+      const errorStack = this.state.error?.stack || this.state.errorInfo?.componentStack || '';
+
       return (
         <div className="min-h-screen bg-[#000000] text-white flex flex-col items-center justify-center p-6 text-center select-none font-sans">
           <img src="/logo-transparent.png" alt="bokra" className="h-12 w-auto object-contain mb-6 opacity-80" />
           <h2 className="text-xl font-bold mb-2">Failed to load session</h2>
-          <p className="text-xs text-white/50 mb-6 max-w-xs leading-relaxed">
-            A temporary cache issue occurred. Tap below to refresh your app smoothly.
+          <p className="text-xs text-white/50 mb-6 max-w-sm leading-relaxed">
+            A temporary cache issue occurred. Tap Reload below, or Reset App to wipe corrupted local cache and launch cleanly.
           </p>
-          <button
-            onClick={this.handleReload}
-            className="px-6 py-3 rounded-full bg-white text-black font-bold text-sm active:scale-95 transition-transform cursor-pointer"
-          >
-            Reload App
-          </button>
+
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 mb-5 w-full max-w-xs">
+            <button
+              onClick={this.handleReload}
+              className="w-full sm:flex-1 px-5 py-3 rounded-full bg-white text-black font-bold text-sm active:scale-95 transition-transform cursor-pointer shadow-md"
+            >
+              Reload App
+            </button>
+            <button
+              onClick={this.handleResetAll}
+              className="w-full sm:flex-1 px-5 py-3 rounded-full bg-white/10 hover:bg-white/15 text-white font-bold text-sm active:scale-95 transition-transform cursor-pointer border border-white/15"
+            >
+              Reset App Data
+            </button>
+          </div>
+
+          {/* Expandable Debug Details */}
+          <div className="w-full max-w-md flex flex-col items-center">
+            <button
+              type="button"
+              onClick={() => this.setState(prev => ({ showDetails: !prev.showDetails }))}
+              className="text-[11px] font-mono text-white/40 hover:text-white/70 transition-colors underline cursor-pointer mb-2"
+            >
+              {this.state.showDetails ? 'Hide Error Details' : 'Show Error Details'}
+            </button>
+
+            {this.state.showDetails && (
+              <div className="w-full bg-[#121214] border border-white/10 rounded-2xl p-4 text-left flex flex-col gap-2.5 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold tracking-wider text-red-400 uppercase">
+                    Error Log
+                  </span>
+                  <button
+                    type="button"
+                    onClick={this.handleCopyError}
+                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-mono text-[10px] font-bold transition-all active:scale-95 cursor-pointer"
+                  >
+                    {this.state.copied ? 'Copied!' : 'Copy Error'}
+                  </button>
+                </div>
+                <div className="text-[11px] font-mono text-red-300 break-words leading-relaxed max-h-48 overflow-y-auto">
+                  {errorMessage}
+                  {errorStack && (
+                    <pre className="text-[10px] text-white/40 mt-2 font-mono whitespace-pre-wrap select-all">
+                      {errorStack}
+                    </pre>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       );
     }
