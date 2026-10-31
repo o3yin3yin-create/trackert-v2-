@@ -3509,13 +3509,13 @@ function AppContent({ isPreview = false }) {
       name: presetData.name,
       type: presetData.type,
       subItems: presetData.type === 'multi' ? (presetData.subItems || []) : [],
-      frequency: presetData.frequency || 'daily',
-      scheduleDays: presetData.frequency === 'weekly' ? (presetData.scheduleDays || [0, 1, 2, 3, 4]) : [],
+      frequency: 'daily',
+      scheduleDays: [],
       scheduleDate: null,
-      time: presetData.time || null,
-      duration: presetData.duration || null,
-      location: presetData.location || null,
-      category: presetData.category || 'habit',
+      time: null,
+      duration: null,
+      location: null,
+      category: 'habit',
       isPrivate: false,
       updatedAt: Date.now()
     };
@@ -3538,24 +3538,12 @@ function AppContent({ isPreview = false }) {
     if (localized.type === 'multi') {
       setNewHabitSubItems(localized.subItems.length > 0 ? localized.subItems : ['', '']);
     }
-    setHabitFrequency(localized.frequency);
-    if (localized.frequency === 'weekly' && localized.scheduleDays) {
-      setHabitScheduleDays(localized.scheduleDays);
-    }
-    if (localized.time) {
-      setHabitTime(localized.time);
-      const match = localized.time.match(/(\d{1,2})[:.](\d{2})\s*(AM|PM)?/i);
-      if (match) {
-        setSelectedTimeHour(parseInt(match[1], 10));
-        setSelectedTimeMinute(match[2]);
-        setSelectedTimePeriod(match[3]?.toUpperCase() || 'AM');
-      }
-    } else {
-      setHabitTime('');
-    }
-    setHabitDuration(localized.duration || '');
-    setHabitLocation(localized.location || '');
-    setHabitCategory(localized.category || 'habit');
+    setHabitFrequency('daily');
+    setHabitScheduleDays([]);
+    setHabitTime('');
+    setHabitDuration('');
+    setHabitLocation('');
+    setHabitCategory('habit');
   };
 
   const deleteHabit = (habitId) => {
