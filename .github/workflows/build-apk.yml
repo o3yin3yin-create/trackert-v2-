@@ -29,9 +29,6 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Build Next.js Static Export
         run: |
           npm ci --legacy-peer-deps || npm install --legacy-peer-deps
