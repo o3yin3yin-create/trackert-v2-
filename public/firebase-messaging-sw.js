@@ -118,17 +118,22 @@ self.addEventListener('push', (event) => {
   } catch (_) {
     payload = { data: { title: 'bokra', body: event.data.text() } };
   }
-  if (payload.notification) return;
+  const notif = payload.notification || {};
   const data = payload.data || payload;
-  const title = data.title || 'bokra';
+  const title = notif.title || data.title || 'bokra';
+  const body = notif.body || data.body || '';
+  const url = (data && data.url) || '/';
+  const tag = (data && data.tag) || (notif && notif.tag) || 'bokra';
+
   event.waitUntil(
     self.registration.showNotification(title, {
-      body: data.body || '',
+      body,
       icon: '/icon-192.png',
       badge: '/icon-192.png',
-      tag: data.tag || 'bokra',
-      data: { url: data.url || '/' },
-      vibrate: [100, 50, 100],
+      tag,
+      data: { url },
+      vibrate: [150, 75, 150],
+      renotify: true,
     })
   );
 });

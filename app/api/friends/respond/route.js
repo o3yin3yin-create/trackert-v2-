@@ -28,7 +28,7 @@ export async function POST(req) {
   if (res.count === 0) return json({ error: 'not_found' }, 404, req)
 
   if (action === 'accept' && targetFriendship?.requesterId) {
-    sendPush(targetFriendship.requesterId, {
+    await sendPush(targetFriendship.requesterId, {
       title: 'bokra',
       body: `${me.name || me.username || 'A friend'} accepted your friend request.`,
       url: '/',

@@ -87,7 +87,7 @@ export async function POST(req) {
       ? `${senderDisplay} cheered you on!`
       : `${senderDisplay} nudged you.`
 
-    sendPush(targetUser.id, {
+    await sendPush(targetUser.id, {
       title: 'bokra',
       body: pushBody,
       url: '/',
