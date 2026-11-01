@@ -249,11 +249,11 @@ export default function FriendsModal({
   // Fetch Friends Data
   const loadFriends = useCallback(async (isManualRetry = false) => {
     try {
-      if (friends.length === 0 || isManualRetry) {
+      if (isManualRetry) {
         setLoading(true);
       }
       setError(null);
-      const res = await apiFetch('/api/friends', { timeoutMs: 8000 });
+      const res = await apiFetch('/api/friends', { timeoutMs: 6000 });
       if (!res.ok) {
         throw new Error(`Failed to load friends (${res.status})`);
       }
@@ -274,10 +274,13 @@ export default function FriendsModal({
     } finally {
       setLoading(false);
     }
-  }, [friends.length, isRtl]);
+  }, [isRtl]);
 
+  const wasOpenRef = useRef(false);
+
+  // Initialize modal state ONCE when opening
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !wasOpenRef.current) {
       loadFriends();
       setView('main');
       setSelectedFriend(initialSelectedFriend || null);
@@ -286,7 +289,17 @@ export default function FriendsModal({
       setSearchResult(null);
       setSearchPerformed(false);
     }
+    wasOpenRef.current = isOpen;
   }, [isOpen, initialSelectedFriend, loadFriends]);
+
+  // Guaranteed failsafe timer: Never allow skeleton loading to hang more than 2.5s
+  useEffect(() => {
+    if (!isOpen) return;
+    const failsafe = setTimeout(() => {
+      setLoading(false);
+    }, 2500);
+    return () => clearTimeout(failsafe);
+  }, [isOpen]);
 
   // Debounced search effect with cache and duplicate suppression
   useEffect(() => {
@@ -296,7 +309,7 @@ export default function FriendsModal({
     }
 
     const clean = searchQuery.trim().toLowerCase().replace(/^@/, '');
-    if (clean.length < 4) {
+    if (clean.length < 3) {
       lastQueryRef.current = '';
       setSearchResult(null);
       setSearchPerformed(false);
