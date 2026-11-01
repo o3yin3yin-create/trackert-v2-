@@ -1,34 +1,40 @@
 /* bokra FCM + PWA worker — keep at site root scope */
-importScripts('https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/12.13.0/firebase-messaging-compat.js');
-
-firebase.initializeApp({
-  apiKey: 'AIzaSyBjfeyhQy8EN507J7NKz11PI-HOuBPAUL4',
-  authDomain: 'tracker-v2-310.firebaseapp.com',
-  projectId: 'tracker-v2-310',
-  storageBucket: 'tracker-v2-310.firebasestorage.app',
-  messagingSenderId: '114149572420',
-  appId: '1:114149572420:web:b760bd11bd3d3132a76111',
-});
-
 try {
-  const messaging = firebase.messaging();
-  messaging.onBackgroundMessage((payload) => {
-    if (payload && payload.notification) return;
-    const data = (payload && payload.data) || {};
-    const title = data.title || 'bokra';
-    return self.registration.showNotification(title, {
-      body: data.body || '',
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      tag: data.tag || 'bokra',
-      data: { url: data.url || '/' },
-      vibrate: [100, 50, 100],
-    });
-  });
-} catch (_) {}
+  importScripts('https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js');
+  importScripts('https://www.gstatic.com/firebasejs/12.13.0/firebase-messaging-compat.js');
 
-const CACHE_NAME = 'bokra-cache-v7';
+  if (typeof firebase !== 'undefined' && firebase.initializeApp) {
+    firebase.initializeApp({
+      apiKey: 'AIzaSyBjfeyhQy8EN507J7NKz11PI-HOuBPAUL4',
+      authDomain: 'tracker-v2-310.firebaseapp.com',
+      projectId: 'tracker-v2-310',
+      storageBucket: 'tracker-v2-310.firebasestorage.app',
+      messagingSenderId: '114149572420',
+      appId: '1:114149572420:web:b760bd11bd3d3132a76111',
+    });
+
+    try {
+      const messaging = firebase.messaging();
+      messaging.onBackgroundMessage((payload) => {
+        if (payload && payload.notification) return;
+        const data = (payload && payload.data) || {};
+        const title = data.title || 'bokra';
+        return self.registration.showNotification(title, {
+          body: data.body || '',
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          tag: data.tag || 'bokra',
+          data: { url: data.url || '/' },
+          vibrate: [100, 50, 100],
+        });
+      });
+    } catch (_) {}
+  }
+} catch (e) {
+  // Fallback to native push event listener below
+}
+
+const CACHE_NAME = 'bokra-cache-v8';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',

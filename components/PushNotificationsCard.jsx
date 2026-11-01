@@ -8,7 +8,11 @@ import {
   iosNeedsHomeScreen,
 } from '@/lib/pushClient';
 
-export default function PushNotificationsCard({ lang = 'en' }) {
+export default function PushNotificationsCard({ 
+  lang = 'en', 
+  isSignedIn = true, 
+  onAuthRequired 
+}) {
   const isAr = lang === 'ar';
   const [permission, setPermission] = useState(() => (
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
@@ -25,6 +29,7 @@ export default function PushNotificationsCard({ lang = 'en' }) {
     title: isAr ? 'إشعارات الدفع' : 'Push notifications',
     desc: isAr ? 'تنبيهات المحاضرات والأصدقاء وجلسات التركيز' : 'Lecture, friend, and focus alerts',
     enable: isAr ? 'تفعيل الإشعارات' : 'Enable notifications',
+    signIn: isAr ? 'تسجيل الدخول للتفعيل' : 'Sign in to enable',
     enabled: isAr ? 'الإشعارات مفعّلة' : 'Notifications on',
     denied: isAr ? 'مرفوضة من المتصفح. فعّلها من إعدادات الموقع.' : 'Blocked in the browser. Allow notifications for this site.',
     iosHint: isAr
@@ -33,23 +38,32 @@ export default function PushNotificationsCard({ lang = 'en' }) {
   };
 
   const onEnable = async () => {
+    if (!isSignedIn) {
+      if (onAuthRequired) onAuthRequired();
+      else setError(isAr ? 'يرجى تسجيل الدخول أولاً لتفعيل الإشعارات' : 'Sign in first to enable push notifications');
+      return;
+    }
+
     setBusy(true);
     setError('');
     try {
       await enablePushNotifications();
       setPermission('granted');
     } catch (err) {
-      const code = err?.message;
-      if (code === 'ios_homescreen') {
+      const msg = err?.message || '';
+      if (msg === 'ios_homescreen') {
         setNeedsHomeScreen(true);
-      } else if (code === 'denied') {
+      } else if (msg === 'denied') {
         setPermission('denied');
-      } else if (code === 'unauthorized') {
+      } else if (msg === 'secure_context_required') {
+        setError(isAr ? 'تتطلب إشعارات الويب اتصالاً آمناً (HTTPS)' : 'Push notifications require a secure (HTTPS) connection');
+      } else if (msg === 'unauthorized') {
         setError(isAr ? 'يرجى تسجيل الدخول أولاً لتفعيل الإشعارات' : 'Sign in first to enable push notifications');
-      } else if (code === 'unsupported') {
+      } else if (msg === 'unsupported') {
         setError(isAr ? 'المتصفح لا يدعم إشعارات الويب' : 'Browser does not support notifications');
       } else {
-        setError(isAr ? 'تعذر تفعيل الإشعارات، حاول مرة أخرى' : 'Could not enable notifications, please try again');
+        const readable = msg.startsWith('token_error:') ? msg.replace('token_error:', '').trim() : msg;
+        setError(readable || (isAr ? 'تعذر تفعيل الإشعارات' : 'Could not enable notifications'));
       }
     } finally {
       setBusy(false);
@@ -70,7 +84,7 @@ export default function PushNotificationsCard({ lang = 'en' }) {
           {permission === 'denied' && !needsHomeScreen && (
             <span className="text-[11px] text-amber-400/90 font-normal mt-1">{copy.denied}</span>
           )}
-          {error && <span className="text-[11px] text-red-400 font-normal mt-1">{error}</span>}
+          {error && <span className="text-[11px] text-red-400 font-normal mt-1 break-words">{error}</span>}
         </div>
       </div>
       {needsHomeScreen ? null : permission === 'granted' ? (
@@ -84,7 +98,7 @@ export default function PushNotificationsCard({ lang = 'en' }) {
           disabled={busy || permission === 'denied'}
           className="shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-black bg-white text-black hover:bg-white/90 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
         >
-          {busy ? '…' : copy.enable}
+          {busy ? '…' : !isSignedIn ? copy.signIn : copy.enable}
         </button>
       )}
     </div>

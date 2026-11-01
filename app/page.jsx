@@ -8952,7 +8952,14 @@ function AppContent({ isPreview = false }) {
                             <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">
                               {lang === 'ar' ? 'الإشعارات والتنبيهات' : 'Notifications'}
                             </span>
-                            <PushNotificationsCard lang={lang} />
+                            <PushNotificationsCard
+                              lang={lang}
+                              isSignedIn={Boolean(isSignedIn && user)}
+                              onAuthRequired={() => {
+                                setIsSettingsMenuOpen(false);
+                                handleAuthAction();
+                              }}
+                            />
                           </div>
 
                           {/* Group 3: Tools & Utilities */}
