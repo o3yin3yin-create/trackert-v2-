@@ -10,25 +10,13 @@ export const isTauriEnv = () => {
   return !!(
     window.__TAURI_INTERNALS__ !== undefined ||
     window.__TAURI__ !== undefined ||
-    window.isTauri === true ||
+    (typeof window.isTauri === 'function' ? window.isTauri() : window.isTauri === true) ||
     window.location.protocol === 'tauri:' ||
     window.location.protocol === 'asset:' ||
     window.location.hostname === 'tauri.localhost' ||
     process.env.NEXT_PUBLIC_IS_DESKTOP === 'true'
   );
 };
-
-if (typeof window !== 'undefined') {
-  if (
-    window.__TAURI_INTERNALS__ !== undefined ||
-    window.__TAURI__ !== undefined ||
-    window.location.protocol === 'tauri:' ||
-    window.location.hostname === 'tauri.localhost' ||
-    process.env.NEXT_PUBLIC_IS_DESKTOP === 'true'
-  ) {
-    window.isTauri = true;
-  }
-}
 
 const AuthContext = createContext({
   user: null,

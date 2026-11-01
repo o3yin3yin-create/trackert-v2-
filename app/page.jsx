@@ -55,7 +55,14 @@ function compareSemver(v1, v2) {
 function detectClientPlatform() {
   if (typeof window === 'undefined') return 'web';
   const ua = navigator.userAgent || '';
-  const isTauri = !!(window.__TAURI_INTERNALS__ || window.__TAURI__ || window.isTauri);
+  const isTauri = !!(
+    window.__TAURI_INTERNALS__ || 
+    window.__TAURI__ || 
+    (typeof window.isTauri === 'function' ? window.isTauri() : window.isTauri) ||
+    window.location.protocol === 'tauri:' ||
+    window.location.protocol === 'asset:' ||
+    window.location.hostname === 'tauri.localhost'
+  );
   
   if (/Android/i.test(ua)) return 'android';
   if (/iPhone|iPad|iPod/i.test(ua)) return 'ios';
