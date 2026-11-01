@@ -40,9 +40,17 @@ export default function PushNotificationsCard({ lang = 'en' }) {
       setPermission('granted');
     } catch (err) {
       const code = err?.message;
-      if (code === 'ios_homescreen') setNeedsHomeScreen(true);
-      else if (code === 'denied') setPermission('denied');
-      else setError(isAr ? 'تعذر تفعيل الإشعارات' : 'Could not enable notifications');
+      if (code === 'ios_homescreen') {
+        setNeedsHomeScreen(true);
+      } else if (code === 'denied') {
+        setPermission('denied');
+      } else if (code === 'unauthorized') {
+        setError(isAr ? 'يرجى تسجيل الدخول أولاً لتفعيل الإشعارات' : 'Sign in first to enable push notifications');
+      } else if (code === 'unsupported') {
+        setError(isAr ? 'المتصفح لا يدعم إشعارات الويب' : 'Browser does not support notifications');
+      } else {
+        setError(isAr ? 'تعذر تفعيل الإشعارات، حاول مرة أخرى' : 'Could not enable notifications, please try again');
+      }
     } finally {
       setBusy(false);
     }
