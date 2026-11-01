@@ -110,7 +110,16 @@ export const ClerkProvider = ({ children }) => {
 
           // Immediately check server for username and latest profile info
           apiFetch('/api/user/username')
-            .then((res) => (res.ok ? res.json() : null))
+            .then(async (res) => {
+              if (res.status === 401) {
+                console.warn('[bokra auth] Token expired on server. Clearing expired desktop session.');
+                localStorage.removeItem('bokra_desktop_token');
+                localStorage.removeItem('bokra_desktop_user');
+                setUser(null);
+                return null;
+              }
+              return res.ok ? res.json() : null;
+            })
             .then((data) => {
               if (data?.username) {
                 const refreshed = { ...parsed, username: data.username };

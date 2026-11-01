@@ -26,6 +26,7 @@ export default function FriendsModal({
   onJoinSession,
   onOpenFriendSchedule,
   isAdmin = false,
+  onOpenSignIn,
 }) {
   const isRtl = lang === 'ar';
   const t = useCallback((k) => translations[lang]?.[k] || translations.en[k] || k, [lang]);
@@ -34,6 +35,7 @@ export default function FriendsModal({
   const [view, setView] = useState('main');
   
   // Data State
+  const [isAuthError, setIsAuthError] = useState(false);
   const [friends, setFriends] = useState(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -253,7 +255,16 @@ export default function FriendsModal({
         setLoading(true);
       }
       setError(null);
+      setIsAuthError(false);
       const res = await apiFetch('/api/friends', { timeoutMs: 6000 });
+      if (res.status === 401) {
+        setIsAuthError(true);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('bokra_desktop_token');
+        }
+        setError(isRtl ? 'انتهت صلاحية جلسة تسجيل الدخول. يرجى تسجيل الدخول مجدداً.' : 'Session expired. Please sign in again.');
+        return;
+      }
       if (!res.ok) {
         throw new Error(`Failed to load friends (${res.status})`);
       }
@@ -270,6 +281,7 @@ export default function FriendsModal({
       setBlocked(Array.isArray(data.blocked) ? data.blocked : []);
     } catch (err) {
       console.warn('[Friends API Load Error]:', err);
+      setIsAuthError(false);
       setError(isRtl ? 'تعذر تحميل قائمة الأصدقاء. تحقق من الاتصال بالإنترنت.' : 'Unable to load friends. Please check your connection.');
     } finally {
       setLoading(false);
@@ -344,8 +356,17 @@ export default function FriendsModal({
           setSearchPerformed(true);
           return;
         }
+        if (res.status === 401) {
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('bokra_desktop_token');
+          }
+          setSearchError(isRtl ? 'انتهت صلاحية جلسة تسجيل الدخول. يرجى إعادة تسجيل الدخول.' : 'Session expired. Please sign in again.');
+          setSearchResult(null);
+          setSearchPerformed(true);
+          return;
+        }
         if (!res.ok) {
-          throw new Error('Search failed');
+          throw new Error('Search failed with status ' + res.status);
         }
         const data = await res.json();
         searchCacheRef.current[clean] = data;
@@ -353,7 +374,7 @@ export default function FriendsModal({
         setSearchResult(data);
         setSearchPerformed(true);
       } catch (err) {
-        setSearchError('Search failed. Check your connection.');
+        setSearchError(isRtl ? 'تعذر البحث. تحقق من الاتصال بالإنترنت.' : 'Search failed. Check your connection.');
         setSearchResult(null);
         setSearchPerformed(true);
       } finally {
@@ -1316,19 +1337,34 @@ export default function FriendsModal({
                 ))}
               </div>
             ) : error && isEmpty ? (
-              /* ERROR STATE: Failed to fetch with retry button */
+              /* ERROR STATE: Failed to fetch with retry or login button */
               <div className="flex-1 flex flex-col items-center justify-center text-center my-auto py-8">
                 <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-4">
                   <AlertCircle size={28} />
                 </div>
                 <p className="text-sm text-white/80 max-w-xs mb-5 font-medium leading-relaxed">{error}</p>
-                <button
-                  type="button"
-                  onClick={() => loadFriends(true)}
-                  className="px-5 py-2.5 rounded-full bg-white text-black text-xs font-black shadow-lg hover:bg-white/90 active:scale-95 transition-all cursor-pointer"
-                >
-                  {isRtl ? 'إعادة المحاولة' : 'Try Again'}
-                </button>
+                {isAuthError ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onOpenSignIn) onOpenSignIn();
+                      else if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('bokra-open-auth'));
+                      }
+                    }}
+                    className="px-6 py-2.5 rounded-full bg-white text-black text-xs font-black shadow-lg hover:bg-white/90 active:scale-95 transition-all cursor-pointer"
+                  >
+                    {isRtl ? 'تسجيل الدخول' : 'Sign In'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => loadFriends(true)}
+                    className="px-5 py-2.5 rounded-full bg-white text-black text-xs font-black shadow-lg hover:bg-white/90 active:scale-95 transition-all cursor-pointer"
+                  >
+                    {isRtl ? 'إعادة المحاولة' : 'Try Again'}
+                  </button>
+                )}
               </div>
             ) : isEmpty ? (
               /* EMPTY STATE: Study is better together */
@@ -1679,9 +1715,23 @@ export default function FriendsModal({
                       </div>
                     </div>
                   ) : (
-                    /* NOT FOUND STATE */
-                    <div className="bg-[#0c0c0e] border border-white/10 rounded-2xl p-4 text-white/50 text-xs sm:text-sm text-center leading-relaxed">
-                      {searchError || t('userNotFound')}
+                    /* NOT FOUND OR ERROR STATE */
+                    <div className="bg-[#0c0c0e] border border-white/10 rounded-2xl p-4 flex flex-col items-center gap-3 text-white/60 text-xs sm:text-sm text-center leading-relaxed">
+                      <span>{searchError || t('userNotFound')}</span>
+                      {searchError && (searchError.includes('Session') || searchError.includes('الجلسة') || searchError.includes('تسجيل الدخول')) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onOpenSignIn) onOpenSignIn();
+                            else if (typeof window !== 'undefined') {
+                              window.dispatchEvent(new CustomEvent('bokra-open-auth'));
+                            }
+                          }}
+                          className="px-5 py-2 rounded-full bg-white text-black text-xs font-bold hover:bg-white/90 active:scale-95 transition-all cursor-pointer shadow-md mt-1"
+                        >
+                          {isRtl ? 'تسجيل الدخول الآن' : 'Sign In Now'}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

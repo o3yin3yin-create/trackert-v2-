@@ -1092,6 +1092,13 @@ function AppContent({ isPreview = false }) {
       window.location.href = '/sign-in';
     }
   }, [openSignIn]);
+
+  useEffect(() => {
+    const handleOpenAuthEvent = () => handleAuthAction();
+    window.addEventListener('bokra-open-auth', handleOpenAuthEvent);
+    return () => window.removeEventListener('bokra-open-auth', handleOpenAuthEvent);
+  }, [handleAuthAction]);
+
   const [authModal, setAuthModal] = useState(null); // 'sign-in' | 'sign-up' | null
   const [isMounted, setIsMounted] = useState(false);
   const [authTimeoutPassed, setAuthTimeoutPassed] = useState(false);
@@ -9526,6 +9533,7 @@ function AppContent({ isPreview = false }) {
               lang={lang}
               themeColor={themeColor}
               isAdmin={isAdmin}
+              onOpenSignIn={handleAuthAction}
               pinnedFriendUsername={pinnedFriendUsername}
               onTogglePinFriend={(username) => {
                 const next = (pinnedFriendUsername || '').toLowerCase() === (username || '').toLowerCase() ? '' : username;
