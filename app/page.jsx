@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Download, RotateCcw, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, CalendarDays, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut } from 'lucide-react';
+import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Download, RotateCcw, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, CalendarDays, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut, Mail, Info } from 'lucide-react';
 import React, { useState, useEffect, useRef, useCallback, useMemo, Component } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -37,7 +37,7 @@ import { HABIT_PRESETS, getLocalizedPreset } from '../lib/habitPresets';
 import { guideSections } from '../lib/guideContent';
 import { getDisplayFriend, formatBriefActivity, getActivityBadge, getSafeTrackArt, getIslandDetails, PRESENCE_PRESETS } from '../lib/friendsPresets';
 
-const APP_CLIENT_VERSION = '0.1.0';
+const APP_CLIENT_VERSION = '0.1.1';
 
 function compareSemver(v1, v2) {
   if (!v1 || !v2) return 0;
@@ -9271,6 +9271,110 @@ function AppContent({ isPreview = false }) {
                                 <ChevronRight size={18} className={`text-white/40 `} />
                               </button>
                             )}
+                          </div>
+
+                          {/* Group 4: About, Legal & Support */}
+                          <div className="flex flex-col gap-1.5">
+                            <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">
+                              {lang === 'ar' ? 'عن التطبيق والدعم والقانوني' : 'About & Legal'}
+                            </span>
+
+                            {/* About Page */}
+                            <a 
+                              href="/about" 
+                              onClick={() => setIsSettingsMenuOpen(false)} 
+                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><Info size={18} /></div>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-white">{lang === 'ar' ? 'عن بكره (About us)' : 'About bokra'}</span>
+                                  <span className="text-[11px] text-white/40 font-normal">{lang === 'ar' ? 'فلسفة التطبيق ورؤيتنا' : 'Philosophy and vision'}</span>
+                                </div>
+                              </div>
+                              <ChevronRight size={18} className="text-white/40" />
+                            </a>
+
+                            {/* Terms of Service */}
+                            <a 
+                              href="/terms" 
+                              onClick={() => setIsSettingsMenuOpen(false)} 
+                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><FileText size={18} /></div>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-white">{lang === 'ar' ? 'شروط الاستخدام' : 'Terms of Service'}</span>
+                                  <span className="text-[11px] text-white/40 font-normal">{lang === 'ar' ? 'الحقوق وضوابط الخدمة' : 'Usage policies and terms'}</span>
+                                </div>
+                              </div>
+                              <ChevronRight size={18} className="text-white/40" />
+                            </a>
+
+                            {/* Security & Privacy */}
+                            <a 
+                              href="/security" 
+                              onClick={() => setIsSettingsMenuOpen(false)} 
+                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><Shield size={18} /></div>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-white">{lang === 'ar' ? 'الأمان والخصوصية' : 'Security & Privacy'}</span>
+                                  <span className="text-[11px] text-white/40 font-normal">{lang === 'ar' ? 'تشفير البيانات وحماية حسابك' : 'Encryption and data protection'}</span>
+                                </div>
+                              </div>
+                              <ChevronRight size={18} className="text-white/40" />
+                            </a>
+
+                            {/* Official Instagram */}
+                            <a 
+                              href="https://www.instagram.com/bokra.101?cplk=MTdsaGE0M3pwejMxeQ%3D%3D&utm_source=qr" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><ExternalLink size={18} /></div>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-white">{lang === 'ar' ? 'انستغرام التطبيق الرسمي' : 'Official Instagram'}</span>
+                                  <span className="text-[11px] text-white/40 font-mono">@bokra.101</span>
+                                </div>
+                              </div>
+                              <ChevronRight size={18} className="text-white/40" />
+                            </a>
+
+                            {/* Support Email */}
+                            <a 
+                              href="mailto:bokra.support@gmail.com" 
+                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><Mail size={18} /></div>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-white">{lang === 'ar' ? 'الدعم الفني المباشر' : 'Support Email'}</span>
+                                  <span className="text-[11px] text-white/40 font-mono">bokra.support@gmail.com</span>
+                                </div>
+                              </div>
+                              <ChevronRight size={18} className="text-white/40" />
+                            </a>
+
+                            {/* Creator Account */}
+                            <a 
+                              href="https://www.instagram.com/jj3_xx?igsh=MWVkaGI5ZjNsb3Nreg%3D%3D&utm_source=qr" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><User size={18} /></div>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-white">{lang === 'ar' ? 'حساب المطور الشخصي' : 'Creator Profile'}</span>
+                                  <span className="text-[11px] text-white/40 font-mono">@jj3_xx</span>
+                                </div>
+                              </div>
+                              <ChevronRight size={18} className="text-white/40" />
+                            </a>
                           </div>
 
 

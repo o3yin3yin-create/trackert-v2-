@@ -2,19 +2,27 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-const FALLBACK_VERSION = '0.1.0';
+const FALLBACK_VERSION = '0.1.1';
 const GITHUB_REPO = 'o3yin3yin-create/trackert-v2-';
 
 const DEFAULT_DOWNLOADS = {
-  mac: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.0/bokra_0.1.0_aarch64.dmg`,
-  macArm: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.0/bokra_0.1.0_aarch64.dmg`,
-  macIntel: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.0/bokra_0.1.0_x64.dmg`,
+  mac: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.1/bokra_0.1.1_aarch64.dmg`,
+  macArm: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.1/bokra_0.1.1_aarch64.dmg`,
+  macIntel: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.1/bokra_0.1.1_x64.dmg`,
   windows: '/bokra-windows.zip',
   android: '/bokra.apk',
-  linuxDeb: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.0/bokra_0.1.0_amd64.deb`,
-  linuxAppImage: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.0/bokra_0.1.0_amd64.AppImage`,
-  linuxRpm: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.0/bokra-0.1.0-1.x86_64.rpm`,
+  linuxDeb: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.1/bokra_0.1.1_amd64.deb`,
+  linuxAppImage: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.1/bokra_0.1.1_amd64.AppImage`,
+  linuxRpm: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.1/bokra-0.1.1-1.x86_64.rpm`,
 };
+
+const RELEASE_NOTES_0_1_1 = `bokra v0.1.1 - التحديث الشامل:
+- تطبيق أندرويد رسمي أصلي بصيغة APK مع إشعارات محلية تعمل بدون إنترنت.
+- حل مشكلة الإشعارات نهائيا وضمان وصول إشعارات الأصدقاء والنكزات في الخلفية بنسبة 100%.
+- استمرار عمل تطبيق ماك في الخلفية عند إغلاق النافذة للحفاظ على العدادات والتنبيهات.
+- إصلاح تعليق شاشة الأصدقاء والبحث عن المعرفات.
+- صفحات رسمية جديدة: عن التطبيق (/about)، شروط الاستخدام (/terms)، الأمان والخصوصية (/security).
+- إضافة روابط الدعم المباشر وانستغرام الرسمي وحساب المطور في الإعدادات.`;
 
 export async function GET() {
   try {
@@ -71,7 +79,7 @@ export async function GET() {
       tagName,
       releaseName: data.name || `Release ${tagName}`,
       publishedAt: data.published_at || new Date().toISOString(),
-      notes: data.body || '',
+      notes: data.body || RELEASE_NOTES_0_1_1,
       downloads,
     }, {
       headers: {
@@ -85,7 +93,7 @@ export async function GET() {
       tagName: `v${FALLBACK_VERSION}`,
       releaseName: `Release v${FALLBACK_VERSION}`,
       publishedAt: new Date().toISOString(),
-      notes: 'Latest stable release.',
+      notes: RELEASE_NOTES_0_1_1,
       downloads: DEFAULT_DOWNLOADS,
       fallback: true,
     }, {

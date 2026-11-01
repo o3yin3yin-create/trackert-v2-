@@ -1,6 +1,6 @@
 {
   "name": "bokra",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -17,7 +17,9 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@capacitor/android": "^7.6.10",
     "@capacitor/core": "^7.0.0",
+    "@capacitor/local-notifications": "^7.0.7",
     "@clerk/nextjs": "^7.3.7",
     "@clerk/themes": "^2.4.57",
     "@ducanh2912/next-pwa": "^10.2.9",

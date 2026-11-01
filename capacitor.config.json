@@ -1,9 +1,16 @@
 {
-  "appId": "com.tafra.tracker",
-  "appName": "Tafra Tracker",
-  "webDir": "public",
+  "appId": "com.bokra.tracker",
+  "appName": "bokra",
+  "webDir": "out",
   "server": {
-    "url": "https://YOUR_VERCEL_APP_URL.vercel.app",
+    "url": "https://bokra101.vercel.app",
     "cleartext": true
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon",
+      "iconColor": "#FFFFFF",
+      "sound": "default"
+    }
   }
 }
