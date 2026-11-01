@@ -30,7 +30,8 @@ export default function DownloadPage() {
   const isAr = lang === 'ar';
 
   const GITHUB_RELEASES_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/tag/v0.1.0";
-  const MAC_DMG_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.0/bokra_0.1.0_universal.dmg";
+  const MAC_ARM_DMG_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.0/bokra_0.1.0_aarch64.dmg";
+  const MAC_INTEL_DMG_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.0/bokra_0.1.0_x64.dmg";
   const WIN_ZIP_URL = "/bokra-windows.zip";
   const LINUX_DEB_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.0/bokra_0.1.0_amd64.deb";
   const LINUX_APPIMAGE_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.0/bokra_0.1.0_amd64.AppImage";
@@ -129,18 +130,18 @@ export default function DownloadPage() {
                   <Apple size={24} />
                 </div>
                 <span className="text-[11px] font-mono font-bold px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/60">
-                  Universal (Apple Silicon & Intel)
+                  Apple Silicon & Intel
                 </span>
               </div>
 
               <div className="flex flex-col gap-1">
                 <h3 className="text-lg font-bold text-white">
-                  {isAr ? 'ماك (macOS Universal)' : 'macOS (Universal - Apple Silicon & Intel)'}
+                  {isAr ? 'ماك (macOS Native)' : 'macOS (Apple Silicon & Intel)'}
                 </h3>
                 <p className="text-xs text-white/50 leading-relaxed">
                   {isAr 
-                    ? 'حزمة .DMG رسمية شاملة لكافة أجهزة ماك (Apple Silicon M1/M2/M3/M4 ومعالجات Intel 64-bit). بناء موقع ذاتياً (Ad-hoc build).'
-                    : 'Universal macOS bundle compatible with both Apple Silicon (ARM64) and Intel (x86_64) Macs. Ad-hoc self-signed (unnotarized).'}
+                    ? 'حزم .DMG منفصلة ومحسنة لأجهزة ماك بمعالجات Apple Silicon (M1/M2/M3/M4) أو معالجات Intel 64-bit.'
+                    : 'Dedicated, optimized .DMG installers for Apple Silicon (M1/M2/M3/M4) and Intel (x86_64) Macs.'}
                 </p>
                 <div className="mt-2 p-2.5 rounded-xl bg-white/5 border border-white/10 text-[11px] text-white/70 leading-relaxed">
                   <span className="font-semibold text-white block mb-1">
@@ -157,14 +158,21 @@ export default function DownloadPage() {
 
             <div className="flex flex-col gap-2 pt-2">
               <a
-                href={MAC_DMG_URL}
-                className="w-full h-12 rounded-xl bg-white text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
+                href={MAC_ARM_DMG_URL}
+                className="w-full h-11 rounded-xl bg-white text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
               >
-                <Download size={15} />
-                <span>{isAr ? 'تحميل مباشر للماك (.DMG)' : 'Download for Mac (.DMG)'}</span>
+                <Download size={14} />
+                <span>{isAr ? 'تحميل لماك (Apple Silicon M1/M2/M3/M4)' : 'Download for Apple Silicon (M-series)'}</span>
+              </a>
+              <a
+                href={MAC_INTEL_DMG_URL}
+                className="w-full h-11 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-white/10 active:scale-[0.98] transition-all cursor-pointer"
+              >
+                <Download size={14} />
+                <span>{isAr ? 'تحميل لماك (Intel x86_64)' : 'Download for Intel (x86_64)'}</span>
               </a>
               <span className="text-[10px] text-center text-white/40 font-mono">
-                {isAr ? 'تحميل عبر GitHub Releases (حجم: 10.3 MB - ARM64)' : 'Hosted on GitHub Releases (10.3 MB - ARM64)'}
+                {isAr ? 'روابط التثبيت عبر GitHub Releases' : 'Installers hosted on GitHub Releases'}
               </span>
             </div>
           </div>

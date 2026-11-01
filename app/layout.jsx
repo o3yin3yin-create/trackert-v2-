@@ -69,37 +69,37 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <ClerkProvider 
-      appearance={clerkAppearance}
-      localization={clerkLocalization}
-      signInUrl="/sign-in"
-      signUpUrl="/sign-up"
-      signInFallbackRedirectUrl="/"
-      signUpFallbackRedirectUrl="/"
-      signInForceRedirectUrl="/"
-      signUpForceRedirectUrl="/"
+    <html 
+      lang="en" 
+      className={`dark ${spaceGrotesk.variable} ${jetbrainsMono.variable}`} 
+      style={{ backgroundColor: '#000000', colorScheme: 'dark' }}
     >
-      <html 
-        lang="en" 
-        className={`dark ${spaceGrotesk.variable} ${jetbrainsMono.variable}`} 
-        style={{ backgroundColor: '#000000', colorScheme: 'dark' }}
-      >
-        <head>
-          <meta name="HandheldFriendly" content="true" />
-          <meta name="MobileOptimized" content="width" />
-          <meta name="format-detection" content="telephone=no" />
-          <meta name="apple-mobile-web-app-capable" content="yes" />
-          <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-          <meta name="apple-mobile-web-app-title" content="bokra" />
-          <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-          <link rel="manifest" href="/manifest.json" />
-          <meta name="theme-color" content="#000000" />
-        </head>
-        <body className={`${spaceGrotesk.className} font-sans bg-black text-white antialiased selection:bg-white/20`}>
+      <head>
+        <meta name="HandheldFriendly" content="true" />
+        <meta name="MobileOptimized" content="width" />
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="bokra" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#000000" />
+      </head>
+      <body className={`${spaceGrotesk.className} font-sans bg-black text-white antialiased selection:bg-white/20`}>
+        <ClerkProvider 
+          appearance={clerkAppearance}
+          localization={clerkLocalization}
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+          signInFallbackRedirectUrl="/"
+          signUpFallbackRedirectUrl="/"
+          signInForceRedirectUrl="/"
+          signUpForceRedirectUrl="/"
+        >
           <PwaRegister />
           {children}
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   )
 }

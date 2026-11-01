@@ -2,9 +2,19 @@
 import os
 
 project_root = os.getcwd()
-universal_app = os.path.join(project_root, "src-tauri/target/universal-apple-darwin/release/bundle/macos/bokra.app")
+custom_app = os.environ.get("DMG_APP_PATH")
+arm64_app = os.path.join(project_root, "src-tauri/target/aarch64-apple-darwin/release/bundle/macos/bokra.app")
+x64_app = os.path.join(project_root, "src-tauri/target/x86_64-apple-darwin/release/bundle/macos/bokra.app")
 release_app = os.path.join(project_root, "src-tauri/target/release/bundle/macos/bokra.app")
-app_path = universal_app if os.path.exists(universal_app) else release_app
+
+if custom_app and os.path.exists(custom_app):
+    app_path = custom_app
+elif os.path.exists(arm64_app):
+    app_path = arm64_app
+elif os.path.exists(x64_app):
+    app_path = x64_app
+else:
+    app_path = release_app
 icon_path = os.path.join(project_root, "src-tauri/icons/icon.icns")
 bg_path = os.path.join(project_root, "src-tauri/assets/dmg-background.png")
 

@@ -2,27 +2,56 @@
 set -e
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUTPUT_DMG="$HOME/Desktop/bokra.dmg"
-if [ -d "$PROJECT_ROOT/src-tauri/target/universal-apple-darwin/release/bundle/macos/bokra.app" ]; then
-  APP_PATH="$PROJECT_ROOT/src-tauri/target/universal-apple-darwin/release/bundle/macos/bokra.app"
-  echo "📦 Using Universal macOS App Bundle (Intel x86_64 + Apple Silicon ARM64)"
-elif [ -d "$PROJECT_ROOT/src-tauri/target/release/bundle/macos/bokra.app" ]; then
-  APP_PATH="$PROJECT_ROOT/src-tauri/target/release/bundle/macos/bokra.app"
-  echo "📦 Using Release macOS App Bundle"
+
+build_one_dmg() {
+  local ARCH="$1"
+  local APP_PATH=""
+  local OUTPUT_DMG=""
+
+  if [ "$ARCH" = "arm64" ] || [ "$ARCH" = "aarch64" ]; then
+    APP_PATH="$PROJECT_ROOT/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/bokra.app"
+    if [ ! -d "$APP_PATH" ]; then
+      APP_PATH="$PROJECT_ROOT/src-tauri/target/release/bundle/macos/bokra.app"
+    fi
+    OUTPUT_DMG="$HOME/Desktop/bokra_0.1.0_aarch64.dmg"
+    echo "Building DMG for Apple Silicon (ARM64 / M-series)..."
+  elif [ "$ARCH" = "x64" ] || [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "intel" ]; then
+    APP_PATH="$PROJECT_ROOT/src-tauri/target/x86_64-apple-darwin/release/bundle/macos/bokra.app"
+    OUTPUT_DMG="$HOME/Desktop/bokra_0.1.0_x64.dmg"
+    echo "Building DMG for Intel (x86_64)..."
+  else
+    echo "Unknown architecture: $ARCH"
+    exit 1
+  fi
+
+  if [ ! -d "$APP_PATH" ]; then
+    echo "Error: App bundle not found at: $APP_PATH"
+    return 1
+  fi
+
+  echo "Generating Retina background..."
+  python3 "$PROJECT_ROOT/scripts/create_dmg_background.py"
+
+  echo "Detaching any existing bokra volumes..."
+  hdiutil detach "/Volumes/bokra" -force 2>/dev/null || true
+  rm -f "$OUTPUT_DMG"
+
+  echo "Running dmgbuild for $ARCH..."
+  cd "$PROJECT_ROOT"
+  DMG_APP_PATH="$APP_PATH" dmgbuild -s "$PROJECT_ROOT/scripts/dmg_settings.py" "bokra" "$OUTPUT_DMG"
+
+  echo "DMG created successfully at: $OUTPUT_DMG"
+}
+
+TARGET_ARCH="${1:-all}"
+
+if [ "$TARGET_ARCH" = "all" ]; then
+  if [ -d "$PROJECT_ROOT/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/bokra.app" ] || [ -d "$PROJECT_ROOT/src-tauri/target/release/bundle/macos/bokra.app" ]; then
+    build_one_dmg "arm64"
+  fi
+  if [ -d "$PROJECT_ROOT/src-tauri/target/x86_64-apple-darwin/release/bundle/macos/bokra.app" ]; then
+    build_one_dmg "x64"
+  fi
 else
-  echo "❌ Error: bokra.app not found. Please build the app first."
-  exit 1
+  build_one_dmg "$TARGET_ARCH"
 fi
-
-echo "🎨 Step 1: Generating high-resolution monochrome Retina background..."
-python3 "$PROJECT_ROOT/scripts/create_dmg_background.py"
-
-echo "🧹 Step 2: Cleaning old DMG mounts and artifacts..."
-hdiutil detach "/Volumes/bokra" -force 2>/dev/null || true
-rm -f "$OUTPUT_DMG" "$PROJECT_ROOT/bokra.dmg"
-
-echo "🚀 Step 3: Building DMG with custom monochrome layout via dmgbuild..."
-cd "$PROJECT_ROOT"
-dmgbuild -s "$PROJECT_ROOT/scripts/dmg_settings.py" "bokra" "$OUTPUT_DMG"
-
-echo "✅ DMG created successfully at: $OUTPUT_DMG"

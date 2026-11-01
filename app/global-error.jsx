@@ -4,9 +4,7 @@ import { useEffect } from 'react';
 
 export default function GlobalError({ error, reset }) {
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'production') {
-      console.error('[Global Layout Error]', error);
-    }
+    console.error('[Global Layout Error]', error);
   }, [error]);
 
   return (
@@ -17,9 +15,14 @@ export default function GlobalError({ error, reset }) {
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white mb-4">
             System Unavailable
           </h1>
-          <p className="text-base text-white/70 max-w-sm mb-8 leading-relaxed">
+          <p className="text-base text-white/70 max-w-sm mb-4 leading-relaxed">
             The application encountered a fatal initialization error. Please reload the application.
           </p>
+          {error?.message && (
+            <p className="text-xs text-red-400 bg-white/5 px-3 py-2 rounded-lg max-w-sm break-words mb-6 font-mono">
+              {error.message}
+            </p>
+          )}
           <button
             type="button"
             onClick={() => reset()}
