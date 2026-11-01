@@ -34,9 +34,28 @@ export default function FriendsModal({
   const [view, setView] = useState('main');
   
   // Data State
-  const [loading, setLoading] = useState(true);
+  const [friends, setFriends] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('daybase_friends_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch (_) {}
+    }
+    return [];
+  });
+  const [loading, setLoading] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('daybase_friends_cache');
+        if (cached && JSON.parse(cached)?.length > 0) return false;
+      } catch (_) {}
+    }
+    return true;
+  });
   const [error, setError] = useState(null);
-  const [friends, setFriends] = useState([]);
   const [incoming, setIncoming] = useState([]);
   const [outgoing, setOutgoing] = useState([]);
   const [blocked, setBlocked] = useState([]);
@@ -228,26 +247,34 @@ export default function FriendsModal({
   };
 
   // Fetch Friends Data
-  const loadFriends = useCallback(async () => {
+  const loadFriends = useCallback(async (isManualRetry = false) => {
     try {
-      setLoading(true);
+      if (friends.length === 0 || isManualRetry) {
+        setLoading(true);
+      }
       setError(null);
-      const res = await apiFetch('/api/friends');
+      const res = await apiFetch('/api/friends', { timeoutMs: 8000 });
       if (!res.ok) {
-        throw new Error('Failed to load friends');
+        throw new Error(`Failed to load friends (${res.status})`);
       }
       const data = await res.json();
-      setFriends(Array.isArray(data.friends) ? data.friends : []);
+      const newFriends = Array.isArray(data.friends) ? data.friends : [];
+      setFriends(newFriends);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('daybase_friends_cache', JSON.stringify(newFriends));
+        } catch (_) {}
+      }
       setIncoming(Array.isArray(data.incoming) ? data.incoming : []);
       setOutgoing(Array.isArray(data.outgoing) ? data.outgoing : []);
       setBlocked(Array.isArray(data.blocked) ? data.blocked : []);
     } catch (err) {
       console.warn('[Friends API Load Error]:', err);
-      setError('Unable to load friends. Please try again.');
+      setError(isRtl ? 'تعذر تحميل قائمة الأصدقاء. تحقق من الاتصال بالإنترنت.' : 'Unable to load friends. Please check your connection.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [friends.length, isRtl]);
 
   useEffect(() => {
     if (isOpen) {
@@ -1274,6 +1301,21 @@ export default function FriendsModal({
                     <div className="h-4 w-12 bg-white/[0.05] rounded-md shrink-0" />
                   </div>
                 ))}
+              </div>
+            ) : error && isEmpty ? (
+              /* ERROR STATE: Failed to fetch with retry button */
+              <div className="flex-1 flex flex-col items-center justify-center text-center my-auto py-8">
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-4">
+                  <AlertCircle size={28} />
+                </div>
+                <p className="text-sm text-white/80 max-w-xs mb-5 font-medium leading-relaxed">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => loadFriends(true)}
+                  className="px-5 py-2.5 rounded-full bg-white text-black text-xs font-black shadow-lg hover:bg-white/90 active:scale-95 transition-all cursor-pointer"
+                >
+                  {isRtl ? 'إعادة المحاولة' : 'Try Again'}
+                </button>
               </div>
             ) : isEmpty ? (
               /* EMPTY STATE: Study is better together */

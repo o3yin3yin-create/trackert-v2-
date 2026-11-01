@@ -2749,7 +2749,7 @@ function AppContent({ isPreview = false }) {
         const eventTimeInMins = eventHours * 60 + eventMins;
         const diffMins = eventTimeInMins - currentTimeInMins;
 
-        if (diffMins === 10) {
+        if (diffMins > 0 && diffMins <= 10) {
           const key10 = `${todayDateKey}_${h.id}_10m`;
           if (!notifiedEventsRef.current.has(key10)) {
             notifiedEventsRef.current.add(key10);
@@ -2760,15 +2760,15 @@ function AppContent({ isPreview = false }) {
                 : (isAr ? `تذكير: ${h.name}` : `Upcoming Habit: ${h.name}`),
               {
                 body: isAr 
-                  ? `تبدأ بعد 10 دقائق (في ${rawTime})` 
-                  : `Starts in 10 minutes (at ${rawTime})`,
+                  ? `تبدأ بعد ${diffMins} دقائق (في ${rawTime})` 
+                  : `Starts in ${diffMins} minutes (at ${rawTime})`,
                 tag: key10,
               }
             );
           }
         }
 
-        if (diffMins === 0) {
+        if (diffMins <= 0 && diffMins >= -3) {
           const keyNow = `${todayDateKey}_${h.id}_start`;
           if (!notifiedEventsRef.current.has(keyNow)) {
             notifiedEventsRef.current.add(keyNow);

@@ -39,12 +39,6 @@ export default function PushNotificationsCard({
   };
 
   const onEnable = async () => {
-    if (!isSignedIn) {
-      if (onAuthRequired) onAuthRequired();
-      else setError(isAr ? 'يرجى تسجيل الدخول أولاً لتفعيل الإشعارات' : 'Sign in first to enable push notifications');
-      return;
-    }
-
     setBusy(true);
     setError('');
     try {
@@ -65,12 +59,8 @@ export default function PushNotificationsCard({
         setNeedsHomeScreen(true);
       } else if (msg === 'denied') {
         setPermission('denied');
-      } else if (msg === 'secure_context_required') {
-        setError(isAr ? 'تتطلب إشعارات الويب اتصالاً آمناً (HTTPS)' : 'Push notifications require a secure (HTTPS) connection');
-      } else if (msg === 'unauthorized') {
-        setError(isAr ? 'يرجى تسجيل الدخول أولاً لتفعيل الإشعارات' : 'Sign in first to enable push notifications');
       } else if (msg === 'unsupported') {
-        setError(isAr ? 'المتصفح لا يدعم إشعارات الويب' : 'Browser does not support notifications');
+        setError(isAr ? 'هذا الجهاز لا يدعم الإشعارات' : 'Notifications not supported on this device');
       } else {
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           setPermission('granted');
@@ -86,8 +76,7 @@ export default function PushNotificationsCard({
           );
           return;
         }
-        const readable = msg.startsWith('token_error:') ? msg.replace('token_error:', '').trim() : msg;
-        setError(readable || (isAr ? 'تعذر تفعيل الإشعارات' : 'Could not enable notifications'));
+        setError(isAr ? 'تعذر تفعيل الإشعارات' : 'Could not enable notifications');
       }
     } finally {
       setBusy(false);
@@ -112,9 +101,26 @@ export default function PushNotificationsCard({
         </div>
       </div>
       {needsHomeScreen ? null : permission === 'granted' ? (
-        <span className="shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-          {copy.enabled}
-        </span>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              showLocalNotification(
+                isAr ? 'تجربة إشعار bokra' : 'bokra Notification Test',
+                {
+                  body: isAr ? 'الإشعارات تعمل بنجاح مع الصوت والتنبيه.' : 'Notifications are working with sound and alerts.',
+                  tag: 'test_notification',
+                }
+              );
+            }}
+            className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-all active:scale-95 cursor-pointer"
+          >
+            {isAr ? 'تجربة' : 'Test'}
+          </button>
+          <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+            {copy.enabled}
+          </span>
+        </div>
       ) : (
         <button
           type="button"
@@ -122,7 +128,7 @@ export default function PushNotificationsCard({
           disabled={busy || permission === 'denied'}
           className="shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-black bg-white text-black hover:bg-white/90 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
         >
-          {busy ? '…' : !isSignedIn ? copy.signIn : copy.enable}
+          {busy ? '…' : copy.enable}
         </button>
       )}
     </div>
