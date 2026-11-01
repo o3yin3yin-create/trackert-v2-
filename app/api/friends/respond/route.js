@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { json, requireMe, OPTIONS } from '@/lib/friends'
+import { sendPush } from '@/lib/push'
 
 export { OPTIONS }
 
@@ -15,11 +16,25 @@ export async function POST(req) {
   // بس المستلم يقدر يرد، وبس على طلب pending
   const where = { id: String(friendshipId), addresseeId: me.id, status: 'pending' }
 
+  const targetFriendship = action === 'accept'
+    ? await prisma.friendship.findFirst({ where, select: { requesterId: true } })
+    : null
+
   const res =
     action === 'accept'
       ? await prisma.friendship.updateMany({ where, data: { status: 'accepted' } })
       : await prisma.friendship.deleteMany({ where })
 
   if (res.count === 0) return json({ error: 'not_found' }, 404, req)
+
+  if (action === 'accept' && targetFriendship?.requesterId) {
+    sendPush(targetFriendship.requesterId, {
+      title: 'bokra',
+      body: `${me.name || me.username || 'A friend'} accepted your friend request.`,
+      url: '/',
+      tag: `friend-accept:${me.id}`,
+    }).catch(() => {})
+  }
+
   return json({ ok: true }, 200, req)
 }

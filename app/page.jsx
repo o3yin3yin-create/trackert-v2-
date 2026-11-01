@@ -31,6 +31,7 @@ import PrivacyModal from '../components/PrivacyModal';
 import SpotifyInviteModal from '../components/SpotifyInviteModal';
 import UpdateModal from '../components/UpdateModal';
 import HabitPresetsModal from '../components/HabitPresetsModal';
+import PushNotificationsCard from '../components/PushNotificationsCard';
 import { HABIT_PRESETS, getLocalizedPreset } from '../lib/habitPresets';
 import { guideSections } from '../lib/guideContent';
 import { getDisplayFriend, formatBriefActivity, getActivityBadge, getSafeTrackArt, getIslandDetails, PRESENCE_PRESETS } from '../lib/friendsPresets';
@@ -8944,6 +8945,14 @@ function AppContent({ isPreview = false }) {
                                 </button>
                               )}
                             </div>
+                          </div>
+
+                          {/* Group: Notifications */}
+                          <div className="flex flex-col gap-1.5">
+                            <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">
+                              {lang === 'ar' ? 'الإشعارات والتنبيهات' : 'Notifications'}
+                            </span>
+                            <PushNotificationsCard lang={lang} />
                           </div>
 
                           {/* Group 3: Tools & Utilities */}

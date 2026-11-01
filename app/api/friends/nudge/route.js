@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { json, requireMe, normUsername, OPTIONS } from '@/lib/friends'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
+import { sendPush } from '@/lib/push'
 
 export { OPTIONS }
 
@@ -78,6 +79,20 @@ export async function POST(req) {
       where: { id: targetUser.id },
       data: { notifications: updatedNotifs }
     })
+
+    const senderDisplay = me.name || me.username || 'A friend'
+    const pushBody = type === 'study' 
+      ? `${senderDisplay} asks to study together.` 
+      : type === 'cheer'
+      ? `${senderDisplay} cheered you on!`
+      : `${senderDisplay} nudged you.`
+
+    sendPush(targetUser.id, {
+      title: 'bokra',
+      body: pushBody,
+      url: '/',
+      tag: `nudge:${me.id}`,
+    }).catch(() => {})
 
     return json({ success: true, notification: notifItem }, 200, req)
   } catch (err) {

@@ -40,6 +40,8 @@ model User {
   dailyLogs        DailyLog[]
   sentRequests     Friendship[] @relation("FriendRequester")
   receivedRequests Friendship[] @relation("FriendAddressee")
+  pushTokens       PushToken[]
+  scheduledPushes  ScheduledPush[]
 }
 
 // 2. جدول العادات ببيانات المواعيد المجدولة والتفاصيل الإضافية (الوقت والمكان)
@@ -106,7 +108,37 @@ model Friendship {
   @@index([requesterId, status])
 }
 
-// 5. أكواد الدعوة لميزة سبوتيفاي التجريبية
+// 5. FCM web/PWA device tokens (one row per browser/device)
+model PushToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// 6. QStash delayed push jobs (lecture reminders, pomodoro end)
+model ScheduledPush {
+  id        String    @id @default(cuid())
+  userId    String
+  kind      String
+  refId     String
+  messageId String
+  notBefore DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind, refId])
+  @@index([userId])
+}
+
+// 7. أكواد الدعوة لميزة سبوتيفاي التجريبية
 model SpotifyInviteCode {
   id        String    @id @default(cuid())
   code      String    @unique

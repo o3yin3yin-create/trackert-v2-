@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { json, normUsername, requireMe, findBetween, rateLimit, getClientIp, OPTIONS } from '@/lib/friends'
+import { sendPush } from '@/lib/push'
 
 export { OPTIONS }
 
@@ -32,6 +33,12 @@ export async function POST(req) {
           await tx.friendship.create({
             data: { requesterId: me.id, addresseeId: target.id, status: 'pending' },
           })
+          sendPush(target.id, {
+            title: 'bokra',
+            body: `${me.name || me.username || 'Someone'} sent you a friend request.`,
+            url: '/',
+            tag: `friend-request:${me.id}`,
+          }).catch(() => {})
           return { status: 200, body: { result: 'sent' } }
         }
         if (row.status === 'blocked') return { status: 404, body: { error: 'not_available' } }
@@ -41,6 +48,12 @@ export async function POST(req) {
         if (row.requesterId === target.id) {
           // هو كان باعتلي طلب -> نقبله علطول
           await tx.friendship.update({ where: { id: row.id }, data: { status: 'accepted' } })
+          sendPush(target.id, {
+            title: 'bokra',
+            body: `${me.name || me.username || 'A friend'} accepted your friend request.`,
+            url: '/',
+            tag: `friend-accept:${me.id}`,
+          }).catch(() => {})
           return { status: 200, body: { result: 'accepted' } }
         }
         return { status: 200, body: { result: 'already_sent' } }

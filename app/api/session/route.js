@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAuthUserId } from '@/lib/auth-server';
 import prisma from '@/lib/prisma';
 import { rateLimit, getClientIp } from '@/lib/rateLimit';
+import { schedulePomodoroEnd, cancelPomodoroPush } from '@/lib/pushSchedule';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,13 +87,24 @@ export async function POST(req) {
       }
     }
 
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { clerkId: userId },
       data: {
         activeSessionType: type || null,
         activeSessionData: data || null,
-      }
+      },
+      select: { id: true }
     });
+
+    if (type === 'pomodoro' && data && typeof data === 'object') {
+      const remainingSec = Number(data.remainingSec || data.initialTime || 0);
+      if (remainingSec > 10) {
+        const endTimeSec = Math.floor(Date.now() / 1000) + remainingSec;
+        schedulePomodoroEnd(updatedUser.id, endTimeSec).catch(() => {});
+      }
+    } else {
+      cancelPomodoroPush(updatedUser.id).catch(() => {});
+    }
 
     sessionCache.set(userId, {
       data: { activeSessionType: type || null, activeSessionData: data || null },
