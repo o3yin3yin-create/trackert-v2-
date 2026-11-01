@@ -7,6 +7,7 @@ import {
   ensurePushServiceWorker,
   iosNeedsHomeScreen,
 } from '@/lib/pushClient';
+import { showLocalNotification } from '@/lib/localNotifications';
 
 export default function PushNotificationsCard({ 
   lang = 'en', 
@@ -49,6 +50,15 @@ export default function PushNotificationsCard({
     try {
       await enablePushNotifications();
       setPermission('granted');
+      showLocalNotification(
+        isAr ? 'تم تفعيل الإشعارات' : 'Notifications enabled',
+        {
+          body: isAr 
+            ? 'ستصلك الآن تنبيهات المحاضرات وجلسات التركيز والأصدقاء.' 
+            : 'You will receive lecture, focus, and friend alerts.',
+          tag: 'push_enabled',
+        }
+      );
     } catch (err) {
       const msg = err?.message || '';
       if (msg === 'ios_homescreen') {
@@ -62,6 +72,20 @@ export default function PushNotificationsCard({
       } else if (msg === 'unsupported') {
         setError(isAr ? 'المتصفح لا يدعم إشعارات الويب' : 'Browser does not support notifications');
       } else {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          setPermission('granted');
+          setError('');
+          showLocalNotification(
+            isAr ? 'تم تفعيل الإشعارات' : 'Notifications enabled',
+            {
+              body: isAr 
+                ? 'ستصلك الآن تنبيهات المحاضرات وجلسات التركيز والأصدقاء.' 
+                : 'You will receive lecture, focus, and friend alerts.',
+              tag: 'push_enabled',
+            }
+          );
+          return;
+        }
         const readable = msg.startsWith('token_error:') ? msg.replace('token_error:', '').trim() : msg;
         setError(readable || (isAr ? 'تعذر تفعيل الإشعارات' : 'Could not enable notifications'));
       }

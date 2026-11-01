@@ -32,6 +32,7 @@ import SpotifyInviteModal from '../components/SpotifyInviteModal';
 import UpdateModal from '../components/UpdateModal';
 import HabitPresetsModal from '../components/HabitPresetsModal';
 import PushNotificationsCard from '../components/PushNotificationsCard';
+import { showLocalNotification } from '../lib/localNotifications';
 import { HABIT_PRESETS, getLocalizedPreset } from '../lib/habitPresets';
 import { guideSections } from '../lib/guideContent';
 import { getDisplayFriend, formatBriefActivity, getActivityBadge, getSafeTrackArt, getIslandDetails, PRESENCE_PRESETS } from '../lib/friendsPresets';
@@ -1661,6 +1662,13 @@ function AppContent({ isPreview = false }) {
               message: notifMsg,
               isRequest: false,
             });
+            showLocalNotification(
+              latest.fromName || latest.fromUsername || 'bokra',
+              {
+                body: notifMsg,
+                tag: `friend_${latest.id}`,
+              }
+            );
           }
         } else if (incomingReqs.length > 0) {
           const latest = incomingReqs[0];
@@ -1673,6 +1681,13 @@ function AppContent({ isPreview = false }) {
               message: 'sent you a friend request',
               isRequest: true,
             });
+            showLocalNotification(
+              latest.user?.name || latest.user?.username || 'bokra',
+              {
+                body: isAr ? 'أرسل لك طلب صداقة جديد' : 'Sent you a friend request',
+                tag: `request_${latest.friendshipId}`,
+              }
+            );
           }
         }
       } catch (_) {}
@@ -2691,6 +2706,87 @@ function AppContent({ isPreview = false }) {
     };
   }, []);
 
+  // --- Scheduled Lecture & Habit Local Alerts ---
+  const notifiedEventsRef = useRef(new Set());
+  useEffect(() => {
+    if (!Array.isArray(habits) || habits.length === 0) return;
+    const checkScheduledEvents = () => {
+      const now = new Date();
+      const currentDay = now.getDay();
+      const currentHours = now.getHours();
+      const currentMinutes = now.getMinutes();
+      const currentTimeInMins = currentHours * 60 + currentMinutes;
+      const todayDateKey = now.toISOString().slice(0, 10);
+
+      habits.forEach((h) => {
+        const rawTime = h.time || h.notifyTime;
+        if (!rawTime) return;
+
+        if (Array.isArray(h.scheduleDays) && h.scheduleDays.length > 0) {
+          if (!h.scheduleDays.includes(currentDay)) return;
+        }
+
+        let eventHours = 0;
+        let eventMins = 0;
+        const match12 = String(rawTime).match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+        if (match12) {
+          eventHours = parseInt(match12[1], 10);
+          eventMins = parseInt(match12[2], 10);
+          const meridiem = match12[3]?.toUpperCase();
+          if (meridiem === 'PM' && eventHours < 12) eventHours += 12;
+          if (meridiem === 'AM' && eventHours === 12) eventHours = 0;
+        } else {
+          return;
+        }
+
+        const eventTimeInMins = eventHours * 60 + eventMins;
+        const diffMins = eventTimeInMins - currentTimeInMins;
+
+        if (diffMins === 10) {
+          const key10 = `${todayDateKey}_${h.id}_10m`;
+          if (!notifiedEventsRef.current.has(key10)) {
+            notifiedEventsRef.current.add(key10);
+            const isLecture = h.category === 'lecture';
+            showLocalNotification(
+              isLecture 
+                ? (isAr ? `تذكير بمحاضرة: ${h.name}` : `Upcoming Lecture: ${h.name}`)
+                : (isAr ? `تذكير: ${h.name}` : `Upcoming Habit: ${h.name}`),
+              {
+                body: isAr 
+                  ? `تبدأ بعد 10 دقائق (في ${rawTime})` 
+                  : `Starts in 10 minutes (at ${rawTime})`,
+                tag: key10,
+              }
+            );
+          }
+        }
+
+        if (diffMins === 0) {
+          const keyNow = `${todayDateKey}_${h.id}_start`;
+          if (!notifiedEventsRef.current.has(keyNow)) {
+            notifiedEventsRef.current.add(keyNow);
+            const isLecture = h.category === 'lecture';
+            showLocalNotification(
+              isLecture 
+                ? (isAr ? `حان موعد المحاضرة: ${h.name}` : `Lecture Starting: ${h.name}`)
+                : (isAr ? `حان موعد: ${h.name}` : `Time for: ${h.name}`),
+              {
+                body: h.location 
+                  ? (isAr ? `المكان: ${h.location}` : `Location: ${h.location}`) 
+                  : (isAr ? 'حان الموعد الآن.' : 'Starting now.'),
+                tag: keyNow,
+              }
+            );
+          }
+        }
+      });
+    };
+
+    checkScheduledEvents();
+    const interval = setInterval(checkScheduledEvents, 20000);
+    return () => clearInterval(interval);
+  }, [habits, isAr]);
+
   // --- Flight Focus Logic ---
   const fetchFlights = async (duration = 0) => {
     setFlightLoading(true);
@@ -3185,6 +3281,15 @@ function AppContent({ isPreview = false }) {
           if (newT <= 0) {
             setIsTimerRunning(false); 
             haptic('heavy');
+            showLocalNotification(
+              isAr ? 'انتهت جلسة التركيز' : 'Focus Session Complete',
+              {
+                body: isAr 
+                  ? 'أحسنت! اكتمل وقت التركيز، حان وقت استراحة قصيرة.' 
+                  : 'Great job! Your focus time is done, take a well-deserved break.',
+                tag: 'pomodoro_complete',
+              }
+            );
             setPomodoroSessionStep(prev => {
               const next = prev >= 4 ? 1 : prev + 1;
               if (typeof window !== 'undefined') localStorage.setItem('daybase_pomodoro_session_step', next.toString());
