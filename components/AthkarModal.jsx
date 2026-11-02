@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { X, Check, Sun, Moon, Sparkles, RotateCcw, BookOpen, Volume2, CheckCircle2 } from 'lucide-react';
+import { X, Check, RotateCcw } from 'lucide-react';
 import { MORNING_ATHKAR, EVENING_ATHKAR } from '../lib/athkarData';
 
 export default function AthkarModal({
@@ -9,10 +9,7 @@ export default function AthkarModal({
   onClose,
   initialType = 'morning', // 'morning' | 'evening'
   onComplete,
-  isMorningCompleted = false,
-  isEveningCompleted = false,
   lang = 'ar',
-  themeColor = '#ffffff'
 }) {
   const [activeTab, setActiveTab] = useState(initialType);
   const [counts, setCounts] = useState({});
@@ -54,7 +51,7 @@ export default function AthkarModal({
         sessionStorage.setItem(`bokra_athkar_counts_${activeTab}`, JSON.stringify(nextCounts));
       } catch (_) {}
       if (navigator.vibrate) {
-        navigator.vibrate(next === item.count ? [30, 40, 60] : 12);
+        navigator.vibrate(next === item.count ? [25, 30] : 10);
       }
     }
   };
@@ -78,229 +75,159 @@ export default function AthkarModal({
   const isAllCurrentDone = completedDhikrCount === athkarList.length;
 
   return (
-    <div className="fixed inset-0 z-[100020] bg-black/90 backdrop-blur-2xl flex flex-col justify-between overflow-hidden animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100020] bg-black flex flex-col justify-between overflow-hidden animate-in fade-in duration-150">
       
-      {/* Top Header */}
-      <header className="sticky top-0 z-30 bg-black/85 backdrop-blur-xl border-b border-white/10 px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-3">
-        <div className="max-w-3xl mx-auto flex flex-col gap-3">
+      {/* Minimal Header */}
+      <header className="sticky top-0 z-30 bg-black/95 backdrop-blur-md pt-[calc(env(safe-area-inset-top,0px)+0.5rem)]">
+        <div className="max-w-2xl mx-auto px-4 pb-3 flex items-center justify-between">
           
-          {/* Bar: Title + Close */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div 
-                className="w-10 h-10 rounded-2xl flex items-center justify-center border shadow-lg"
-                style={{
-                  backgroundColor: activeTab === 'morning' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(99, 102, 241, 0.15)',
-                  borderColor: activeTab === 'morning' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(99, 102, 241, 0.3)',
-                  color: activeTab === 'morning' ? '#F59E0B' : '#818CF8'
-                }}
-              >
-                {activeTab === 'morning' ? <Sun size={20} /> : <Moon size={20} />}
-              </div>
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 -mr-2 rounded-full text-white/50 hover:text-white transition-colors cursor-pointer"
+            aria-label="Close"
+          >
+            <X size={20} />
+          </button>
 
-              <div className="flex flex-col">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-white/50">
-                  {isAr ? 'حصن المسلم وورد اليوم' : 'Daily Adhkar & Remembrance'}
-                </span>
-                <h2 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2">
-                  <span>{activeTab === 'morning' ? (isAr ? 'أذكار الصباح' : 'Morning Adhkar') : (isAr ? 'أذكار المساء' : 'Evening Adhkar')}</span>
-                </h2>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleReset}
-                title={isAr ? 'إعادة ضبط العدادات' : 'Reset Counters'}
-                className="p-2.5 rounded-full bg-white/5 hover:bg-white/15 text-white/50 hover:text-white transition-all cursor-pointer"
-              >
-                <RotateCcw size={16} />
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-2.5 rounded-full bg-white/5 hover:bg-white/15 text-white/70 hover:text-white transition-all cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
+          {/* Minimal Tab Switcher (iOS Segmented Pill) */}
+          <div className="flex items-center bg-white/[0.08] p-1 rounded-full border border-white/[0.08]">
+            <button
+              type="button"
+              onClick={() => setActiveTab('morning')}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'morning'
+                  ? 'bg-white text-black shadow-sm'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              {isAr ? 'أذكار الصباح' : 'Morning'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('evening')}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'evening'
+                  ? 'bg-white text-black shadow-sm'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              {isAr ? 'أذكار المساء' : 'Evening'}
+            </button>
           </div>
 
-          {/* Sub-Header: Morning / Evening Tabs & Progress */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
-            
-            {/* Morning / Evening Toggle */}
-            <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 shrink-0">
-              <button
-                type="button"
-                onClick={() => setActiveTab('morning')}
-                className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  activeTab === 'morning'
-                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 shadow-md'
-                    : 'text-white/50 hover:text-white'
-                }`}
-              >
-                <Sun size={14} className={activeTab === 'morning' ? 'text-amber-400' : ''} />
-                <span>{isAr ? 'أذكار الصباح' : 'Morning'}</span>
-                {isMorningCompleted && <CheckCircle2 size={12} className="text-emerald-400" />}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('evening')}
-                className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  activeTab === 'evening'
-                    ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shadow-md'
-                    : 'text-white/50 hover:text-white'
-                }`}
-              >
-                <Moon size={14} className={activeTab === 'evening' ? 'text-indigo-400' : ''} />
-                <span>{isAr ? 'أذكار المساء' : 'Evening'}</span>
-                {isEveningCompleted && <CheckCircle2 size={12} className="text-emerald-400" />}
-              </button>
-            </div>
-
-            {/* Reading Progress Indicator */}
-            <div className="flex items-center gap-3 bg-white/[0.03] px-3.5 py-2 rounded-2xl border border-white/5">
-              <div className="flex flex-col min-w-[70px]">
-                <span className="text-[10px] font-bold text-white/50">
-                  {isAr ? 'نسبة القراءة' : 'Progress'}
-                </span>
-                <span className="text-xs font-black font-mono text-white">
-                  {completedDhikrCount} / {athkarList.length}
-                </span>
-              </div>
-              <div className="flex-1 sm:w-32 h-2 bg-white/10 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-emerald-400 transition-all duration-300 rounded-full"
-                  style={{ width: `${progressPct}%` }}
-                />
-              </div>
-            </div>
-
+          {/* Right: Counter & Reset */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-mono font-medium text-white/40">
+              {completedDhikrCount}/{athkarList.length}
+            </span>
+            <button
+              type="button"
+              onClick={handleReset}
+              title={isAr ? 'إعادة ضبط العدادات' : 'Reset Counters'}
+              className="p-1.5 rounded-full text-white/30 hover:text-white/70 transition-colors cursor-pointer"
+            >
+              <RotateCcw size={15} />
+            </button>
           </div>
+        </div>
 
+        {/* Thin hairline progress bar */}
+        <div className="w-full h-[2px] bg-white/[0.06]">
+          <div 
+            className="h-full bg-white/40 transition-all duration-300"
+            style={{ width: `${progressPct}%` }}
+          />
         </div>
       </header>
 
-      {/* Main Scrollable Content: Distinctive Athkar Typography */}
+      {/* Main Content Area: Pure Distraction-Free Reading */}
       <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-6" dir="rtl">
-        <div className="max-w-3xl mx-auto flex flex-col gap-5 pb-24">
+        <div className="max-w-2xl mx-auto flex flex-col gap-6 pb-28">
           
-          {athkarList.map((dhikr, idx) => {
+          {athkarList.map((dhikr) => {
             const currentCount = counts[dhikr.id] || 0;
             const isDone = currentCount >= dhikr.count;
 
             return (
-              <div
+              <article
                 key={dhikr.id}
-                className={`p-5 sm:p-7 rounded-[26px] border transition-all duration-300 relative flex flex-col gap-4 shadow-xl select-none ${
+                className={`p-6 sm:p-7 rounded-3xl border transition-all duration-200 flex flex-col gap-4 select-none ${
                   isDone 
-                    ? 'bg-emerald-950/20 border-emerald-500/40 shadow-emerald-950/20' 
-                    : 'bg-white/[0.04] border-white/10 hover:border-white/20'
+                    ? 'bg-white/[0.015] border-white/[0.04] opacity-75' 
+                    : 'bg-white/[0.035] border-white/[0.07]'
                 }`}
               >
-                {/* Dhikr Card Top: Number, Title, Target Count */}
-                <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-6 h-6 rounded-full bg-white/10 text-[11px] font-mono font-bold flex items-center justify-center text-white/70">
-                      {idx + 1}
-                    </span>
-                    <h3 className="text-sm font-bold text-white tracking-tight">
-                      {dhikr.title}
-                    </h3>
-                  </div>
-
-                  {/* Target Repetitions Pill */}
-                  <span className={`text-[11px] font-bold font-mono px-2.5 py-1 rounded-xl border ${
-                    isDone 
-                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' 
-                      : 'bg-white/10 text-white/80 border-white/10'
-                  }`}>
-                    {dhikr.count === 1 ? 'مرة واحدة' : `${dhikr.count} مرات`}
+                {/* Header: Title and Target */}
+                <div className="flex items-center justify-between text-xs text-white/40 font-medium">
+                  <span className="text-white/75 font-semibold text-sm">
+                    {dhikr.title}
+                  </span>
+                  <span className="font-mono text-white/40 text-[11px]">
+                    {dhikr.count === 1 ? (isAr ? 'مرة واحدة' : '1 time') : (isAr ? `${dhikr.count} مرات` : `${dhikr.count} times`)}
                   </span>
                 </div>
 
-                {/* The Dhikr Arabic Text in Distinctive Authentic Athkar Font */}
+                {/* The Dhikr Arabic Text in Authentic Amiri Typography */}
                 <p 
-                  className="font-athkar text-lg sm:text-2xl text-white/95 leading-[2.3] sm:leading-[2.4] font-medium tracking-wide text-right selection:bg-amber-400 selection:text-black"
-                  style={{
-                    fontFeatureSettings: '"cv01", "cv02"',
-                    wordSpacing: '0.08em',
-                  }}
+                  className="font-athkar text-xl sm:text-2xl text-white/95 leading-[2.4] font-medium tracking-wide text-right selection:bg-white/20 select-text"
+                  style={{ wordSpacing: '0.06em' }}
                 >
                   {dhikr.text}
                 </p>
 
-                {/* Virtue & Reward Note */}
+                {/* Virtue Footnote (Subtle, Clean, No Loud Boxes) */}
                 {dhikr.virtue && (
-                  <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 flex items-start gap-2.5 text-xs text-white/60 leading-relaxed">
-                    <Sparkles size={14} className="text-amber-400 shrink-0 mt-0.5" />
-                    <span>{dhikr.virtue}</span>
-                  </div>
+                  <p className="text-xs text-white/40 leading-relaxed text-right pt-2 border-t border-white/[0.04]">
+                    {dhikr.virtue}
+                  </p>
                 )}
 
-                {/* Card Bottom: Tap to Count Button */}
-                <div className="pt-2 flex items-center justify-between gap-3">
-                  <div className="flex items-baseline gap-1.5 font-mono">
-                    <span className="text-2xl font-black text-white">{currentCount}</span>
-                    <span className="text-xs text-white/40 font-bold">/ {dhikr.count}</span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleIncrement(dhikr)}
-                    className={`px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all duration-150 active:scale-95 shadow-xl flex items-center gap-2 cursor-pointer ${
-                      isDone
-                        ? 'bg-emerald-500 text-black shadow-emerald-500/30'
-                        : 'bg-white text-black hover:bg-neutral-200 shadow-white/20'
-                    }`}
-                  >
-                    {isDone ? (
-                      <>
-                        <Check size={16} strokeWidth={3.5} />
-                        <span>{'تم الإنجاز'}</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>{'تسبيح'}</span>
-                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-lg bg-black/10 text-black">
-                          {dhikr.count - currentCount}
-                        </span>
-                      </>
-                    )}
-                  </button>
+                {/* Single Minimal Counter Button */}
+                <div className="pt-1 flex items-center justify-end">
+                  {isDone ? (
+                    <div className="px-3.5 py-1.5 rounded-full text-xs font-medium text-white/50 bg-white/[0.04] border border-white/[0.06] flex items-center gap-1.5">
+                      <Check size={13} className="text-white/70" />
+                      <span>{isAr ? 'تم' : 'Done'}</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleIncrement(dhikr)}
+                      className="px-5 py-2 rounded-full text-xs font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/10 active:scale-95 transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+                    >
+                      <span>{isAr ? 'تسبيح' : 'Count'}</span>
+                      <span className="font-mono text-[11px] opacity-60">
+                        {currentCount} / {dhikr.count}
+                      </span>
+                    </button>
+                  )}
                 </div>
 
-              </div>
+              </article>
             );
           })}
 
         </div>
       </main>
 
-      {/* Bottom Sticky Action Bar: Mark Complete */}
-      <footer className="sticky bottom-0 z-30 bg-black/90 backdrop-blur-2xl border-t border-white/10 px-4 sm:px-6 py-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
-        <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex flex-col">
-            <span className="text-xs font-bold text-white">
-              {activeTab === 'morning' ? (isAr ? 'أذكار الصباح' : 'Morning Adhkar') : (isAr ? 'أذكار المساء' : 'Evening Adhkar')}
-            </span>
-            <span className="text-[10px] font-semibold text-white/50">
-              {isAllCurrentDone 
-                ? (isAr ? 'أتممت جميع أذكار الورد، تقبل الله منك.' : 'All remembrances completed!') 
-                : (isAr ? 'اضغط لإنهاء القراءة وتأشير الورد كمنجز' : 'Mark as finished and checked off')}
-            </span>
-          </div>
+      {/* Floating Minimal Bottom Dock */}
+      <footer className="sticky bottom-0 z-30 pointer-events-none pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] px-4">
+        <div className="max-w-md mx-auto pointer-events-auto bg-[#18181b]/90 backdrop-blur-2xl border border-white/10 px-5 py-3 rounded-full shadow-2xl flex items-center justify-between gap-4">
+          <span className="text-xs text-white/50 font-medium">
+            {isAllCurrentDone 
+              ? (isAr ? 'تمت قراءة الورد بالكامل' : 'All completed') 
+              : (isAr ? `متبقي ${athkarList.length - completedDhikrCount}` : `${athkarList.length - completedDhikrCount} remaining`)}
+          </span>
 
           <button
             type="button"
             onClick={handleCompleteCurrent}
-            className="px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider bg-emerald-400 text-black hover:bg-emerald-300 transition-all active:scale-95 shadow-xl flex items-center gap-2 cursor-pointer"
+            className="px-5 py-2 rounded-full text-xs font-bold bg-white text-black hover:bg-white/90 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
           >
-            <Check size={16} strokeWidth={3} />
-            <span>{isAr ? 'إتمام وقراءة الورد' : 'Finish & Mark Done'}</span>
+            <Check size={14} strokeWidth={2.5} />
+            <span>{isAr ? 'إتمام الورد' : 'Finish'}</span>
           </button>
         </div>
       </footer>
