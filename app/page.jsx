@@ -2890,6 +2890,45 @@ function AppContent({ isPreview = false }) {
           }
         }
       }
+
+      // Automated Custom Reminders for User Habits
+      habits.forEach((h) => {
+        if (!h.hasReminder || !h.reminderTime) return;
+
+        if (Array.isArray(h.scheduleDays) && h.scheduleDays.length > 0) {
+          if (!h.scheduleDays.includes(currentDay)) return;
+        }
+
+        let remHours = 0;
+        let remMins = 0;
+        const match12 = String(h.reminderTime).match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+        if (match12) {
+          remHours = parseInt(match12[1], 10);
+          remMins = parseInt(match12[2], 10);
+          const meridiem = match12[3]?.toUpperCase();
+          if (meridiem === 'PM' && remHours < 12) remHours += 12;
+          if (meridiem === 'AM' && remHours === 12) remHours = 0;
+        } else {
+          return;
+        }
+
+        const remTimeInMins = remHours * 60 + remMins;
+        const diffRemMins = remTimeInMins - currentTimeInMins;
+
+        if (diffRemMins <= 0 && diffRemMins >= -3) {
+          const keyRem = `${todayDateKey}_${h.id}_custom_reminder`;
+          if (!notifiedEventsRef.current.has(keyRem)) {
+            notifiedEventsRef.current.add(keyRem);
+            showLocalNotification(
+              isAr ? `تذكير: ${h.name}` : `Reminder: ${h.name}`,
+              {
+                body: h.reminderMessage || (isAr ? 'حان موعد هذه العادة، حان وقت الإنجاز!' : 'Time to complete this habit!'),
+                tag: keyRem,
+              }
+            );
+          }
+        }
+      });
     };
 
     checkScheduledEvents();
@@ -3019,6 +3058,12 @@ function AppContent({ isPreview = false }) {
   const [editTimeMinute, setEditTimeMinute] = useState("00");
   const [editTimePeriod, setEditTimePeriod] = useState("PM");
   const [editHabitIsPrivate, setEditHabitIsPrivate] = useState(false);
+  const [editHabitHasReminder, setEditHabitHasReminder] = useState(false);
+  const [editHabitReminderTime, setEditHabitReminderTime] = useState("");
+  const [editHabitReminderHour, setEditHabitReminderHour] = useState(8);
+  const [editHabitReminderMinute, setEditHabitReminderMinute] = useState("00");
+  const [editHabitReminderPeriod, setEditHabitReminderPeriod] = useState("AM");
+  const [editHabitReminderMessage, setEditHabitReminderMessage] = useState("");
 
   // Auth gate prompt for unauthenticated browsing
   const [isAuthPromptOpen, setIsAuthPromptOpen] = useState(false);
@@ -3119,6 +3164,12 @@ function AppContent({ isPreview = false }) {
   const [selectedTimeMinute, setSelectedTimeMinute] = useState("00");
   const [selectedTimePeriod, setSelectedTimePeriod] = useState("PM");
   const [habitIsPrivate, setHabitIsPrivate] = useState(false);
+  const [habitHasReminder, setHabitHasReminder] = useState(false);
+  const [habitReminderTime, setHabitReminderTime] = useState("");
+  const [habitReminderHour, setHabitReminderHour] = useState(8);
+  const [habitReminderMinute, setHabitReminderMinute] = useState("00");
+  const [habitReminderPeriod, setHabitReminderPeriod] = useState("AM");
+  const [habitReminderMessage, setHabitReminderMessage] = useState("");
 
   // --- Emergency Cards Modal ---
   const [isCardsModalOpen, setIsCardsModalOpen] = useState(false);
@@ -3797,6 +3848,9 @@ function AppContent({ isPreview = false }) {
       time: habitTime.trim() ? habitTime.trim() : null,
       duration: habitDuration.trim() ? habitDuration.trim() : null,
       location: habitLocation.trim() ? habitLocation.trim() : null,
+      hasReminder: Boolean(habitHasReminder),
+      reminderTime: habitHasReminder && habitReminderTime ? habitReminderTime : null,
+      reminderMessage: habitHasReminder && habitReminderMessage.trim() ? habitReminderMessage.trim() : null,
       category: habitCategory || 'habit',
       isPrivate: habitIsPrivate,
       updatedAt: Date.now()
@@ -3819,6 +3873,12 @@ function AppContent({ isPreview = false }) {
     setHabitDuration("");
     setHabitLocation("");
     setHabitIsPrivate(false);
+    setHabitHasReminder(false);
+    setHabitReminderTime("");
+    setHabitReminderHour(8);
+    setHabitReminderMinute("00");
+    setHabitReminderPeriod("AM");
+    setHabitReminderMessage("");
     handleCloseAdd();
   };
 
@@ -3968,6 +4028,22 @@ function AppContent({ isPreview = false }) {
     setEditHabitLocation(habit.location || "");
     setEditHabitCategory(habit.category || 'habit');
     setEditHabitIsPrivate(Boolean(habit.isPrivate));
+    setEditHabitHasReminder(Boolean(habit.hasReminder));
+    setEditHabitReminderTime(habit.reminderTime || "");
+    setEditHabitReminderMessage(habit.reminderMessage || "");
+    if (habit.reminderTime && habit.reminderTime.includes(':')) {
+      try {
+        const [timePart, period] = habit.reminderTime.split(' ');
+        const [h, m] = timePart.split(':');
+        setEditHabitReminderHour(parseInt(h, 10) || 8);
+        setEditHabitReminderMinute(m || "00");
+        setEditHabitReminderPeriod(period || "AM");
+      } catch (e) {}
+    } else {
+      setEditHabitReminderHour(8);
+      setEditHabitReminderMinute("00");
+      setEditHabitReminderPeriod("AM");
+    }
 
     // Parse time if exists (e.g. "04:30 PM")
     if (habit.time && habit.time.includes(':')) {
@@ -4016,6 +4092,9 @@ function AppContent({ isPreview = false }) {
           time: editHabitTime.trim() ? editHabitTime.trim() : null,
           duration: editHabitDuration.trim() ? editHabitDuration.trim() : null,
           location: editHabitLocation.trim() ? editHabitLocation.trim() : null,
+          hasReminder: Boolean(editHabitHasReminder),
+          reminderTime: editHabitHasReminder && editHabitReminderTime ? editHabitReminderTime : null,
+          reminderMessage: editHabitHasReminder && editHabitReminderMessage.trim() ? editHabitReminderMessage.trim() : null,
           category: editHabitCategory || 'habit',
           isPrivate: editHabitIsPrivate,
           updatedAt: Date.now()
@@ -4253,17 +4332,23 @@ function AppContent({ isPreview = false }) {
                 </div>
                 {isAthkarHabit(habit) ? (
                   <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                      isAllChecked 
-                        ? 'bg-black/10 text-black' 
-                        : 'bg-amber-500/15 text-amber-300 border border-amber-500/25'
+                    <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
+                      isAllChecked ? 'bg-black/10 text-black/80' : 'bg-white/10 text-white/70'
                     }`}>
-                      <Bell size={10} />
-                      <span>{isAr ? 'تذكير صباحاً ومساءً' : 'Morning & Evening Reminder'}</span>
+                      <Bell size={9} />
+                      <span>{isAr ? 'تذكير صباحاً ومساءً' : 'Morning & Evening'}</span>
                     </span>
                   </div>
-                ) : (habit.time || habit.duration || habit.location) && (
+                ) : (habit.time || habit.duration || habit.location || (habit.hasReminder && habit.reminderTime)) && (
                   <div className="flex items-center gap-1.5 flex-wrap">
+                    {habit.hasReminder && habit.reminderTime && (
+                      <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
+                        isAllChecked ? 'bg-black/10 text-black/80' : 'bg-white/10 text-white/70'
+                      }`}>
+                        <Bell size={9} />
+                        <span>{habit.reminderTime}</span>
+                      </span>
+                    )}
                     {habit.time && (
                       <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
                         isAllChecked ? 'bg-black/10 text-black/80' : 'bg-white/10 text-white/70'
@@ -4412,6 +4497,14 @@ function AppContent({ isPreview = false }) {
 
               {/* Badges for time, duration, location, frequency */}
               <div className="flex items-center gap-1.5 flex-wrap">
+                {habit.hasReminder && habit.reminderTime && (
+                  <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                    isAllChecked ? 'bg-black/10 text-black/80' : 'bg-white/10 text-white/70'
+                  }`}>
+                    <Bell size={9} />
+                    <span>{habit.reminderTime}</span>
+                  </span>
+                )}
                 {habit.time && (
                   <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
                     isAllChecked ? 'bg-black/10 text-black/80' : 'bg-white/10 text-white/70'
@@ -5516,6 +5609,169 @@ function AppContent({ isPreview = false }) {
                   </div>
                 </div>
 
+                {/* ---------------- CUSTOM REMINDER SECTION ---------------- */}
+                <div className="mb-8 bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Bell size={15} className="text-white/50" />
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold tracking-wider text-white/50 uppercase">
+                          {isAr ? 'تذكير مخصص (إشعار)' : 'Custom Reminder'}
+                        </span>
+                        <span className="text-[10px] text-white/35">
+                          {isAr ? 'إرسال تنبيه في وقت تحدده' : 'Send an alert at your preferred time'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = !habitHasReminder;
+                        setHabitHasReminder(next);
+                        if (next && !habitReminderTime) {
+                          setHabitReminderTime(`${String(habitReminderHour).padStart(2, '0')}:${habitReminderMinute} ${habitReminderPeriod}`);
+                        }
+                        haptic('light');
+                      }}
+                      className={`w-11 h-6 rounded-full p-0.5 transition-colors relative cursor-pointer shrink-0 ${
+                        habitHasReminder ? 'bg-white' : 'bg-white/15'
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 rounded-full transition-transform ${
+                          habitHasReminder ? 'translate-x-5 bg-black' : 'translate-x-0 bg-white/70'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {habitHasReminder && (
+                    <div className="mt-4 pt-3.5 border-t border-white/10 space-y-3 animate-in fade-in duration-200">
+                      
+                      {/* Presets Row */}
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {[
+                          { labelAr: 'الصباح ☀️', labelEn: 'Morning', time: '08:00 AM', h: 8, m: '00', p: 'AM' },
+                          { labelAr: 'الظهيرة 🌤️', labelEn: 'Noon', time: '01:00 PM', h: 1, m: '00', p: 'PM' },
+                          { labelAr: 'المساء 🌙', labelEn: 'Evening', time: '07:00 PM', h: 7, m: '00', p: 'PM' },
+                          { labelAr: 'الليل 🌌', labelEn: 'Night', time: '10:00 PM', h: 10, m: '00', p: 'PM' },
+                        ].map((preset) => {
+                          const isActive = habitReminderTime === preset.time;
+                          return (
+                            <button
+                              key={preset.time}
+                              type="button"
+                              onClick={() => {
+                                setHabitReminderTime(preset.time);
+                                setHabitReminderHour(preset.h);
+                                setHabitReminderMinute(preset.m);
+                                setHabitReminderPeriod(preset.p);
+                                haptic('light');
+                              }}
+                              className={`py-2 px-1 rounded-xl text-[10px] font-bold transition-all text-center cursor-pointer ${
+                                isActive 
+                                  ? 'bg-white text-black font-black shadow-md' 
+                                  : 'bg-black/30 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'
+                              }`}
+                            >
+                              {isAr ? preset.labelAr : preset.labelEn}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* 12-Hour Grid */}
+                      <div className="grid grid-cols-6 gap-1.5">
+                        {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => {
+                          const isActive = habitReminderHour === h;
+                          return (
+                            <button
+                              key={h}
+                              type="button"
+                              onClick={() => {
+                                setHabitReminderHour(h);
+                                setHabitReminderTime(`${String(h).padStart(2, '0')}:${habitReminderMinute} ${habitReminderPeriod}`);
+                                haptic('light');
+                              }}
+                              className={`py-1.5 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer ${
+                                isActive 
+                                  ? 'bg-white text-black font-black shadow-md scale-[1.02]' 
+                                  : 'bg-black/30 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'
+                              }`}
+                            >
+                              {h}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* AM/PM and Minutes */}
+                      <div className="flex items-center gap-2">
+                        <div className="flex bg-black/40 rounded-xl p-1 border border-white/10 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setHabitReminderPeriod('AM');
+                              setHabitReminderTime(`${String(habitReminderHour).padStart(2, '0')}:${habitReminderMinute} AM`);
+                              haptic('light');
+                            }}
+                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              habitReminderPeriod === 'AM' ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'
+                            }`}
+                          >
+                            AM
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setHabitReminderPeriod('PM');
+                              setHabitReminderTime(`${String(habitReminderHour).padStart(2, '0')}:${habitReminderMinute} PM`);
+                              haptic('light');
+                            }}
+                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              habitReminderPeriod === 'PM' ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'
+                            }`}
+                          >
+                            PM
+                          </button>
+                        </div>
+
+                        <div className="flex bg-black/40 rounded-xl p-1 border border-white/10 gap-1 flex-1">
+                          {['00', '15', '30', '45'].map(m => (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() => {
+                                setHabitReminderMinute(m);
+                                setHabitReminderTime(`${String(habitReminderHour).padStart(2, '0')}:${m} ${habitReminderPeriod}`);
+                                haptic('light');
+                              }}
+                              className={`flex-1 py-1 rounded-lg text-xs font-bold font-mono transition-all text-center cursor-pointer ${
+                                habitReminderMinute === m ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'
+                              }`}
+                            >
+                              :{m}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Optional Custom Message Note */}
+                      <div className="bg-black/40 px-3.5 py-2.5 rounded-xl border border-white/10">
+                        <input
+                          type="text"
+                          placeholder={isAr ? 'رسالة التنبيه (اختياري، مثلاً: وقت الرياضة)' : 'Reminder message (optional)...'}
+                          value={habitReminderMessage}
+                          onChange={(e) => setHabitReminderMessage(e.target.value)}
+                          className="w-full bg-transparent text-white text-xs outline-none font-medium placeholder:text-white/30"
+                        />
+                      </div>
+
+                    </div>
+                  )}
+                </div>
+
                 {/* ---------------- ACTIVITY TYPE (FOR FRIENDS) ---------------- */}
                 <div className="mb-8 bg-white/5 p-4 rounded-2xl border border-white/10">
                   <div className="flex items-center justify-between mb-3">
@@ -6093,6 +6349,169 @@ function AppContent({ isPreview = false }) {
                       className="w-full bg-transparent text-white text-xs sm:text-sm outline-none font-medium placeholder:text-white/30"
                     />
                   </div>
+                </div>
+
+                {/* ---------------- CUSTOM REMINDER SECTION ---------------- */}
+                <div className="mb-8 bg-white/5 p-4 rounded-2xl border border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Bell size={15} className="text-white/50" />
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold tracking-wider text-white/50 uppercase">
+                          {isAr ? 'تذكير مخصص (إشعار)' : 'Custom Reminder'}
+                        </span>
+                        <span className="text-[10px] text-white/35">
+                          {isAr ? 'إرسال تنبيه في وقت تحدده' : 'Send an alert at your preferred time'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = !editHabitHasReminder;
+                        setEditHabitHasReminder(next);
+                        if (next && !editHabitReminderTime) {
+                          setEditHabitReminderTime(`${String(editHabitReminderHour).padStart(2, '0')}:${editHabitReminderMinute} ${editHabitReminderPeriod}`);
+                        }
+                        haptic('light');
+                      }}
+                      className={`w-11 h-6 rounded-full p-0.5 transition-colors relative cursor-pointer shrink-0 ${
+                        editHabitHasReminder ? 'bg-white' : 'bg-white/15'
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 rounded-full transition-transform ${
+                          editHabitHasReminder ? 'translate-x-5 bg-black' : 'translate-x-0 bg-white/70'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {editHabitHasReminder && (
+                    <div className="mt-4 pt-3.5 border-t border-white/10 space-y-3 animate-in fade-in duration-200">
+                      
+                      {/* Presets Row */}
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {[
+                          { labelAr: 'الصباح ☀️', labelEn: 'Morning', time: '08:00 AM', h: 8, m: '00', p: 'AM' },
+                          { labelAr: 'الظهيرة 🌤️', labelEn: 'Noon', time: '01:00 PM', h: 1, m: '00', p: 'PM' },
+                          { labelAr: 'المساء 🌙', labelEn: 'Evening', time: '07:00 PM', h: 7, m: '00', p: 'PM' },
+                          { labelAr: 'الليل 🌌', labelEn: 'Night', time: '10:00 PM', h: 10, m: '00', p: 'PM' },
+                        ].map((preset) => {
+                          const isActive = editHabitReminderTime === preset.time;
+                          return (
+                            <button
+                              key={preset.time}
+                              type="button"
+                              onClick={() => {
+                                setEditHabitReminderTime(preset.time);
+                                setEditHabitReminderHour(preset.h);
+                                setEditHabitReminderMinute(preset.m);
+                                setEditHabitReminderPeriod(preset.p);
+                                haptic('light');
+                              }}
+                              className={`py-2 px-1 rounded-xl text-[10px] font-bold transition-all text-center cursor-pointer ${
+                                isActive 
+                                  ? 'bg-white text-black font-black shadow-md' 
+                                  : 'bg-black/30 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'
+                              }`}
+                            >
+                              {isAr ? preset.labelAr : preset.labelEn}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* 12-Hour Grid */}
+                      <div className="grid grid-cols-6 gap-1.5">
+                        {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => {
+                          const isActive = editHabitReminderHour === h;
+                          return (
+                            <button
+                              key={h}
+                              type="button"
+                              onClick={() => {
+                                setEditHabitReminderHour(h);
+                                setEditHabitReminderTime(`${String(h).padStart(2, '0')}:${editHabitReminderMinute} ${editHabitReminderPeriod}`);
+                                haptic('light');
+                              }}
+                              className={`py-1.5 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer ${
+                                isActive 
+                                  ? 'bg-white text-black font-black shadow-md scale-[1.02]' 
+                                  : 'bg-black/30 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'
+                              }`}
+                            >
+                              {h}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* AM/PM and Minutes */}
+                      <div className="flex items-center gap-2">
+                        <div className="flex bg-black/40 rounded-xl p-1 border border-white/10 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditHabitReminderPeriod('AM');
+                              setEditHabitReminderTime(`${String(editHabitReminderHour).padStart(2, '0')}:${editHabitReminderMinute} AM`);
+                              haptic('light');
+                            }}
+                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              editHabitReminderPeriod === 'AM' ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'
+                            }`}
+                          >
+                            AM
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditHabitReminderPeriod('PM');
+                              setEditHabitReminderTime(`${String(editHabitReminderHour).padStart(2, '0')}:${editHabitReminderMinute} PM`);
+                              haptic('light');
+                            }}
+                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              editHabitReminderPeriod === 'PM' ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'
+                            }`}
+                          >
+                            PM
+                          </button>
+                        </div>
+
+                        <div className="flex bg-black/40 rounded-xl p-1 border border-white/10 gap-1 flex-1">
+                          {['00', '15', '30', '45'].map(m => (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() => {
+                                setEditHabitReminderMinute(m);
+                                setEditHabitReminderTime(`${String(editHabitReminderHour).padStart(2, '0')}:${m} ${editHabitReminderPeriod}`);
+                                haptic('light');
+                              }}
+                              className={`flex-1 py-1 rounded-lg text-xs font-bold font-mono transition-all text-center cursor-pointer ${
+                                editHabitReminderMinute === m ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white'
+                              }`}
+                            >
+                              :{m}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Optional Custom Message Note */}
+                      <div className="bg-black/40 px-3.5 py-2.5 rounded-xl border border-white/10">
+                        <input
+                          type="text"
+                          placeholder={isAr ? 'رسالة التنبيه (اختياري، مثلاً: وقت الرياضة)' : 'Reminder message (optional)...'}
+                          value={editHabitReminderMessage}
+                          onChange={(e) => setEditHabitReminderMessage(e.target.value)}
+                          className="w-full bg-transparent text-white text-xs outline-none font-medium placeholder:text-white/30"
+                        />
+                      </div>
+
+                    </div>
+                  )}
                 </div>
 
                 {/* ---------------- ACTIVITY TYPE (FOR FRIENDS) ---------------- */}

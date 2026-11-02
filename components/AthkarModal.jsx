@@ -184,8 +184,8 @@ export default function AthkarModal({
                   </p>
                 )}
 
-                {/* Single Minimal Counter Button */}
-                <div className="pt-1 flex items-center justify-end">
+                {/* Single Minimal Counter Button - Aligned to Right */}
+                <div className="pt-1 flex items-center justify-start">
                   {isDone ? (
                     <div className="px-3.5 py-1.5 rounded-full text-xs font-medium text-white/50 bg-white/[0.04] border border-white/[0.06] flex items-center gap-1.5">
                       <Check size={13} className="text-white/70" />
