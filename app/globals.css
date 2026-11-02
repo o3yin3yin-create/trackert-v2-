@@ -143,6 +143,12 @@ b, strong, .font-bold {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
+.font-athkar {
+  font-family: var(--font-amiri), 'Amiri', 'Scheherazade New', 'Traditional Arabic', serif;
+  letter-spacing: 0.01em;
+  line-height: 2.2;
+}
+
 .window-drag-region {
   -webkit-app-region: drag;
   user-select: none;

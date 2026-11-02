@@ -1,7 +1,7 @@
 import { ClerkProvider } from '@/components/AuthBridge'
 import { clerkAppearance, clerkLocalization } from '@/lib/clerkTheme'
 import PwaRegister from '@/components/PwaRegister'
-import { Space_Grotesk, JetBrains_Mono } from 'next/font/google'
+import { Space_Grotesk, JetBrains_Mono, Amiri } from 'next/font/google'
 import './globals.css'
 
 const spaceGrotesk = Space_Grotesk({
@@ -15,6 +15,13 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700', '800'],
   variable: '--font-jetbrains-mono',
+  display: 'swap',
+})
+
+const amiri = Amiri({
+  subsets: ['arabic'],
+  weight: ['400', '700'],
+  variable: '--font-amiri',
   display: 'swap',
 })
 
@@ -71,7 +78,7 @@ export default function RootLayout({ children }) {
   return (
     <html 
       lang="en" 
-      className={`dark ${spaceGrotesk.variable} ${jetbrainsMono.variable}`} 
+      className={`dark ${spaceGrotesk.variable} ${jetbrainsMono.variable} ${amiri.variable}`} 
       style={{ backgroundColor: '#000000', colorScheme: 'dark' }}
     >
       <head>

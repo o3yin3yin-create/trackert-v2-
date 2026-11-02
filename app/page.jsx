@@ -31,6 +31,7 @@ import PrivacyModal from '../components/PrivacyModal';
 import SpotifyInviteModal from '../components/SpotifyInviteModal';
 import UpdateModal from '../components/UpdateModal';
 import HabitPresetsModal from '../components/HabitPresetsModal';
+import AthkarModal from '../components/AthkarModal';
 import PushNotificationsCard from '../components/PushNotificationsCard';
 import { showLocalNotification } from '../lib/localNotifications';
 import { HABIT_PRESETS, getLocalizedPreset } from '../lib/habitPresets';
@@ -70,6 +71,21 @@ function detectClientPlatform() {
   if (/Windows/i.test(ua)) return isTauri ? 'windows-tauri' : 'windows';
   if (/Linux/i.test(ua)) return isTauri ? 'linux-tauri' : 'linux';
   return 'web';
+}
+
+export function isAthkarHabit(h) {
+  if (!h) return false;
+  return (
+    h.category === 'adhkar' ||
+    h.id === 'adhkar' ||
+    !!h.isReminder ||
+    h.reminderType === 'morning_evening' ||
+    (typeof h.name === 'string' && (
+      h.name.includes('أذكار') || 
+      h.name.toLowerCase().includes('adhkar') ||
+      h.name.includes('الأذكار')
+    ))
+  );
 }
 
 let globalAudioCtx = null;
@@ -2837,6 +2853,43 @@ function AppContent({ isPreview = false }) {
           }
         }
       });
+
+      // Automated Morning & Evening Reminders for Athkar (if added by user)
+      const athkarHabit = habits.find(h => isAthkarHabit(h));
+      if (athkarHabit) {
+        // Morning window: 5:00 AM to 11:00 AM
+        if (currentHours >= 5 && currentHours < 11) {
+          const morningKey = `${todayDateKey}_athkar_morning`;
+          if (!notifiedEventsRef.current.has(morningKey)) {
+            notifiedEventsRef.current.add(morningKey);
+            showLocalNotification(
+              isAr ? 'أذكار الصباح ☀️' : 'Morning Athkar ☀️',
+              {
+                body: isAr 
+                  ? 'حان وقت أذكار الصباح، ابدأ يومك بذكر الله وحصّن نفسك.' 
+                  : 'Time for Morning Athkar. Start your day with peaceful remembrance.',
+                tag: morningKey,
+              }
+            );
+          }
+        }
+        // Evening window: 4:00 PM (16:00) to 10:00 PM (22:00)
+        if (currentHours >= 16 && currentHours < 22) {
+          const eveningKey = `${todayDateKey}_athkar_evening`;
+          if (!notifiedEventsRef.current.has(eveningKey)) {
+            notifiedEventsRef.current.add(eveningKey);
+            showLocalNotification(
+              isAr ? 'أذكار المساء 🌙' : 'Evening Athkar 🌙',
+              {
+                body: isAr 
+                  ? 'حان وقت أذكار المساء، حصّن نفسك واختم يومك بذكر الله.' 
+                  : 'Time for Evening Athkar. Protect yourself and conclude your day in peace.',
+                tag: eveningKey,
+              }
+            );
+          }
+        }
+      }
     };
 
     checkScheduledEvents();
@@ -3144,6 +3197,8 @@ function AppContent({ isPreview = false }) {
   // Helper to determine if a habit represents a scheduled appointment or scheduled item
   const isHabitScheduledItem = (h) => {
     if (!h) return false;
+    // Athkar is a gentle morning/evening reminder, NOT a timed scheduled appointment
+    if (isAthkarHabit(h)) return false;
     if (h.time && String(h.time).trim() !== '') return true;
     if (h.location || h.duration || (h.frequency === 'once' && h.scheduleDate)) return true;
     if (h.frequency && h.frequency !== 'daily') return true;
@@ -3769,9 +3824,47 @@ function AppContent({ isPreview = false }) {
 
   const [isPresetsModalOpen, setIsPresetsModalOpen] = useState(false);
 
+  // Athkar Modal State
+  const [isAthkarModalOpen, setIsAthkarModalOpen] = useState(false);
+  const [athkarModalType, setAthkarModalType] = useState('morning');
+  const [athkarHabitId, setAthkarHabitId] = useState(null);
+
+  const handleOpenAthkar = (habit, subItemName) => {
+    setAthkarHabitId(habit.id);
+    const isEvening = subItemName?.includes('مساء') || subItemName?.toLowerCase().includes('evening');
+    setAthkarModalType(isEvening ? 'evening' : 'morning');
+    setIsAthkarModalOpen(true);
+  };
+
+  const handleAthkarCompleted = (completedType) => {
+    if (!athkarHabitId) return;
+    const habit = habits.find(h => h.id === athkarHabitId);
+    if (!habit) return;
+    const subTarget = completedType === 'morning'
+      ? (habit.subItems?.find(s => s.includes('صباح') || s.toLowerCase().includes('morning')) || habit.subItems?.[0])
+      : (habit.subItems?.find(s => s.includes('مساء') || s.toLowerCase().includes('evening')) || habit.subItems?.[1]);
+    if (subTarget) {
+      haptic('heavy');
+      markLocalMutation(activeDateStr);
+      setDailyData(prev => {
+        const next = {
+          ...prev,
+          [`${activeDateStr}-${athkarHabitId}-${subTarget}`]: true
+        };
+        apiFetch('/api/sync', {
+          method: 'POST',
+          body: JSON.stringify({ dailyData: next, updatedAt: Date.now() })
+        }).catch(() => {});
+        return next;
+      });
+    }
+  };
+
   const handleAddPresetDirect = (presetData) => {
     haptic('medium');
     markLocalMutation();
+
+    const isAthkar = presetData.category === 'adhkar' || presetData.id === 'adhkar';
 
     const newHabit = {
       id: generateId(),
@@ -3784,7 +3877,9 @@ function AppContent({ isPreview = false }) {
       time: null,
       duration: null,
       location: null,
-      category: 'habit',
+      category: isAthkar ? 'adhkar' : (presetData.category || 'habit'),
+      isReminder: isAthkar || !!presetData.isReminder,
+      reminderType: isAthkar ? 'morning_evening' : (presetData.reminderType || null),
       isPrivate: false,
       updatedAt: Date.now()
     };
@@ -3812,7 +3907,7 @@ function AppContent({ isPreview = false }) {
     setHabitTime('');
     setHabitDuration('');
     setHabitLocation('');
-    setHabitCategory('habit');
+    setHabitCategory(localized.category || (preset.id === 'adhkar' ? 'adhkar' : 'habit'));
   };
 
   const deleteHabit = (habitId) => {
@@ -4156,7 +4251,18 @@ function AppContent({ isPreview = false }) {
                     </span>
                   )}
                 </div>
-                {(habit.time || habit.duration || habit.location) && (
+                {isAthkarHabit(habit) ? (
+                  <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                      isAllChecked 
+                        ? 'bg-black/10 text-black' 
+                        : 'bg-amber-500/15 text-amber-300 border border-amber-500/25'
+                    }`}>
+                      <Bell size={10} />
+                      <span>{isAr ? 'تذكير صباحاً ومساءً' : 'Morning & Evening Reminder'}</span>
+                    </span>
+                  </div>
+                ) : (habit.time || habit.duration || habit.location) && (
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {habit.time && (
                       <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
@@ -4220,28 +4326,64 @@ function AppContent({ isPreview = false }) {
               <div className="flex flex-col gap-2 px-4 pb-4 pt-1 border-t border-white/10 transition-all duration-300 animate-fadeIn">
                 {(habit.subItems || []).map((sub, idx) => {
                   const isSubChecked = !!dailyData[`${activeDateStr}-${habit.id}-${sub}`];
+                  const isAthkar = isAthkarHabit(habit);
                   return (
                     <div 
                       key={idx} 
                       onClick={(e) => {
                         e.stopPropagation();
-                        toggleCheck(habit.id, sub);
+                        if (isAthkar) {
+                          handleOpenAthkar(habit, sub);
+                        } else {
+                          toggleCheck(habit.id, sub);
+                        }
                       }}
-                      className="flex justify-between items-center p-3 rounded-xl cursor-pointer transition-all duration-200 active:scale-[0.99]"
+                      className="group flex justify-between items-center p-3 rounded-xl cursor-pointer transition-all duration-200 active:scale-[0.99] hover:bg-white/10"
                       style={{ 
                         backgroundColor: isAllChecked ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)',
                         border: '1px solid rgba(255,255,255,0.06)'
                       }}
                     >
-                      <span className={`text-sm font-semibold tracking-tight ${isAllChecked ? 'text-black' : 'text-white/90'}`}>{sub}</span>
-                      <div 
-                        className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border-2 transition-all duration-200 ${
-                          isSubChecked 
-                            ? (isAllChecked ? 'bg-black border-black text-white' : 'bg-white border-white text-black')
-                            : 'border-white/20'
-                        }`}
-                      >
-                        {isSubChecked && <Check size={11} strokeWidth={4} />}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {isAthkar && (
+                          <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-emerald-400 shrink-0">
+                            <BookOpen size={13} />
+                          </div>
+                        )}
+                        <div className="flex flex-col">
+                          <span className={`text-sm font-semibold tracking-tight ${isAllChecked ? 'text-black' : 'text-white/90'}`}>{sub}</span>
+                          {isAthkar && (
+                            <span className={`text-[10px] ${isAllChecked ? 'text-black/60' : 'text-white/50'}`}>
+                              {isAr ? 'اضغط لفتح وقراءة الأذكار' : 'Tap to read & count athkar'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {isAthkar && (
+                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md transition-all ${
+                            isAllChecked 
+                              ? 'bg-black/10 text-black' 
+                              : 'bg-white/10 text-white/80 group-hover:bg-white/20'
+                          }`}>
+                            {isAr ? 'قراءة' : 'Read'}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleCheck(habit.id, sub);
+                          }}
+                          className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border-2 transition-all duration-200 hover:scale-110 active:scale-95 ${
+                            isSubChecked 
+                              ? (isAllChecked ? 'bg-black border-black text-white' : 'bg-white border-white text-black')
+                              : 'border-white/20 hover:border-white/50'
+                          }`}
+                        >
+                          {isSubChecked && <Check size={11} strokeWidth={4} />}
+                        </button>
                       </div>
                     </div>
                   );
@@ -9867,6 +10009,19 @@ function AppContent({ isPreview = false }) {
               existingHabitNames={habits.map(h => h.name)}
               lang={lang}
               themeColor={themeColor}
+            />,
+            document.body
+          )}
+
+          {/* ---------------- ATHKAR READER MODAL ---------------- */}
+          {isAthkarModalOpen && typeof document !== 'undefined' && createPortal(
+            <AthkarModal 
+              isOpen={isAthkarModalOpen}
+              onClose={() => setIsAthkarModalOpen(false)}
+              initialType={athkarModalType}
+              themeColor={themeColor}
+              lang={lang}
+              onComplete={handleAthkarCompleted}
             />,
             document.body
           )}
