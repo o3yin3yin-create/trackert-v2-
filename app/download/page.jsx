@@ -10,6 +10,17 @@ import {
 
 export default function DownloadPage() {
   const [lang, setLang] = useState('en');
+  const [versionData, setVersionData] = useState({
+    version: '0.1.3',
+    releaseUrl: 'https://github.com/o3yin3yin-create/trackert-v2-/releases/tag/v0.1.3',
+    winExeUrl: 'https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.3/bokra_0.1.3_x64-setup.exe',
+    winMsiUrl: 'https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.3/bokra_0.1.3_x64_en-US.msi',
+    winZipUrl: '/bokra-windows.zip',
+    androidApkUrl: 'https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.3/app-debug.apk',
+    linuxDebUrl: 'https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.3/bokra_0.1.3_amd64.deb',
+    linuxAppImageUrl: 'https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.3/bokra_0.1.3_amd64.AppImage',
+    linuxRpmUrl: 'https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.3/bokra-0.1.3-1.x86_64.rpm',
+  });
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -20,6 +31,28 @@ export default function DownloadPage() {
     }
   }, []);
 
+  useEffect(() => {
+    fetch('/api/version')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.version) {
+          const v = data.version;
+          setVersionData({
+            version: v,
+            releaseUrl: `https://github.com/o3yin3yin-create/trackert-v2-/releases/tag/v${v}`,
+            winExeUrl: `https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v${v}/bokra_${v}_x64-setup.exe`,
+            winMsiUrl: `https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v${v}/bokra_${v}_x64_en-US.msi`,
+            winZipUrl: data.downloads?.windows || '/bokra-windows.zip',
+            androidApkUrl: data.downloads?.android || `https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v${v}/app-debug.apk`,
+            linuxDebUrl: data.downloads?.linuxDeb || `https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v${v}/bokra_${v}_amd64.deb`,
+            linuxAppImageUrl: data.downloads?.linuxAppImage || `https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v${v}/bokra_${v}_amd64.AppImage`,
+            linuxRpmUrl: data.downloads?.linuxRpm || `https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v${v}/bokra-${v}-1.x86_64.rpm`,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const handleLangChange = (newLang) => {
     setLang(newLang);
     if (typeof window !== 'undefined') {
@@ -28,15 +61,6 @@ export default function DownloadPage() {
   };
 
   const isAr = lang === 'ar';
-
-  const GITHUB_RELEASES_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/tag/v0.1.0";
-  const MAC_ARM_DMG_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.0/bokra_0.1.0_aarch64.dmg";
-  const MAC_INTEL_DMG_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.0/bokra_0.1.0_x64.dmg";
-  const WIN_ZIP_URL = "/bokra-windows.zip";
-  const LINUX_DEB_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.0/bokra_0.1.0_amd64.deb";
-  const LINUX_APPIMAGE_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.0/bokra_0.1.0_amd64.AppImage";
-  const LINUX_RPM_URL = "https://github.com/o3yin3yin-create/trackert-v2-/releases/download/v0.1.0/bokra-0.1.0-1.x86_64.rpm";
-  const ANDROID_APK_URL = "/bokra.apk";
 
   return (
     <div 
@@ -101,9 +125,9 @@ export default function DownloadPage() {
         
         {/* Hero Banner */}
         <div className="flex flex-col items-center text-center gap-3 pt-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono font-bold text-white/70">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono font-bold text-white/80">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>{isAr ? 'الإصدار الحالي v0.1.0' : 'Latest Release v0.1.0'}</span>
+            <span>{isAr ? `الإصدار الرسمي v${versionData.version}` : `Official Release v${versionData.version}`}</span>
           </div>
 
           <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-white max-w-2xl leading-tight">
@@ -114,7 +138,7 @@ export default function DownloadPage() {
 
           <p className="text-xs sm:text-sm text-white/50 max-w-xl leading-relaxed">
             {isAr 
-              ? 'حمّل النسخة المخصصة لجهازك واستمتع بتجربة سريعة تعمل بدون إنترنت، بمؤقتات تركيز هادئة ومزامنة فورية لعاداتك.'
+              ? 'حمّل النسخة المخصصة لنظامك أو ثبته كتطبيق ويب مستقل مع حفظ محلي كامل بدون إنترنت ومزامنة فورية لعاداتك.'
               : 'Download the dedicated companion app for desktop and mobile with full offline persistence, ambient focus timers, and real-time habit sync.'}
           </p>
         </div>
@@ -212,25 +236,39 @@ export default function DownloadPage() {
                 </h3>
                 <p className="text-xs text-white/50 leading-relaxed">
                   {isAr 
-                    ? 'حزمة اختصار سطح المكتب ومشغل نافذة الويب المستقلة (PWA Launcher) مع أيقونة bokra وحفظ البيانات محليا.'
-                    : 'Lightweight desktop shortcut installer & standalone app window launcher for Windows.'}
+                    ? 'برنامج تثبيت رسمي (.exe) أو حزمة MSI أو المشغل الخفيف المحمول (.zip).'
+                    : 'Official native installer (.exe), enterprise MSI package, or lightweight portable launcher (.zip).'}
                 </p>
               </div>
             </div>
 
             <div className="flex flex-col gap-2 pt-2">
               <a
-                href={WIN_ZIP_URL}
-                download="bokra-windows.zip"
+                href={versionData.winExeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-full h-12 rounded-xl bg-white text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
               >
                 <Download size={15} />
-                <span>{isAr ? 'تحميل حزمة المشغل (.ZIP خفيف)' : 'Download Launcher (.ZIP)'}</span>
+                <span>{isAr ? `تحميل مثبت ويندوز الرسمي (.EXE)` : `Download Windows Installer (.EXE)`}</span>
               </a>
-              <div className="flex items-center justify-center gap-1.5 pt-0.5">
-                <span className="text-[10px] text-center text-white/40 font-mono">
-                  {isAr ? 'مشغل نافذة مستقلة وأداة تثبيت اختصار سطح المكتب' : 'Standalone app window launcher & desktop shortcut tool'}
-                </span>
+              <div className="flex items-center justify-center gap-3 pt-1 text-[11px] font-mono text-white/50">
+                <a 
+                  href={versionData.winMsiUrl} 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white underline transition-colors"
+                >
+                  {isAr ? 'حزمة MSI' : 'MSI Package'}
+                </a>
+                <span>·</span>
+                <a 
+                  href={versionData.winZipUrl} 
+                  download="bokra-windows.zip"
+                  className="hover:text-white underline transition-colors"
+                >
+                  {isAr ? 'مشغل محمول (.ZIP)' : 'Portable (.ZIP)'}
+                </a>
               </div>
             </div>
           </div>
@@ -253,39 +291,39 @@ export default function DownloadPage() {
                 </h3>
                 <p className="text-xs text-white/50 leading-relaxed">
                   {isAr 
-                    ? 'حزمة .DEB سريعة وخفيفة لأوبونتو وديبيان ومينت (7.6 MB)، أو ملف AppImage الشامل لجميع التوزيعات (86 MB).'
-                    : 'Lightweight fast .DEB package for Ubuntu/Debian/Mint (7.6 MB), or universal standalone AppImage (86 MB).'}
+                    ? 'حزم أصلية مجمعة رسمياً: حزمة .DEB السريعة، أو ملف AppImage الشامل، أو حزمة .RPM.'
+                    : 'Native compiled packages: fast .DEB package, universal standalone AppImage, or .RPM package.'}
                 </p>
               </div>
             </div>
 
             <div className="flex flex-col gap-2 pt-2">
               <a
-                href={LINUX_DEB_URL}
+                href={versionData.linuxDebUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full h-12 rounded-xl bg-white text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
               >
                 <Download size={15} />
-                <span>{isAr ? 'تحميل حزمة دبيان السريعة (.DEB - 7.6 MB)' : 'Download Fast .DEB (7.6 MB)'}</span>
+                <span>{isAr ? 'تحميل حزمة دبيان (.DEB)' : 'Download Debian (.DEB)'}</span>
               </a>
               <div className="flex items-center justify-center gap-3 pt-1 text-[11px] font-mono text-white/50">
                 <a 
-                  href={LINUX_APPIMAGE_URL} 
+                  href={versionData.linuxAppImageUrl} 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-white underline transition-colors"
                 >
-                  {isAr ? 'AppImage شامل (86 MB)' : 'Universal AppImage (86 MB)'}
+                  {isAr ? 'AppImage شامل' : 'Universal AppImage'}
                 </a>
                 <span>·</span>
                 <a 
-                  href={LINUX_RPM_URL} 
+                  href={versionData.linuxRpmUrl} 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-white underline transition-colors"
                 >
-                  {isAr ? 'Fedora / RHEL (.RPM - 7.6 MB)' : 'Fedora / RHEL (.RPM - 7.6 MB)'}
+                  {isAr ? 'حزمة Fedora (.RPM)' : 'Fedora (.RPM)'}
                 </a>
               </div>
             </div>
@@ -309,23 +347,23 @@ export default function DownloadPage() {
                 </h3>
                 <p className="text-xs text-white/50 leading-relaxed">
                   {isAr 
-                    ? 'ملف APK مباشر يتم تحميله وتثبيته فوراً على هاتفك بدون أي متجر.'
-                    : 'Direct standalone APK installer that installs natively on your Android device without app store delays.'}
+                    ? 'تطبيق أندرويد الأصلي بصيغة APK مع إشعارات محلية تعمل بدون إنترنت وبدون متجر.'
+                    : 'Native standalone Android APK with offline persistence and push notifications.'}
                 </p>
               </div>
             </div>
 
             <div className="flex flex-col gap-2 pt-2">
               <a
-                href={ANDROID_APK_URL}
-                download="bokra.apk"
+                href={versionData.androidApkUrl}
+                download="app-debug.apk"
                 className="w-full h-12 rounded-xl bg-white text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
               >
                 <Download size={15} />
-                <span>{isAr ? 'تحميل ملف APK المباشر (1.67 MB)' : 'Download Android APK (1.67 MB)'}</span>
+                <span>{isAr ? 'تحميل تطبيق أندرويد الرسمي (.APK)' : 'Download Official Android (.APK)'}</span>
               </a>
               <span className="text-[10px] text-center text-white/30 font-mono">
-                {isAr ? 'تحميل فوري مباشر - تثبيت محلي بدون متجر' : 'Direct host download - 1.67 MB standalone package'}
+                {isAr ? 'تثبيت فوري مباشر لجميع هواتف أندرويد' : 'Direct install for all Android devices'}
               </span>
             </div>
           </div>
@@ -454,7 +492,7 @@ export default function DownloadPage() {
 
           {/* GitHub Releases Link */}
           <a
-            href={GITHUB_RELEASES_URL}
+            href={versionData.releaseUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 text-white/40 hover:text-white transition-colors font-mono"
