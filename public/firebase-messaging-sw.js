@@ -34,7 +34,7 @@ try {
   // Fallback to native push event listener below
 }
 
-const CACHE_NAME = 'bokra-cache-v8';
+const CACHE_NAME = 'bokra-cache-v10';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',

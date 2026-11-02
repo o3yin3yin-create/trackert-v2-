@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bokra-cache-v6';
+const CACHE_NAME = 'bokra-cache-v10';
 
 // Essential core assets to pre-cache during installation
 const PRECACHE_ASSETS = [
@@ -102,7 +102,7 @@ self.addEventListener('fetch', (event) => {
             clearTimeout(timer);
             if (networkResponse && networkResponse.status === 200) {
               const clone = networkResponse.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put('/', clone));
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
               return networkResponse;
             }
           } catch (e) {
