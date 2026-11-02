@@ -3126,9 +3126,58 @@ function AppContent({ isPreview = false }) {
     return true;
   };
 
-  // Habits scheduled for active date
+  // Helper to parse time string like "09:30 AM", "2:00 PM", "14:30" to minutes from midnight
+  const parseTimeToMinutes = (timeStr) => {
+    if (!timeStr || typeof timeStr !== 'string') return 99999;
+    const match = timeStr.trim().match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
+    if (!match) return 99999;
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2], 10);
+    const modifier = match[3]?.toUpperCase();
+
+    if (modifier === 'PM' && hours < 12) hours += 12;
+    if (modifier === 'AM' && hours === 12) hours = 0;
+
+    return hours * 60 + minutes;
+  };
+
+  // Helper to determine if a habit represents a scheduled appointment or scheduled item
+  const isHabitScheduledItem = (h) => {
+    if (!h) return false;
+    if (h.time && String(h.time).trim() !== '') return true;
+    if (h.location || h.duration || (h.frequency === 'once' && h.scheduleDate)) return true;
+    if (h.frequency && h.frequency !== 'daily') return true;
+    if (Array.isArray(h.scheduleDays) && h.scheduleDays.length > 0 && h.scheduleDays.length < 7) return true;
+    if (['lecture', 'meeting', 'workout', 'flight', 'study'].includes(h.category)) return true;
+    return false;
+  };
+
+  // Habits scheduled for active date, prioritized:
+  // 1. Scheduled appointments / habits (sorted chronologically by time)
+  // 2. Regular tasks & habits
   const activeScheduledHabits = useMemo(() => {
-    return habits.filter(h => isHabitScheduledForDate(h, activeDateStr));
+    const list = habits.filter(h => isHabitScheduledForDate(h, activeDateStr));
+
+    return [...list].sort((a, b) => {
+      const aIsSched = isHabitScheduledItem(a);
+      const bIsSched = isHabitScheduledItem(b);
+
+      // Priority 1: Scheduled items come before regular items
+      if (aIsSched && !bIsSched) return -1;
+      if (!aIsSched && bIsSched) return 1;
+
+      // If both are scheduled, sort chronologically by time of day
+      if (aIsSched && bIsSched) {
+        const aTime = parseTimeToMinutes(a.time);
+        const bTime = parseTimeToMinutes(b.time);
+        if (aTime !== bTime) {
+          return aTime - bTime;
+        }
+      }
+
+      // Preserve default order
+      return 0;
+    });
   }, [habits, activeDateStr]);
 
   // Always keep latestStateRef in sync with the freshest state synchronously on every render
@@ -4036,7 +4085,7 @@ function AppContent({ isPreview = false }) {
   // Helper to render habit cards with slim Apple aesthetics and automatic full-width for multi/scheduled habits
   const renderHabitCard = (habit) => {
     const isMulti = habit.type === 'multi';
-    const isScheduled = (habit.frequency && habit.frequency !== 'daily') || !!habit.time || !!habit.duration || !!habit.location || (habit.frequency === 'once' && !!habit.scheduleDate);
+    const isScheduled = isHabitScheduledItem(habit);
     const isExpanded = expandedHabits.includes(habit.id);
     
     let isAllChecked = false;
@@ -7464,6 +7513,113 @@ function AppContent({ isPreview = false }) {
                   {t('noHabitsScheduledToday')}
                 </div>
               ) : null}
+            </div>
+
+            {/* Mobile Daily Tasks Checklist (التاسكس اليومية) */}
+            <div className="liquid-panel p-5 sm:p-6 shadow-xl flex flex-col w-full mt-1 select-none" style={{ borderRadius: '24px' }}>
+              <div className="flex items-center justify-between mb-3.5 select-none">
+                <div className="flex items-center gap-2">
+                  <ListChecks size={18} style={{ color: themeColor }} />
+                  <h2 className="text-sm font-bold tracking-widest text-white/80 uppercase">{t('todaysTasks')}</h2>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold" style={{ backgroundColor: `${themeColor}22`, color: themeColor }}>
+                  {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈') && t.completed).length}/{dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).length}
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-2.5 mb-4 max-h-[190px] overflow-y-auto pr-1">
+                {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).map((task, idx) => {
+                  const isOverdue = task.rolledOver && !task.completed;
+                  return (
+                    <div 
+                      key={task.text + idx} 
+                      className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-200 ${
+                        isOverdue 
+                          ? 'bg-rose-950/30 border-rose-500/40 shadow-sm shadow-rose-950/20' 
+                          : 'bg-black/20 border-white/5'
+                      }`}
+                    >
+                      <div 
+                        className="flex items-center gap-3 cursor-pointer flex-1 min-w-0" 
+                        onClick={() => {
+                          haptic('light');
+                          updateDailyTasks(prev => prev.map(t => t.text === task.text ? { ...t, completed: !t.completed } : t));
+                        }}
+                      >
+                        <div 
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+                            task.completed 
+                              ? 'bg-white border-transparent' 
+                              : isOverdue 
+                                ? 'border-rose-400 bg-rose-500/15' 
+                                : 'border-white/20'
+                          }`} 
+                          style={{ borderColor: task.completed ? themeColor : undefined }}
+                        >
+                          {task.completed && <Check size={12} strokeWidth={4} style={{ color: themeColor }} />}
+                        </div>
+                        <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
+                          <span className={`text-sm font-semibold truncate transition-all ${
+                            task.completed 
+                              ? 'text-white/30 line-through' 
+                              : isOverdue
+                                ? 'text-rose-200 font-bold'
+                                : 'text-white/90'
+                          }`}>
+                            {task.text}
+                          </span>
+                          {isOverdue && (
+                            <span className="text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30 uppercase select-none flex items-center gap-1 shrink-0">
+                              <Clock size={10} strokeWidth={2.5} />
+                              {t('overdueTask')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => updateDailyTasks(prev => prev.filter(t => t.text !== task.text))} 
+                        aria-label="Delete Task"
+                        title="Delete Task"
+                        className="text-white/20 hover:text-red-400 p-1 transition-colors shrink-0"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  );
+                })}
+                {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).length === 0 && (
+                  <div className="text-center text-white/50 text-xs font-semibold py-4 border border-dashed border-white/10 rounded-2xl bg-white/5 select-none">{t('noTasks')}</div>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder={t('addTaskPlaceholder')}
+                  value={newTaskInput}
+                  onChange={(e) => setNewTaskInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newTaskInput.trim() !== '') {
+                      haptic('light');
+                      updateDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
+                      setNewTaskInput("");
+                    }
+                  }}
+                  className="flex-1 bg-black/20 border border-white/5 text-white px-3.5 py-2.5 rounded-xl outline-none text-xs font-semibold focus:border-white/30 transition-colors placeholder:text-white/30" 
+                />
+                <button 
+                  onClick={() => {
+                    if (newTaskInput.trim() !== '') {
+                      haptic('light');
+                      updateDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
+                      setNewTaskInput("");
+                    }
+                  }} 
+                  className="bg-white text-black px-4 py-2.5 rounded-xl font-bold text-xs transition-all active:scale-95 hover:bg-white/90 shrink-0"
+                >
+                  <Plus size={16} strokeWidth={3} />
+                </button>
+              </div>
             </div>
 
           </div>
