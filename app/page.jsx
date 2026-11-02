@@ -37,7 +37,7 @@ import { HABIT_PRESETS, getLocalizedPreset } from '../lib/habitPresets';
 import { guideSections } from '../lib/guideContent';
 import { getDisplayFriend, formatBriefActivity, getActivityBadge, getSafeTrackArt, getIslandDetails, PRESENCE_PRESETS } from '../lib/friendsPresets';
 
-const APP_CLIENT_VERSION = '0.1.1';
+const APP_CLIENT_VERSION = '0.1.2';
 
 function compareSemver(v1, v2) {
   if (!v1 || !v2) return 0;

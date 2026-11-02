@@ -2,28 +2,26 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-const FALLBACK_VERSION = '0.1.1';
+const FALLBACK_VERSION = '0.1.2';
 const GITHUB_REPO = 'o3yin3yin-create/trackert-v2-';
 
 const DEFAULT_DOWNLOADS = {
-  mac: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.1/bokra_0.1.1_aarch64.dmg`,
-  macArm: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.1/bokra_0.1.1_aarch64.dmg`,
-  macSilicon: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.1/bokra_0.1.1_aarch64.dmg`,
-  macIntel: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.1/bokra_0.1.1_x64.dmg`,
+  mac: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.2/bokra_0.1.2_aarch64.dmg`,
+  macArm: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.2/bokra_0.1.2_aarch64.dmg`,
+  macSilicon: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.2/bokra_0.1.2_aarch64.dmg`,
+  macIntel: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.2/bokra_0.1.2_x64.dmg`,
   windows: '/bokra-windows.zip',
-  android: '/bokra.apk',
-  linuxDeb: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.1/bokra_0.1.1_amd64.deb`,
-  linuxAppImage: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.1/bokra_0.1.1_amd64.AppImage`,
-  linuxRpm: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.1/bokra-0.1.1-1.x86_64.rpm`,
+  android: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.2/app-debug.apk`,
+  linuxDeb: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.2/bokra_0.1.2_amd64.deb`,
+  linuxAppImage: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.2/bokra_0.1.2_amd64.AppImage`,
+  linuxRpm: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.2/bokra-0.1.2-1.x86_64.rpm`,
 };
 
-const RELEASE_NOTES_0_1_1 = `bokra v0.1.1 - التحديث الشامل:
-- تطبيق أندرويد رسمي أصلي بصيغة APK مع إشعارات محلية تعمل بدون إنترنت.
-- حل مشكلة الإشعارات نهائيا وضمان وصول إشعارات الأصدقاء والنكزات في الخلفية بنسبة 100%.
-- استمرار عمل تطبيق ماك في الخلفية عند إغلاق النافذة للحفاظ على العدادات والتنبيهات.
-- إصلاح تعليق شاشة الأصدقاء والبحث عن المعرفات.
-- صفحات رسمية جديدة: عن التطبيق (/about)، شروط الاستخدام (/terms)، الأمان والخصوصية (/security).
-- إضافة روابط الدعم المباشر وانستغرام الرسمي وحساب المطور في الإعدادات.`;
+const RELEASE_NOTES_0_1_2 = `bokra v0.1.2 - التحديث الشامل:
+- حل مشكلة البحث وإضافة الأصدقاء بالكامل على الماك وسطح المكتب.
+- فصل حزم ماك كلياً بين معالجات Apple Silicon ومعالجات Intel.
+- استعادة وحفظ استمرارية الستريك ومزامنتها سحابياً.
+- تحسين أداء استجابة الشبكة وضمان استقرار المزامنة دون انقطاع.`;
 
 export async function GET() {
   try {
@@ -81,7 +79,7 @@ export async function GET() {
       tagName,
       releaseName: data.name || `Release ${tagName}`,
       publishedAt: data.published_at || new Date().toISOString(),
-      notes: data.body || RELEASE_NOTES_0_1_1,
+      notes: data.body || RELEASE_NOTES_0_1_2,
       downloads,
     }, {
       headers: {
@@ -95,7 +93,7 @@ export async function GET() {
       tagName: `v${FALLBACK_VERSION}`,
       releaseName: `Release v${FALLBACK_VERSION}`,
       publishedAt: new Date().toISOString(),
-      notes: RELEASE_NOTES_0_1_1,
+      notes: RELEASE_NOTES_0_1_2,
       downloads: DEFAULT_DOWNLOADS,
       fallback: true,
     }, {
