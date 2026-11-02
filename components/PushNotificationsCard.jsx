@@ -22,17 +22,50 @@ export default function PushNotificationsCard({
   const [error, setError] = useState('');
   const [needsHomeScreen, setNeedsHomeScreen] = useState(() => iosNeedsHomeScreen());
 
-  useEffect(() => {
-    ensurePushServiceWorker().catch(() => {});
+  const syncPermission = React.useCallback(() => {
+    if (typeof Notification !== 'undefined') {
+      const current = Notification.permission;
+      setPermission(current);
+      if (current === 'granted') {
+        setError('');
+      }
+    }
+    setNeedsHomeScreen(iosNeedsHomeScreen());
   }, []);
+
+  useEffect(() => {
+    syncPermission();
+    ensurePushServiceWorker().catch(() => {});
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', syncPermission);
+      document.addEventListener('visibilitychange', syncPermission);
+    }
+
+    if (typeof navigator !== 'undefined' && navigator.permissions?.query) {
+      navigator.permissions.query({ name: 'notifications' }).then((status) => {
+        status.onchange = () => {
+          syncPermission();
+        };
+      }).catch(() => {});
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', syncPermission);
+        document.removeEventListener('visibilitychange', syncPermission);
+      }
+    };
+  }, [syncPermission]);
 
   const copy = {
     title: isAr ? 'إشعارات الدفع' : 'Push notifications',
     desc: isAr ? 'تنبيهات المحاضرات والأصدقاء وجلسات التركيز' : 'Lecture, friend, and focus alerts',
     enable: isAr ? 'تفعيل الإشعارات' : 'Enable notifications',
+    recheck: isAr ? 'فحص الإذن' : 'Check Permission',
     signIn: isAr ? 'تسجيل الدخول للتفعيل' : 'Sign in to enable',
     enabled: isAr ? 'الإشعارات مفعّلة' : 'Notifications on',
-    denied: isAr ? 'مرفوضة من المتصفح. فعّلها من إعدادات الموقع.' : 'Blocked in the browser. Allow notifications for this site.',
+    denied: isAr ? 'مرفوضة من المتصفح. اضغط على أيقونة الإعدادات في شريط الرابط واجعل الإشعارات سماح (Allow).' : 'Blocked in the browser. Allow notifications in your browser site settings.',
     iosHint: isAr
       ? 'على آيفون: أضف bokra للشاشة الرئيسية أولاً، ثم افتحها من الأيقونة وفعّل الإشعارات.'
       : 'On iPhone, add bokra to your Home Screen first, then open it from the icon to enable notifications.',
@@ -41,7 +74,24 @@ export default function PushNotificationsCard({
   const onEnable = async () => {
     setBusy(true);
     setError('');
+    syncPermission();
+
     try {
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        setPermission('granted');
+        await enablePushNotifications().catch(() => {});
+        showLocalNotification(
+          isAr ? 'تم تفعيل الإشعارات' : 'Notifications enabled',
+          {
+            body: isAr 
+              ? 'ستصلك الآن تنبيهات المحاضرات وجلسات التركيز والأصدقاء.' 
+              : 'You will receive lecture, focus, and friend alerts.',
+            tag: 'push_enabled',
+          }
+        );
+        return;
+      }
+
       await enablePushNotifications();
       setPermission('granted');
       showLocalNotification(
@@ -55,27 +105,18 @@ export default function PushNotificationsCard({
       );
     } catch (err) {
       const msg = err?.message || '';
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        setPermission('granted');
+        setError('');
+        return;
+      }
       if (msg === 'ios_homescreen') {
         setNeedsHomeScreen(true);
-      } else if (msg === 'denied') {
+      } else if (msg === 'denied' || (typeof Notification !== 'undefined' && Notification.permission === 'denied')) {
         setPermission('denied');
       } else if (msg === 'unsupported') {
         setError(isAr ? 'هذا الجهاز لا يدعم الإشعارات' : 'Notifications not supported on this device');
       } else {
-        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-          setPermission('granted');
-          setError('');
-          showLocalNotification(
-            isAr ? 'تم تفعيل الإشعارات' : 'Notifications enabled',
-            {
-              body: isAr 
-                ? 'ستصلك الآن تنبيهات المحاضرات وجلسات التركيز والأصدقاء.' 
-                : 'You will receive lecture, focus, and friend alerts.',
-              tag: 'push_enabled',
-            }
-          );
-          return;
-        }
         setError(isAr ? 'تعذر تفعيل الإشعارات' : 'Could not enable notifications');
       }
     } finally {
@@ -125,10 +166,10 @@ export default function PushNotificationsCard({
         <button
           type="button"
           onClick={onEnable}
-          disabled={busy || permission === 'denied'}
-          className="shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-black bg-white text-black hover:bg-white/90 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          disabled={busy}
+          className="shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-black bg-white text-black hover:bg-white/90 transition-all active:scale-95 disabled:opacity-40 cursor-pointer"
         >
-          {busy ? '…' : copy.enable}
+          {busy ? '…' : permission === 'denied' ? copy.recheck : copy.enable}
         </button>
       )}
     </div>
