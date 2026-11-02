@@ -1226,6 +1226,21 @@ function AppContent({ isPreview = false }) {
     return '#FF9F0A';
   });
 
+  const [auroraColor, setAuroraColor] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('daybase_aurora_color') || '#00F0FF';
+    }
+    return '#00F0FF';
+  });
+
+  const [auroraIntensity, setAuroraIntensity] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('daybase_aurora_intensity');
+      return saved !== null ? parseInt(saved, 10) : 40;
+    }
+    return 40;
+  });
+
   const [avatar, setAvatar] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('daybase_avatar_v1') || 'user';
@@ -2072,6 +2087,8 @@ function AppContent({ isPreview = false }) {
           }
           setTheme('dark');
           if (localState.bgStyle) setBgStyle(localState.bgStyle);
+          if (localState.auroraColor) setAuroraColor(localState.auroraColor);
+          if (localState.auroraIntensity !== undefined) setAuroraIntensity(localState.auroraIntensity);
           if (localState.lang) setLang(localState.lang);
           if (localState.themeColor) setThemeColor(localState.themeColor);
           if (localState.avatar) setAvatar(localState.avatar);
@@ -2111,12 +2128,12 @@ function AppContent({ isPreview = false }) {
     };
     const currentSnapshot = {
       habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
-      theme, bgStyle, lang, focusTimeData, pomodoroTasksData: activeTasks, emergencyCards: habitCards,
+      theme, bgStyle, auroraColor, auroraIntensity, lang, focusTimeData, pomodoroTasksData: activeTasks, emergencyCards: habitCards,
       finishedTickets, mission, avatar, updatedAt: Date.now()
     };
     saveLocalOfflineState(currentSnapshot);
   }, [
-    habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog,
+    habits, dailyData, sleepData, themeColor, auroraColor, auroraIntensity, habitCards, grantedCardsLog,
     theme, bgStyle, lang, focusTimeData, pomodoroTasksData,
     finishedTickets, mission, avatar, isMounted, dailyTasks, dailyTasksDateStr
   ]);
@@ -3360,6 +3377,8 @@ function AppContent({ isPreview = false }) {
   useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_sleepData_v4', JSON.stringify(sleepData)); }, [sleepData, isMounted, isPreview]);
   useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_mission_v4', mission); }, [mission, isMounted, isPreview]);
   useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_themeColor_v4', themeColor); }, [themeColor, isMounted, isPreview]);
+  useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_aurora_color', auroraColor); }, [auroraColor, isMounted, isPreview]);
+  useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_aurora_intensity', String(auroraIntensity)); }, [auroraIntensity, isMounted, isPreview]);
   useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_avatar_v1', avatar); }, [avatar, isMounted, isPreview]);
 
   useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_habitNotes_v4', JSON.stringify(habitNotes)); }, [habitNotes, isMounted, isPreview]);
@@ -7689,11 +7708,23 @@ function AppContent({ isPreview = false }) {
         {/* Animated Aurora Background or Solid */}
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-black transition-colors duration-500">
           {bgStyle === 'aurora' && (
-            <>
-              <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full opacity-40 blur-[80px] mix-blend-screen aurora-anim-1" style={{ background: themeColor }}></div>
-              <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full opacity-30 blur-[90px] mix-blend-screen aurora-anim-2" style={{ background: themeColor }}></div>
-              <div className="absolute top-[30%] left-[40%] w-[35vw] h-[35vw] rounded-full opacity-20 blur-[70px] mix-blend-screen aurora-anim-3" style={{ background: themeColor }}></div>
-            </>
+            <div 
+              className="absolute inset-0 transition-opacity duration-300"
+              style={{ opacity: Math.min(Math.max(auroraIntensity, 0), 100) / 100 }}
+            >
+              <div 
+                className="absolute top-[-10%] left-[-10%] w-[45vw] h-[45vw] rounded-full opacity-70 blur-[85px] mix-blend-screen aurora-anim-1 transition-colors duration-500" 
+                style={{ background: auroraColor }}
+              />
+              <div 
+                className="absolute bottom-[-10%] right-[-10%] w-[55vw] h-[55vw] rounded-full opacity-60 blur-[95px] mix-blend-screen aurora-anim-2 transition-colors duration-500" 
+                style={{ background: auroraColor }}
+              />
+              <div 
+                className="absolute top-[30%] left-[40%] w-[40vw] h-[40vw] rounded-full opacity-45 blur-[75px] mix-blend-screen aurora-anim-3 transition-colors duration-500" 
+                style={{ background: auroraColor }}
+              />
+            </div>
           )}
         </div>
 
@@ -8815,11 +8846,11 @@ function AppContent({ isPreview = false }) {
                         <div className="flex items-center gap-2.5">
                           <Sparkles size={18} className="text-white/80" />
                           <span className="text-sm font-bold text-white">
-                            {'Background Style'}
+                            {isAr ? 'نمط الخلفية' : 'Background Style'}
                           </span>
                         </div>
                         <span className="text-[11px] font-semibold text-white/40">
-                          {bgStyle === 'aurora' ? 'Aurora Glow' : 'Deep Solid'}
+                          {bgStyle === 'aurora' ? (isAr ? 'توهج الأورورا' : 'Aurora Glow') : (isAr ? 'سواد خالص' : 'Deep Solid')}
                         </span>
                       </div>
 
@@ -8832,15 +8863,15 @@ function AppContent({ isPreview = false }) {
                             markLocalMutation();
                             haptic('light');
                           }}
-                          className={`p-3.5 rounded-xl border flex flex-col items-center gap-2 transition-all active:scale-95 ${
+                          className={`p-3.5 rounded-xl border flex flex-col items-center gap-2 transition-all active:scale-95 cursor-pointer ${
                             bgStyle === 'aurora'
                               ? 'bg-white/15 border-white text-white shadow-lg'
                               : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white'
                           }`}
                         >
                           <Sparkles size={20} className="text-white" />
-                          <span className="text-xs font-bold">{'Aurora'}</span>
-                          <span className="text-[10px] text-white/40 text-center">{'Ambient glow'}</span>
+                          <span className="text-xs font-bold">{isAr ? 'أورورا' : 'Aurora'}</span>
+                          <span className="text-[10px] text-white/40 text-center">{isAr ? 'توهج هادئ متدرج' : 'Ambient glow'}</span>
                         </button>
 
                         <button
@@ -8851,17 +8882,142 @@ function AppContent({ isPreview = false }) {
                             markLocalMutation();
                             haptic('light');
                           }}
-                          className={`p-3.5 rounded-xl border flex flex-col items-center gap-2 transition-all active:scale-95 ${
+                          className={`p-3.5 rounded-xl border flex flex-col items-center gap-2 transition-all active:scale-95 cursor-pointer ${
                             bgStyle === 'solid'
                               ? 'bg-white/15 border-white text-white shadow-lg'
                               : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white'
                           }`}
                         >
                           <Moon size={20} className="text-white" />
-                          <span className="text-xs font-bold">{'Solid'}</span>
-                          <span className="text-[10px] text-white/40 text-center">{'Pure minimalist'}</span>
+                          <span className="text-xs font-bold">{isAr ? 'سوليد' : 'Solid'}</span>
+                          <span className="text-[10px] text-white/40 text-center">{isAr ? 'سواد نقي ومينيمال' : 'Pure minimalist'}</span>
                         </button>
                       </div>
+
+                      {/* Aurora Customization: Color & Brightness (Separated from app Theme & Root) */}
+                      {bgStyle === 'aurora' && (
+                        <div className="mt-2 pt-3 border-t border-white/10 flex flex-col gap-3.5 animate-in fade-in duration-200">
+                          
+                          {/* Aurora Color Control */}
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-white/70">
+                                {isAr ? 'لون الأورورا (مستقل عن لون البرنامج)' : 'Aurora Color (Independent)'}
+                              </span>
+                              <div 
+                                className="w-4 h-4 rounded-full border border-white/30 shadow-md" 
+                                style={{ backgroundColor: auroraColor }} 
+                              />
+                            </div>
+
+                            <div className="flex items-center justify-between gap-1.5 pt-0.5">
+                              {[
+                                { c: '#00F0FF', name: 'Cyan' },
+                                { c: '#BF5AF2', name: 'Purple' },
+                                { c: '#FF375F', name: 'Pink' },
+                                { c: '#30D158', name: 'Emerald' },
+                                { c: '#FF9F0A', name: 'Amber' },
+                                { c: '#0A84FF', name: 'Blue' },
+                                { c: '#FFFFFF', name: 'White' },
+                              ].map(({ c }) => (
+                                <button
+                                  key={c}
+                                  type="button"
+                                  onClick={() => {
+                                    setAuroraColor(c);
+                                    if (typeof window !== 'undefined') localStorage.setItem('daybase_aurora_color', c);
+                                    markLocalMutation();
+                                    haptic('light');
+                                  }}
+                                  className={`w-7 h-7 rounded-full transition-transform active:scale-90 flex items-center justify-center cursor-pointer ${
+                                    auroraColor.toLowerCase() === c.toLowerCase() ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-black' : 'hover:scale-105 opacity-80 hover:opacity-100'
+                                  }`}
+                                  style={{ backgroundColor: c }}
+                                >
+                                  {auroraColor.toLowerCase() === c.toLowerCase() && (
+                                    <Check size={12} className={c === '#FFFFFF' ? 'text-black' : 'text-white'} strokeWidth={3} />
+                                  )}
+                                </button>
+                              ))}
+
+                              {/* Custom Color Picker for Aurora */}
+                              <label className="relative w-7 h-7 rounded-full border border-white/20 hover:border-white/40 flex items-center justify-center cursor-pointer overflow-hidden bg-white/10 transition-all shrink-0">
+                                <Plus size={12} className="text-white/60" />
+                                <input 
+                                  type="color" 
+                                  value={auroraColor} 
+                                  onChange={(e) => {
+                                    setAuroraColor(e.target.value);
+                                    if (typeof window !== 'undefined') localStorage.setItem('daybase_aurora_color', e.target.value);
+                                    markLocalMutation();
+                                  }} 
+                                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" 
+                                />
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Aurora Brightness / Intensity Slider */}
+                          <div className="flex flex-col gap-2 pt-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-white/70">
+                                {isAr ? 'شدة سطوع الأورورا' : 'Aurora Brightness'}
+                              </span>
+                              <span className="text-xs font-mono font-bold text-white px-2 py-0.5 rounded-md bg-white/10">
+                                {auroraIntensity}%
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <span className="text-[10px] text-white/40 font-bold">{isAr ? 'خافت' : 'Dim'}</span>
+                              <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                step="5"
+                                value={auroraIntensity}
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value, 10);
+                                  setAuroraIntensity(val);
+                                  if (typeof window !== 'undefined') localStorage.setItem('daybase_aurora_intensity', String(val));
+                                  markLocalMutation();
+                                }}
+                                className="flex-1 accent-white h-1.5 bg-white/20 rounded-lg cursor-pointer"
+                              />
+                              <span className="text-[10px] text-white/40 font-bold">{isAr ? 'ساطع' : 'Bright'}</span>
+                            </div>
+
+                            {/* Quick Presets for Intensity */}
+                            <div className="grid grid-cols-4 gap-1.5 mt-0.5">
+                              {[
+                                { labelAr: 'خافت 20%', labelEn: '20%', val: 20 },
+                                { labelAr: 'طبيعي 40%', labelEn: '40%', val: 40 },
+                                { labelAr: 'واضح 65%', labelEn: '65%', val: 65 },
+                                { labelAr: 'أقصى 100%', labelEn: '100%', val: 100 },
+                              ].map((preset) => (
+                                <button
+                                  key={preset.val}
+                                  type="button"
+                                  onClick={() => {
+                                    setAuroraIntensity(preset.val);
+                                    if (typeof window !== 'undefined') localStorage.setItem('daybase_aurora_intensity', String(preset.val));
+                                    markLocalMutation();
+                                    haptic('light');
+                                  }}
+                                  className={`py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                                    auroraIntensity === preset.val 
+                                      ? 'bg-white text-black font-black' 
+                                      : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'
+                                  }`}
+                                >
+                                  {isAr ? preset.labelAr : preset.labelEn}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                        </div>
+                      )}
                     </div>
 
                     {/* Section 2: Accent Color */}
@@ -8870,7 +9026,7 @@ function AppContent({ isPreview = false }) {
                         <div className="flex items-center gap-2.5">
                           <SlidersHorizontal size={18} className="text-white/80" />
                           <span className="text-sm font-bold text-white">
-                            {'Accent Color'}
+                            {isAr ? 'لون البرنامج والأزرار' : 'Accent Color'}
                           </span>
                         </div>
                         <div className="w-5 h-5 rounded-full border border-white/30 shadow-md" style={{ backgroundColor: themeColor }} />
