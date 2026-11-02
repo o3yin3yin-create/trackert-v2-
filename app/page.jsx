@@ -4125,7 +4125,7 @@ function AppContent({ isPreview = false }) {
         transition={{ duration: 0.2 }}
         key={habit.id}
         onContextMenu={(e) => { e.preventDefault(); openEditHabit(habit); }}
-        className={`relative flex flex-col transition-all duration-200 ease-out active:scale-[0.99] ${gridClass} ${isAllChecked ? '' : 'liquid-panel'}`}
+        className={`relative flex flex-col w-full active:scale-[0.99] transition-colors duration-150 ${gridClass} ${isAllChecked ? '' : 'liquid-panel'}`}
         style={{ 
           borderRadius: '20px',
           backgroundColor: cardBg,
@@ -4134,7 +4134,7 @@ function AppContent({ isPreview = false }) {
           boxShadow: cardShadow,
           backdropFilter: isAllChecked ? 'none' : 'blur(20px)',
           WebkitBackdropFilter: isAllChecked ? 'none' : 'blur(20px)',
-          minHeight: isMulti && isExpanded ? 'auto' : '58px'
+          minHeight: '58px'
         }}
       >
         {isMulti ? (
@@ -4142,7 +4142,7 @@ function AppContent({ isPreview = false }) {
           <div className="flex flex-col w-full">
             <div 
               onClick={() => toggleExpand(habit.id)}
-              className="flex items-center justify-between px-4 py-3 h-full cursor-pointer select-none gap-3 w-full min-h-[56px]"
+              className="flex items-center justify-between px-4 py-3 cursor-pointer select-none gap-3 w-full min-h-[56px]"
             >
               <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -4253,7 +4253,7 @@ function AppContent({ isPreview = false }) {
           /* Scheduled Habit (Full Width, Single Check) */
           <div 
             onClick={() => toggleCheck(habit.id)}
-            className="flex items-center justify-between px-4 py-3 h-full cursor-pointer select-none gap-3 w-full min-h-[58px]"
+            className="flex items-center justify-between px-4 py-3 cursor-pointer select-none gap-3 w-full min-h-[58px]"
           >
             <div className="flex flex-col gap-1 min-w-0 flex-1">
               <div className="flex items-center gap-2">
@@ -4320,7 +4320,7 @@ function AppContent({ isPreview = false }) {
           /* Standard Single Habit (col-span-1, side-by-side) */
           <div 
             onClick={() => toggleCheck(habit.id)}
-            className="flex items-center justify-between px-4 py-3 h-full cursor-pointer select-none gap-2 w-full min-h-[58px]"
+            className="flex items-center justify-between px-4 py-3 cursor-pointer select-none gap-2 w-full min-h-[58px]"
           >
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
               <span className={`text-[15px] font-bold tracking-tight truncate ${isAllChecked ? 'text-black' : 'text-white'}`}>
@@ -7465,7 +7465,7 @@ function AppContent({ isPreview = false }) {
             </div>
 
             {/* Mobile Habits Cards Grid */}
-            <div className="grid grid-cols-2 gap-3 items-start w-full [grid-auto-flow:dense]">
+            <div className="grid grid-cols-2 gap-3 items-stretch w-full [grid-auto-flow:dense]">
               {activeScheduledHabits.map((habit) => renderHabitCard(habit))}
               {habits.length === 0 ? (
                 <div className="col-span-2 w-full py-10 sm:py-12 px-6 rounded-[28px] bg-white/[0.03] border border-dashed border-white/15 flex flex-col items-center justify-center text-center gap-4 my-2 select-none shadow-xl">
@@ -7590,7 +7590,7 @@ function AppContent({ isPreview = false }) {
               </div>
 
               {/* Habits Cards Grid */}
-              <div className="grid grid-cols-2 gap-3 mt-1 items-start w-full [grid-auto-flow:dense]">
+              <div className="grid grid-cols-2 gap-3 mt-1 items-stretch w-full [grid-auto-flow:dense]">
                 {activeScheduledHabits.map((habit) => renderHabitCard(habit))}
                 {habits.length === 0 ? (
                   <div className="col-span-2 w-full py-10 sm:py-12 px-6 rounded-[28px] bg-white/[0.03] border border-dashed border-white/15 flex flex-col items-center justify-center text-center gap-4 my-2 select-none shadow-xl">
