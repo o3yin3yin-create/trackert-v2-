@@ -29,9 +29,8 @@ export default function UpdateModal({
     switch (plat) {
       case 'mac':
       case 'mac-tauri':
-        return isAr ? 'نظام ماك (Apple Silicon – M-series)' : 'macOS (Apple Silicon – M-series)';
       case 'mac-intel':
-        return isAr ? 'نظام ماك (Intel x86_64)' : 'macOS (Intel x86_64)';
+        return isAr ? 'نظام ماك (Web App / Safari & Chrome)' : 'macOS (Web App / Safari & Chrome)';
       case 'windows':
       case 'windows-tauri':
         return isAr ? 'نظام ويندوز (Windows 64-bit)' : 'Windows (64-bit)';
@@ -47,8 +46,16 @@ export default function UpdateModal({
     }
   };
 
+  const isMacPlatform = platform.startsWith('mac');
+
   const handleDownload = (targetPlatform = null) => {
     const selected = targetPlatform || platform;
+    if (selected.startsWith('mac')) {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/download';
+      }
+      return;
+    }
     setDownloadingPlatform(selected);
     setDownloadStarted(true);
 
@@ -56,9 +63,7 @@ export default function UpdateModal({
     let url = updateInfo?.downloadUrl;
 
     if (targetPlatform) {
-      if (targetPlatform === 'mac-intel') url = downloads.macIntel || downloads.mac || '/download';
-      else if (targetPlatform.startsWith('mac')) url = downloads.macSilicon || downloads.mac || '/download';
-      else if (targetPlatform.startsWith('windows')) url = downloads.windows || '/bokra-windows.zip';
+      if (targetPlatform.startsWith('windows')) url = downloads.windows || '/bokra-windows.zip';
       else if (targetPlatform === 'android') url = downloads.android || '/bokra.apk';
       else if (targetPlatform.startsWith('linux')) url = downloads.linuxAppImage || downloads.linuxDeb || '/download';
       else url = '/download';
@@ -192,12 +197,18 @@ export default function UpdateModal({
           <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 mb-6 flex flex-col gap-2 text-xs">
             <span className="font-bold text-white flex items-center gap-1.5">
               <Check size={14} className="text-emerald-400" />
-              <span>{isAr ? 'تثبيت مباشر بدون فقدان البيانات' : 'In-Place Seamless Update'}</span>
+              <span>{isAr ? (isMacPlatform ? 'تطبيق ويب محدث باستمرار' : 'تثبيت مباشر بدون فقدان البيانات') : (isMacPlatform ? 'Always-Updated Web App' : 'In-Place Seamless Update')}</span>
             </span>
             <p className="text-white/60 leading-relaxed">
-              {isAr 
-                ? 'لا داعي لمسح التطبيق أو إعادة ضبطه. التحديث يتم تثبيته مباشرة فوق نسختك الحالية، وتظل جميع عاداتك وبياناتك وتسجيل دخولك محفوظة بالكامل.' 
-                : 'No need to uninstall or re-configure. The update installs directly over your existing app, preserving all your habits, streaks, and active login session.'}
+              {isMacPlatform ? (
+                isAr 
+                  ? 'على أجهزة ماك، يعمل تطبيق بكره مباشرة عبر الويب كـ Web App مع التحديث التلقائي المستمر فوراً. لا حاجة لتحميل أو تثبيت ملفات DMG. في سفاري: File > Add to Dock، أو في كروم اضغط Install في شريط العناوين.'
+                  : 'On macOS, bokra operates seamlessly as an auto-updating Web App. No DMG downloads needed. In Safari: File > Add to Dock, or in Chrome click the Install icon in the address bar.'
+              ) : (
+                isAr 
+                  ? 'لا داعي لمسح التطبيق أو إعادة ضبطه. التحديث يتم تثبيته مباشرة فوق نسختك الحالية، وتظل جميع عاداتك وبياناتك وتسجيل دخولك محفوظة بالكامل.' 
+                  : 'No need to uninstall or re-configure. The update installs directly over your existing app, preserving all your habits, streaks, and active login session.'
+              )}
             </p>
           </div>
 
@@ -235,24 +246,15 @@ export default function UpdateModal({
             <span className="text-[10px] font-mono uppercase text-white/40">
               {isAr ? 'تحميل حزمة لأجهزة أخرى' : 'Download for Other Platforms'}
             </span>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <button
                 type="button"
                 onClick={() => handleDownload('mac')}
                 className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold transition-all flex flex-col items-center gap-1.5 active:scale-95 cursor-pointer"
               >
                 <Apple size={16} />
-                <span>macOS Silicon</span>
-                <span className="text-[10px] text-white/40 font-normal">M1/M2/M3/M4</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDownload('mac-intel')}
-                className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold transition-all flex flex-col items-center gap-1.5 active:scale-95 cursor-pointer"
-              >
-                <Apple size={16} />
-                <span>macOS Intel</span>
-                <span className="text-[10px] text-white/40 font-normal">x86_64</span>
+                <span>macOS Web App</span>
+                <span className="text-[10px] text-white/40 font-normal">Safari & Chrome</span>
               </button>
               <button
                 type="button"
@@ -261,6 +263,7 @@ export default function UpdateModal({
               >
                 <Smartphone size={16} />
                 <span>Android APK</span>
+                <span className="text-[10px] text-white/40 font-normal">Native App</span>
               </button>
               <button
                 type="button"
@@ -269,6 +272,7 @@ export default function UpdateModal({
               >
                 <Monitor size={16} />
                 <span>Windows ZIP</span>
+                <span className="text-[10px] text-white/40 font-normal">Launcher</span>
               </button>
               <button
                 type="button"
@@ -277,6 +281,7 @@ export default function UpdateModal({
               >
                 <ArrowDownToLine size={16} />
                 <span>Linux DEB</span>
+                <span className="text-[10px] text-white/40 font-normal">Installer</span>
               </button>
             </div>
           </div>
@@ -289,11 +294,13 @@ export default function UpdateModal({
             onClick={() => handleDownload(platform)}
             className="flex-1 py-3.5 px-5 rounded-2xl bg-white text-black font-black text-sm hover:bg-white/90 active:scale-[0.98] transition-all shadow-xl flex items-center justify-center gap-2 cursor-pointer"
           >
-            <Download size={16} />
+            {isMacPlatform ? <ExternalLink size={16} /> : <Download size={16} />}
             <span>
-              {hasUpdate 
-                ? (isAr ? `تحديث الحزمة الآن (v${latestVer})` : `Update Package (v${latestVer})`)
-                : (isAr ? 'تنزيل الحزمة مجددا' : 'Redownload Package')}
+              {isMacPlatform
+                ? (isAr ? 'فتح إرشادات تثبيت الماك (Web App)' : 'View macOS Web App Guide')
+                : (hasUpdate 
+                    ? (isAr ? `تحديث الحزمة الآن (v${latestVer})` : `Update Package (v${latestVer})`)
+                    : (isAr ? 'تنزيل الحزمة مجددا' : 'Redownload Package'))}
             </span>
           </button>
 

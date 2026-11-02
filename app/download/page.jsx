@@ -122,58 +122,75 @@ export default function DownloadPage() {
         {/* Desktop & Android Platforms Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           
-          {/* 1. macOS Card */}
-          <div className="p-6 rounded-[24px] bg-white/[0.03] border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-5 shadow-lg group">
+          {/* 1. macOS Card (PWA / Web App) */}
+          <div className="p-6 rounded-[24px] bg-gradient-to-br from-white/[0.05] via-white/[0.02] to-transparent border border-white/15 hover:border-white/25 transition-all flex flex-col justify-between gap-5 shadow-xl group sm:col-span-2 lg:col-span-1">
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center text-white">
                   <Apple size={24} />
                 </div>
-                <span className="text-[11px] font-mono font-bold px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/60">
-                  Apple Silicon & Intel
+                <span className="text-[11px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
+                  {isAr ? 'تطبيق ويب فوري (Web App)' : 'Instant Web App (PWA)'}
                 </span>
               </div>
 
-              <div className="flex flex-col gap-1">
-                <h3 className="text-lg font-bold text-white">
-                  {isAr ? 'ماك (macOS Native)' : 'macOS (Apple Silicon & Intel)'}
+              <div className="flex flex-col gap-1.5">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <span>{isAr ? 'ماك (macOS Web App)' : 'macOS (Web App / PWA)'}</span>
                 </h3>
-                <p className="text-xs text-white/50 leading-relaxed">
+                <p className="text-xs text-white/60 leading-relaxed">
                   {isAr 
-                    ? 'حزم .DMG منفصلة ومحسنة لأجهزة ماك بمعالجات Apple Silicon (M1/M2/M3/M4) أو معالجات Intel 64-bit.'
-                    : 'Dedicated, optimized .DMG installers for Apple Silicon (M1/M2/M3/M4) and Intel (x86_64) Macs.'}
+                    ? 'بدون الحاجة لتحميل ملفات DMG أو تخطي تحذيرات الأمان. يعمل تطبيق بكره مباشرة على ماك كـ Web App مستقل وخفيف ويحدث نفسه تلقائياً.'
+                    : 'No DMG downloads or security gatekeeper bypasses needed. bokra runs directly on macOS as a standalone, lightweight Web App that updates automatically.'}
                 </p>
-                <div className="mt-2 p-2.5 rounded-xl bg-white/5 border border-white/10 text-[11px] text-white/70 leading-relaxed">
-                  <span className="font-semibold text-white block mb-1">
-                    {isAr ? 'طريقة التشغيل لتجاوز تنبيه الأمان (Gatekeeper):' : 'Bypass Gatekeeper Warning:'}
-                  </span>
-                  {isAr ? (
-                    <>بعد سحب التطبيق لمجلد Applications، اضغط بزر الماوس الأيمن واختر <strong className="text-white">Open</strong>، أو نفذ الأمر في Terminal:<br/><code className="font-mono text-[10px] text-white/90 bg-black/40 px-1 py-0.5 rounded">xattr -cr /Applications/bokra.app</code></>
-                  ) : (
-                    <>After moving to Applications, right-click and choose <strong className="text-white">Open</strong>, or run in Terminal:<br/><code className="font-mono text-[10px] text-white/90 bg-black/40 px-1 py-0.5 rounded">xattr -cr /Applications/bokra.app</code></>
-                  )}
+
+                {/* Instructions Box: Safari & Chrome */}
+                <div className="mt-3 flex flex-col gap-2.5">
+                  {/* Safari Instructions */}
+                  <div className="p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 flex flex-col gap-1.5 text-xs">
+                    <span className="font-bold text-white flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-blue-400" />
+                      <span>{isAr ? 'طريقة سفاري (Safari) - الموصى بها:' : 'Safari (Recommended):'}</span>
+                    </span>
+                    <ol className="text-white/70 text-[11px] leading-relaxed list-decimal list-inside space-y-1 pr-1 pl-1">
+                      <li>{isAr ? 'افتح الموقع في متصفح Safari.' : 'Open bokra in Safari.'}</li>
+                      <li>
+                        {isAr 
+                          ? 'من القائمة العلوية اضغط File (ملف) ثم اختر Add to Dock (أو من زر المشاركة Share اختر Add to Dock).' 
+                          : 'From top menu, click File > Add to Dock (or Share icon > Add to Dock).'}
+                      </li>
+                      <li>{isAr ? 'اضغط Add وسيظهر التطبيق فوراً في الـ Dock و Launchpad كنافذة تطبيق مستقلة.' : 'Click Add. The app will live in your Dock & Launchpad as a standalone app.'}</li>
+                    </ol>
+                  </div>
+
+                  {/* Chrome Instructions */}
+                  <div className="p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 flex flex-col gap-1.5 text-xs">
+                    <span className="font-bold text-white flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-amber-400" />
+                      <span>{isAr ? 'طريقة كروم (Google Chrome / Brave / Edge):' : 'Google Chrome / Brave / Edge:'}</span>
+                    </span>
+                    <ol className="text-white/70 text-[11px] leading-relaxed list-decimal list-inside space-y-1 pr-1 pl-1">
+                      <li>{isAr ? 'افتح الموقع في متصفح Google Chrome.' : 'Open bokra in Google Chrome.'}</li>
+                      <li>
+                        {isAr 
+                          ? 'اضغط على أيقونة التثبيت (Install bokra) في أقصى يمين شريط العناوين بالأعلى.' 
+                          : 'Click the Install icon in the right side of the address bar.'}
+                      </li>
+                      <li>{isAr ? 'اضغط Install وسيعمل كتطبيق ديسكتوب خفيف وسريع.' : 'Click Install to use bokra in its own focused window.'}</li>
+                    </ol>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="flex flex-col gap-2 pt-2">
-              <a
-                href={MAC_ARM_DMG_URL}
-                className="w-full h-11 rounded-xl bg-white text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
+              <Link
+                href="/"
+                className="w-full h-12 rounded-xl bg-white text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white/90 active:scale-[0.98] transition-all shadow-md cursor-pointer"
               >
-                <Download size={14} />
-                <span>{isAr ? 'تحميل لماك (Apple Silicon M1/M2/M3/M4)' : 'Download for Apple Silicon (M-series)'}</span>
-              </a>
-              <a
-                href={MAC_INTEL_DMG_URL}
-                className="w-full h-11 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-white/10 active:scale-[0.98] transition-all cursor-pointer"
-              >
-                <Download size={14} />
-                <span>{isAr ? 'تحميل لماك (Intel x86_64)' : 'Download for Intel (x86_64)'}</span>
-              </a>
-              <span className="text-[10px] text-center text-white/40 font-mono">
-                {isAr ? 'روابط التثبيت عبر GitHub Releases' : 'Installers hosted on GitHub Releases'}
-              </span>
+                <ExternalLink size={15} />
+                <span>{isAr ? 'فتح تطبيق بكره الآن' : 'Launch bokra Web App'}</span>
+              </Link>
             </div>
           </div>
 

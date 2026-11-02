@@ -6,10 +6,10 @@ const FALLBACK_VERSION = '0.1.3';
 const GITHUB_REPO = 'o3yin3yin-create/trackert-v2-';
 
 const DEFAULT_DOWNLOADS = {
-  mac: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.3/bokra_0.1.3_aarch64.dmg`,
-  macArm: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.3/bokra_0.1.3_aarch64.dmg`,
-  macSilicon: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.3/bokra_0.1.3_aarch64.dmg`,
-  macIntel: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.3/bokra_0.1.3_x64.dmg`,
+  mac: '/download',
+  macArm: '/download',
+  macSilicon: '/download',
+  macIntel: '/download',
   windows: '/bokra-windows.zip',
   android: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.3/app-debug.apk`,
   linuxDeb: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.3/bokra_0.1.3_amd64.deb`,
