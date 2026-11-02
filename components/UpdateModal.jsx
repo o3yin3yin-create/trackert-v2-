@@ -29,7 +29,9 @@ export default function UpdateModal({
     switch (plat) {
       case 'mac':
       case 'mac-tauri':
-        return isAr ? 'نظام ماك (macOS Universal DMG)' : 'macOS (Universal DMG)';
+        return isAr ? 'نظام ماك (Apple Silicon – M-series)' : 'macOS (Apple Silicon – M-series)';
+      case 'mac-intel':
+        return isAr ? 'نظام ماك (Intel x86_64)' : 'macOS (Intel x86_64)';
       case 'windows':
       case 'windows-tauri':
         return isAr ? 'نظام ويندوز (Windows 64-bit)' : 'Windows (64-bit)';
@@ -54,7 +56,8 @@ export default function UpdateModal({
     let url = updateInfo?.downloadUrl;
 
     if (targetPlatform) {
-      if (targetPlatform.startsWith('mac')) url = downloads.mac || '/download';
+      if (targetPlatform === 'mac-intel') url = downloads.macIntel || downloads.mac || '/download';
+      else if (targetPlatform.startsWith('mac')) url = downloads.macSilicon || downloads.mac || '/download';
       else if (targetPlatform.startsWith('windows')) url = downloads.windows || '/bokra-windows.zip';
       else if (targetPlatform === 'android') url = downloads.android || '/bokra.apk';
       else if (targetPlatform.startsWith('linux')) url = downloads.linuxAppImage || downloads.linuxDeb || '/download';
@@ -232,14 +235,24 @@ export default function UpdateModal({
             <span className="text-[10px] font-mono uppercase text-white/40">
               {isAr ? 'تحميل حزمة لأجهزة أخرى' : 'Download for Other Platforms'}
             </span>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => handleDownload('mac')}
                 className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold transition-all flex flex-col items-center gap-1.5 active:scale-95 cursor-pointer"
               >
                 <Apple size={16} />
-                <span>macOS DMG</span>
+                <span>macOS Silicon</span>
+                <span className="text-[10px] text-white/40 font-normal">M1/M2/M3/M4</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDownload('mac-intel')}
+                className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold transition-all flex flex-col items-center gap-1.5 active:scale-95 cursor-pointer"
+              >
+                <Apple size={16} />
+                <span>macOS Intel</span>
+                <span className="text-[10px] text-white/40 font-normal">x86_64</span>
               </button>
               <button
                 type="button"

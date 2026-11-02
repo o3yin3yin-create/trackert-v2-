@@ -1460,19 +1460,29 @@ function AppContent({ isPreview = false }) {
       const data = await res.json();
       const detected = detectClientPlatform();
       const hasUpdate = compareSemver(data.version, APP_CLIENT_VERSION) > 0;
-      
+
+      // Detect macOS architecture: Intel vs Apple Silicon
+      let detectedPlatform = detected;
+      if (detected.startsWith('mac')) {
+        const ua = typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '';
+        // Intel Macs report "Intel" in userAgent; Apple Silicon Macs running native report "Mac" without Intel
+        const isIntel = /Intel/i.test(ua);
+        detectedPlatform = isIntel ? 'mac-intel' : 'mac';
+      }
+
       let targetUrl = '/download';
-      if (detected.startsWith('mac')) targetUrl = data.downloads?.mac || targetUrl;
-      else if (detected.startsWith('windows')) targetUrl = data.downloads?.windows || targetUrl;
-      else if (detected === 'android') targetUrl = data.downloads?.android || targetUrl;
-      else if (detected.startsWith('linux')) targetUrl = data.downloads?.linuxAppImage || data.downloads?.linuxDeb || targetUrl;
+      if (detectedPlatform === 'mac-intel') targetUrl = data.downloads?.macIntel || data.downloads?.mac || targetUrl;
+      else if (detectedPlatform.startsWith('mac')) targetUrl = data.downloads?.macSilicon || data.downloads?.mac || targetUrl;
+      else if (detectedPlatform.startsWith('windows')) targetUrl = data.downloads?.windows || targetUrl;
+      else if (detectedPlatform === 'android') targetUrl = data.downloads?.android || targetUrl;
+      else if (detectedPlatform.startsWith('linux')) targetUrl = data.downloads?.linuxAppImage || data.downloads?.linuxDeb || targetUrl;
 
       setUpdateInfo({
         hasUpdate,
         latestVersion: data.version || APP_CLIENT_VERSION,
         currentVersion: APP_CLIENT_VERSION,
         downloadUrl: targetUrl,
-        platform: detected,
+        platform: detectedPlatform,
         notes: data.notes || '',
         isChecking: false,
         downloads: data.downloads || null
@@ -1708,7 +1718,40 @@ function AppContent({ isPreview = false }) {
     };
 
     checkFriendsNotifications();
-    const interval = setInterval(checkFriendsNotifications, 25000);
+    // Enhanced polling for friends notifications with online check & timeout
+    const pollFriends = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setFriendsIncomingCount(0);
+        return;
+      }
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000); // 5 s timeout
+        const res = await apiFetch('/api/friends', { signal: controller.signal });
+        clearTimeout(timeout);
+        if (!res.ok) throw new Error('bad status');
+        const data = await res.json();
+        const incomingReqs = Array.isArray(data.incoming) ? data.incoming : [];
+        const rawNotifs = Array.isArray(data.notifications) ? data.notifications : [];
+        const notifs = rawNotifs.filter(n => !dismissedNotifIdsRef.current.has(n.id));
+        const totalCount = incomingReqs.length + notifs.length;
+        setFriendsIncomingCount(totalCount);
+        const list = Array.isArray(data.friends) ? data.friends : [];
+        setFriendsList(list);
+        if (typeof window !== 'undefined' && list.length > 0) {
+          try { localStorage.setItem('daybase_friends_cache', JSON.stringify(list)); } catch (_) {}
+        }
+        // Filter study notifications when timer is running
+        const eligibleNotifs = isTimerRunning ? notifs.filter(n => n.type !== 'study') : notifs;
+        // (you may update UI with eligibleNotifs if needed)
+      } catch (e) {
+        console.warn('[Friends polling error]', e);
+        setFriendsIncomingCount(0);
+      }
+    };
+    const interval = setInterval(pollFriends, 25000);
+    return () => clearInterval(interval);
+
     return () => {
       isMounted = false;
       clearInterval(interval);

@@ -8,6 +8,7 @@ const GITHUB_REPO = 'o3yin3yin-create/trackert-v2-';
 const DEFAULT_DOWNLOADS = {
   mac: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.1/bokra_0.1.1_aarch64.dmg`,
   macArm: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.1/bokra_0.1.1_aarch64.dmg`,
+  macSilicon: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.1/bokra_0.1.1_aarch64.dmg`,
   macIntel: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.1/bokra_0.1.1_x64.dmg`,
   windows: '/bokra-windows.zip',
   android: '/bokra.apk',
@@ -54,6 +55,7 @@ export async function GET() {
       if (name.endsWith('.dmg')) {
         if (name.includes('aarch64') || name.includes('arm64')) {
           downloads.macArm = url;
+          downloads.macSilicon = url;
           downloads.mac = url;
         } else if (name.includes('x64') || name.includes('x86_64') || name.includes('intel')) {
           downloads.macIntel = url;

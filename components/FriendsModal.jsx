@@ -346,10 +346,25 @@ export default function FriendsModal({
     const timer = setTimeout(async () => {
       if (clean === lastQueryRef.current) return;
 
+      // Check online status before attempting search
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setSearchError(isRtl ? 'لا يوجد اتصال بالإنترنت.' : 'No internet connection.');
+        setSearchResult(null);
+        setSearchPerformed(true);
+        setSearching(false);
+        return;
+      }
+
       setSearching(true);
       setSearchError(null);
+      const searchAbort = new AbortController();
+      const searchTimeout = setTimeout(() => searchAbort.abort(), 6000);
       try {
-        const res = await apiFetch(`/api/friends/search?username=${encodeURIComponent(clean)}`);
+        const res = await apiFetch(`/api/friends/search?username=${encodeURIComponent(clean)}`, {
+          signal: searchAbort.signal,
+          timeoutMs: 6000,
+        });
+        clearTimeout(searchTimeout);
         if (res.status === 429) {
           setSearchError(translations[lang]?.tooManyRequests || translations.en?.tooManyRequests || 'Too many requests. Please wait a moment.');
           setSearchResult(null);
@@ -374,7 +389,12 @@ export default function FriendsModal({
         setSearchResult(data);
         setSearchPerformed(true);
       } catch (err) {
-        setSearchError(isRtl ? 'تعذر البحث. تحقق من الاتصال بالإنترنت.' : 'Search failed. Check your connection.');
+        clearTimeout(searchTimeout);
+        if (err?.name === 'AbortError') {
+          setSearchError(isRtl ? 'انتهت مهلة البحث. حاول مجدداً.' : 'Search timed out. Please try again.');
+        } else {
+          setSearchError(isRtl ? 'تعذر البحث. تحقق من الاتصال بالإنترنت.' : 'Search failed. Check your connection.');
+        }
         setSearchResult(null);
         setSearchPerformed(true);
       } finally {
@@ -439,19 +459,31 @@ export default function FriendsModal({
   }, [friendsWithPresence, selectedFriend]);
 
   // Live polling for friends presence while modal is open (every 10s)
+  // With online check + abort controller to avoid hanging on desktop
   useEffect(() => {
     if (!isOpen) return;
-    const interval = setInterval(() => {
-      apiFetch('/api/friends')
-        .then((res) => res.json())
-        .then((data) => {
-          if (Array.isArray(data.friends)) setFriends(data.friends);
-          if (Array.isArray(data.incoming)) setIncoming(data.incoming);
-          if (Array.isArray(data.outgoing)) setOutgoing(data.outgoing);
-        })
-        .catch(() => {});
-    }, 10000);
-    return () => clearInterval(interval);
+    let abortCtrl = null;
+    const poll = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+      try {
+        abortCtrl = new AbortController();
+        const timeout = setTimeout(() => abortCtrl.abort(), 5000);
+        const res = await apiFetch('/api/friends', { signal: abortCtrl.signal, timeoutMs: 5000 });
+        clearTimeout(timeout);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (Array.isArray(data.friends)) setFriends(data.friends);
+        if (Array.isArray(data.incoming)) setIncoming(data.incoming);
+        if (Array.isArray(data.outgoing)) setOutgoing(data.outgoing);
+      } catch (e) {
+        // silently ignore network/abort errors during polling
+      }
+    };
+    const interval = setInterval(poll, 10000);
+    return () => {
+      clearInterval(interval);
+      if (abortCtrl) abortCtrl.abort();
+    };
   }, [isOpen]);
 
   // Count active friends
