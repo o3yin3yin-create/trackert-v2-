@@ -13,7 +13,7 @@ export async function GET(req) {
   if (!await rateLimit(`search:${me.id}`, 40)) return json({ error: 'too_many_requests' }, 429, req)
 
   const uname = normUsername(new URL(req.url).searchParams.get('username'))
-  if (uname.length < 4 || uname.length > 64) return json({ user: null }, 200, req)
+  if (uname.length < 3 || uname.length > 64) return json({ user: null }, 200, req)
 
   const target = await prisma.user.findUnique({
     where: { username: uname },

@@ -3,8 +3,13 @@ import { getAuthUserId } from '@/lib/auth-server';
 import prisma from '@/lib/prisma';
 import { rateLimit, getClientIp } from '@/lib/rateLimit';
 import { schedulePomodoroEnd, cancelPomodoroPush } from '@/lib/pushSchedule';
+import { getCorsHeaders, handleCorsOptions } from '@/lib/cors';
 
 export const dynamic = 'force-dynamic';
+
+export async function OPTIONS(req) {
+  return handleCorsOptions(req);
+}
 
 // Short-lived in-memory session cache to relieve DB connection pool (TTL: 2500ms)
 const sessionCache = new Map();
@@ -19,13 +24,14 @@ function cleanStaleSessionCache() {
 }
 
 export async function GET(req) {
+  const cors = getCorsHeaders(req);
   const ip = getClientIp(req);
   if (!await rateLimit(`session-get-ip:${ip}`, 120, 60_000)) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: cors });
   }
 
   const userId = await getAuthUserId(req);
-  if (!userId) return NextResponse.json({ activeSessionType: null, activeSessionData: null });
+  if (!userId) return NextResponse.json({ activeSessionType: null, activeSessionData: null }, { headers: cors });
 
   const now = Date.now();
   const bypass = req?.headers?.get?.('x-bypass-cache') === '1' || process.env.DISABLE_SESSION_CACHE === 'true';
@@ -47,23 +53,24 @@ export async function GET(req) {
     };
     sessionCache.set(userId, { data: result, exp: now + 2500 });
     cleanStaleSessionCache();
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: cors });
   } catch (e) {
-    return NextResponse.json({ activeSessionType: null, activeSessionData: null });
+    return NextResponse.json({ activeSessionType: null, activeSessionData: null }, { headers: cors });
   }
 }
 
 export async function POST(req) {
+  const cors = getCorsHeaders(req);
   const ip = getClientIp(req);
   if (!await rateLimit(`session-post-ip:${ip}`, 60, 60_000)) {
-    return NextResponse.json({ error: 'Too many requests from this IP' }, { status: 429 });
+    return NextResponse.json({ error: 'Too many requests from this IP' }, { status: 429, headers: cors });
   }
 
   const userId = await getAuthUserId(req);
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: cors });
 
   if (!await rateLimit(`session:${userId}`, 60, 60_000)) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: cors });
   }
 
   try {
@@ -73,17 +80,17 @@ export async function POST(req) {
     // Validate type enum
     const validTypes = ['pomodoro', 'flight', null, ''];
     if (type !== undefined && !validTypes.includes(type)) {
-      return NextResponse.json({ error: 'Invalid session type' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid session type' }, { status: 400, headers: cors });
     }
 
     // Validate data payload size
     if (data !== undefined && data !== null) {
       if (typeof data !== 'object') {
-        return NextResponse.json({ error: 'Invalid session data format' }, { status: 400 });
+        return NextResponse.json({ error: 'Invalid session data format' }, { status: 400, headers: cors });
       }
       const dataStr = JSON.stringify(data);
       if (dataStr.length > 25_000) {
-        return NextResponse.json({ error: 'Session data exceeds allowed limit' }, { status: 413 });
+        return NextResponse.json({ error: 'Session data exceeds allowed limit' }, { status: 413, headers: cors });
       }
     }
 
@@ -111,9 +118,9 @@ export async function POST(req) {
       exp: Date.now() + 2500
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, { headers: cors });
   } catch (error) {
     console.error('Session API Error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500, headers: cors });
   }
 }

@@ -2,26 +2,26 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-const FALLBACK_VERSION = '0.1.2';
+const FALLBACK_VERSION = '0.1.3';
 const GITHUB_REPO = 'o3yin3yin-create/trackert-v2-';
 
 const DEFAULT_DOWNLOADS = {
-  mac: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.2/bokra_0.1.2_aarch64.dmg`,
-  macArm: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.2/bokra_0.1.2_aarch64.dmg`,
-  macSilicon: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.2/bokra_0.1.2_aarch64.dmg`,
-  macIntel: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.2/bokra_0.1.2_x64.dmg`,
+  mac: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.3/bokra_0.1.3_aarch64.dmg`,
+  macArm: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.3/bokra_0.1.3_aarch64.dmg`,
+  macSilicon: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.3/bokra_0.1.3_aarch64.dmg`,
+  macIntel: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.3/bokra_0.1.3_x64.dmg`,
   windows: '/bokra-windows.zip',
-  android: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.2/app-debug.apk`,
-  linuxDeb: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.2/bokra_0.1.2_amd64.deb`,
-  linuxAppImage: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.2/bokra_0.1.2_amd64.AppImage`,
-  linuxRpm: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.2/bokra-0.1.2-1.x86_64.rpm`,
+  android: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.3/app-debug.apk`,
+  linuxDeb: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.3/bokra_0.1.3_amd64.deb`,
+  linuxAppImage: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.3/bokra_0.1.3_amd64.AppImage`,
+  linuxRpm: `https://github.com/${GITHUB_REPO}/releases/download/v0.1.3/bokra_0.1.3-1.x86_64.rpm`,
 };
 
-const RELEASE_NOTES_0_1_2 = `bokra v0.1.2 - التحديث الشامل:
-- حل مشكلة البحث وإضافة الأصدقاء بالكامل على الماك وسطح المكتب.
-- فصل حزم ماك كلياً بين معالجات Apple Silicon ومعالجات Intel.
-- استعادة وحفظ استمرارية الستريك ومزامنتها سحابياً.
-- تحسين أداء استجابة الشبكة وضمان استقرار المزامنة دون انقطاع.`;
+const RELEASE_NOTES_0_1_3 = `bokra v0.1.3 - تحديث الدروع وشبكة الأصدقاء:
+- إصلاح نظام دروع حماية الستريك (Emergency Shields) بالكامل: إتاحة الدرع تلقائياً لكل عادة تصل لـ 7 أيام ستريك فأكثر.
+- إتاحة نافذة استعادة لمدة 3 أيام عند كسر الستريك لفحص الـ 7 أيام السابقة واستعادة الستريك بنقرة واحدة عند استخدام الدرع.
+- إصلاح كامل للاتصال والبحث في قائمة الأصدقاء (Friends) على ماك وسطح المكتب وضبط الـ CORS والـ Timeouts.
+- منع مسح جلسات تسجيل الدخول وتثبيت أداء المزامنة السحابية.`;
 
 export async function GET() {
   try {
@@ -79,7 +79,7 @@ export async function GET() {
       tagName,
       releaseName: data.name || `Release ${tagName}`,
       publishedAt: data.published_at || new Date().toISOString(),
-      notes: data.body || RELEASE_NOTES_0_1_2,
+      notes: data.body || RELEASE_NOTES_0_1_3,
       downloads,
     }, {
       headers: {
@@ -93,7 +93,7 @@ export async function GET() {
       tagName: `v${FALLBACK_VERSION}`,
       releaseName: `Release v${FALLBACK_VERSION}`,
       publishedAt: new Date().toISOString(),
-      notes: RELEASE_NOTES_0_1_2,
+      notes: RELEASE_NOTES_0_1_3,
       downloads: DEFAULT_DOWNLOADS,
       fallback: true,
     }, {

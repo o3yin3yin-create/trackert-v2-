@@ -256,12 +256,9 @@ export default function FriendsModal({
       }
       setError(null);
       setIsAuthError(false);
-      const res = await apiFetch('/api/friends', { timeoutMs: 6000 });
+      const res = await apiFetch('/api/friends', { timeoutMs: 15000 });
       if (res.status === 401) {
         setIsAuthError(true);
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('bokra_desktop_token');
-        }
         setError(isRtl ? 'انتهت صلاحية جلسة تسجيل الدخول. يرجى تسجيل الدخول مجدداً.' : 'Session expired. Please sign in again.');
         return;
       }
@@ -358,11 +355,11 @@ export default function FriendsModal({
       setSearching(true);
       setSearchError(null);
       const searchAbort = new AbortController();
-      const searchTimeout = setTimeout(() => searchAbort.abort(), 6000);
+      const searchTimeout = setTimeout(() => searchAbort.abort(), 15000);
       try {
         const res = await apiFetch(`/api/friends/search?username=${encodeURIComponent(clean)}`, {
           signal: searchAbort.signal,
-          timeoutMs: 6000,
+          timeoutMs: 15000,
         });
         clearTimeout(searchTimeout);
         if (res.status === 429) {
@@ -372,10 +369,7 @@ export default function FriendsModal({
           return;
         }
         if (res.status === 401) {
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('bokra_desktop_token');
-          }
-          setSearchError(isRtl ? 'انتهت صلاحية جلسة تسجيل الدخول. يرجى إعادة تسجيل الدخول.' : 'Session expired. Please sign in again.');
+          setSearchError(isRtl ? 'انتهت صلاحية جلسة تسجيل الدخول. يرجى تسجيل الدخول مجدداً.' : 'Session expired. Please sign in again.');
           setSearchResult(null);
           setSearchPerformed(true);
           return;

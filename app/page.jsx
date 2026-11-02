@@ -37,7 +37,7 @@ import { HABIT_PRESETS, getLocalizedPreset } from '../lib/habitPresets';
 import { guideSections } from '../lib/guideContent';
 import { getDisplayFriend, formatBriefActivity, getActivityBadge, getSafeTrackArt, getIslandDetails, PRESENCE_PRESETS } from '../lib/friendsPresets';
 
-const APP_CLIENT_VERSION = '0.1.2';
+const APP_CLIENT_VERSION = '0.1.3';
 
 function compareSemver(v1, v2) {
   if (!v1 || !v2) return 0;
@@ -3245,15 +3245,77 @@ function AppContent({ isPreview = false }) {
     return streak;
   };
 
-  // --- Card Minting Engine (max 1 card per habit; earned after 7 streak days, replacement earned after use) ---
+  // --- Broken Streak & 3-Day Recovery Window Helper ---
+  // If a streak broke in the last 3 days, checks if user had a 7+ day streak before the break
+  const getBrokenStreakInfo = (habitId) => {
+    const habit = habits.find(h => h.id === habitId);
+    if (!habit) return { isRepairable: false, previousStreak: 0, missedDates: [] };
+
+    const missedDates = [];
+    for (let dayOffset = 1; dayOffset <= 3; dayOffset++) {
+      const d = new Date();
+      d.setDate(d.getDate() - dayOffset);
+      const dateStr = getFormatDateStr(d);
+
+      if (isHabitScheduledForDate(habit, dateStr)) {
+        const isCompleted = habit.type === 'single'
+          ? !!dailyData[`${dateStr}-${habitId}`]
+          : habit.subItems?.length > 0 && habit.subItems.every(sub => !!dailyData[`${dateStr}-${habitId}-${sub}`]);
+        
+        if (!isCompleted) {
+          missedDates.push(dateStr);
+        }
+      }
+    }
+
+    if (missedDates.length === 0) {
+      return { isRepairable: false, previousStreak: 0, missedDates: [] };
+    }
+
+    // Sort ascending (oldest missed date first)
+    const sortedMissed = [...missedDates].sort();
+    const oldestMissedStr = sortedMissed[0];
+    const scanDate = new Date(oldestMissedStr);
+    scanDate.setDate(scanDate.getDate() - 1);
+
+    let streakBeforeBreak = 0;
+    for (let i = 0; i < 60; i++) {
+      const dateStr = getFormatDateStr(scanDate);
+      if (!isHabitScheduledForDate(habit, dateStr)) {
+        scanDate.setDate(scanDate.getDate() - 1);
+        continue;
+      }
+      const isCompleted = habit.type === 'single'
+        ? !!dailyData[`${dateStr}-${habitId}`]
+        : habit.subItems?.length > 0 && habit.subItems.every(sub => !!dailyData[`${dateStr}-${habitId}-${sub}`]);
+
+      if (isCompleted) {
+        streakBeforeBreak++;
+        scanDate.setDate(scanDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+
+    const hasStoredCard = (habitCards[habitId] || 0) > 0;
+    const isRepairable = (streakBeforeBreak >= 7 || hasStoredCard);
+
+    return {
+      isRepairable,
+      previousStreak: streakBeforeBreak,
+      missedDates,
+    };
+  };
+
+  // --- Card Minting Engine (max 1 card per habit; earned after 7 streak days, usable during 3-day recovery) ---
   useEffect(() => {
     if (!isMounted) return;
     let newCardsGranted = false;
-    const newLog = { ...grantedCardsLog };
     const newCards = { ...habitCards };
 
     habits.forEach(habit => {
       const streak = getStreak(habit.id);
+      const broken = getBrokenStreakInfo(habit.id);
       const currentCards = newCards[habit.id] || 0;
 
       // Strictly clamp: no habit can hold more than 1 card
@@ -3262,23 +3324,18 @@ function AppContent({ isPreview = false }) {
         newCardsGranted = true;
       }
 
-      // If user has 0 cards and has an active streak of at least 7 days
+      // If habit currently has an active streak of at least 7 days and 0 cards, grant 1 shield
       if (streak >= 7 && (newCards[habit.id] || 0) < 1) {
-        const lastUsedStreak = newLog[`${habit.id}-last-used-streak`] || 0;
-        // Eligible if they never used a card, or reached at least 7 streak days after consuming the last card
-        const isEligible = !lastUsedStreak || streak >= lastUsedStreak + 7;
-        const grantKey = `${habit.id}-streak-block-${Math.floor(streak / 7)}`;
-
-        if (isEligible && !newLog[grantKey]) {
-          newLog[grantKey] = true;
-          newCards[habit.id] = 1;
-          newCardsGranted = true;
-        }
+        newCards[habit.id] = 1;
+        newCardsGranted = true;
+      } else if (broken.isRepairable && (newCards[habit.id] || 0) < 1) {
+        // Also grant/preserve shield within the 3-day recovery window of a 7+ day broken streak
+        newCards[habit.id] = 1;
+        newCardsGranted = true;
       }
     });
 
     if (newCardsGranted) {
-      setGrantedCardsLog(newLog);
       setHabitCards(newCards);
     }
   }, [dailyData, habits, isMounted]);
@@ -3829,17 +3886,55 @@ function AppContent({ isPreview = false }) {
 
   // --- Emergency Card Function ---
   const consumeEmergencyCard = (habitId) => {
-    const cardsLeft = habitCards[habitId] || 0;
+    const habit = habits.find(h => h.id === habitId);
+    if (!habit) return;
+
     const streak = getStreak(habitId);
-    if (cardsLeft <= 0 || streak <= 0) return;
+    const broken = getBrokenStreakInfo(habitId);
+    const hasCards = (habitCards[habitId] || 0) > 0 || (broken.isRepairable && broken.previousStreak >= 7);
+    if (!hasCards) return;
+
     markLocalMutation(activeDateStr);
-    const key = `${activeDateStr}-${habitId}`;
-    setDailyData(prev => ({ ...prev, [key]: true }));
+    let updatedDaily = { ...dailyData };
+
+    if (broken.isRepairable && broken.missedDates.length > 0) {
+      // Restore all missed dates within the 3-day recovery window
+      broken.missedDates.forEach(dateStr => {
+        if (habit.type === 'single') {
+          updatedDaily[`${dateStr}-${habitId}`] = true;
+        } else if (Array.isArray(habit.subItems)) {
+          habit.subItems.forEach(sub => {
+            updatedDaily[`${dateStr}-${habitId}-${sub}`] = true;
+          });
+        }
+      });
+    } else {
+      // Normal use on active day to protect streak
+      const key = `${activeDateStr}-${habitId}`;
+      if (habit.type === 'single') {
+        updatedDaily[key] = true;
+      } else if (Array.isArray(habit.subItems)) {
+        habit.subItems.forEach(sub => {
+          updatedDaily[`${activeDateStr}-${habitId}-${sub}`] = true;
+        });
+      }
+    }
+
+    setDailyData(updatedDaily);
     setHabitCards(prev => ({ ...prev, [habitId]: 0 }));
     setGrantedCardsLog(prev => ({
       ...(prev || {}),
-      [`${habitId}-last-used-streak`]: streak
+      [`${habitId}-last-used-streak`]: streak || broken.previousStreak,
+      [`${habitId}-restored-at`]: Date.now()
     }));
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('daybase_dailyData_v4', JSON.stringify(updatedDaily));
+        const nextCards = { ...habitCards, [habitId]: 0 };
+        localStorage.setItem('daybase_cards_v4', JSON.stringify(nextCards));
+      } catch (_) {}
+    }
   };
 
   // --- Score Calculations ---
@@ -5959,30 +6054,41 @@ function AppContent({ isPreview = false }) {
                     <p className="text-white/30 text-center py-16 text-sm">{t('noSingleHabits')}</p>
                   ) : (
                     habits.filter(h => h.type === 'single').map(h => {
-                      const cards = habitCards[h.id] || 0;
                       const streak = getStreak(h.id);
+                      const broken = getBrokenStreakInfo(h.id);
+                      const earnedCards = (streak >= 7 || broken.isRepairable) ? 1 : 0;
+                      const cards = Math.max(habitCards[h.id] || 0, earnedCards);
                       const hasCards = cards > 0;
                       const isChecked = !!dailyData[`${activeDateStr}-${h.id}`];
-                      // An emergency card can ONLY be used if there is an active streak (>0) to protect!
-                      const canUseCard = hasCards && streak > 0 && !isChecked;
+                      // Can use card if:
+                      // 1) Streak was broken in the last 3 days and is repairable (with 7+ days past streak)
+                      // 2) Or active streak (>0) where active date is not checked
+                      const canUseCard = hasCards && (broken.isRepairable || (streak > 0 && !isChecked));
                       return (
                         <div 
                           key={h.id} 
                           className={`flex items-center justify-between p-4 sm:p-5 rounded-2xl border transition-all ${
-                            (hasCards && streak > 0)
+                            (hasCards && (streak > 0 || broken.isRepairable))
                               ? 'bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] border-white/20 shadow-xl'
                               : 'bg-white/5 border-white/5 opacity-60'
                           }`}
                         >
                           <div className="flex flex-col gap-1 flex-1 min-w-0 pr-3">
                             <span className="text-base font-bold text-white truncate">{h.name}</span>
-                            <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider flex items-center gap-1.5">
+                            <span className="text-[11px] font-semibold uppercase tracking-wider flex items-center gap-1.5">
                               {streak > 0 ? (
                                 <>
                                   <Flame size={12} strokeWidth={2.5} className="shrink-0 text-orange-400" />
-                                  <span>{streak} {t('dayStreak')}</span>
+                                  <span className="text-white/70">{streak} {t('dayStreak')}</span>
                                 </>
-                              ) : t('noActiveStreak')}
+                              ) : broken.isRepairable ? (
+                                <>
+                                  <Flame size={12} strokeWidth={2.5} className="shrink-0 text-amber-400" />
+                                  <span className="text-amber-400 font-bold">{broken.previousStreak} {t('dayStreak')} ({isAr ? 'مكسور - استعد بالشيلد' : 'Broken - Restore with Shield'})</span>
+                                </>
+                              ) : (
+                                <span className="text-white/40">{t('noActiveStreak')}</span>
+                              )}
                             </span>
                           </div>
                           <div className="flex gap-3 items-center shrink-0">
@@ -5990,9 +6096,9 @@ function AppContent({ isPreview = false }) {
                               <button
                                 onClick={() => { haptic('medium'); consumeEmergencyCard(h.id); }}
                                 className="px-4 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all active:scale-95 shadow-lg"
-                                style={{ backgroundColor: themeColor, color: '#000' }}
+                                style={{ backgroundColor: broken.isRepairable ? '#F59E0B' : themeColor, color: '#000' }}
                               >
-                                {t('use')}
+                                {broken.isRepairable ? (isAr ? 'استعادة' : 'Restore') : t('use')}
                               </button>
                             )}
                             <div className="flex gap-2 items-center">

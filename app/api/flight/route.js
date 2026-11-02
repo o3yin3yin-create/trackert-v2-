@@ -1,19 +1,25 @@
 import { NextResponse } from 'next/server';
 import { FlightRadar24API } from 'flightradarapi';
 import { rateLimit, getClientIp } from '@/lib/rateLimit';
+import { getCorsHeaders, handleCorsOptions } from '@/lib/cors';
+
+export async function OPTIONS(request) {
+  return handleCorsOptions(request);
+}
 
 export async function GET(request) {
+  const cors = getCorsHeaders(request);
   try {
     const ip = getClientIp(request);
     if (!await rateLimit(`flight-list:${ip}`, 20, 60_000)) {
-      return NextResponse.json({ error: 'Too many flight requests. Please slow down.' }, { status: 429 });
+      return NextResponse.json({ error: 'Too many flight requests. Please slow down.' }, { status: 429, headers: cors });
     }
 
     const frapi = new FlightRadar24API();
     const flights = await frapi.getFlights();
     
     if (!flights || flights.length === 0) {
-      return NextResponse.json({ error: "No flights found" }, { status: 500 });
+      return NextResponse.json({ error: "No flights found" }, { status: 500, headers: cors });
     }
 
     // Filter bulk list: only airborne flights with reasonable altitude
@@ -111,9 +117,9 @@ export async function GET(request) {
       });
     }
 
-    return NextResponse.json({ flights: validFlights.slice(0, 25) });
+    return NextResponse.json({ flights: validFlights.slice(0, 25) }, { headers: cors });
   } catch (error) {
     console.error("API Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500, headers: cors });
   }
 }
