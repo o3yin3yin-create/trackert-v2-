@@ -77,11 +77,31 @@ export default function PushNotificationsCard({
     syncPermission();
 
     try {
-      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      // 1. Check browser support
+      if (typeof window === 'undefined' || !('Notification' in window)) {
+        setError(isAr ? 'هذا المتصفح لا يدعم الإشعارات' : 'Notifications not supported in this browser');
+        setBusy(false);
+        return;
+      }
+
+      // 2. Check iOS PWA requirement
+      if (iosNeedsHomeScreen()) {
+        setNeedsHomeScreen(true);
+        setBusy(false);
+        alert(
+          isAr
+            ? 'على أجهزة آيفون: يجب إضافة الموقع إلى الشاشة الرئيسية (Add to Home Screen) أولاً من قائمة المشاركة بسفاري، ثم فتح التطبيق من الشاشة الرئيسية لتفعيل الإشعارات.'
+            : 'On iPhone: Please add bokra to your Home Screen first via Safari Share menu, then open it from the home screen icon to enable notifications.'
+        );
+        return;
+      }
+
+      // 3. If already granted, activate immediately
+      if (Notification.permission === 'granted') {
         setPermission('granted');
         await enablePushNotifications().catch(() => {});
         showLocalNotification(
-          isAr ? 'تم تفعيل الإشعارات' : 'Notifications enabled',
+          isAr ? 'تم تفعيل الإشعارات بنجاح' : 'Notifications enabled',
           {
             body: isAr 
               ? 'ستصلك الآن تنبيهات المحاضرات وجلسات التركيز والأصدقاء.' 
@@ -89,13 +109,51 @@ export default function PushNotificationsCard({
             tag: 'push_enabled',
           }
         );
+        setBusy(false);
         return;
       }
 
+      // 4. If permission is default, trigger browser permission prompt
+      if (Notification.permission === 'default') {
+        const res = await Notification.requestPermission();
+        if (res === 'granted') {
+          setPermission('granted');
+          await enablePushNotifications().catch(() => {});
+          showLocalNotification(
+            isAr ? 'تم تفعيل الإشعارات بنجاح' : 'Notifications enabled',
+            {
+              body: isAr 
+                ? 'ستصلك الآن تنبيهات المحاضرات وجلسات التركيز والأصدقاء.' 
+                : 'You will receive lecture, focus, and friend alerts.',
+              tag: 'push_enabled',
+            }
+          );
+          setBusy(false);
+          return;
+        } else if (res === 'denied') {
+          setPermission('denied');
+          setBusy(false);
+          return;
+        }
+      }
+
+      // 5. If browser status is still denied, explain step-by-step
+      if (Notification.permission === 'denied') {
+        setPermission('denied');
+        alert(
+          isAr
+            ? 'المتصفح مسجل أن إذن الإشعارات محظور (Blocked) لهذا الموقع.\n\nلتفعيله بسهولة:\n1. اضغط على أيقونة الإعدادات ⚙️ أو القفل 🔒 بجوار الرابط في شريط المتصفح العلوي.\n2. اختر إذن الإشعارات (Notifications) واجعله "سماح" (Allow).\n3. اضغط على هذا الزر مجدداً وسيتم التفعيل فوراً!'
+            : 'Notifications are blocked in your browser settings for this site.\n\nTo allow:\n1. Click the Tune ⚙️ or Lock 🔒 icon next to the URL in the address bar.\n2. Change Notifications to "Allow".\n3. Tap this button again and it will activate immediately!'
+        );
+        setBusy(false);
+        return;
+      }
+
+      // Fallback
       await enablePushNotifications();
       setPermission('granted');
       showLocalNotification(
-        isAr ? 'تم تفعيل الإشعارات' : 'Notifications enabled',
+        isAr ? 'تم تفعيل الإشعارات بنجاح' : 'Notifications enabled',
         {
           body: isAr 
             ? 'ستصلك الآن تنبيهات المحاضرات وجلسات التركيز والأصدقاء.' 
@@ -104,12 +162,12 @@ export default function PushNotificationsCard({
         }
       );
     } catch (err) {
-      const msg = err?.message || '';
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
         setPermission('granted');
         setError('');
         return;
       }
+      const msg = err?.message || '';
       if (msg === 'ios_homescreen') {
         setNeedsHomeScreen(true);
       } else if (msg === 'denied' || (typeof Notification !== 'undefined' && Notification.permission === 'denied')) {
