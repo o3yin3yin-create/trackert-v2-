@@ -22,18 +22,18 @@ const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
 function generateFallbackFlights() {
   const now = Math.floor(Date.now() / 1000);
   const baseRoutes = [
-    { callsign: "EK1", airline: "Emirates", origin: "DXB", destination: "LHR", model: "Airbus A380-800", remMins: 45 },
-    { callsign: "MS777", airline: "EgyptAir", origin: "CAI", destination: "CDG", model: "Boeing 777-300ER", remMins: 30 },
-    { callsign: "BA117", airline: "British Airways", origin: "LHR", destination: "JFK", model: "Boeing 787-9 Dreamliner", remMins: 90 },
-    { callsign: "QR703", airline: "Qatar Airways", origin: "DOH", destination: "JFK", model: "Airbus A350-1000", remMins: 120 },
-    { callsign: "SV102", airline: "Saudia", origin: "JED", destination: "CAI", model: "Boeing 787-10 Dreamliner", remMins: 60 },
-    { callsign: "AF281", airline: "Air France", origin: "HND", destination: "CDG", model: "Airbus A350-900", remMins: 75 },
-    { callsign: "LH400", airline: "Lufthansa", origin: "FRA", destination: "JFK", model: "Boeing 747-8 Intercontinental", remMins: 110 },
-    { callsign: "SQ22", airline: "Singapore Airlines", origin: "SIN", destination: "EWR", model: "Airbus A350-900", remMins: 180 },
-    { callsign: "TK182", airline: "Turkish Airlines", origin: "IST", destination: "MEX", model: "Boeing 787-9 Dreamliner", remMins: 140 },
-    { callsign: "QF1", airline: "Qantas", origin: "SYD", destination: "LHR", model: "Boeing 787-9 Dreamliner", remMins: 160 },
-    { callsign: "UA29", airline: "United Airlines", origin: "SFO", destination: "SIN", model: "Boeing 787-9 Dreamliner", remMins: 50 },
-    { callsign: "MS985", airline: "EgyptAir", origin: "CAI", destination: "JFK", model: "Boeing 787-9 Dreamliner", remMins: 95 },
+    { callsign: "SQ22", airline: "Singapore Airlines", origin: "SIN", destination: "EWR", model: "Airbus A350-900", remMins: 810 }, // 13h 30m
+    { callsign: "QF1", airline: "Qantas", origin: "SYD", destination: "LHR", model: "Boeing 787-9 Dreamliner", remMins: 690 }, // 11h 30m
+    { callsign: "QR703", airline: "Qatar Airways", origin: "DOH", destination: "JFK", model: "Airbus A350-1000", remMins: 570 }, // 9h 30m
+    { callsign: "MS985", airline: "EgyptAir", origin: "CAI", destination: "JFK", model: "Boeing 787-9 Dreamliner", remMins: 500 }, // 8h 20m
+    { callsign: "LH400", airline: "Lufthansa", origin: "FRA", destination: "JFK", model: "Boeing 747-8 Intercontinental", remMins: 430 }, // 7h 10m
+    { callsign: "AF281", airline: "Air France", origin: "HND", destination: "CDG", model: "Airbus A350-900", remMins: 380 }, // 6h 20m
+    { callsign: "EK1", airline: "Emirates", origin: "DXB", destination: "LHR", model: "Airbus A380-800", remMins: 340 }, // 5h 40m
+    { callsign: "TK182", airline: "Turkish Airlines", origin: "IST", destination: "MEX", model: "Boeing 787-9 Dreamliner", remMins: 290 }, // 4h 50m
+    { callsign: "BA117", airline: "British Airways", origin: "LHR", destination: "JFK", model: "Boeing 787-9 Dreamliner", remMins: 240 }, // 4h 00m
+    { callsign: "UA29", airline: "United Airlines", origin: "SFO", destination: "SIN", model: "Boeing 787-9 Dreamliner", remMins: 195 }, // 3h 15m
+    { callsign: "MS777", airline: "EgyptAir", origin: "CAI", destination: "CDG", model: "Boeing 777-300ER", remMins: 155 }, // 2h 35m
+    { callsign: "SV102", airline: "Saudia", origin: "JED", destination: "CAI", model: "Boeing 787-10 Dreamliner", remMins: 105 }, // 1h 45m
   ];
 
   return baseRoutes.map((r, i) => {
@@ -81,7 +81,7 @@ export async function GET(request) {
           const liveRemaining = f.estimatedArrival - now;
           return { ...f, remainingSeconds: liveRemaining };
         })
-        .filter(f => f.remainingSeconds > 10 * 60);
+        .filter(f => f.remainingSeconds > 30 * 60);
 
       if (validCached.length >= 10) {
         return filterAndRespond(validCached, durationParam, cors);
@@ -114,8 +114,8 @@ export async function GET(request) {
 
           const remainingSeconds = Math.round((distToDest / speedKmh) * 3600);
           
-          // Target focus flights between 20 mins and 6 hours
-          if (remainingSeconds < 20 * 60 || remainingSeconds > 6 * 3600) continue;
+          // Target focus flights with generous duration window (35 mins to 16 hours)
+          if (remainingSeconds < 35 * 60 || remainingSeconds > 16 * 3600) continue;
 
           const totalSeconds = Math.max(remainingSeconds + 900, Math.round((totalDist / speedKmh) * 3600));
           const estimatedArrival = now + remainingSeconds;
@@ -136,7 +136,7 @@ export async function GET(request) {
             speed: f.groundSpeed
           });
 
-          if (validFlights.length >= 40) break;
+          if (validFlights.length >= 300) break;
         }
       }
     } catch (apiErr) {
@@ -170,10 +170,24 @@ function filterAndRespond(flights, durationParam, cors) {
   if (durationParam > 0) {
     const targetSec = durationParam * 60;
     result.sort((a, b) => Math.abs(a.remainingSeconds - targetSec) - Math.abs(b.remainingSeconds - targetSec));
-  } else {
-    // Default: Sort by remaining time ascending so user sees quick flights first, then longer flights
-    result.sort((a, b) => a.remainingSeconds - b.remainingSeconds);
+    return NextResponse.json({ flights: result.slice(0, 30) }, { headers: cors });
   }
 
-  return NextResponse.json({ flights: result.slice(0, 25) }, { headers: cors });
+  // Tiered sampling for rich variety across all study durations:
+  // 8h+ (ultra-long), 5h-8h (deep work), 3h-5h (standard study), 1.5h-3h (moderate), ~1h (quick)
+  const tierUltra = result.filter(f => f.remainingSeconds >= 8 * 3600).slice(0, 10);
+  const tierLong = result.filter(f => f.remainingSeconds >= 5 * 3600 && f.remainingSeconds < 8 * 3600).slice(0, 12);
+  const tierMed = result.filter(f => f.remainingSeconds >= 3 * 3600 && f.remainingSeconds < 5 * 3600).slice(0, 12);
+  const tierFocus = result.filter(f => f.remainingSeconds >= 90 * 60 && f.remainingSeconds < 3 * 3600).slice(0, 12);
+  const tierShort = result.filter(f => f.remainingSeconds < 90 * 60).slice(0, 6);
+
+  let balanced = [...tierUltra, ...tierLong, ...tierMed, ...tierFocus, ...tierShort];
+  if (balanced.length < 15) {
+    balanced = result;
+  }
+
+  // Strictly sort descending: longest remaining flights at the top down to shorter ones
+  balanced.sort((a, b) => b.remainingSeconds - a.remainingSeconds);
+
+  return NextResponse.json({ flights: balanced }, { headers: cors });
 }
