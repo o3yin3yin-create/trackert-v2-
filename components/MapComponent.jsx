@@ -110,13 +110,13 @@ const SmoothPlaneMarker = ({ p0, p1, p2, targetProgress, isCameraLocked, mapPadd
 
   const icon = useMemo(() => L.divIcon({
     html: `<div class="plane-icon-inner" style="transform: rotate(0deg); display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="#090a0f" stroke="#ffffff" stroke-width="1.2" xmlns="http://www.w3.org/2000/svg" style="overflow: visible; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="#ffffff" stroke="#000000" stroke-width="0.8" xmlns="http://www.w3.org/2000/svg" style="overflow: visible; filter: drop-shadow(0 0 8px rgba(255,255,255,0.7)) drop-shadow(0 2px 5px rgba(0,0,0,0.9));">
         <path d="M21 16V14L13 9V3.5C13 2.67 12.33 2 11.5 2C10.67 2 10 2.67 10 3.5V9L2 14V16L10 13.5V19L8 20.5V22L11.5 21L15 22V20.5L13 19V13.5L21 16Z"/>
       </svg>
     </div>`,
     className: 'plane-icon-custom',
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
   }), []);
 
   useEffect(() => {
@@ -153,13 +153,14 @@ const MapComponent = ({ originCoords, destCoords, progress, liveTelemetry, isCam
     return generateBezierCurve(p0, p1, p2);
   }, [p0, p1, p2]);
 
-  const cityIcon = (color) => L.divIcon({
-    html: `<div style="width: 12px; height: 12px; background-color: ${color}; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 10px ${color};"></div>`,
+  const cityIcon = (color, label) => L.divIcon({
+    html: `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+      <div style="width: 10px; height: 10px; background-color: ${color}; border-radius: 50%; border: 2px solid #ffffff; box-shadow: 0 0 10px rgba(255,255,255,0.8);"></div>
+    </div>`,
     className: 'city-node-icon',
     iconSize: [12, 12],
     iconAnchor: [6, 6]
   });
-
 
   return (
     <div style={{ width: '100%', height: '100%', background: '#090a0f' }}>
@@ -170,28 +171,39 @@ const MapComponent = ({ originCoords, destCoords, progress, liveTelemetry, isCam
         attributionControl={false}
         style={{ width: '100%', height: '100%', background: '#090a0f' }}
       >
-        {/* Crisp Natural Color Vector Map Tiles (Apple Maps Natural Style) */}
+        {/* Authentic Aviation Dark Radar Map (CartoDB Dark Matter) */}
         <TileLayer
-          url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          subdomains={['a','b','c','d']}
           maxZoom={19}
         />
 
-        {/* Flight path curve as dotted line (Semi-transparent dark gray) */}
+        {/* Outer subtle glow along flight trajectory */}
         {curvePoints.length > 0 && (
           <Polyline 
             positions={curvePoints} 
-            color="#1e293b" 
-            weight={3} 
-            dashArray="6, 10" 
-            opacity={0.45}
+            color="#ffffff" 
+            weight={6} 
+            opacity={0.15}
+          />
+        )}
+
+        {/* Flight path curve as crisp glowing dotted line */}
+        {curvePoints.length > 0 && (
+          <Polyline 
+            positions={curvePoints} 
+            color="#ffffff" 
+            weight={2.5} 
+            dashArray="6, 8" 
+            opacity={0.9}
           />
         )}
 
         {/* Origin Marker */}
-        <Marker position={[p0.lat, p0.lng]} icon={cityIcon('#FFFFFF')} />
+        <Marker position={[p0.lat, p0.lng]} icon={cityIcon('#ffffff', 'ORIGIN')} />
         
         {/* Destination Marker */}
-        <Marker position={[p2.lat, p2.lng]} icon={cityIcon('#A1A1AA')} />
+        <Marker position={[p2.lat, p2.lng]} icon={cityIcon('#a1a1aa', 'DEST')} />
 
         {/* Plane Marker */}
         {p0 && p1 && p2 && (

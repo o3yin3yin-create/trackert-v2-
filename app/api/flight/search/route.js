@@ -47,18 +47,18 @@ export async function GET(request) {
       // Check if user is searching for our fallback flights (e.g. EK1, MS777, BA117, QR703)
       const qUpper = cleanQuery.toUpperCase().replace(/\s+/g, '');
       const fallbackRoutes = [
-        { callsign: "EK1", airline: "Emirates", origin: "DXB", destination: "LHR", model: "Airbus A380-800", remMins: 45 },
-        { callsign: "MS777", airline: "EgyptAir", origin: "CAI", destination: "CDG", model: "Boeing 777-300ER", remMins: 30 },
-        { callsign: "BA117", airline: "British Airways", origin: "LHR", destination: "JFK", model: "Boeing 787-9 Dreamliner", remMins: 90 },
-        { callsign: "QR703", airline: "Qatar Airways", origin: "DOH", destination: "JFK", model: "Airbus A350-1000", remMins: 120 },
-        { callsign: "SV102", airline: "Saudia", origin: "JED", destination: "CAI", model: "Boeing 787-10 Dreamliner", remMins: 60 },
-        { callsign: "AF281", airline: "Air France", origin: "HND", destination: "CDG", model: "Airbus A350-900", remMins: 75 },
-        { callsign: "LH400", airline: "Lufthansa", origin: "FRA", destination: "JFK", model: "Boeing 747-8 Intercontinental", remMins: 110 },
-        { callsign: "SQ22", airline: "Singapore Airlines", origin: "SIN", destination: "EWR", model: "Airbus A350-900", remMins: 180 },
-        { callsign: "TK182", airline: "Turkish Airlines", origin: "IST", destination: "MEX", model: "Boeing 787-9 Dreamliner", remMins: 140 },
-        { callsign: "QF1", airline: "Qantas", origin: "SYD", destination: "LHR", model: "Boeing 787-9 Dreamliner", remMins: 160 },
-        { callsign: "UA29", airline: "United Airlines", origin: "SFO", destination: "SIN", model: "Boeing 787-9 Dreamliner", remMins: 50 },
-        { callsign: "MS985", airline: "EgyptAir", origin: "CAI", destination: "JFK", model: "Boeing 787-9 Dreamliner", remMins: 95 },
+        { callsign: "SQ22", airline: "Singapore Airlines", origin: "SIN", destination: "EWR", model: "Airbus A350-900", remMins: 810 },
+        { callsign: "QF1", airline: "Qantas", origin: "SYD", destination: "LHR", model: "Boeing 787-9 Dreamliner", remMins: 690 },
+        { callsign: "QR703", airline: "Qatar Airways", origin: "DOH", destination: "JFK", model: "Airbus A350-1000", remMins: 570 },
+        { callsign: "MS985", airline: "EgyptAir", origin: "CAI", destination: "JFK", model: "Boeing 787-9 Dreamliner", remMins: 500 },
+        { callsign: "LH400", airline: "Lufthansa", origin: "FRA", destination: "JFK", model: "Boeing 747-8 Intercontinental", remMins: 430 },
+        { callsign: "AF281", airline: "Air France", origin: "HND", destination: "CDG", model: "Airbus A350-900", remMins: 380 },
+        { callsign: "EK1", airline: "Emirates", origin: "DXB", destination: "LHR", model: "Airbus A380-800", remMins: 340 },
+        { callsign: "TK182", airline: "Turkish Airlines", origin: "IST", destination: "MEX", model: "Boeing 787-9 Dreamliner", remMins: 290 },
+        { callsign: "BA117", airline: "British Airways", origin: "LHR", destination: "JFK", model: "Boeing 787-9 Dreamliner", remMins: 240 },
+        { callsign: "UA29", airline: "United Airlines", origin: "SFO", destination: "SIN", model: "Boeing 787-9 Dreamliner", remMins: 195 },
+        { callsign: "MS777", airline: "EgyptAir", origin: "CAI", destination: "CDG", model: "Boeing 777-300ER", remMins: 155 },
+        { callsign: "SV102", airline: "Saudia", origin: "JED", destination: "CAI", model: "Boeing 787-10 Dreamliner", remMins: 105 },
       ];
 
       const matchedFallback = fallbackRoutes.find(r => 
