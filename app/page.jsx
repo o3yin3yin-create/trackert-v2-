@@ -32,6 +32,7 @@ import SpotifyInviteModal from '../components/SpotifyInviteModal';
 import UpdateModal from '../components/UpdateModal';
 import HabitPresetsModal from '../components/HabitPresetsModal';
 import AthkarModal from '../components/AthkarModal';
+import AmbientSoundModal from '../components/ambient/AmbientSoundModal';
 import PushNotificationsCard from '../components/PushNotificationsCard';
 import { showLocalNotification } from '../lib/localNotifications';
 import { HABIT_PRESETS, getLocalizedPreset } from '../lib/habitPresets';
@@ -1372,6 +1373,7 @@ function AppContent({ isPreview = false }) {
   };
 
   const [audioType, setAudioType] = useState('cabin');
+  const [isAmbientModalOpen, setIsAmbientModalOpen] = useState(false);
   const [isPomodoroOpen, setIsPomodoroOpen] = useState(false);
   const [isEditingPomodoro, setIsEditingPomodoro] = useState(false);
   const [editMinutes, setEditMinutes] = useState(25);
@@ -3121,6 +3123,7 @@ function AppContent({ isPreview = false }) {
     setIsAnalyticsModalOpen(false);
     setIsTasksModalOpen(false);
     setIsPomodoroOpen(false);
+    setIsAmbientModalOpen(false);
     setIsFlightFocusOpen(false);
     setIsHowToUseOpen(false);
     setIsCardsModalOpen(false);
@@ -3147,6 +3150,7 @@ function AppContent({ isPreview = false }) {
     else if (target === 'tasks') setIsTasksModalOpen(true);
     else if (target === 'schedule') setIsScheduleCalendarOpen(true);
     else if (target === 'pomodoro') setIsPomodoroOpen(true);
+    else if (target === 'ambient') setIsAmbientModalOpen(true);
     else if (target === 'flight') setIsFlightFocusOpen(true);
     else if (target === 'friends') {
       setSelectedFriendForModal(null);
@@ -9702,7 +9706,7 @@ function AppContent({ isPreview = false }) {
                     setIsSettingsMenuOpen(false);
                   }} 
                   className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${
-                    isFocusMenuOpen || isPomodoroOpen || isFlightFocusOpen 
+                    isFocusMenuOpen || isPomodoroOpen || isFlightFocusOpen || isAmbientModalOpen
                       ? 'bg-white/20 text-white shadow-sm' 
                       : 'hover:bg-white/10 text-white/50 hover:text-white'
                   }`}
@@ -9762,6 +9766,27 @@ function AppContent({ isPreview = false }) {
                           </span>
                           <span className="text-[11px] text-white/50 truncate">
                             {'Live radar & boarding pass'}
+                          </span>
+                        </div>
+                      </button>
+
+                      {/* Ambient Sounds Option */}
+                      <button 
+                        onClick={() => {
+                          setIsFocusMenuOpen(false);
+                          navTo('ambient');
+                        }} 
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-white/10 transition-all flex items-center gap-3 group active:scale-[0.98]"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform shrink-0">
+                          <Radio size={18} />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-bold text-white group-hover:text-white transition-colors truncate">
+                            {isAr ? 'الأصوات المحيطية' : 'Ambient Sounds'}
+                          </span>
+                          <span className="text-[11px] text-white/50 truncate">
+                            {isAr ? 'ضوضاء بيضاء، مطر، مقهى وطبيعة' : 'White noise, rain, cafe & nature'}
                           </span>
                         </div>
                       </button>
@@ -9922,6 +9947,32 @@ function AppContent({ isPreview = false }) {
                                 <div className="w-3.5 h-3.5 rounded-full border border-white/30" style={{ backgroundColor: themeColor }} />
                                 <ChevronRight size={18} className={`text-white/40 `} />
                               </div>
+                            </button>
+                          </div>
+
+                          {/* Group: Ambient Audio & Focus Environment */}
+                          <div className="flex flex-col gap-1.5">
+                            <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">
+                              {isAr ? 'الأصوات والتركيز' : 'Audio & Ambience'}
+                            </span>
+                            <button 
+                              onClick={() => { setIsSettingsMenuOpen(false); setIsAmbientModalOpen(true); }} 
+                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors cursor-pointer"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                                  <Radio size={20} />
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-white">
+                                    {isAr ? 'مكتبة الأصوات المحيطية' : 'Ambient Sound Library'}
+                                  </span>
+                                  <span className="text-[11px] text-white/50 font-normal">
+                                    {isAr ? 'توليد الضوضاء، المطر، المقاهي والطبيعة' : 'Noise generator, nature, rain, cafe & focus mixer'}
+                                  </span>
+                                </div>
+                              </div>
+                              <ChevronRight size={18} className="text-white/40" />
                             </button>
                           </div>
 
@@ -10597,6 +10648,18 @@ function AppContent({ isPreview = false }) {
               themeColor={themeColor}
               lang={lang}
               onComplete={handleAthkarCompleted}
+            />,
+            document.body
+          )}
+
+          {/* ---------------- AMBIENT SOUND LIBRARY MODAL ---------------- */}
+          {isAmbientModalOpen && typeof document !== 'undefined' && createPortal(
+            <AmbientSoundModal 
+              isOpen={isAmbientModalOpen}
+              onClose={() => setIsAmbientModalOpen(false)}
+              lang={lang}
+              themeColor={themeColor}
+              pomodoroRemainingSeconds={pomodoroTime}
             />,
             document.body
           )}
