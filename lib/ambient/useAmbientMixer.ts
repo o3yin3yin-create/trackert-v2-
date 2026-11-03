@@ -46,6 +46,17 @@ export function useAmbientMixer() {
     const engine = SoundEngine.getInstance();
     engineRef.current = engine;
 
+    // Background pre-cache all sounds for instant 100% offline playback
+    if ('requestIdleCallback' in window) {
+      (window as unknown as { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(() => {
+        engine.preCacheAllSounds();
+      });
+    } else {
+      setTimeout(() => {
+        engine.preCacheAllSounds();
+      }, 2000);
+    }
+
     // Load favorites
     try {
       const savedFavs = localStorage.getItem('bokra_ambient_favorites');

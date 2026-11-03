@@ -88,6 +88,28 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // 1.5. Ambient Audio Files (/sounds/...) -> Cache-First for instant offline playback
+  if (url.pathname.startsWith('/sounds/')) {
+    event.respondWith(
+      caches.open('bokra-ambient-v1').then((audioCache) => {
+        return audioCache.match(request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          return fetch(request).then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              audioCache.put(request, networkResponse.clone());
+            }
+            return networkResponse;
+          }).catch(() => {
+            return new Response('', { status: 404, statusText: 'Offline Audio' });
+          });
+        });
+      })
+    );
+    return;
+  }
+
   // 2. Navigation requests (HTML pages) -> Network with 1.5s timeout fallback to Cache
   // This guarantees the Android TWA splash screen fades out in at most 1.5s even if offline/airplane mode.
   if (request.mode === 'navigate') {

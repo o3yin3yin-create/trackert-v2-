@@ -29,6 +29,11 @@ export class SoundEngine {
   private masterGain: GainNode | null = null;
   private compressor: DynamicsCompressorNode | null = null;
 
+  // Background Audio Anchor: Hidden looping audio element to maintain background execution & media session on mobile
+  private backgroundAudioEl: HTMLAudioElement | null = null;
+  private isPreCaching: boolean = false;
+  private offlineReadySounds: Set<string> = new Set();
+
   // Active sound instances
   private tracks: Map<string, ActiveTrack> = new Map();
 
@@ -43,7 +48,10 @@ export class SoundEngine {
   private listeners: Set<() => void> = new Set();
 
   private constructor() {
-    // Lazy AudioContext initialization on first user interaction
+    // Setup background audio lifecycle listeners when in browser
+    if (typeof window !== 'undefined') {
+      this.setupVisibilityListeners();
+    }
   }
 
   public static getInstance(): SoundEngine {
@@ -51,6 +59,128 @@ export class SoundEngine {
       SoundEngine.instance = new SoundEngine();
     }
     return SoundEngine.instance;
+  }
+
+  /**
+   * Sets up page visibility and interruption listeners to keep audio running smoothly in the background.
+   */
+  private setupVisibilityListeners(): void {
+    if (typeof document === 'undefined') return;
+
+    const handleVisibility = async () => {
+      const activeCount = Array.from(this.tracks.values()).filter((t) => t.isPlaying).length;
+      if (activeCount > 0 && this.audioCtx) {
+        if (this.audioCtx.state === 'suspended' || (this.audioCtx.state as string) === 'interrupted') {
+          try {
+            await this.audioCtx.resume();
+          } catch (_) {}
+        }
+        if (this.backgroundAudioEl && this.backgroundAudioEl.paused) {
+          try {
+            await this.backgroundAudioEl.play();
+          } catch (_) {}
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('pageshow', handleVisibility);
+    window.addEventListener('focus', handleVisibility);
+  }
+
+  /**
+   * Ensures the hidden looping background audio element exists and is primed.
+   * This anchors the mobile OS (iOS Safari & Android Chrome) media session in the background.
+   */
+  private ensureBackgroundAudio(): HTMLAudioElement | null {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return null;
+
+    if (!this.backgroundAudioEl) {
+      const el = document.createElement('audio');
+      el.id = 'bokra-ambient-bg-anchor';
+      el.src = '/sounds/silence.wav';
+      el.loop = true;
+      el.preload = 'auto';
+      el.setAttribute('playsinline', 'true');
+      el.setAttribute('webkit-playsinline', 'true');
+      el.style.position = 'fixed';
+      el.style.left = '-9999px';
+      el.style.top = '-9999px';
+      el.style.width = '1px';
+      el.style.height = '1px';
+      el.style.opacity = '0';
+      el.style.pointerEvents = 'none';
+
+      document.body.appendChild(el);
+      this.backgroundAudioEl = el;
+    }
+
+    return this.backgroundAudioEl;
+  }
+
+  /**
+   * Starts or pauses the background keep-alive anchor element.
+   */
+  private syncBackgroundAudioState(): void {
+    const activeCount = Array.from(this.tracks.values()).filter((t) => t.isPlaying).length;
+    const bg = this.ensureBackgroundAudio();
+    if (!bg) return;
+
+    if (activeCount > 0) {
+      if (bg.paused) {
+        bg.play().catch((err) => {
+          console.warn('[SoundEngine] Background audio anchor play warning:', err?.message);
+        });
+      }
+    } else {
+      if (!bg.paused) {
+        bg.pause();
+      }
+    }
+  }
+
+  /**
+   * Pre-caches all sound files into CacheStorage for 100% offline playback.
+   */
+  public async preCacheAllSounds(): Promise<void> {
+    if (typeof window === 'undefined' || !('caches' in window) || this.isPreCaching) return;
+    this.isPreCaching = true;
+
+    try {
+      const cache = await caches.open('bokra-ambient-v1');
+      const fileSounds = SOUND_CATALOG.filter((s) => s.type === 'file' && s.src);
+
+      // Pre-cache silence.wav too
+      try {
+        await cache.add('/sounds/silence.wav');
+      } catch (_) {}
+
+      for (const sound of fileSounds) {
+        if (!sound.src) continue;
+        const cached = await cache.match(sound.src);
+        if (cached) {
+          this.offlineReadySounds.add(sound.id);
+        } else {
+          try {
+            await cache.add(sound.src);
+            this.offlineReadySounds.add(sound.id);
+          } catch (e) {
+            console.warn(`[SoundEngine] Offline pre-cache warning for ${sound.id}:`, e);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[SoundEngine] Offline pre-cache failed:', err);
+    } finally {
+      this.isPreCaching = false;
+      this.notify();
+    }
+  }
+
+  public isSoundOfflineReady(soundId: string): boolean {
+    const s = SOUND_CATALOG.find((item) => item.id === soundId);
+    if (s?.type === 'generated') return true; // Generated sounds are 100% offline by code
+    return this.offlineReadySounds.has(soundId) || this.bufferCache.has(soundId);
   }
 
   /**
@@ -67,6 +197,16 @@ export class SoundEngine {
       }
 
       this.audioCtx = new AudioContextClass();
+
+      // Handle OS audio interruptions (e.g. phone calls, lock screen transitions)
+      this.audioCtx.onstatechange = () => {
+        if (this.audioCtx && (this.audioCtx.state === 'suspended' || (this.audioCtx.state as string) === 'interrupted')) {
+          const activeCount = Array.from(this.tracks.values()).filter((t) => t.isPlaying).length;
+          if (activeCount > 0) {
+            this.audioCtx.resume().catch(() => {});
+          }
+        }
+      };
 
       // Soft limiter / Dynamics compressor to prevent clipping across 6 simultaneous loud tracks
       this.compressor = this.audioCtx.createDynamicsCompressor();
@@ -153,7 +293,7 @@ export class SoundEngine {
   }
 
   /**
-   * Fetch and decode an audio file with caching.
+   * Fetch and decode an audio file with offline CacheStorage fallback and in-memory caching.
    */
   private async loadAudioBuffer(sound: SoundItem): Promise<AudioBuffer | null> {
     if (this.bufferCache.has(sound.id)) {
@@ -174,11 +314,40 @@ export class SoundEngine {
       this.notify();
 
       try {
-        const res = await fetch(sound.src);
-        if (!res.ok) {
-          throw new Error(`Failed to load ${sound.src} (status ${res.status})`);
+        let arrayBuf: ArrayBuffer | null = null;
+
+        // 1. Check offline CacheStorage first for instant offline access
+        if (typeof window !== 'undefined' && 'caches' in window) {
+          try {
+            const cache = await caches.open('bokra-ambient-v1');
+            const cachedRes = await cache.match(sound.src);
+            if (cachedRes && cachedRes.ok) {
+              arrayBuf = await cachedRes.arrayBuffer();
+              this.offlineReadySounds.add(sound.id);
+            }
+          } catch (cacheErr) {
+            console.warn('[SoundEngine] CacheStorage read warning:', cacheErr);
+          }
         }
-        const arrayBuf = await res.arrayBuffer();
+
+        // 2. If not found in CacheStorage, fetch from network and store in CacheStorage for future offline use
+        if (!arrayBuf) {
+          const res = await fetch(sound.src);
+          if (!res.ok) {
+            throw new Error(`Failed to load ${sound.src} (status ${res.status})`);
+          }
+
+          if (typeof window !== 'undefined' && 'caches' in window) {
+            try {
+              const cache = await caches.open('bokra-ambient-v1');
+              cache.put(sound.src, res.clone());
+              this.offlineReadySounds.add(sound.id);
+            } catch (_) {}
+          }
+
+          arrayBuf = await res.arrayBuffer();
+        }
+
         const decoded = await ctx.decodeAudioData(arrayBuf);
         this.bufferCache.set(sound.id, decoded);
         return decoded;
@@ -278,6 +447,7 @@ export class SoundEngine {
     track.gainNode.gain.setValueAtTime(0.0001, now);
     track.gainNode.gain.linearRampToValueAtTime(track.targetVolume, now + 1.0);
 
+    this.syncBackgroundAudioState();
     this.updateMediaSession();
     this.notify();
     return true;
@@ -306,6 +476,7 @@ export class SoundEngine {
           track.sourceNode = null;
         } catch (_) {}
       }
+      this.syncBackgroundAudioState();
       this.updateMediaSession();
       this.notify();
     }, fadeDuration * 1000 + 50);
@@ -466,14 +637,27 @@ export class SoundEngine {
 
     navigator.mediaSession.playbackState = 'playing';
 
-    navigator.mediaSession.setActionHandler('play', () => {
-      if (this.audioCtx && this.audioCtx.state === 'suspended') {
-        this.audioCtx.resume();
+    navigator.mediaSession.setActionHandler('play', async () => {
+      if (this.audioCtx && (this.audioCtx.state === 'suspended' || (this.audioCtx.state as string) === 'interrupted')) {
+        await this.audioCtx.resume();
       }
+      this.syncBackgroundAudioState();
+      navigator.mediaSession.playbackState = 'playing';
+      this.notify();
     });
 
     navigator.mediaSession.setActionHandler('pause', () => {
       this.stopAll();
+      this.syncBackgroundAudioState();
+      navigator.mediaSession.playbackState = 'paused';
+      this.notify();
+    });
+
+    navigator.mediaSession.setActionHandler('stop', () => {
+      this.stopAll(true);
+      this.syncBackgroundAudioState();
+      navigator.mediaSession.playbackState = 'paused';
+      this.notify();
     });
   }
 
