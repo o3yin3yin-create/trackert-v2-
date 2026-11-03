@@ -12,6 +12,7 @@ import {
 
 import WindowSeat from '../WindowSeat';
 import BoardingPass from '../BoardingPass';
+import FlightyFocusView from './FlightyFocusView';
 
 const MapComponent = dynamic(() => import('../MapComponent'), {
   ssr: false,
@@ -360,255 +361,22 @@ export default function FlightFocusModal({
 
       ) : activeFlight ? (
         /* =========================================================================
-            2. IN-FLIGHT ENTERTAINMENT & HUD (AUTHENTIC AIRLINE IMMERSION • PURE B&W)
+            2. FLIGHTY IMMERSIVE FOCUS SCREEN (EXACT APPLE MAPS & FLIGHTY UI)
            ========================================================================= */
-        <div 
-          style={{
-            paddingTop: 'calc(max(env(safe-area-inset-top, 0px), 48px) + 16px)',
-            paddingBottom: 'calc(max(env(safe-area-inset-bottom, 0px), 20px) + 16px)',
-          }}
-          className="min-h-screen w-full flex flex-col justify-between px-3 sm:px-6 max-w-4xl mx-auto relative z-10 animate-in fade-in duration-300"
-        >
-          
-          {/* TOP IN-FLIGHT CABIN BAR (Safe-area protected & High Contrast) */}
-          <div className="w-full flex justify-between items-center py-3 px-3.5 sm:px-5 rounded-2xl bg-[#14161f] border border-white/20 shadow-2xl mb-4 backdrop-blur-2xl">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/25 flex items-center justify-center text-white shrink-0 shadow-sm">
-                <Plane size={20} className="text-white" />
-              </div>
-              <div className="flex flex-col min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-black text-white tracking-wide uppercase truncate">
-                    {activeFlight.airline}
-                  </span>
-                  <span className="text-[11px] font-mono font-black px-2 py-0.5 rounded-md bg-white text-black shrink-0 shadow-sm">
-                    {activeFlight.callsign}
-                  </span>
-                </div>
-                <span className="text-[11px] font-mono text-white/70 truncate mt-0.5">
-                  {activeFlight.model || 'Boeing 777-300ER'} • {isAr ? `المقعد ${assignedSeat}` : `Seat ${assignedSeat} (Window)`}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-              {/* Illuminated Fasten Seatbelt Sign */}
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/25 text-[11px] font-mono font-bold tracking-wider text-white shadow-[0_0_15px_rgba(255,255,255,0.2)]">
-                <span className="w-2 h-2 rounded-full bg-white animate-pulse shadow-[0_0_8px_#ffffff]" />
-                <span className="hidden xs:inline">SEATBELT ON</span>
-              </div>
-
-              {/* End Flight Button */}
-              <button
-                onClick={handleEndFlight}
-                className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/25 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-sm"
-              >
-                {isAr ? 'إنهاء' : 'End'}
-              </button>
-            </div>
-          </div>
-
-          {/* MAIN IN-FLIGHT BODY */}
-          <div className="flex-1 flex flex-col gap-4 my-auto w-full">
-            
-            {/* 1. INTERACTIVE LIVE RADAR MAP CARD (Seatback Moving Map) */}
-            <div className="w-full relative h-[250px] sm:h-[340px] bg-[#090a0f] rounded-3xl overflow-hidden border border-white/15 shadow-2xl select-none group">
-              <MapComponent
-                originCoords={activeFlight.originCoords || { lat: 25.25, lng: 55.36 }}
-                destCoords={activeFlight.destCoords || { lat: 51.47, lng: -0.45 }}
-                progress={progressRatio}
-                isCameraLocked={isCameraLocked}
-                themeColor="#ffffff"
-                padding={[40, 40]}
-              />
-
-              {/* Top-Left: Live Radar Indicator */}
-              <div className="absolute top-3 left-3 z-[500] px-3 py-1.5 rounded-xl bg-black/80 border border-white/20 text-[10px] font-mono text-white/90 flex items-center gap-2 backdrop-blur-md shadow-lg pointer-events-none">
-                <Radio size={12} className="animate-pulse text-white" />
-                <span className="font-bold tracking-wider">LIVE RADAR FEED • EN ROUTE</span>
-              </div>
-
-              {/* Top-Right: Quick Aviation Actions (Window Seat & Camera Lock) */}
-              <div className="absolute top-3 right-3 z-[500] flex items-center gap-2">
-                {/* 3D Window View Direct Toggle */}
-                <button
-                  onClick={() => setIsWindowSeatOpen(true)}
-                  className="px-3 py-1.5 rounded-xl bg-white text-black text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-xl hover:bg-white/90 active:scale-95 transition-all cursor-pointer"
-                  title={isAr ? 'رؤية شباك الطائرة 3D' : '3D Window Seat View'}
-                >
-                  <Eye size={13} />
-                  <span>{isAr ? 'شباك الطائرة' : 'Window'}</span>
-                </button>
-
-                {/* Boarding Pass Quick View */}
-                <button
-                  onClick={() => setIsBoardingPassOpen(true)}
-                  className="px-3 py-1.5 rounded-xl bg-black/80 hover:bg-black text-white border border-white/20 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-md active:scale-95 transition-all cursor-pointer"
-                  title={isAr ? 'تذكرة الصعود' : 'Boarding Pass'}
-                >
-                  <Ticket size={13} />
-                  <span className="hidden sm:inline">{isAr ? 'التذكرة' : 'Pass'}</span>
-                </button>
-
-                {/* Camera Lock Toggle */}
-                <button
-                  onClick={() => setIsCameraLocked(!isCameraLocked)}
-                  className={`w-8 h-8 rounded-xl border flex items-center justify-center text-xs font-bold transition-all cursor-pointer backdrop-blur-md active:scale-95 ${
-                    isCameraLocked 
-                      ? 'bg-white text-black border-white shadow-lg' 
-                      : 'bg-black/80 text-white/70 hover:text-white border-white/20'
-                  }`}
-                  title={isCameraLocked ? 'Camera Locked to Plane' : 'View Full Flight Route'}
-                >
-                  <Navigation size={13} className={isCameraLocked ? 'fill-current' : ''} />
-                </button>
-              </div>
-
-              {/* Bottom Flight Strip Overlay */}
-              <div className="absolute bottom-3 left-3 right-3 z-[500] flex justify-between items-end pointer-events-none text-white drop-shadow-md">
-                <div className="px-3 py-1.5 rounded-xl bg-black/80 border border-white/15 backdrop-blur-md flex items-center gap-2 text-[10px] font-mono">
-                  <span className="font-bold text-white">{activeFlight.origin}</span>
-                  <span className="text-white/40">──✈──</span>
-                  <span className="font-bold text-white">{activeFlight.destination}</span>
-                </div>
-
-                {remainingDistKm > 0 && (
-                  <div className="px-3 py-1.5 rounded-xl bg-black/80 border border-white/15 backdrop-blur-md text-[10px] font-mono text-white/90">
-                    <span className="text-white/50">{isAr ? 'المتبقي:' : 'REMAINING:'} </span>
-                    <span className="font-bold text-white">{remainingDistKm.toLocaleString()} KM</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* 2. ROUTE PROGRESS & GIANT FOCUS COUNTDOWN */}
-            <div className="flex flex-col items-center w-full px-4 py-4 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl shadow-xl">
-              
-              {/* Route Progress Header */}
-              <div className="w-full flex items-center justify-between max-w-lg mb-2">
-                <div className="text-start">
-                  <span className="text-2xl sm:text-3xl font-black text-white tracking-tight block">{activeFlight.origin}</span>
-                  <span className="text-[9px] font-mono uppercase text-white/40 tracking-wider">DEPARTURE</span>
-                </div>
-
-                <div className="flex-1 flex flex-col items-center px-4">
-                  <div className="w-full flex items-center gap-2 mb-1">
-                    <div className="h-[1px] flex-1 bg-white/20" />
-                    <Plane size={15} className="text-white shrink-0 rotate-90 transform" />
-                    <div className="h-[1px] flex-1 bg-white/20" />
-                  </div>
-                  <span className="text-[9px] font-mono text-white/40 uppercase tracking-widest">
-                    {Math.round(progressRatio * 100)}% {isAr ? 'تم من الرحلة' : 'COMPLETED'}
-                  </span>
-                </div>
-
-                <div className="text-end">
-                  <span className="text-2xl sm:text-3xl font-black text-white tracking-tight block">{activeFlight.destination}</span>
-                  <span className="text-[9px] font-mono uppercase text-white/40 tracking-wider">ARRIVAL</span>
-                </div>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="w-full max-w-lg h-1.5 bg-white/10 rounded-full overflow-hidden mb-4">
-                <div 
-                  className="h-full bg-white rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(255,255,255,0.8)]"
-                  style={{ width: `${Math.round(progressRatio * 100)}%` }}
-                />
-              </div>
-
-              {/* Giant Focus Countdown */}
-              <div className="flex flex-col items-center">
-                <span className="text-[10px] font-mono uppercase tracking-[0.25em] text-white/40 mb-1">
-                  {isAr ? 'الوقت المتبقي حتى الهبوط' : 'TIME TO TOUCHDOWN'}
-                </span>
-                <div className="text-5xl sm:text-6xl font-mono font-black text-white tracking-tight tabular-nums drop-shadow-xl">
-                  {formatTime(remainingSeconds)}
-                </div>
-              </div>
-            </div>
-
-            {/* 3. FLIGHT TELEMETRY HUD TILES (4 Crisp Monochrome Blocks) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 w-full">
-              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col text-center">
-                <span className="text-[9px] font-mono text-white/40 uppercase mb-0.5 tracking-wider">ALTITUDE</span>
-                <span className="text-sm font-mono font-bold text-white tracking-tight">38,000 FT</span>
-                <span className="text-[9px] font-mono text-white/30">FL380 • 11,580 M</span>
-              </div>
-              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col text-center">
-                <span className="text-[9px] font-mono text-white/40 uppercase mb-0.5 tracking-wider">GROUND SPEED</span>
-                <span className="text-sm font-mono font-bold text-white tracking-tight">880 KM/H</span>
-                <span className="text-[9px] font-mono text-white/30">475 KTS • MACH 0.82</span>
-              </div>
-              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col text-center">
-                <span className="text-[9px] font-mono text-white/40 uppercase mb-0.5 tracking-wider">OUTSIDE TEMP</span>
-                <span className="text-sm font-mono font-bold text-white tracking-tight">-52°C</span>
-                <span className="text-[9px] font-mono text-white/30">-61°F • STRATOSPHERE</span>
-              </div>
-              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col text-center">
-                <span className="text-[9px] font-mono text-white/40 uppercase mb-0.5 tracking-wider">EST. TOUCHDOWN</span>
-                <span className="text-sm font-mono font-bold text-white tracking-tight">
-                  {new Date(Date.now() + remainingSeconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-                <span className="text-[9px] font-mono text-white/30">LOCAL AIRPORT TIME</span>
-              </div>
-            </div>
-
-            {/* 4. CORE IN-FLIGHT ACTION CONTROLS */}
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
-              {/* Window Seat */}
-              <button
-                onClick={() => setIsWindowSeatOpen(true)}
-                className="px-5 py-3 rounded-2xl bg-white text-black font-bold text-xs uppercase tracking-wider flex items-center gap-2 hover:bg-white/90 active:scale-95 transition-all shadow-xl cursor-pointer"
-              >
-                <Eye size={15} />
-                <span>{isAr ? 'شباك الطائرة' : 'Window Seat'}</span>
-              </button>
-
-              {/* Boarding Pass */}
-              <button
-                onClick={() => setIsBoardingPassOpen(true)}
-                className="px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/15 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 active:scale-95 transition-all cursor-pointer"
-              >
-                <Ticket size={15} />
-                <span>{isAr ? 'تذكرة الصعود' : 'Boarding Pass'}</span>
-              </button>
-
-              {/* Cabin Engine Hum Audio */}
-              <button
-                onClick={toggleCabinHum}
-                className={`px-4 py-3 rounded-2xl border text-xs font-bold uppercase tracking-wider flex items-center gap-2 active:scale-95 transition-all cursor-pointer ${
-                  isCabinHumPlaying
-                    ? 'bg-white/20 border-white text-white shadow-[0_0_15px_rgba(255,255,255,0.2)]'
-                    : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                {isCabinHumPlaying ? <Volume2 size={15} className="animate-pulse" /> : <VolumeX size={15} />}
-                <span>{isAr ? 'صوت المحرك' : 'Cabin Hum'}</span>
-              </button>
-
-              {/* Pause / Resume Focus Session */}
-              <button
-                onClick={() => setIsTimerRunning(!isTimerRunning)}
-                className="px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 active:scale-95 transition-all cursor-pointer"
-              >
-                {isTimerRunning ? <Pause size={15} /> : <Play size={15} />}
-                <span>{isTimerRunning ? (isAr ? 'إيقاف' : 'Pause') : (isAr ? 'استئناف' : 'Resume')}</span>
-              </button>
-            </div>
-
-          </div>
-
-          {/* BOTTOM CABIN STATUS FOOTER */}
-          <div className="flex justify-between items-center text-[10px] font-mono text-white/40 pt-3 border-t border-white/10 mt-3">
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-              {isAr ? 'وضع التركيز الجوي نشط • الكابينة مضغوطة' : 'CABIN PRESSURIZED • IN-FLIGHT FOCUS ACTIVE'}
-            </span>
-            <span>FASTEN SEATBELT • CRUISE</span>
-          </div>
-
-        </div>
-
+        <FlightyFocusView
+          flight={activeFlight}
+          remainingSeconds={remainingSeconds}
+          totalSeconds={totalSeconds}
+          isTimerRunning={isTimerRunning}
+          onToggleTimer={() => setIsTimerRunning(!isTimerRunning)}
+          onEndFlight={handleEndFlight}
+          onOpenWindowSeat={() => setIsWindowSeatOpen(true)}
+          onOpenBoardingPass={() => setIsBoardingPassOpen(true)}
+          isCabinHumPlaying={isCabinHumPlaying}
+          onToggleCabinHum={toggleCabinHum}
+          assignedSeat={assignedSeat}
+          lang={lang}
+        />
       ) : (
         /* =========================================================================
             3. FLIGHT SELECTION SCREEN (STRICT MONOCHROME APPLE LUXURY)
