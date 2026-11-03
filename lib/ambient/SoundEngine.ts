@@ -153,32 +153,6 @@ export class SoundEngine {
   }
 
   /**
-   * Generates a procedural placeholder buffer for nature/places sounds
-   * when external MP3 files are still loading or unavailable offline.
-   */
-  private createSyntheticNatureFallback(soundId: string): AudioBuffer {
-    if (!this.audioCtx) throw new Error('AudioContext missing');
-    const sampleRate = this.audioCtx.sampleRate;
-    const duration = 5;
-    const bufferSize = sampleRate * duration;
-    const buffer = this.audioCtx.createBuffer(2, bufferSize, sampleRate);
-
-    // Creates subtle filtered atmospheric wash
-    for (let c = 0; c < 2; c++) {
-      const data = buffer.getChannelData(c);
-      let acc = 0;
-      for (let i = 0; i < bufferSize; i++) {
-        const white = Math.random() * 2 - 1;
-        acc = (acc + 0.015 * white) / 1.015;
-        // Modulate with gentle 0.2Hz wave
-        const lfo = 0.5 + 0.5 * Math.sin((2 * Math.PI * 0.2 * i) / sampleRate);
-        data[i] = acc * 2.5 * lfo;
-      }
-    }
-    return buffer;
-  }
-
-  /**
    * Fetch and decode an audio file with caching.
    */
   private async loadAudioBuffer(sound: SoundItem): Promise<AudioBuffer | null> {
@@ -209,10 +183,8 @@ export class SoundEngine {
         this.bufferCache.set(sound.id, decoded);
         return decoded;
       } catch (err) {
-        console.warn(`[SoundEngine] Could not load audio file ${sound.src}, generating high-grade organic fallback:`, err);
-        const fallback = this.createSyntheticNatureFallback(sound.id);
-        this.bufferCache.set(sound.id, fallback);
-        return fallback;
+        console.error(`[SoundEngine] Could not load audio file ${sound.src}:`, err);
+        return null;
       } finally {
         this.loadingSounds.delete(sound.id);
         this.notify();
