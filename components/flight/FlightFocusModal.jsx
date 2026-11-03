@@ -299,7 +299,8 @@ export default function FlightFocusModal({
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-all border border-white/10"
+            style={{ top: 'calc(max(env(safe-area-inset-top, 0px), 44px) + 12px)' }}
+            className="absolute right-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white transition-all border border-white/20 cursor-pointer shadow-lg z-20"
             aria-label="Close"
           >
             <X size={18} />
@@ -361,40 +362,46 @@ export default function FlightFocusModal({
         /* =========================================================================
             2. IN-FLIGHT ENTERTAINMENT & HUD (AUTHENTIC AIRLINE IMMERSION • PURE B&W)
            ========================================================================= */
-        <div className="min-h-screen w-full flex flex-col justify-between pt-[calc(env(safe-area-inset-top,24px)+1rem)] pb-[calc(env(safe-area-inset-bottom,20px)+1.5rem)] px-3 sm:px-6 max-w-4xl mx-auto relative z-10 animate-in fade-in duration-300">
+        <div 
+          style={{
+            paddingTop: 'calc(max(env(safe-area-inset-top, 0px), 48px) + 16px)',
+            paddingBottom: 'calc(max(env(safe-area-inset-bottom, 0px), 20px) + 16px)',
+          }}
+          className="min-h-screen w-full flex flex-col justify-between px-3 sm:px-6 max-w-4xl mx-auto relative z-10 animate-in fade-in duration-300"
+        >
           
-          {/* TOP IN-FLIGHT CABIN BAR (Safe-area protected) */}
-          <div className="flex justify-between items-center py-2.5 px-3.5 sm:px-5 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-2xl mb-4 shadow-xl">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center text-white shrink-0">
-                <Plane size={18} />
+          {/* TOP IN-FLIGHT CABIN BAR (Safe-area protected & High Contrast) */}
+          <div className="w-full flex justify-between items-center py-3 px-3.5 sm:px-5 rounded-2xl bg-[#14161f] border border-white/20 shadow-2xl mb-4 backdrop-blur-2xl">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/25 flex items-center justify-center text-white shrink-0 shadow-sm">
+                <Plane size={20} className="text-white" />
               </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs sm:text-sm font-black text-white tracking-wide uppercase truncate max-w-[140px] sm:max-w-none">
+              <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-black text-white tracking-wide uppercase truncate">
                     {activeFlight.airline}
                   </span>
-                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/10 text-white/90 border border-white/10">
+                  <span className="text-[11px] font-mono font-black px-2 py-0.5 rounded-md bg-white text-black shrink-0 shadow-sm">
                     {activeFlight.callsign}
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-white/50">
+                <span className="text-[11px] font-mono text-white/70 truncate mt-0.5">
                   {activeFlight.model || 'Boeing 777-300ER'} • {isAr ? `المقعد ${assignedSeat}` : `Seat ${assignedSeat} (Window)`}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               {/* Illuminated Fasten Seatbelt Sign */}
-              <div className="hidden xs:flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.06] border border-white/20 text-[10px] font-mono font-bold tracking-wider text-white shadow-[0_0_12px_rgba(255,255,255,0.15)]">
-                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                <span>FASTEN SEATBELT</span>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/25 text-[11px] font-mono font-bold tracking-wider text-white shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+                <span className="w-2 h-2 rounded-full bg-white animate-pulse shadow-[0_0_8px_#ffffff]" />
+                <span className="hidden xs:inline">SEATBELT ON</span>
               </div>
 
               {/* End Flight Button */}
               <button
                 onClick={handleEndFlight}
-                className="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/15 text-white/70 hover:text-white border border-white/15 text-xs font-bold transition-all cursor-pointer"
+                className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/25 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-sm"
               >
                 {isAr ? 'إنهاء' : 'End'}
               </button>
@@ -606,23 +613,29 @@ export default function FlightFocusModal({
         /* =========================================================================
             3. FLIGHT SELECTION SCREEN (STRICT MONOCHROME APPLE LUXURY)
            ========================================================================= */
-        <div className="min-h-screen w-full flex flex-col pt-[calc(env(safe-area-inset-top,24px)+1rem)] pb-[calc(env(safe-area-inset-bottom,20px)+1.5rem)] px-4 sm:px-6 max-w-4xl mx-auto">
+        <div 
+          style={{
+            paddingTop: 'calc(max(env(safe-area-inset-top, 0px), 48px) + 16px)',
+            paddingBottom: 'calc(max(env(safe-area-inset-bottom, 0px), 20px) + 16px)',
+          }}
+          className="min-h-screen w-full flex flex-col px-4 sm:px-6 max-w-4xl mx-auto"
+        >
           
-          {/* Header */}
-          <div className="flex justify-between items-center pb-5 border-b border-white/10 mb-6">
+          {/* Header (High Contrast & Clear) */}
+          <div className="flex justify-between items-center p-3.5 sm:p-4 rounded-2xl bg-[#14161f] border border-white/20 mb-6 shadow-2xl">
             <div className="flex items-center gap-3">
               <button
                 onClick={onClose}
-                className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-all border border-white/10 cursor-pointer"
+                className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all border border-white/20 cursor-pointer shadow-sm"
               >
                 <ChevronLeft size={18} />
               </button>
               <div>
-                <h2 className="text-lg font-black tracking-tight text-white flex items-center gap-2">
-                  <Plane size={18} />
+                <h2 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
+                  <Plane size={18} className="text-white" />
                   <span>{isAr ? 'رحلة التركيز' : 'Flight Focus'}</span>
                 </h2>
-                <span className="text-[11px] font-mono text-white/40">
+                <span className="text-[11px] font-mono text-white/60">
                   {isAr ? 'اختر رحلة طيران حقيقية لتنطلق معها في جلسة مذاكرة عميقة' : 'Connect your study session with a real commercial flight in the air.'}
                 </span>
               </div>
@@ -630,7 +643,7 @@ export default function FlightFocusModal({
 
             <button
               onClick={onClose}
-              className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-all border border-white/10 cursor-pointer"
+              className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all border border-white/20 cursor-pointer shadow-sm"
             >
               <X size={18} />
             </button>
