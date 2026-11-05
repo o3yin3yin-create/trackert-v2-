@@ -10,7 +10,7 @@ import { mergeTaskLists } from '@/lib/taskMerge';
 function formatDateInTimeZone(date, timeZone) {
   try {
     return new Intl.DateTimeFormat('en-CA', {
-      timeZone: timeZone || 'Africa/Cairo',
+      ...(timeZone ? { timeZone } : {}),
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -206,7 +206,7 @@ export async function GET(req) {
       spotifyRefreshToken: user.spotifyRefreshToken || null,
       hasSpotifyAccess: Boolean(user.hasSpotifyAccess),
       privacySettings: user.privacySettings || {},
-      timezone: user.timezone || 'Africa/Cairo',
+      timezone: user.timezone || null,
       updatedAt: user.updatedAt ? new Date(user.updatedAt).getTime() : Date.now(),
     };
 
@@ -448,9 +448,14 @@ export async function POST(req) {
       }
     }
 
-    // 5. Sync Daily Logs — today/yesterday in the user's timezone, plus any client target dates
-    const tz = state.timezone || user.timezone || 'Africa/Cairo';
-    const todayStr = formatDateInTimeZone(new Date(), tz);
+    // 5. Sync Daily Logs — client-provided local date boundary, plus any client target dates
+    const tz = state.timezone || user.timezone || undefined;
+    const clientToday = (state.clientTodayStr && typeof state.clientTodayStr === 'string' && state.clientTodayStr.length === 10)
+      ? state.clientTodayStr
+      : (state.activeDateStr && typeof state.activeDateStr === 'string' && state.activeDateStr.length === 10
+          ? state.activeDateStr
+          : formatDateInTimeZone(new Date(), tz));
+    const todayStr = clientToday;
     const yesterdayStr = addDaysYmd(todayStr, -1);
 
     const allowedDates = new Set([

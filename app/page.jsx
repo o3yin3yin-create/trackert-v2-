@@ -2674,29 +2674,59 @@ function AppContent({ isPreview = false }) {
     fetchCloudState(false);
   }, [user, isMounted, fetchCloudState, isPreview]);
 
-  // --- 4. Real-time background sync (Polling 1.0s + Focus + Visibility + Online + BroadcastChannel) ---
+  // --- 4. Real-time background sync (Polling 5.0s when visible + Focus + Visibility + Online + BroadcastChannel) ---
   useEffect(() => {
     if (isPreview || !user || !isMounted || !isCloudLoaded) return;
 
-    const syncSilently = () => {
-      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
-      fetchCloudState(true);
-    };
+    let intervalId = null;
 
-    // Fast 3000ms heartbeat for multi-device sync (BroadcastChannel handles instant 0ms tab sync)
-    const intervalId = setInterval(syncSilently, 3000);
-
-    const onFocus = () => syncSilently();
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        syncSilently();
+    const stopPolling = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
       }
     };
+
+    const startPolling = () => {
+      stopPolling();
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        intervalId = setInterval(() => {
+          if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+          if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+          fetchCloudState(true);
+        }, 5000);
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        startPolling();
+        if (typeof navigator === 'undefined' || navigator.onLine) {
+          fetchCloudState(true);
+        }
+      } else {
+        stopPolling();
+      }
+    };
+
+    const onFocus = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        if (!intervalId) startPolling();
+        if (typeof navigator === 'undefined' || navigator.onLine) {
+          fetchCloudState(true);
+        }
+      }
+    };
+
     const onOnline = () => {
       console.log("[bokra Sync] Device came online. Triggering immediate sync...");
+      startPolling();
       fetchCloudState(false);
     };
+
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      startPolling();
+    }
 
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onVisibilityChange);
@@ -2717,7 +2747,7 @@ function AppContent({ isPreview = false }) {
     }
 
     return () => {
-      clearInterval(intervalId);
+      stopPolling();
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('online', onOnline);
@@ -2758,7 +2788,8 @@ function AppContent({ isPreview = false }) {
       const stateSnapshot = {
         ...latestStateRef.current,
         deletedHabitIds: deletedHabitsBeingPushed,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Africa/Cairo',
+        timezone: (typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : null) || 'UTC',
+        clientTodayStr: realTodayStr,
         updatedAt: Date.now()
       };
 
@@ -3259,8 +3290,9 @@ function AppContent({ isPreview = false }) {
   function getFormatDateStr(date) {
     if (!date) return "";
     try {
+      const userTz = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : null;
       return new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Africa/Cairo',
+        ...(userTz ? { timeZone: userTz } : {}),
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -3398,7 +3430,9 @@ function AppContent({ isPreview = false }) {
     emergencyCards: habitCards, finishedTickets, mission, avatar, deletedHabitIds: Array.from(deletedHabitIdsRef.current),
     spotifyRefreshToken: typeof window !== 'undefined' ? localStorage.getItem('daybase_spotify_refresh_token') || null : null,
     targetDates: syncTargetDates,
-    activeDateStr
+    activeDateStr,
+    clientTodayStr: realTodayStr,
+    timezone: (typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : null) || 'UTC',
   };
 
   // Sync sleep input when date changes
