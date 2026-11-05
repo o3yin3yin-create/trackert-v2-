@@ -6,7 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import { useUser, useAuth, useClerk, Show, SignInButton, SignUpButton, UserButton, SignIn, SignUp } from '../components/AuthBridge';
 import { clerkAppearance } from '../lib/clerkTheme';
 import { apiFetch, setApiTokenGetter } from '../lib/api';
-import { loadLocalOfflineState, saveLocalOfflineState, queueSyncMutation, resolveConflict, mergePomodoroTasksData, mergeTaskLists, getPendingSyncQueue, clearPendingSyncQueue, clearLocalOfflineState } from '../lib/db';
+import { loadLocalOfflineState, saveLocalOfflineState, queueSyncMutation, resolveConflict, mergePomodoroTasksData, mergeTaskLists, generateSubtaskId, recomputeTaskCompletion, getPendingSyncQueue, clearPendingSyncQueue, clearLocalOfflineState } from '../lib/db';
 import { motion } from 'framer-motion';
 import MinimalTimer from '../components/MinimalTimer';
 import { translations } from '../lib/translations';
@@ -730,7 +730,16 @@ const getPreviewData = () => {
   const tasks = [
     { id: 't1', text: 'Review Algorithms lecture notes & practice dynamic programming', completed: true },
     { id: 't2', text: 'Submit Operating Systems Assignment 2 before 11:59 PM', completed: true },
-    { id: 't3', text: 'Prepare high-res App Store promotional presentation', completed: true },
+    {
+      id: 't-demo-checklist',
+      text: 'Clinical Pharmacology Module 4',
+      completed: false,
+      subtasks: [
+        { id: 'st1', text: 'Mechanism of Action notes', completed: true, updatedAt: 1000 },
+        { id: 'st2', text: 'Adverse effects flashcards', completed: true, updatedAt: 1000 },
+        { id: 'st3', text: 'Practice 20 question bank MCQs', completed: false, updatedAt: 1000 },
+      ]
+    },
     { id: 't4', text: 'Complete 2 synchronized Pomodoro blocks with Mohamed', completed: true },
     { id: 't5', text: 'Grocery run: fresh fruits, oats, and Greek yogurt', completed: false },
     { id: 't6', text: 'Clean workspace desk & plan tomorrow morning schedule', completed: false },
@@ -1972,6 +1981,12 @@ function AppContent({ isPreview = false }) {
   });
   const [isTasksModalOpen, setIsTasksModalOpen] = useState(false);
   const [newTaskInput, setNewTaskInput] = useState("");
+  const [isChecklistMode, setIsChecklistMode] = useState(false);
+  const [draftSubtasks, setDraftSubtasks] = useState([]);
+  const [draftSubtaskInput, setDraftSubtaskInput] = useState("");
+  const [expandedTaskTexts, setExpandedTaskTexts] = useState(() => new Set());
+  const [editingSubtask, setEditingSubtask] = useState(null);
+  const [inlineNewSubtaskInputs, setInlineNewSubtaskInputs] = useState({});
 
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [isTicketsHistoryViewOpen, setIsTicketsHistoryViewOpen] = useState(false);
@@ -2384,7 +2399,13 @@ function AppContent({ isPreview = false }) {
                  for (const task of pastList) {
                    if (task && typeof task.text === 'string' && task.text.trim() !== '' && !task.name?.includes('✈')) {
                      const trimmedText = task.text.trim();
-                     if (!task.completed && !task.deleted && !existingTexts.has(trimmedText)) {
+                     const activeSubs = Array.isArray(task.subtasks)
+                       ? task.subtasks.filter(st => st && !st.deleted)
+                       : [];
+                     const isCompleted = activeSubs.length > 0
+                       ? activeSubs.every(st => Boolean(st.completed))
+                       : Boolean(task.completed);
+                     if (!isCompleted && !task.deleted && !existingTexts.has(trimmedText)) {
                        toRollover.push({
                          ...task,
                          text: trimmedText,
@@ -2404,7 +2425,7 @@ function AppContent({ isPreview = false }) {
                todayTasks = [...toRollover, ...todayTasks];
              }
 
-             todayTasks = todayTasks.map(t => (t?.completed ? { ...t, rolledOver: false } : t));
+             todayTasks = todayTasks.map(t => recomputeTaskCompletion({ ...t }));
              mergedTaskData[todayStr] = todayTasks;
 
              setPomodoroTasksData(mergedTaskData);
@@ -3459,7 +3480,16 @@ function AppContent({ isPreview = false }) {
         : [];
       
       const mergedPrev = mergeTaskLists(previousTasks, storedPrev);
-      const uncompletedTasks = mergedPrev.filter(t => t && !t.completed && !t.deleted);
+      const uncompletedTasks = mergedPrev.filter(t => {
+        if (!t || t.deleted) return false;
+        const activeSubs = Array.isArray(t.subtasks)
+          ? t.subtasks.filter(st => st && !st.deleted)
+          : [];
+        const isCompleted = activeSubs.length > 0
+          ? activeSubs.every(st => Boolean(st.completed))
+          : Boolean(t.completed);
+        return !isCompleted;
+      });
       
       const rolledOverTasks = uncompletedTasks.map(t => ({
         ...t,
@@ -3475,7 +3505,7 @@ function AppContent({ isPreview = false }) {
       const existingTexts = new Set(existingToday.map(t => t.text.trim()));
       const newlyRolled = rolledOverTasks.filter(t => !existingTexts.has(t.text));
 
-      const updatedToday = [...newlyRolled, ...existingToday].map(t => (t?.completed ? { ...t, rolledOver: false } : t));
+      const updatedToday = [...newlyRolled, ...existingToday].map(t => recomputeTaskCompletion({ ...t }));
 
       setDailyTasks(updatedToday);
       setDailyTasksDateStr(todayStr);
@@ -4057,15 +4087,21 @@ function AppContent({ isPreview = false }) {
         .filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈'))
         .map(t => {
           const old = prevByText.get(t.text);
-          const isCompleted = Boolean(t.completed);
+          let item = { ...t };
+          if (Array.isArray(item.subtasks)) {
+            recomputeTaskCompletion(item);
+          }
+          const isCompleted = Boolean(item.completed);
           const wasCompleted = Boolean(old?.completed);
           const statusChanged = !old || wasCompleted !== isCompleted;
-          return {
-            ...t,
-            completed: isCompleted,
-            rolledOver: isCompleted ? false : Boolean(t.rolledOver),
-            updatedAt: statusChanged ? stampedAt : (t.updatedAt || stampedAt)
-          };
+          item.completed = isCompleted;
+          item.rolledOver = isCompleted ? false : Boolean(item.rolledOver);
+          if (statusChanged) {
+            item.updatedAt = stampedAt;
+          } else if (!item.updatedAt) {
+            item.updatedAt = stampedAt;
+          }
+          return item;
         });
 
       if (typeof window !== 'undefined') {
@@ -4117,7 +4153,7 @@ function AppContent({ isPreview = false }) {
             dirtyDatesRef.current.add(t.fromDay);
             if (Array.isArray(nextMap[t.fromDay])) {
               nextMap[t.fromDay] = nextMap[t.fromDay].map(pt => (
-                pt?.text === t.text ? { ...pt, completed: t.completed, rolledOver: t.completed ? false : pt.rolledOver, updatedAt: t.updatedAt } : pt
+                pt?.text === t.text ? { ...pt, completed: t.completed, rolledOver: t.completed ? false : pt.rolledOver, subtasks: t.subtasks, updatedAt: t.updatedAt } : pt
               ));
             }
           }
@@ -4179,6 +4215,374 @@ function AppContent({ isPreview = false }) {
       }
       return nextMap;
     });
+  };
+
+  const toggleParentTaskCheck = (task) => {
+    if (!requireAuth() || !task) return;
+    haptic('light');
+    const activeSubtasks = Array.isArray(task.subtasks)
+      ? task.subtasks.filter(st => st && typeof st.text === 'string' && !st.deleted)
+      : [];
+    const now = Date.now();
+
+    if (activeSubtasks.length > 0) {
+      const willComplete = !task.completed;
+      updateDailyTasks(prev => prev.map(t => {
+        if (t.text !== task.text) return t;
+        const updatedSubs = (Array.isArray(t.subtasks) ? t.subtasks : []).map(st => {
+          if (!st || st.deleted) return st;
+          return { ...st, completed: willComplete, updatedAt: now };
+        });
+        const updatedParent = {
+          ...t,
+          subtasks: updatedSubs,
+          completed: willComplete,
+          rolledOver: willComplete ? false : t.rolledOver,
+          updatedAt: now
+        };
+        return updatedParent;
+      }));
+    } else {
+      updateDailyTasks(prev => prev.map(t => {
+        if (t.text !== task.text) return t;
+        const willComplete = !t.completed;
+        return {
+          ...t,
+          completed: willComplete,
+          rolledOver: willComplete ? false : t.rolledOver,
+          updatedAt: now
+        };
+      }));
+    }
+  };
+
+  const toggleSubtaskCheck = (parentText, subtaskId) => {
+    if (!requireAuth()) return;
+    haptic('light');
+    const now = Date.now();
+    updateDailyTasks(prev => prev.map(t => {
+      if (t.text !== parentText) return t;
+      const updatedSubs = (Array.isArray(t.subtasks) ? t.subtasks : []).map(st => {
+        if (!st || st.id !== subtaskId) return st;
+        return { ...st, completed: !st.completed, updatedAt: now };
+      });
+      const updatedParent = {
+        ...t,
+        subtasks: updatedSubs,
+        updatedAt: now
+      };
+      return recomputeTaskCompletion(updatedParent);
+    }));
+  };
+
+  const handleAddInlineSubtask = (parentText) => {
+    if (!requireAuth()) return;
+    const textToAdd = (inlineNewSubtaskInputs[parentText] || "").trim();
+    if (!textToAdd) return;
+    haptic('light');
+    const now = Date.now();
+    updateDailyTasks(prev => prev.map(t => {
+      if (t.text !== parentText) return t;
+      const existingSubs = Array.isArray(t.subtasks) ? t.subtasks : [];
+      const newSub = {
+        id: generateSubtaskId(),
+        text: textToAdd,
+        completed: false,
+        updatedAt: now
+      };
+      const updatedParent = {
+        ...t,
+        subtasks: [...existingSubs, newSub],
+        updatedAt: now
+      };
+      return recomputeTaskCompletion(updatedParent);
+    }));
+    setInlineNewSubtaskInputs(prev => ({ ...prev, [parentText]: "" }));
+  };
+
+  const handleDeleteSubtask = (parentText, subtaskId) => {
+    if (!requireAuth()) return;
+    haptic('light');
+    const now = Date.now();
+    updateDailyTasks(prev => prev.map(t => {
+      if (t.text !== parentText) return t;
+      const updatedSubs = (Array.isArray(t.subtasks) ? t.subtasks : []).map(st => {
+        if (!st || st.id !== subtaskId) return st;
+        return { ...st, deleted: true, updatedAt: now };
+      });
+      const updatedParent = {
+        ...t,
+        subtasks: updatedSubs,
+        updatedAt: now
+      };
+      return recomputeTaskCompletion(updatedParent);
+    }));
+  };
+
+  const handleSaveSubtaskEdit = (parentText, subtaskId, newText) => {
+    if (!requireAuth()) return;
+    const trimmed = (newText || "").trim();
+    if (!trimmed) return;
+    haptic('light');
+    const now = Date.now();
+    updateDailyTasks(prev => prev.map(t => {
+      if (t.text !== parentText) return t;
+      const updatedSubs = (Array.isArray(t.subtasks) ? t.subtasks : []).map(st => {
+        if (!st || st.id !== subtaskId) return st;
+        return { ...st, text: trimmed, updatedAt: now };
+      });
+      const updatedParent = {
+        ...t,
+        subtasks: updatedSubs,
+        updatedAt: now
+      };
+      return recomputeTaskCompletion(updatedParent);
+    }));
+    setEditingSubtask(null);
+  };
+
+  const toggleTaskExpand = (taskText) => {
+    haptic('light');
+    setExpandedTaskTexts(prev => {
+      const next = new Set(prev);
+      if (next.has(taskText)) next.delete(taskText);
+      else next.add(taskText);
+      return next;
+    });
+  };
+
+  const handleCreateTask = () => {
+    if (!requireAuth()) return;
+    const parentText = newTaskInput.trim();
+    if (!parentText) return;
+
+    haptic('light');
+    const now = Date.now();
+    let subtasks = [];
+    if (isChecklistMode) {
+      const items = [...draftSubtasks];
+      if (draftSubtaskInput.trim()) {
+        items.push(draftSubtaskInput.trim());
+      }
+      if (items.length > 0) {
+        subtasks = items.map(txt => ({
+          id: generateSubtaskId(),
+          text: txt,
+          completed: false,
+          updatedAt: now,
+        }));
+      }
+    }
+
+    const newTask = {
+      text: parentText,
+      completed: false,
+      updatedAt: now,
+      ...(subtasks.length > 0 ? { subtasks } : {})
+    };
+    recomputeTaskCompletion(newTask);
+
+    updateDailyTasks(prev => [...prev, newTask]);
+    setNewTaskInput("");
+    setDraftSubtasks([]);
+    setDraftSubtaskInput("");
+    setIsChecklistMode(false);
+  };
+
+  const toggleChecklistMode = () => {
+    haptic('light');
+    setIsChecklistMode(prev => !prev);
+  };
+
+  const addDraftSubtask = () => {
+    if (!draftSubtaskInput.trim()) return;
+    haptic('light');
+    setDraftSubtasks(prev => [...prev, draftSubtaskInput.trim()]);
+    setDraftSubtaskInput("");
+  };
+
+  const removeDraftSubtask = (index) => {
+    haptic('light');
+    setDraftSubtasks(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const renderTaskItem = (task, idx, isModal = false) => {
+    const isOverdue = task.rolledOver && !task.completed;
+    const activeSubtasks = Array.isArray(task.subtasks)
+      ? task.subtasks.filter(st => st && typeof st.text === 'string' && !st.deleted)
+      : [];
+    const hasSubtasks = activeSubtasks.length > 0;
+    const completedSubsCount = activeSubtasks.filter(st => st.completed).length;
+    const totalSubsCount = activeSubtasks.length;
+    const isExpanded = expandedTaskTexts.has(task.text);
+
+    return (
+      <div 
+        key={task.text + idx} 
+        className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
+          isOverdue 
+            ? 'bg-rose-950/30 border-rose-500/40 shadow-sm shadow-rose-950/20' 
+            : isModal ? 'bg-white/5 border-white/10' : 'bg-black/20 border-white/5'
+        }`}
+      >
+        <div className={`flex items-center justify-between ${isModal ? 'p-3.5 sm:p-4' : 'p-3'}`}>
+          <div 
+            className="flex items-center gap-3 cursor-pointer flex-1 min-w-0" 
+            onClick={() => hasSubtasks ? toggleTaskExpand(task.text) : toggleParentTaskCheck(task)}
+          >
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleParentTaskCheck(task);
+              }}
+              aria-label={task.completed ? "Mark incomplete" : "Mark complete"}
+              className={`${isModal ? 'w-6 h-6' : 'w-5 h-5'} rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+                task.completed 
+                  ? 'bg-white border-transparent' 
+                  : isOverdue 
+                    ? 'border-rose-400 bg-rose-500/15' 
+                    : isModal ? 'border-white/30 hover:border-white' : 'border-white/20 hover:border-white/40'
+              }`} 
+              style={{ borderColor: task.completed ? themeColor : undefined }}
+            >
+              {task.completed && <Check size={isModal ? 14 : 12} strokeWidth={4} style={{ color: themeColor }} />}
+            </button>
+            <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
+              <span className={`text-sm font-semibold truncate transition-all ${
+                task.completed 
+                  ? 'text-white/30 line-through' 
+                  : isOverdue
+                    ? 'text-rose-200 font-bold'
+                    : isModal ? 'text-white' : 'text-white/90'
+              }`}>
+                {task.text}
+              </span>
+              {hasSubtasks && (
+                <span 
+                  className="text-[10px] px-2 py-0.5 rounded-md font-mono font-bold flex items-center gap-1 select-none shrink-0"
+                  style={{
+                    backgroundColor: task.completed ? `${themeColor}25` : 'rgba(255,255,255,0.08)',
+                    color: task.completed ? themeColor : 'rgba(255,255,255,0.7)'
+                  }}
+                >
+                  <ListChecks size={11} />
+                  {completedSubsCount}/{totalSubsCount}
+                </span>
+              )}
+              {isOverdue && (
+                <span className="text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30 uppercase select-none flex items-center gap-1 shrink-0">
+                  <Clock size={10} strokeWidth={2.5} />
+                  {t('overdueTask')}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            {hasSubtasks && (
+              <button 
+                type="button"
+                onClick={() => toggleTaskExpand(task.text)} 
+                className="p-1.5 text-white/40 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+                aria-label={isExpanded ? "Collapse subtasks" : "Expand subtasks"}
+              >
+                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+            )}
+            <button 
+              type="button"
+              onClick={() => deleteDailyTask(task)} 
+              aria-label="Delete Task"
+              title="Delete Task"
+              className={`${isModal ? 'text-white/30 hover:text-red-400 p-2' : 'text-white/20 hover:text-red-400 p-1.5'} transition-colors shrink-0 rounded-lg hover:bg-white/5`}
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        </div>
+
+        {hasSubtasks && isExpanded && (
+          <div className="border-t border-white/5 bg-black/30 px-3 py-2.5 sm:px-4 sm:py-3 flex flex-col gap-2">
+            {activeSubtasks.map((st) => (
+              <div key={st.id} className="flex items-center justify-between gap-2.5 py-1 px-1.5 rounded-xl hover:bg-white/[0.03] transition-colors group">
+                <div 
+                  className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer"
+                  onClick={() => toggleSubtaskCheck(task.text, st.id)}
+                >
+                  <div 
+                    className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all shrink-0 ${
+                      st.completed ? 'bg-white border-transparent' : 'border-white/30 group-hover:border-white/50'
+                    }`}
+                    style={{ borderColor: st.completed ? themeColor : undefined }}
+                  >
+                    {st.completed && <Check size={10} strokeWidth={4} style={{ color: themeColor }} />}
+                  </div>
+
+                  {editingSubtask?.taskText === task.text && editingSubtask?.subtaskId === st.id ? (
+                    <input
+                      autoFocus
+                      type="text"
+                      value={editingSubtask.text}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => setEditingSubtask({ ...editingSubtask, text: e.target.value })}
+                      onBlur={() => handleSaveSubtaskEdit(task.text, st.id, editingSubtask.text)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveSubtaskEdit(task.text, st.id, editingSubtask.text);
+                        if (e.key === 'Escape') setEditingSubtask(null);
+                      }}
+                      className="flex-1 bg-white/10 text-white text-xs px-2 py-1 rounded-lg outline-none border border-white/20"
+                    />
+                  ) : (
+                    <span className={`text-xs transition-all truncate ${st.completed ? 'text-white/30 line-through' : 'text-white/80'}`}>
+                      {st.text}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+                  <button 
+                    type="button"
+                    onClick={() => setEditingSubtask({ taskText: task.text, subtaskId: st.id, text: st.text })}
+                    className="p-1 text-white/30 hover:text-white/80 transition-colors"
+                    title="Edit sub-item"
+                  >
+                    <Edit2 size={12} />
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => handleDeleteSubtask(task.text, st.id)}
+                    className="p-1 text-white/30 hover:text-red-400 transition-colors"
+                    title="Delete sub-item"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <div className="flex items-center gap-2 mt-1.5 pt-2 border-t border-white/5">
+              <input
+                type="text"
+                placeholder={t('addSubtaskPlaceholder')}
+                value={inlineNewSubtaskInputs[task.text] || ""}
+                onChange={(e) => setInlineNewSubtaskInputs({ ...inlineNewSubtaskInputs, [task.text]: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAddInlineSubtask(task.text);
+                }}
+                className="flex-1 bg-white/5 border border-white/10 text-white text-xs px-3 py-1.5 rounded-xl outline-none focus:border-white/30 transition-colors placeholder:text-white/30"
+              />
+              <button
+                type="button"
+                onClick={() => handleAddInlineSubtask(task.text)}
+                className="px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 bg-white/10 hover:bg-white/20 text-white shrink-0 flex items-center gap-1"
+              >
+                <Plus size={12} strokeWidth={3} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const toggleExpand = (habitId) => {
@@ -8706,95 +9110,96 @@ function AppContent({ isPreview = false }) {
                   </span>
                 </div>
 
-                <div className="flex flex-col gap-2.5 mb-5 max-h-[170px] overflow-y-auto pr-1">
-                  {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).map((task, idx) => {
-                    const isOverdue = task.rolledOver && !task.completed;
-                    return (
-                      <div 
-                        key={task.text + idx} 
-                        className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-200 ${
-                          isOverdue 
-                            ? 'bg-rose-950/30 border-rose-500/40 shadow-sm shadow-rose-950/20' 
-                            : 'bg-black/20 border-white/5'
-                        }`}
-                      >
-                        <div 
-                          className="flex items-center gap-3 cursor-pointer flex-1 min-w-0" 
-                          onClick={() => {
-                            haptic('light');
-                            updateDailyTasks(prev => prev.map(t => t.text === task.text ? { ...t, completed: !t.completed } : t));
-                          }}
-                        >
-                          <div 
-                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
-                              task.completed 
-                                ? 'bg-white border-transparent' 
-                                : isOverdue 
-                                  ? 'border-rose-400 bg-rose-500/15' 
-                                  : 'border-white/20'
-                            }`} 
-                            style={{ borderColor: task.completed ? themeColor : undefined }}
-                          >
-                            {task.completed && <Check size={12} strokeWidth={4} style={{ color: themeColor }} />}
-                          </div>
-                          <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-                            <span className={`text-sm font-semibold truncate transition-all ${
-                              task.completed 
-                                ? 'text-white/30 line-through' 
-                                : isOverdue
-                                  ? 'text-rose-200 font-bold'
-                                  : 'text-white/90'
-                            }`}>
-                              {task.text}
-                            </span>
-                            {isOverdue && (
-                              <span className="text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30 uppercase select-none flex items-center gap-1 shrink-0">
-                                <Clock size={10} strokeWidth={2.5} />
-                                {t('overdueTask')}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <button 
-                          onClick={() => deleteDailyTask(task)} 
-                          aria-label="Delete Task"
-                          title="Delete Task"
-                          className="text-white/20 hover:text-red-400 p-1 transition-colors shrink-0"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    );
-                  })}
+                <div className="flex flex-col gap-2.5 mb-5 max-h-[220px] overflow-y-auto pr-1">
+                  {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).map((task, idx) => renderTaskItem(task, idx, false))}
                   {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).length === 0 && (
                     <div className="text-center text-white/60 text-xs font-bold uppercase tracking-widest py-8 border border-dashed border-white/10 rounded-2xl bg-white/5 select-none">{t('noTasks')}</div>
                   )}
                 </div>
 
-                <div className="flex gap-2 mt-auto">
-                  <input 
-                    type="text" 
-                    placeholder={t('addTaskPlaceholder')}
-                    value={newTaskInput}
-                    onChange={(e) => setNewTaskInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && newTaskInput.trim() !== '') {
-                        haptic('light');
-                        updateDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
-                        setNewTaskInput("");
-                      }
-                    }}
-                    className="flex-1 bg-black/20 border border-white/5 text-white px-4 py-3 rounded-2xl outline-none text-sm font-semibold focus:border-white/30 transition-colors placeholder:text-white/30" 
-                  />
-                  <button onClick={() => {
-                    if (newTaskInput.trim() !== '') {
-                      haptic('light');
-                      updateDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
-                      setNewTaskInput("");
-                    }
-                  }} aria-label="Add Task" title="Add Task" className="px-4 py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 hover:opacity-90" style={{ backgroundColor: themeColor, color: '#000' }}>
-                    <Plus size={18} strokeWidth={3} />
-                  </button>
+                <div className="flex flex-col gap-2 mt-auto">
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={toggleChecklistMode}
+                      title={t('checklistMode')}
+                      className={`px-3 py-3 rounded-2xl border transition-all active:scale-95 flex items-center justify-center shrink-0 ${
+                        isChecklistMode
+                          ? 'border-transparent text-black'
+                          : 'bg-black/20 border-white/5 text-white/50 hover:text-white hover:bg-white/10'
+                      }`}
+                      style={{
+                        backgroundColor: isChecklistMode ? themeColor : undefined,
+                      }}
+                    >
+                      <ListChecks size={18} strokeWidth={2.5} />
+                    </button>
+                    <input 
+                      type="text" 
+                      placeholder={t('addTaskPlaceholder')}
+                      value={newTaskInput}
+                      onChange={(e) => setNewTaskInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleCreateTask();
+                        }
+                      }}
+                      className="flex-1 bg-black/20 border border-white/5 text-white px-4 py-3 rounded-2xl outline-none text-sm font-semibold focus:border-white/30 transition-colors placeholder:text-white/30" 
+                    />
+                    <button 
+                      type="button"
+                      onClick={handleCreateTask}
+                      aria-label="Add Task" 
+                      title="Add Task" 
+                      className="px-4 py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 hover:opacity-90 shrink-0" 
+                      style={{ backgroundColor: themeColor, color: '#000' }}
+                    >
+                      <Plus size={18} strokeWidth={3} />
+                    </button>
+                  </div>
+
+                  {isChecklistMode && (
+                    <div className="flex flex-col gap-2 p-3 rounded-2xl bg-black/30 border border-white/10">
+                      {draftSubtasks.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto">
+                          {draftSubtasks.map((txt, sidx) => (
+                            <span key={sidx} className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/10 text-white text-xs font-medium">
+                              <span>{txt}</span>
+                              <button
+                                type="button"
+                                onClick={() => removeDraftSubtask(sidx)}
+                                className="text-white/40 hover:text-white"
+                              >
+                                <X size={12} />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder={t('addSubtaskPlaceholder')}
+                          value={draftSubtaskInput}
+                          onChange={(e) => setDraftSubtaskInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              addDraftSubtask();
+                            }
+                          }}
+                          className="flex-1 bg-white/5 border border-white/10 text-white text-xs px-3 py-2 rounded-xl outline-none focus:border-white/30 placeholder:text-white/30"
+                        />
+                        <button
+                          type="button"
+                          onClick={addDraftSubtask}
+                          className="px-3 py-2 rounded-xl text-xs font-bold bg-white/15 hover:bg-white/25 text-white active:scale-95 shrink-0"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -9628,92 +10033,91 @@ function AppContent({ isPreview = false }) {
                   </div>
 
                   {/* Add New Task Input Card */}
-                  <div className="flex gap-2 mb-6">
-                    <input 
-                      type="text" 
-                      placeholder={t('addTaskPlaceholder')}
-                      value={newTaskInput}
-                      onChange={(e) => setNewTaskInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newTaskInput.trim() !== '') {
-                          haptic('light');
-                          updateDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
-                          setNewTaskInput("");
-                        }
-                      }}
-                      className="flex-1 bg-white/10 border border-white/10 text-white px-4 py-3.5 rounded-2xl outline-none text-sm font-semibold focus:border-white/30 transition-colors placeholder:text-white/30" 
-                    />
-                    <button onClick={() => {
-                      if (newTaskInput.trim() !== '') {
-                        haptic('light');
-                        updateDailyTasks(prev => [...prev, { text: newTaskInput.trim(), completed: false }]);
-                        setNewTaskInput("");
-                      }
-                    }} className="bg-white text-black px-5 py-3.5 rounded-2xl font-black text-sm transition-all active:scale-95 hover:bg-white/90 shrink-0">
-                      <Plus size={20} strokeWidth={3} />
-                    </button>
+                  <div className="flex flex-col gap-2 mb-6">
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={toggleChecklistMode}
+                        title={t('checklistMode')}
+                        className={`px-3 py-3 rounded-2xl border transition-all active:scale-95 flex items-center justify-center shrink-0 ${
+                          isChecklistMode
+                            ? 'border-transparent text-black'
+                            : 'bg-white/10 border-white/10 text-white/50 hover:text-white hover:bg-white/15'
+                        }`}
+                        style={{
+                          backgroundColor: isChecklistMode ? themeColor : undefined,
+                        }}
+                      >
+                        <ListChecks size={20} strokeWidth={2.5} />
+                      </button>
+                      <input 
+                        type="text" 
+                        placeholder={t('addTaskPlaceholder')}
+                        value={newTaskInput}
+                        onChange={(e) => setNewTaskInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleCreateTask();
+                          }
+                        }}
+                        className="flex-1 bg-white/10 border border-white/10 text-white px-4 py-3.5 rounded-2xl outline-none text-sm font-semibold focus:border-white/30 transition-colors placeholder:text-white/30" 
+                      />
+                      <button 
+                        type="button"
+                        onClick={handleCreateTask}
+                        className="bg-white text-black px-5 py-3.5 rounded-2xl font-black text-sm transition-all active:scale-95 hover:bg-white/90 shrink-0"
+                      >
+                        <Plus size={20} strokeWidth={3} />
+                      </button>
+                    </div>
+
+                    {isChecklistMode && (
+                      <div className="flex flex-col gap-2 p-3 rounded-2xl bg-white/5 border border-white/10">
+                        {draftSubtasks.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto">
+                            {draftSubtasks.map((txt, sidx) => (
+                              <span key={sidx} className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/10 text-white text-xs font-medium">
+                                <span>{txt}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => removeDraftSubtask(sidx)}
+                                  className="text-white/40 hover:text-white"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder={t('addSubtaskPlaceholder')}
+                            value={draftSubtaskInput}
+                            onChange={(e) => setDraftSubtaskInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                addDraftSubtask();
+                              }
+                            }}
+                            className="flex-1 bg-white/10 border border-white/10 text-white text-xs px-3.5 py-2.5 rounded-xl outline-none focus:border-white/30 placeholder:text-white/30"
+                          />
+                          <button
+                            type="button"
+                            onClick={addDraftSubtask}
+                            className="px-3 py-2 rounded-xl text-xs font-bold bg-white/20 hover:bg-white/30 text-white active:scale-95 shrink-0"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Task Items List */}
                   <div className="flex flex-col gap-3 pb-8">
-                    {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).map((task, idx) => {
-                      const isOverdue = task.rolledOver && !task.completed;
-                      return (
-                        <div 
-                          key={task.text + idx} 
-                          className={`flex items-center justify-between p-4 rounded-2xl border transition-all duration-200 ${
-                            isOverdue 
-                              ? 'bg-rose-950/30 border-rose-500/40 shadow-sm' 
-                              : 'bg-white/5 border-white/10'
-                          }`}
-                        >
-                          <div 
-                            className="flex items-center gap-3.5 cursor-pointer flex-1 min-w-0" 
-                            onClick={() => {
-                              haptic('light');
-                              updateDailyTasks(prev => prev.map(t => t.text === task.text ? { ...t, completed: !t.completed } : t));
-                            }}
-                          >
-                            <div 
-                              className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
-                                task.completed 
-                                  ? 'bg-white border-transparent' 
-                                  : isOverdue 
-                                    ? 'border-rose-400 bg-rose-500/20' 
-                                    : 'border-white/30 hover:border-white'
-                              }`} 
-                              style={{ borderColor: task.completed ? themeColor : undefined }}
-                            >
-                              {task.completed && <Check size={14} strokeWidth={4} style={{ color: themeColor }} />}
-                            </div>
-                            <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
-                              <span className={`text-sm font-bold truncate transition-all ${
-                                task.completed 
-                                  ? 'text-white/30 line-through' 
-                                  : isOverdue
-                                    ? 'text-rose-200 font-bold'
-                                    : 'text-white'
-                              }`}>
-                                {task.text}
-                              </span>
-                              {isOverdue && (
-                                <span className="text-[9px] font-extrabold tracking-wider px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30 uppercase select-none flex items-center gap-1 shrink-0">
-                                  <Clock size={10} strokeWidth={2.5} />
-                                  {t('overdueTask')}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <button 
-                            onClick={() => deleteDailyTask(task)} 
-                            className="text-white/30 hover:text-red-400 p-2 transition-colors shrink-0"
-                            title="Delete Task"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      );
-                    })}
+                    {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).map((task, idx) => renderTaskItem(task, idx, true))}
                     {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).length === 0 && (
                       <div className="text-center text-white/30 text-xs font-bold uppercase tracking-widest py-16">{t('noTasks')}</div>
                     )}

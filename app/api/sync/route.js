@@ -497,8 +497,28 @@ export async function POST(req) {
         ? existingDailyLog.tasks
         : [];
       const clientTasks = state.pomodoroTasksData?.[date];
-      const mergedTasks = Array.isArray(clientTasks)
-        ? mergeTaskLists(existingTasks, clientTasks)
+      const serverNow = Date.now();
+      const clampedClientTasks = Array.isArray(clientTasks)
+        ? clientTasks.map(t => {
+            if (!t || typeof t !== 'object') return t;
+            const tUpdated = Number(t.updatedAt) || 0;
+            const clampedParent = tUpdated > (serverNow + 60000) ? { ...t, updatedAt: serverNow } : t;
+            if (Array.isArray(clampedParent.subtasks)) {
+              return {
+                ...clampedParent,
+                subtasks: clampedParent.subtasks.map(st => {
+                  if (!st || typeof st !== 'object') return st;
+                  const stUpdated = Number(st.updatedAt) || 0;
+                  return stUpdated > (serverNow + 60000) ? { ...st, updatedAt: serverNow } : st;
+                })
+              };
+            }
+            return clampedParent;
+          })
+        : null;
+
+      const mergedTasks = Array.isArray(clampedClientTasks)
+        ? mergeTaskLists(existingTasks, clampedClientTasks)
         : existingTasks;
 
       const clientSleep = state.sleepData?.[date];
