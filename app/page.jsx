@@ -1942,7 +1942,17 @@ function AppContent({ isPreview = false }) {
 
   // --- Daily Tasks State ---
   const [dailyTasks, setDailyTasks] = useState(() => {
-    if (isPreview) return getPreviewData().tasks;
+    if (isPreview) {
+      if (typeof window !== 'undefined') {
+        try {
+          const previewStored = JSON.parse(localStorage.getItem('preview_tasks_v1') || 'null');
+          if (Array.isArray(previewStored)) {
+            return previewStored.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈'));
+          }
+        } catch {}
+      }
+      return getPreviewData().tasks;
+    }
     if (typeof window !== 'undefined') {
       try {
         const parsed = JSON.parse(localStorage.getItem('daybase_daily_tasks_v4') || "[]");
@@ -2157,6 +2167,7 @@ function AppContent({ isPreview = false }) {
   const isSyncingRef = useRef(false);
   const isPushingRef = useRef(false);
   const pushTimerRef = useRef(null);
+  const executePushRef = useRef(null);
   const isApplyingRemoteRef = useRef(false);
   const lastLocalMutationTimeRef = useRef(0);
   const localMutationVersionRef = useRef(0);
@@ -2356,45 +2367,24 @@ function AppContent({ isPreview = false }) {
                localStateToMerge.pomodoroTasksData
              );
              const todayStr = getFormatDateStr(new Date());
-             const completedTexts = new Set();
-             for (const list of Object.values(mergedTaskData)) {
-               if (!Array.isArray(list)) continue;
-               for (const task of list) {
-                 if (task?.completed && typeof task.text === 'string' && task.text.trim()) {
-                   completedTexts.add(task.text.trim());
-                 }
-               }
-             }
-
-             if (completedTexts.size > 0) {
-               for (const date of Object.keys(mergedTaskData)) {
-                 if (!Array.isArray(mergedTaskData[date])) continue;
-                 mergedTaskData[date] = mergedTaskData[date].map(task => {
-                   const text = typeof task?.text === 'string' ? task.text.trim() : '';
-                   if (text && completedTexts.has(text) && !task.completed) {
-                     return { ...task, text, completed: true };
-                   }
-                   return task;
-                 });
-               }
-             }
 
              let todayTasks = Array.isArray(mergedTaskData[todayStr])
                ? mergedTaskData[todayStr].filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈'))
                : [];
 
-             // Rollover only tasks that were never completed on any stored day
+             // Rollover only tasks from the most recent past date that has tasks, never completed or deleted
              const pastDates = Object.keys(mergedTaskData).filter(d => d < todayStr).sort();
              const existingTexts = new Set(todayTasks.map(t => t.text.trim()));
              const toRollover = [];
 
-             for (const pastDate of pastDates) {
+             for (let i = pastDates.length - 1; i >= 0; i--) {
+               const pastDate = pastDates[i];
                const pastList = mergedTaskData[pastDate];
-               if (Array.isArray(pastList)) {
+               if (Array.isArray(pastList) && pastList.some(t => t && !t.deleted && !t.name?.includes('✈'))) {
                  for (const task of pastList) {
                    if (task && typeof task.text === 'string' && task.text.trim() !== '' && !task.name?.includes('✈')) {
                      const trimmedText = task.text.trim();
-                     if (!task.completed && !completedTexts.has(trimmedText) && !existingTexts.has(trimmedText)) {
+                     if (!task.completed && !task.deleted && !existingTexts.has(trimmedText)) {
                        toRollover.push({
                          ...task,
                          text: trimmedText,
@@ -2406,6 +2396,7 @@ function AppContent({ isPreview = false }) {
                      }
                    }
                  }
+                 break;
                }
              }
 
@@ -2706,6 +2697,15 @@ function AppContent({ isPreview = false }) {
         }
       } else {
         stopPolling();
+        if (localMutationVersionRef.current > pushedMutationVersionRef.current) {
+          if (executePushRef.current) executePushRef.current({ keepalive: true });
+        }
+      }
+    };
+
+    const onPageHide = () => {
+      if (localMutationVersionRef.current > pushedMutationVersionRef.current) {
+        if (executePushRef.current) executePushRef.current({ keepalive: true });
       }
     };
 
@@ -2730,6 +2730,7 @@ function AppContent({ isPreview = false }) {
 
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pagehide', onPageHide);
     window.addEventListener('online', onOnline);
 
     // BroadcastChannel for instant 0ms sync between multiple tabs/windows on the same device
@@ -2750,6 +2751,7 @@ function AppContent({ isPreview = false }) {
       stopPolling();
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pagehide', onPageHide);
       window.removeEventListener('online', onOnline);
       if (channel) {
         channel.close();
@@ -2758,7 +2760,7 @@ function AppContent({ isPreview = false }) {
   }, [user, isMounted, isCloudLoaded, fetchCloudState, isPreview]);
 
   // --- 5. Push cloud state debounced (50ms) with strict versioned queue serialization ---
-  const executePush = useCallback(async () => {
+  const executePush = useCallback(async (options = {}) => {
     if (isPreview || !user || !isCloudLoaded) return;
     if (localMutationVersionRef.current === pushedMutationVersionRef.current) return;
     if (isPushingRef.current) {
@@ -2795,7 +2797,8 @@ function AppContent({ isPreview = false }) {
 
       const res = await apiFetch('/api/sync', {
         method: 'POST',
-        body: JSON.stringify(stateSnapshot)
+        body: JSON.stringify(stateSnapshot),
+        ...options
       });
 
       if (res.ok) {
@@ -2855,6 +2858,7 @@ function AppContent({ isPreview = false }) {
       }
     }
   }, [user, isCloudLoaded]);
+  executePushRef.current = executePush;
 
   useEffect(() => {
     if (!user || !isCloudLoaded) return;
@@ -3453,23 +3457,9 @@ function AppContent({ isPreview = false }) {
       const storedPrev = Array.isArray(pomodoroTasksData?.[dailyTasksDateStr])
         ? pomodoroTasksData[dailyTasksDateStr]
         : [];
-      const allCompletedTexts = new Set();
-      if (pomodoroTasksData && typeof pomodoroTasksData === 'object') {
-        for (const list of Object.values(pomodoroTasksData)) {
-          if (!Array.isArray(list)) continue;
-          for (const task of list) {
-            if (task?.completed && typeof task.text === 'string' && task.text.trim()) {
-              allCompletedTexts.add(task.text.trim());
-            }
-          }
-        }
-      }
-      for (const t of [...previousTasks, ...storedPrev]) {
-        if (t?.completed && typeof t.text === 'string' && t.text.trim()) {
-          allCompletedTexts.add(t.text.trim());
-        }
-      }
-      const uncompletedTasks = previousTasks.filter(t => t && !t.completed && !allCompletedTexts.has(t.text.trim()));
+      
+      const mergedPrev = mergeTaskLists(previousTasks, storedPrev);
+      const uncompletedTasks = mergedPrev.filter(t => t && !t.completed && !t.deleted);
       
       const rolledOverTasks = uncompletedTasks.map(t => ({
         ...t,
@@ -3483,23 +3473,111 @@ function AppContent({ isPreview = false }) {
         ? pomodoroTasksData[todayStr].filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')) 
         : [];
       const existingTexts = new Set(existingToday.map(t => t.text.trim()));
-      const newlyRolled = rolledOverTasks.filter(t => !existingTexts.has(t.text) && !allCompletedTexts.has(t.text));
+      const newlyRolled = rolledOverTasks.filter(t => !existingTexts.has(t.text));
 
       const updatedToday = [...newlyRolled, ...existingToday].map(t => (t?.completed ? { ...t, rolledOver: false } : t));
 
       setDailyTasks(updatedToday);
       setDailyTasksDateStr(todayStr);
 
-      setPomodoroTasksData(prev => ({
-        ...(prev || {}),
-        [dailyTasksDateStr]: mergeTaskLists(previousTasks, storedPrev),
+      const nextPomodoro = {
+        ...(pomodoroTasksData || {}),
+        [dailyTasksDateStr]: mergedPrev,
         [todayStr]: updatedToday
-      }));
+      };
+      setPomodoroTasksData(nextPomodoro);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('daybase_daily_tasks_v4', JSON.stringify(updatedToday));
+        localStorage.setItem('daybase_daily_tasks_date_v4', todayStr);
+        localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(nextPomodoro));
+      }
       markLocalMutation(todayStr);
     } else if (!dailyTasksDateStr) {
       setDailyTasksDateStr(todayStr);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('daybase_daily_tasks_date_v4', todayStr);
+      }
     }
   }, [baseDate, dailyTasksDateStr, isPreview, pomodoroTasksData, markLocalMutation]);
+
+  // One-time cleanup: tombstone demo tasks if leaked into real account
+  const demoCleanupRanRef = useRef(false);
+  useEffect(() => {
+    if (isPreview || !isMounted || !isCloudLoaded || demoCleanupRanRef.current) return;
+    demoCleanupRanRef.current = true;
+    const DEMO_TEXTS = new Set([
+      'Grocery run: fresh fruits, oats, and Greek yogurt',
+      'Clean workspace desk & plan tomorrow morning schedule'
+    ]);
+    const now = Date.now();
+    let foundDemoInDaily = false;
+    let foundDemoInPomodoro = false;
+
+    if (Array.isArray(dailyTasks)) {
+      for (const t of dailyTasks) {
+        if (t && typeof t.text === 'string' && DEMO_TEXTS.has(t.text.trim()) && !t.deleted) {
+          foundDemoInDaily = true;
+          break;
+        }
+      }
+    }
+
+    if (pomodoroTasksData && typeof pomodoroTasksData === 'object') {
+      for (const list of Object.values(pomodoroTasksData)) {
+        if (Array.isArray(list)) {
+          for (const t of list) {
+            if (t && typeof t.text === 'string' && DEMO_TEXTS.has(t.text.trim()) && !t.deleted) {
+              foundDemoInPomodoro = true;
+              break;
+            }
+          }
+        }
+        if (foundDemoInPomodoro) break;
+      }
+    }
+
+    if (foundDemoInDaily || foundDemoInPomodoro) {
+      if (foundDemoInDaily) {
+        setDailyTasks(prev => {
+          const list = Array.isArray(prev) ? prev : [];
+          const cleaned = list.map(t => (
+            t && typeof t.text === 'string' && DEMO_TEXTS.has(t.text.trim())
+              ? { ...t, deleted: true, completed: false, rolledOver: false, updatedAt: now }
+              : t
+          ));
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('daybase_daily_tasks_v4', JSON.stringify(cleaned));
+          }
+          return cleaned;
+        });
+      }
+
+      setPomodoroTasksData(prev => {
+        const next = prev && typeof prev === 'object' ? { ...prev } : {};
+        for (const [date, list] of Object.entries(next)) {
+          if (Array.isArray(list)) {
+            let changed = false;
+            const updated = list.map(t => {
+              if (t && typeof t.text === 'string' && DEMO_TEXTS.has(t.text.trim())) {
+                changed = true;
+                return { ...t, deleted: true, completed: false, rolledOver: false, updatedAt: now };
+              }
+              return t;
+            });
+            if (changed) {
+              next[date] = updated;
+              dirtyDatesRef.current.add(date);
+            }
+          }
+        }
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(next));
+        }
+        return next;
+      });
+      markLocalMutation();
+    }
+  }, [isPreview, isMounted, isCloudLoaded, dailyTasks, pomodoroTasksData, markLocalMutation]);
 
   // --- Effects (Save to LocalStorage) ---
   useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_habits_v4', JSON.stringify(habits)); }, [habits, isMounted, isPreview]);
@@ -3513,7 +3591,15 @@ function AppContent({ isPreview = false }) {
 
   useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_habitNotes_v4', JSON.stringify(habitNotes)); }, [habitNotes, isMounted, isPreview]);
   useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_cards_v4', JSON.stringify(habitCards)); }, [habitCards, isMounted, isPreview]);
-  useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_daily_tasks_v4', JSON.stringify(dailyTasks)); }, [dailyTasks, isMounted, isPreview]);
+  useEffect(() => { 
+    if (isMounted) {
+      if (isPreview) {
+        localStorage.setItem('preview_tasks_v1', JSON.stringify(dailyTasks));
+      } else {
+        localStorage.setItem('daybase_daily_tasks_v4', JSON.stringify(dailyTasks));
+      }
+    } 
+  }, [dailyTasks, isMounted, isPreview]);
   useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_daily_tasks_date_v4', dailyTasksDateStr); }, [dailyTasksDateStr, isMounted, isPreview]);
   useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_granted_cards_log_v4', JSON.stringify(grantedCardsLog)); }, [grantedCardsLog, isMounted, isPreview]);
 
@@ -3938,10 +4024,20 @@ function AppContent({ isPreview = false }) {
           return t;
         });
         if (changed) {
-          setPomodoroTasksData(p => ({
-            ...(p || {}),
-            [activeDateStr]: updated
-          }));
+          if (typeof window !== 'undefined') {
+            const storageKey = isPreview ? 'preview_tasks_v1' : 'daybase_daily_tasks_v4';
+            localStorage.setItem(storageKey, JSON.stringify(updated));
+          }
+          setPomodoroTasksData(p => {
+            const nextPomodoro = {
+              ...(p || {}),
+              [activeDateStr]: updated
+            };
+            if (typeof window !== 'undefined' && !isPreview) {
+              localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(nextPomodoro));
+            }
+            return nextPomodoro;
+          });
         }
         return changed ? updated : prev;
       });
@@ -3952,11 +4048,11 @@ function AppContent({ isPreview = false }) {
     if (!requireAuth()) return;
     const targetDate = dailyTasksDateStr || activeDateStr || getFormatDateStr(new Date());
     markLocalMutation(targetDate);
+    const stampedAt = Date.now();
     setDailyTasks(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
       if (!Array.isArray(next)) return [];
       const prevByText = new Map((Array.isArray(prev) ? prev : []).map(t => [t?.text, t]));
-      const stampedAt = Date.now();
       const clean = next
         .filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈'))
         .map(t => {
@@ -3971,6 +4067,11 @@ function AppContent({ isPreview = false }) {
             updatedAt: statusChanged ? stampedAt : (t.updatedAt || stampedAt)
           };
         });
+
+      if (typeof window !== 'undefined') {
+        const storageKey = isPreview ? 'preview_tasks_v1' : 'daybase_daily_tasks_v4';
+        localStorage.setItem(storageKey, JSON.stringify(clean));
+      }
 
       // (c) Completing a task also updates the habit log immediately if matching habit or subItem exists
       setDailyData(prevDaily => {
@@ -4000,6 +4101,9 @@ function AppContent({ isPreview = false }) {
             }
           }
         }
+        if (updatedDaily && typeof window !== 'undefined' && !isPreview) {
+          localStorage.setItem('daybase_dailyData_v4', JSON.stringify(updatedDaily));
+        }
         return updatedDaily || prevDaily;
       });
 
@@ -4009,18 +4113,71 @@ function AppContent({ isPreview = false }) {
           [targetDate]: clean
         };
         for (const t of clean) {
-          if (t.completed && t.fromDay && t.fromDay !== targetDate) {
+          if (t.fromDay && t.fromDay !== targetDate) {
             dirtyDatesRef.current.add(t.fromDay);
             if (Array.isArray(nextMap[t.fromDay])) {
               nextMap[t.fromDay] = nextMap[t.fromDay].map(pt => (
-                pt?.text === t.text ? { ...pt, completed: true, rolledOver: false, updatedAt: t.updatedAt } : pt
+                pt?.text === t.text ? { ...pt, completed: t.completed, rolledOver: t.completed ? false : pt.rolledOver, updatedAt: t.updatedAt } : pt
               ));
             }
           }
         }
+        if (typeof window !== 'undefined' && !isPreview) {
+          localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(nextMap));
+        }
         return nextMap;
       });
       return clean;
+    });
+  };
+
+  const deleteDailyTask = (taskToDelete) => {
+    if (!requireAuth() || !taskToDelete || !taskToDelete.text) return;
+    const targetDate = dailyTasksDateStr || activeDateStr || getFormatDateStr(new Date());
+    const stampedAt = Date.now();
+    markLocalMutation(targetDate);
+    setDailyTasks(prev => {
+      const list = Array.isArray(prev) ? prev : [];
+      const updated = list.map(t => (
+        t.text === taskToDelete.text
+          ? { ...t, deleted: true, completed: false, rolledOver: false, updatedAt: stampedAt }
+          : t
+      ));
+      if (typeof window !== 'undefined') {
+        const storageKey = isPreview ? 'preview_tasks_v1' : 'daybase_daily_tasks_v4';
+        localStorage.setItem(storageKey, JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    setPomodoroTasksData(p => {
+      const nextMap = { ...(p || {}) };
+      const todayList = Array.isArray(nextMap[targetDate]) ? nextMap[targetDate] : [];
+      nextMap[targetDate] = todayList.map(t => (
+        t.text === taskToDelete.text
+          ? { ...t, deleted: true, completed: false, rolledOver: false, updatedAt: stampedAt }
+          : t
+      ));
+      for (const [date, list] of Object.entries(nextMap)) {
+        if (date !== targetDate && Array.isArray(list)) {
+          let matched = false;
+          const updatedList = list.map(t => {
+            if (t && t.text === taskToDelete.text) {
+              matched = true;
+              return { ...t, deleted: true, completed: false, rolledOver: false, updatedAt: stampedAt };
+            }
+            return t;
+          });
+          if (matched) {
+            nextMap[date] = updatedList;
+            dirtyDatesRef.current.add(date);
+          }
+        }
+      }
+      if (typeof window !== 'undefined' && !isPreview) {
+        localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(nextMap));
+      }
+      return nextMap;
     });
   };
 
@@ -4183,10 +4340,12 @@ function AppContent({ isPreview = false }) {
 
     setHabits(prev => {
       const nextHabits = [...prev, newHabit];
-      apiFetch('/api/sync', {
-        method: 'POST',
-        body: JSON.stringify({ habits: nextHabits, updatedAt: Date.now() })
-      }).catch(() => {});
+      if (!isPreview) {
+        apiFetch('/api/sync', {
+          method: 'POST',
+          body: JSON.stringify({ habits: nextHabits, updatedAt: Date.now() })
+        }).catch(() => {});
+      }
       return nextHabits;
     });
   };
@@ -8543,12 +8702,12 @@ function AppContent({ isPreview = false }) {
                     <h2 className="text-sm font-bold tracking-widest text-white/80 uppercase">{t('todaysTasks')}</h2>
                   </div>
                   <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold" style={{ backgroundColor: `${themeColor}22`, color: themeColor }}>
-                    {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈') && t.completed).length}/{dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).length}
+                    {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈') && t.completed).length}/{dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).length}
                   </span>
                 </div>
 
                 <div className="flex flex-col gap-2.5 mb-5 max-h-[170px] overflow-y-auto pr-1">
-                  {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).map((task, idx) => {
+                  {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).map((task, idx) => {
                     const isOverdue = task.rolledOver && !task.completed;
                     return (
                       <div 
@@ -8597,7 +8756,7 @@ function AppContent({ isPreview = false }) {
                           </div>
                         </div>
                         <button 
-                          onClick={() => updateDailyTasks(prev => prev.filter(t => t.text !== task.text))} 
+                          onClick={() => deleteDailyTask(task)} 
                           aria-label="Delete Task"
                           title="Delete Task"
                           className="text-white/20 hover:text-red-400 p-1 transition-colors shrink-0"
@@ -8607,7 +8766,7 @@ function AppContent({ isPreview = false }) {
                       </div>
                     );
                   })}
-                  {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).length === 0 && (
+                  {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).length === 0 && (
                     <div className="text-center text-white/60 text-xs font-bold uppercase tracking-widest py-8 border border-dashed border-white/10 rounded-2xl bg-white/5 select-none">{t('noTasks')}</div>
                   )}
                 </div>
@@ -9497,7 +9656,7 @@ function AppContent({ isPreview = false }) {
 
                   {/* Task Items List */}
                   <div className="flex flex-col gap-3 pb-8">
-                    {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).map((task, idx) => {
+                    {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).map((task, idx) => {
                       const isOverdue = task.rolledOver && !task.completed;
                       return (
                         <div 
@@ -9546,7 +9705,7 @@ function AppContent({ isPreview = false }) {
                             </div>
                           </div>
                           <button 
-                            onClick={() => updateDailyTasks(prev => prev.filter(t => t.text !== task.text))} 
+                            onClick={() => deleteDailyTask(task)} 
                             className="text-white/30 hover:text-red-400 p-2 transition-colors shrink-0"
                             title="Delete Task"
                           >
@@ -9555,7 +9714,7 @@ function AppContent({ isPreview = false }) {
                         </div>
                       );
                     })}
-                    {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')).length === 0 && (
+                    {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).length === 0 && (
                       <div className="text-center text-white/30 text-xs font-bold uppercase tracking-widest py-16">{t('noTasks')}</div>
                     )}
                   </div>
@@ -10678,10 +10837,12 @@ function AppContent({ isPreview = false }) {
                               setAvatar(av);
                               if (typeof window !== 'undefined') localStorage.setItem('daybase_avatar_v1', av);
                               markLocalMutation();
-                              apiFetch('/api/sync', {
-                                method: 'POST',
-                                body: JSON.stringify({ avatar: av, updatedAt: Date.now() })
-                              }).catch(() => {});
+                              if (!isPreview) {
+                                apiFetch('/api/sync', {
+                                  method: 'POST',
+                                  body: JSON.stringify({ avatar: av, updatedAt: Date.now() })
+                                }).catch(() => {});
+                              }
                               setIsAvatarModalOpen(false);
                             }}
                             className={`relative aspect-square rounded-2xl flex items-center justify-center border-2 transition-all duration-200 active:scale-95 bg-white/5 text-white ${avatar === av ? 'border-[#FF9F0A] shadow-[0_0_20px_rgba(255,159,10,0.3)] text-[#FF9F0A]' : 'border-white/10 hover:border-white/30'}`}

@@ -498,10 +498,7 @@ export async function POST(req) {
         : [];
       const clientTasks = state.pomodoroTasksData?.[date];
       const mergedTasks = Array.isArray(clientTasks)
-        ? mergeTaskLists(
-            existingTasks.filter(et => clientTasks.some(ct => ct?.text?.trim() === et?.text?.trim())),
-            clientTasks
-          )
+        ? mergeTaskLists(existingTasks, clientTasks)
         : existingTasks;
 
       const clientSleep = state.sleepData?.[date];
