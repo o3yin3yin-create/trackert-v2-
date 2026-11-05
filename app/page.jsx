@@ -6,7 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import { useUser, useAuth, useClerk, Show, SignInButton, SignUpButton, UserButton, SignIn, SignUp } from '../components/AuthBridge';
 import { clerkAppearance } from '../lib/clerkTheme';
 import { apiFetch, setApiTokenGetter } from '../lib/api';
-import { loadLocalOfflineState, saveLocalOfflineState, queueSyncMutation, resolveConflict, getPendingSyncQueue, clearPendingSyncQueue, clearLocalOfflineState } from '../lib/db';
+import { loadLocalOfflineState, saveLocalOfflineState, queueSyncMutation, resolveConflict, mergePomodoroTasksData, mergeTaskLists, getPendingSyncQueue, clearPendingSyncQueue, clearLocalOfflineState } from '../lib/db';
 import { motion } from 'framer-motion';
 import MinimalTimer from '../components/MinimalTimer';
 import { translations } from '../lib/translations';
@@ -2163,6 +2163,7 @@ function AppContent({ isPreview = false }) {
   const pushedMutationVersionRef = useRef(0);
   const dirtyDatesRef = useRef(new Set());
   const latestStateRef = useRef({});
+  const pendingDailyDataRef = useRef({});
 
   const deletedHabitIdsRef = useRef(new Set());
   if (typeof window !== 'undefined' && deletedHabitIdsRef.current.size === 0) {
@@ -2201,6 +2202,7 @@ function AppContent({ isPreview = false }) {
       if (hasUnsynced || isPushingRef.current || timeSinceLocalMutation < 1200) {
         return; // User is actively editing or has pending/in-flight changes; never pull over active user input
       }
+      if (Object.keys(pendingDailyDataRef.current || {}).length > 0) return;
     }
 
     if (!isSilent) setIsSyncing(true);
@@ -2246,31 +2248,22 @@ function AppContent({ isPreview = false }) {
 
           let authoritative = state;
 
-          // If client has pending offline changes OR first-login guest data,
-          // resolve conflict using Last-Write-Wins and merge local offline work with cloud state!
-          let localStateToMerge = latestStateRef.current;
+          // Always merge against the latest in-memory snapshot. The fetch callback
+          // captures stale React state, so using those values would uncheck habits
+          // and re-open completed tasks after a poll.
+          const localStateToMerge = latestStateRef.current || {};
           const localHasHabits = (localStateToMerge?.habits?.length || 0) > 0;
           const remoteIsEmpty = !state.habits || state.habits.length === 0;
 
           if (hasPendingChanges || (!isSilent && localHasHabits && remoteIsEmpty)) {
-            const activeTasks = {
-              ...(pomodoroTasksData || {}),
-              ...(dailyTasksDateStr && dailyTasks ? { [dailyTasksDateStr]: dailyTasks } : {})
-            };
             const localSnapshot = {
-              ...(localStateToMerge || {}),
-              habits: habits.length > 0 ? habits : localStateToMerge?.habits || [],
-              dailyData: Object.keys(dailyData).length > 0 ? dailyData : localStateToMerge?.dailyData || {},
-              pomodoroTasksData: Object.keys(activeTasks).length > 0 ? activeTasks : localStateToMerge?.pomodoroTasksData || {},
-              sleepData: Object.keys(sleepData).length > 0 ? sleepData : localStateToMerge?.sleepData || {},
-              focusTimeData: Object.keys(focusTimeData).length > 0 ? focusTimeData : localStateToMerge?.focusTimeData || {},
+              ...localStateToMerge,
+              dailyData: { ...(localStateToMerge.dailyData || {}), ...pendingDailyDataRef.current },
               hasPendingChanges: true,
             };
 
             authoritative = resolveConflict(localSnapshot, state);
 
-            // Increment local mutation version and schedule push so offline edits are saved on server
-            localMutationVersionRef.current += 1;
             if (typeof window !== 'undefined') {
               localStorage.setItem('bokra_has_pending_sync', 'true');
             }
@@ -2333,8 +2326,21 @@ function AppContent({ isPreview = false }) {
              if (typeof window !== 'undefined') localStorage.setItem('daybase_habits_v4', JSON.stringify(cleanHabits));
           }
           if (authoritative.dailyData && typeof authoritative.dailyData === 'object') {
-             setDailyData(authoritative.dailyData);
-             if (typeof window !== 'undefined') localStorage.setItem('daybase_dailyData_v4', JSON.stringify(authoritative.dailyData));
+             const pendingChecks = pendingDailyDataRef.current || {};
+             const isRecentLocalMutation = (Date.now() - lastLocalMutationTimeRef.current) < 4000;
+             const preserveLocal = hasPendingChanges || isRecentLocalMutation;
+             const mergedDaily = {
+               ...authoritative.dailyData,
+               ...(preserveLocal ? (localStateToMerge.dailyData || {}) : {}),
+               ...pendingChecks,
+             };
+             for (const [k, v] of Object.entries(pendingChecks)) {
+               if (authoritative.dailyData[k] === v) {
+                 delete pendingChecks[k];
+               }
+             }
+             setDailyData(mergedDaily);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_dailyData_v4', JSON.stringify(mergedDaily));
           }
           if (authoritative.sleepData && typeof authoritative.sleepData === 'object') {
              setSleepData(authoritative.sleepData);
@@ -2345,25 +2351,50 @@ function AppContent({ isPreview = false }) {
              if (typeof window !== 'undefined') localStorage.setItem('daybase_focusTime_v4', JSON.stringify(authoritative.focusTimeData));
           }
           if (authoritative.pomodoroTasksData && typeof authoritative.pomodoroTasksData === 'object') {
-             setPomodoroTasksData(authoritative.pomodoroTasksData);
-             if (typeof window !== 'undefined') localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(authoritative.pomodoroTasksData));
+             const mergedTaskData = mergePomodoroTasksData(
+               authoritative.pomodoroTasksData,
+               localStateToMerge.pomodoroTasksData
+             );
              const todayStr = getFormatDateStr(new Date());
-             let todayTasks = Array.isArray(authoritative.pomodoroTasksData[todayStr]) 
-               ? authoritative.pomodoroTasksData[todayStr].filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')) 
+             const completedTexts = new Set();
+             for (const list of Object.values(mergedTaskData)) {
+               if (!Array.isArray(list)) continue;
+               for (const task of list) {
+                 if (task?.completed && typeof task.text === 'string' && task.text.trim()) {
+                   completedTexts.add(task.text.trim());
+                 }
+               }
+             }
+
+             if (completedTexts.size > 0) {
+               for (const date of Object.keys(mergedTaskData)) {
+                 if (!Array.isArray(mergedTaskData[date])) continue;
+                 mergedTaskData[date] = mergedTaskData[date].map(task => {
+                   const text = typeof task?.text === 'string' ? task.text.trim() : '';
+                   if (text && completedTexts.has(text) && !task.completed) {
+                     return { ...task, text, completed: true };
+                   }
+                   return task;
+                 });
+               }
+             }
+
+             let todayTasks = Array.isArray(mergedTaskData[todayStr])
+               ? mergedTaskData[todayStr].filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈'))
                : [];
 
-             // Automatically rollover any uncompleted tasks from past days
-             const pastDates = Object.keys(authoritative.pomodoroTasksData).filter(d => d < todayStr).sort();
+             // Rollover only tasks that were never completed on any stored day
+             const pastDates = Object.keys(mergedTaskData).filter(d => d < todayStr).sort();
              const existingTexts = new Set(todayTasks.map(t => t.text.trim()));
              const toRollover = [];
 
              for (const pastDate of pastDates) {
-               const pastList = authoritative.pomodoroTasksData[pastDate];
+               const pastList = mergedTaskData[pastDate];
                if (Array.isArray(pastList)) {
                  for (const task of pastList) {
                    if (task && typeof task.text === 'string' && task.text.trim() !== '' && !task.name?.includes('✈')) {
                      const trimmedText = task.text.trim();
-                     if (!task.completed && !existingTexts.has(trimmedText)) {
+                     if (!task.completed && !completedTexts.has(trimmedText) && !existingTexts.has(trimmedText)) {
                        toRollover.push({
                          ...task,
                          text: trimmedText,
@@ -2380,9 +2411,13 @@ function AppContent({ isPreview = false }) {
 
              if (toRollover.length > 0) {
                todayTasks = [...toRollover, ...todayTasks];
-               authoritative.pomodoroTasksData[todayStr] = todayTasks;
              }
 
+             todayTasks = todayTasks.map(t => (t?.completed ? { ...t, rolledOver: false } : t));
+             mergedTaskData[todayStr] = todayTasks;
+
+             setPomodoroTasksData(mergedTaskData);
+             if (typeof window !== 'undefined') localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(mergedTaskData));
              setDailyTasks(todayTasks);
              setDailyTasksDateStr(todayStr);
           }
@@ -2425,6 +2460,10 @@ function AppContent({ isPreview = false }) {
           saveLocalOfflineState(authoritative);
           setTimeout(() => {
             isApplyingRemoteRef.current = false;
+            if (localMutationVersionRef.current > pushedMutationVersionRef.current) {
+              if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
+              pushTimerRef.current = setTimeout(executePush, 50);
+            }
           }, 300);
 
           // Sync Active Focus Session across devices
@@ -2645,8 +2684,8 @@ function AppContent({ isPreview = false }) {
       fetchCloudState(true);
     };
 
-    // Ultra-fast 500ms heartbeat for Spotify-like instant cross-device updates
-    const intervalId = setInterval(syncSilently, 500);
+    // Fast 3000ms heartbeat for multi-device sync (BroadcastChannel handles instant 0ms tab sync)
+    const intervalId = setInterval(syncSilently, 3000);
 
     const onFocus = () => syncSilently();
     const onVisibilityChange = () => {
@@ -2670,6 +2709,7 @@ function AppContent({ isPreview = false }) {
         channel = new BroadcastChannel('bokra_tab_sync');
         channel.onmessage = (event) => {
           if (event.data === 'REMOTE_MUTATION') {
+            if (localMutationVersionRef.current > pushedMutationVersionRef.current) return;
             fetchCloudState(true);
           }
         };
@@ -2733,6 +2773,9 @@ function AppContent({ isPreview = false }) {
           lastServerUpdatedAtRef.current = resData.updatedAt;
         }
         pushedMutationVersionRef.current = versionToPush;
+        if (localMutationVersionRef.current === versionToPush) {
+          pendingDailyDataRef.current = {};
+        }
 
         // Clear successfully pushed dirty dates
         for (const d of datesBeingPushed) {
@@ -2784,8 +2827,13 @@ function AppContent({ isPreview = false }) {
 
   useEffect(() => {
     if (!user || !isCloudLoaded) return;
-    if (isApplyingRemoteRef.current) return;
     if (localMutationVersionRef.current === pushedMutationVersionRef.current) return;
+
+    if (isApplyingRemoteRef.current) {
+      if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
+      pushTimerRef.current = setTimeout(executePush, 350);
+      return;
+    }
 
     if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
     pushTimerRef.current = setTimeout(executePush, 50);
@@ -3209,10 +3257,21 @@ function AppContent({ isPreview = false }) {
   const [isCardsModalOpen, setIsCardsModalOpen] = useState(false);
 
   function getFormatDateStr(date) {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    if (!date) return "";
+    try {
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Africa/Cairo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(date instanceof Date ? date : new Date(date));
+    } catch {
+      const d = date instanceof Date ? date : new Date(date);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
   }
 
   const [habitCustomMessage, setHabitCustomMessage] = useState("");
@@ -3357,7 +3416,26 @@ function AppContent({ isPreview = false }) {
       const previousTasks = Array.isArray(dailyTasks) 
         ? dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈'))
         : [];
-      const uncompletedTasks = previousTasks.filter(t => !t.completed);
+      const storedPrev = Array.isArray(pomodoroTasksData?.[dailyTasksDateStr])
+        ? pomodoroTasksData[dailyTasksDateStr]
+        : [];
+      const allCompletedTexts = new Set();
+      if (pomodoroTasksData && typeof pomodoroTasksData === 'object') {
+        for (const list of Object.values(pomodoroTasksData)) {
+          if (!Array.isArray(list)) continue;
+          for (const task of list) {
+            if (task?.completed && typeof task.text === 'string' && task.text.trim()) {
+              allCompletedTexts.add(task.text.trim());
+            }
+          }
+        }
+      }
+      for (const t of [...previousTasks, ...storedPrev]) {
+        if (t?.completed && typeof t.text === 'string' && t.text.trim()) {
+          allCompletedTexts.add(t.text.trim());
+        }
+      }
+      const uncompletedTasks = previousTasks.filter(t => t && !t.completed && !allCompletedTexts.has(t.text.trim()));
       
       const rolledOverTasks = uncompletedTasks.map(t => ({
         ...t,
@@ -3371,22 +3449,23 @@ function AppContent({ isPreview = false }) {
         ? pomodoroTasksData[todayStr].filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈')) 
         : [];
       const existingTexts = new Set(existingToday.map(t => t.text.trim()));
-      const newlyRolled = rolledOverTasks.filter(t => !existingTexts.has(t.text));
+      const newlyRolled = rolledOverTasks.filter(t => !existingTexts.has(t.text) && !allCompletedTexts.has(t.text));
 
-      const updatedToday = [...newlyRolled, ...existingToday];
+      const updatedToday = [...newlyRolled, ...existingToday].map(t => (t?.completed ? { ...t, rolledOver: false } : t));
 
       setDailyTasks(updatedToday);
       setDailyTasksDateStr(todayStr);
 
       setPomodoroTasksData(prev => ({
         ...(prev || {}),
-        [dailyTasksDateStr]: previousTasks,
+        [dailyTasksDateStr]: mergeTaskLists(previousTasks, storedPrev),
         [todayStr]: updatedToday
       }));
+      markLocalMutation(todayStr);
     } else if (!dailyTasksDateStr) {
       setDailyTasksDateStr(todayStr);
     }
-  }, [baseDate, dailyTasksDateStr, isPreview]);
+  }, [baseDate, dailyTasksDateStr, isPreview, pomodoroTasksData, markLocalMutation]);
 
   // --- Effects (Save to LocalStorage) ---
   useEffect(() => { if (isMounted && !isPreview) localStorage.setItem('daybase_habits_v4', JSON.stringify(habits)); }, [habits, isMounted, isPreview]);
@@ -3799,7 +3878,40 @@ function AppContent({ isPreview = false }) {
     haptic('light');
     markLocalMutation(activeDateStr);
     const key = subItem ? `${activeDateStr}-${habitId}-${subItem}` : `${activeDateStr}-${habitId}`;
-    setDailyData(prev => ({ ...prev, [key]: !prev[key] }));
+    let nextVal = false;
+    setDailyData(prev => {
+      nextVal = !prev[key];
+      pendingDailyDataRef.current[key] = nextVal;
+      return { ...prev, [key]: nextVal };
+    });
+
+    // Also update any matching task in dailyTasks / pomodoroTasksData immediately
+    const habit = (habits || []).find(h => h.id === habitId);
+    const targetName = (subItem || habit?.name || '').trim().toLowerCase();
+    if (targetName) {
+      setDailyTasks(prev => {
+        let changed = false;
+        const updated = (prev || []).map(t => {
+          if (t && typeof t.text === 'string' && t.text.trim().toLowerCase() === targetName) {
+            changed = true;
+            return {
+              ...t,
+              completed: nextVal,
+              rolledOver: nextVal ? false : Boolean(t.rolledOver),
+              updatedAt: Date.now()
+            };
+          }
+          return t;
+        });
+        if (changed) {
+          setPomodoroTasksData(p => ({
+            ...(p || {}),
+            [activeDateStr]: updated
+          }));
+        }
+        return changed ? updated : prev;
+      });
+    }
   };
 
   const updateDailyTasks = (updater) => {
@@ -3809,11 +3921,71 @@ function AppContent({ isPreview = false }) {
     setDailyTasks(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
       if (!Array.isArray(next)) return [];
-      const clean = next.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈'));
-      setPomodoroTasksData(p => ({
-        ...(p || {}),
-        [targetDate]: clean
-      }));
+      const prevByText = new Map((Array.isArray(prev) ? prev : []).map(t => [t?.text, t]));
+      const stampedAt = Date.now();
+      const clean = next
+        .filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈'))
+        .map(t => {
+          const old = prevByText.get(t.text);
+          const isCompleted = Boolean(t.completed);
+          const wasCompleted = Boolean(old?.completed);
+          const statusChanged = !old || wasCompleted !== isCompleted;
+          return {
+            ...t,
+            completed: isCompleted,
+            rolledOver: isCompleted ? false : Boolean(t.rolledOver),
+            updatedAt: statusChanged ? stampedAt : (t.updatedAt || stampedAt)
+          };
+        });
+
+      // (c) Completing a task also updates the habit log immediately if matching habit or subItem exists
+      setDailyData(prevDaily => {
+        let updatedDaily = null;
+        for (const t of clean) {
+          const old = prevByText.get(t.text);
+          if (!old || Boolean(old.completed) !== Boolean(t.completed)) {
+            const taskTextLower = t.text.trim().toLowerCase();
+            const isCompleted = Boolean(t.completed);
+            for (const h of habits || []) {
+              if (h && typeof h.name === 'string' && h.name.trim().toLowerCase() === taskTextLower) {
+                const key = `${targetDate}-${h.id}`;
+                if (!updatedDaily) updatedDaily = { ...prevDaily };
+                updatedDaily[key] = isCompleted;
+                pendingDailyDataRef.current[key] = isCompleted;
+              }
+              if (h && Array.isArray(h.subItems)) {
+                for (const sub of h.subItems) {
+                  if (typeof sub === 'string' && sub.trim().toLowerCase() === taskTextLower) {
+                    const key = `${targetDate}-${h.id}-${sub}`;
+                    if (!updatedDaily) updatedDaily = { ...prevDaily };
+                    updatedDaily[key] = isCompleted;
+                    pendingDailyDataRef.current[key] = isCompleted;
+                  }
+                }
+              }
+            }
+          }
+        }
+        return updatedDaily || prevDaily;
+      });
+
+      setPomodoroTasksData(p => {
+        const nextMap = {
+          ...(p || {}),
+          [targetDate]: clean
+        };
+        for (const t of clean) {
+          if (t.completed && t.fromDay && t.fromDay !== targetDate) {
+            dirtyDatesRef.current.add(t.fromDay);
+            if (Array.isArray(nextMap[t.fromDay])) {
+              nextMap[t.fromDay] = nextMap[t.fromDay].map(pt => (
+                pt?.text === t.text ? { ...pt, completed: true, rolledOver: false, updatedAt: t.updatedAt } : pt
+              ));
+            }
+          }
+        }
+        return nextMap;
+      });
       return clean;
     });
   };
@@ -3942,17 +4114,12 @@ function AppContent({ isPreview = false }) {
     if (subTarget) {
       haptic('heavy');
       markLocalMutation(activeDateStr);
-      setDailyData(prev => {
-        const next = {
-          ...prev,
-          [`${activeDateStr}-${athkarHabitId}-${subTarget}`]: true
-        };
-        apiFetch('/api/sync', {
-          method: 'POST',
-          body: JSON.stringify({ dailyData: next, updatedAt: Date.now() })
-        }).catch(() => {});
-        return next;
-      });
+      const key = `${activeDateStr}-${athkarHabitId}-${subTarget}`;
+      pendingDailyDataRef.current[key] = true;
+      setDailyData(prev => ({
+        ...prev,
+        [key]: true
+      }));
     }
   };
 

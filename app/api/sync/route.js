@@ -5,6 +5,29 @@ import { getAuthUserId } from '@/lib/auth-server';
 import { getCorsHeaders, handleCorsOptions } from '@/lib/cors';
 import { rateLimit, getClientIp } from '@/lib/rateLimit';
 import { reconcileLecturePushes } from '@/lib/pushSchedule';
+import { mergeTaskLists } from '@/lib/taskMerge';
+
+function formatDateInTimeZone(date, timeZone) {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: timeZone || 'Africa/Cairo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date);
+  } catch {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+}
+
+function addDaysYmd(ymd, days) {
+  const [y, m, d] = String(ymd).split('-').map(Number);
+  const dt = new Date(Date.UTC(y, (m || 1) - 1, (d || 1) + days, 12, 0, 0));
+  return dt.toISOString().slice(0, 10);
+}
 
 export async function OPTIONS(req) {
   return handleCorsOptions(req);
@@ -282,7 +305,9 @@ export async function POST(req) {
       ? state.habits.filter(h => h && h.id && !deletedHabitsSet.has(h.id))
       : [];
 
-    newGranted._habitOrder = activeStateHabits.map(h => h.id);
+    if (Array.isArray(state.habits)) {
+      newGranted._habitOrder = activeStateHabits.map(h => h.id);
+    }
     newGranted._deletedHabits = Array.from(deletedHabitsSet);
 
     // If user does not exist in DB yet, create user record first
@@ -423,19 +448,16 @@ export async function POST(req) {
       }
     }
 
-    // 5. Sync Daily Logs — ONLY FOR TODAY AND YESTERDAY (no querying all days)
-    const now = new Date();
-    const todayStr = (state.activeDateStr && state.activeDateStr.length === 10) 
-      ? state.activeDateStr 
-      : now.toISOString().substring(0, 10);
-    const yesterdayDate = new Date(now);
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterdayStr = yesterdayDate.toISOString().substring(0, 10);
+    // 5. Sync Daily Logs — today/yesterday in the user's timezone, plus any client target dates
+    const tz = state.timezone || user.timezone || 'Africa/Cairo';
+    const todayStr = formatDateInTimeZone(new Date(), tz);
+    const yesterdayStr = addDaysYmd(todayStr, -1);
 
     const allowedDates = new Set([
       todayStr,
       yesterdayStr,
-      ...(Array.isArray(state.targetDates) ? state.targetDates : [])
+      ...(Array.isArray(state.targetDates) ? state.targetDates : []),
+      ...(state.activeDateStr && state.activeDateStr.length === 10 ? [state.activeDateStr] : []),
     ]);
     const targetDatesArray = Array.from(allowedDates).filter(d => typeof d === 'string' && d.length === 10);
 
@@ -471,7 +493,10 @@ export async function POST(req) {
         : [];
       const clientTasks = state.pomodoroTasksData?.[date];
       const mergedTasks = Array.isArray(clientTasks)
-        ? clientTasks
+        ? mergeTaskLists(
+            existingTasks.filter(et => clientTasks.some(ct => ct?.text?.trim() === et?.text?.trim())),
+            clientTasks
+          )
         : existingTasks;
 
       const clientSleep = state.sleepData?.[date];
