@@ -4510,28 +4510,36 @@ function AppContent({ isPreview = false }) {
                   onClick={() => toggleSubtaskCheck(task.text, st.id)}
                 >
                   <div 
-                    className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all shrink-0 ${
+                    className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all shrink-0 ${
                       st.completed ? 'bg-white border-transparent' : 'border-white/30 group-hover:border-white/50'
                     }`}
                     style={{ borderColor: st.completed ? themeColor : undefined }}
                   >
-                    {st.completed && <Check size={10} strokeWidth={4} style={{ color: themeColor }} />}
+                    {st.completed && <Check size={12} strokeWidth={4} style={{ color: themeColor }} />}
                   </div>
 
                   {editingSubtask?.taskText === task.text && editingSubtask?.subtaskId === st.id ? (
-                    <input
-                      autoFocus
-                      type="text"
-                      value={editingSubtask.text}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => setEditingSubtask({ ...editingSubtask, text: e.target.value })}
-                      onBlur={() => handleSaveSubtaskEdit(task.text, st.id, editingSubtask.text)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSaveSubtaskEdit(task.text, st.id, editingSubtask.text);
-                        if (e.key === 'Escape') setEditingSubtask(null);
-                      }}
-                      className="flex-1 bg-white/10 text-white text-xs px-2 py-1 rounded-lg outline-none border border-white/20"
-                    />
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        autoFocus
+                        type="text"
+                        value={editingSubtask.text}
+                        onChange={(e) => setEditingSubtask({ ...editingSubtask, text: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveSubtaskEdit(task.text, st.id, editingSubtask.text);
+                          if (e.key === 'Escape') setEditingSubtask(null);
+                        }}
+                        className="flex-1 bg-white/10 text-white text-xs px-2.5 py-1 rounded-lg outline-none border border-white/20 focus:border-white/40"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSaveSubtaskEdit(task.text, st.id, editingSubtask.text)}
+                        className="p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors"
+                        title="Save edit"
+                      >
+                        <Check size={12} strokeWidth={3} />
+                      </button>
+                    </div>
                   ) : (
                     <span className={`text-xs transition-all truncate ${st.completed ? 'text-white/30 line-through' : 'text-white/80'}`}>
                       {st.text}
