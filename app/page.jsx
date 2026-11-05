@@ -9109,16 +9109,21 @@ function AppContent({ isPreview = false }) {
               {/* Daily Tasks Checklist Widget */}
               <div className="liquid-panel p-6 shadow-xl flex flex-col w-full" style={{ borderRadius: '28px' }}>
                 <div className="flex items-center justify-between mb-4 select-none">
-                  <div className="flex items-center gap-2">
+                  <div 
+                    className="flex items-center gap-2 cursor-pointer group"
+                    onClick={() => setIsTasksModalOpen(true)}
+                    title="Open Tasks Modal"
+                  >
                     <ListChecks size={18} style={{ color: themeColor }} />
-                    <h2 className="text-sm font-bold tracking-widest text-white/80 uppercase">{t('todaysTasks')}</h2>
+                    <h2 className="text-sm font-bold tracking-widest text-white/80 group-hover:text-white uppercase transition-colors">{t('todaysTasks')}</h2>
+                    <Maximize size={12} className="text-white/30 group-hover:text-white/70 transition-colors ml-0.5" />
                   </div>
                   <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold" style={{ backgroundColor: `${themeColor}22`, color: themeColor }}>
                     {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈') && t.completed).length}/{dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).length}
                   </span>
                 </div>
 
-                <div className="flex flex-col gap-2.5 mb-5 max-h-[220px] overflow-y-auto pr-1">
+                <div className="flex flex-col gap-2.5 mb-4 max-h-[380px] sm:max-h-[460px] overflow-y-auto pr-1 overscroll-contain scroll-smooth">
                   {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).map((task, idx) => renderTaskItem(task, idx, false))}
                   {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).length === 0 && (
                     <div className="text-center text-white/60 text-xs font-bold uppercase tracking-widest py-8 border border-dashed border-white/10 rounded-2xl bg-white/5 select-none">{t('noTasks')}</div>
