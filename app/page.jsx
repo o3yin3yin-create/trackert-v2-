@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Download, RotateCcw, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map, Plane, Maximize, Minimize, Dices, Users, User, Calendar, CalendarDays, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut, Mail, Info, Headphones, Lock } from 'lucide-react';
+import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Download, RotateCcw, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map as MapIcon, Plane, Maximize, Minimize, Dices, Users, User, Calendar, CalendarDays, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut, Mail, Info, Headphones, Lock } from 'lucide-react';
 import React, { useState, useEffect, useRef, useCallback, useMemo, Component } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -7341,7 +7341,7 @@ function AppContent({ isPreview = false }) {
                                   className="w-8 h-8 rounded-full bg-black/75 hover:bg-black/90 text-white flex items-center justify-center border border-white/10 shadow-lg backdrop-blur-md active:scale-95 transition-all select-none"
                                   title={'Full Route'}
                                 >
-                                  <Map size={12} />
+                                  <MapIcon size={12} />
                                 </button>
                                 <button 
                                   onClick={() => { haptic('light'); setIsWindowSeatOpen(true); }} 
@@ -7392,7 +7392,7 @@ function AppContent({ isPreview = false }) {
                               className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 active:scale-95 select-none"
                               title={'Live Map'}
                             >
-                              <Map size={11} className="text-white" />
+                              <MapIcon size={11} className="text-white" />
                               <span>{'Live Map'}</span>
                             </button>
                           </div>
