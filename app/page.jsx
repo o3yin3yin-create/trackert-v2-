@@ -7645,6 +7645,7 @@ function AppContent({ isPreview = false }) {
             toggleCabinHum={toggleCabinHum}
             setIsWindowSeatOpen={setIsWindowSeatOpen}
             selectedSeat={selectedSeat}
+            setIsAmbientModalOpen={setIsAmbientModalOpen}
           />,
           document.body
         )}

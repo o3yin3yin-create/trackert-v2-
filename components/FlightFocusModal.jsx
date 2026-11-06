@@ -1,9 +1,19 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { resolveAirport, getDistanceKm } from '@/lib/aviationData';
 
-// Tiny plane glyph as an SVG component (no external icon dependencies needed)
+const RealFlightRadar = dynamic(() => import('./RealFlightRadar'), {
+  ssr: false,
+  loading: () => (
+    <div className="fixed inset-0 z-[10000] bg-black flex items-center justify-center text-white/50 font-mono text-xs">
+      INITIALIZING REAL RADAR...
+    </div>
+  ),
+});
+
+// Tiny plane glyph as an SVG component
 function PlaneGlyph({ className = '', style = {} }) {
   return (
     <svg
@@ -19,25 +29,27 @@ function PlaneGlyph({ className = '', style = {} }) {
   );
 }
 
-// Plane top-down silhouette for Radar (Screen 3)
-function PlaneSilhouette({ className = '', style = {} }) {
+// Headphone icon for Sound Library
+function HeadphonesIcon({ size = 18, className = '' }) {
   return (
     <svg
-      width="24"
-      height="24"
-      viewBox="0 0 48 48"
-      fill="var(--fg)"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className={className}
-      style={{ display: 'block', ...style }}
     >
-      <path d="M24 2 C23.2 2 22.5 2.8 22.5 4 L22.5 18 L4 26 L4 29.5 L22.5 24.5 L22.5 38 L17 42 L17 44.5 L24 43 L31 44.5 L31 42 L25.5 38 L25.5 24.5 L44 29.5 L44 26 L25.5 18 L25.5 4 C25.5 2.8 24.8 2 24 2 Z" />
+      <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" />
     </svg>
   );
 }
 
-// Destination timezone offsets dictionary for accurate local arrival time calculations
+// Destination timezone offsets dictionary
 const AIRPORT_TZ_OFFSETS = {
-  // UTC offsets in minutes
   LHR: 0, LGW: 0, STN: 0, LTN: 0, MAN: 0, EDI: 0, DUB: 0,
   CDG: 60, ORY: 60, FRA: 60, MUC: 60, BER: 60, AMS: 60, MAD: 60, BCN: 60, FCO: 60, MXP: 60, ZRH: 60, VIE: 60, BRU: 60,
   CAI: 120, ATH: 120, IST: 180, SAW: 180, JED: 180, RUH: 180, DOH: 180, KWI: 180, BAH: 180,
@@ -51,13 +63,11 @@ function getDestinationTzOffsetMinutes(iataCode, lng = 0) {
   if (iataCode && AIRPORT_TZ_OFFSETS[iataCode] !== undefined) {
     return AIRPORT_TZ_OFFSETS[iataCode];
   }
-  // Approximate from longitude (15 deg = 60 mins)
   return Math.round(lng / 15) * 60;
 }
 
 // Split flap flip character component (no gap between characters)
 function FlipChar({ char, rowIndex, charIndex, animKey }) {
-  // Snappy purposeful split-flap stagger
   const delay = Math.min(rowIndex, 6) * 45 + charIndex * 30;
   return (
     <span
@@ -119,7 +129,6 @@ function computeArrivalInfo(estimatedArrivalSec, destIata, destLng = 0) {
   const arrivalDate = new Date(estimatedArrivalSec * 1000);
   const destDate = new Date(arrivalDate.getTime() + tzMinutes * 60 * 1000);
 
-  // Current date in destination timezone
   const nowUtc = Date.now();
   const destNow = new Date(nowUtc + tzMinutes * 60 * 1000);
 
@@ -127,7 +136,6 @@ function computeArrivalInfo(estimatedArrivalSec, destIata, destLng = 0) {
   const minutes = String(destDate.getUTCMinutes()).padStart(2, '0');
   const timeStr = `${hours}:${minutes}`;
 
-  // Calendar day diff between destination 'now' and arrival
   const dayDiff = destDate.getUTCDate() - destNow.getUTCDate();
   let dayOffsetStr = '';
   if (dayDiff > 0) {
@@ -137,7 +145,7 @@ function computeArrivalInfo(estimatedArrivalSec, destIata, destLng = 0) {
   return { timeStr, dayOffsetStr };
 }
 
-// Great-circle coordinate interpolation (progress between 0 and 1)
+// Great-circle coordinate interpolation
 function interpolateGreatCircle(c1, c2, t) {
   const toRad = (d) => (d * Math.PI) / 180;
   const toDeg = (r) => (r * 180) / Math.PI;
@@ -168,7 +176,6 @@ function interpolateGreatCircle(c1, c2, t) {
   const lat = Math.atan2(z, Math.sqrt(x * x + y * y));
   const lng = Math.atan2(y, x);
 
-  // Bearing / Heading towards destination
   const yB = Math.sin(lon2 - lng) * Math.cos(lat2);
   const xB =
     Math.cos(lat) * Math.sin(lat2) -
@@ -199,15 +206,13 @@ export default function FlightFocusModal({
   toggleCabinHum,
   setIsWindowSeatOpen,
   selectedSeat = '14A',
+  setIsAmbientModalOpen,
 }) {
-  // 3 Screens: 'board' | 'cabin' | 'radar'
+  // Screens: 'board' | 'ticket' | 'cabin' | 'radar'
   const [currentScreen, setCurrentScreen] = useState(() => (selectedFlight ? 'cabin' : 'board'));
+  const [pendingFlight, setPendingFlight] = useState(null);
   const [boardType, setBoardType] = useState('departures'); // 'departures' | 'arrivals'
-  const [useMiles, setUseMiles] = useState(false);
   const [animKey, setAnimKey] = useState(0);
-
-  // Transition state: 'idle' | 'board-to-cabin' | 'cabin-to-board'
-  const [transitioning, setTransitioning] = useState(false);
 
   // Monochrome Theme: 'dark' | 'light'
   const [theme, setTheme] = useState(() => {
@@ -241,7 +246,9 @@ export default function FlightFocusModal({
   // Sync current screen when selectedFlight changes externally
   useEffect(() => {
     if (!selectedFlight) {
-      setCurrentScreen('board');
+      if (currentScreen !== 'ticket') {
+        setCurrentScreen('board');
+      }
     }
   }, [selectedFlight]);
 
@@ -252,51 +259,53 @@ export default function FlightFocusModal({
     }
   }, [boardType, currentScreen]);
 
-  // Handle Board -> Cabin transition
-  const handleSelectFlight = useCallback(
-    (flight) => {
-      const now = Math.floor(Date.now() / 1000);
-      const liveRemaining = flight.remainingSeconds || Math.max(0, flight.estimatedArrival - now);
-      setSelectedFlight({
-        ...flight,
-        initialSeconds: flight.totalSeconds || liveRemaining,
-      });
-      setFlightTimer(Math.max(0, liveRemaining));
-      setIsFlightTimerRunning(true);
-
-      setTransitioning('board-to-cabin');
-      setTimeout(() => {
-        setCurrentScreen('cabin');
-        setTransitioning(false);
-      }, 150);
-    },
-    [setSelectedFlight, setFlightTimer, setIsFlightTimerRunning]
-  );
-
-  // Handle Back arrow (Cabin/Radar -> Board)
-  const handleBackToBoard = useCallback(() => {
-    setTransitioning('cabin-to-board');
-    setTimeout(() => {
-      setCurrentScreen('board');
-      setTransitioning(false);
-    }, 150);
+  // Handle Board -> Ticket (The intermediate Boarding Pass step requested by user)
+  const handleSelectFlightToTicket = useCallback((flight) => {
+    setPendingFlight(flight);
+    setCurrentScreen('ticket');
   }, []);
 
-  // Compute flight telemetry values
-  const telemetry = useMemo(() => {
-    if (!selectedFlight) return null;
+  // Handle Ticket -> Cabin (Start Focus button)
+  const handleStartFocus = useCallback(() => {
+    if (!pendingFlight) return;
+    const now = Math.floor(Date.now() / 1000);
+    const liveRemaining =
+      pendingFlight.remainingSeconds || Math.max(0, pendingFlight.estimatedArrival - now);
+    setSelectedFlight({
+      ...pendingFlight,
+      initialSeconds: pendingFlight.totalSeconds || liveRemaining,
+    });
+    setFlightTimer(Math.max(0, liveRemaining));
+    setIsFlightTimerRunning(true);
+    setCurrentScreen('cabin');
+  }, [pendingFlight, setSelectedFlight, setFlightTimer, setIsFlightTimerRunning]);
 
-    const orig = resolveAirport(selectedFlight.origin);
-    const dest = resolveAirport(selectedFlight.destination);
+  // Handle Give up (Replacing Pause as requested by user)
+  const handleGiveUp = useCallback(() => {
+    if (typeof window !== 'undefined' && window.confirm('Give up this focus flight? Your session will end.')) {
+      setIsFlightTimerRunning(false);
+      setSelectedFlight(null);
+      setPendingFlight(null);
+      setCurrentScreen('board');
+    }
+  }, [setIsFlightTimerRunning, setSelectedFlight]);
+
+  // Compute flight telemetry values
+  const activeFlight = selectedFlight || pendingFlight;
+  const telemetry = useMemo(() => {
+    if (!activeFlight) return null;
+
+    const orig = resolveAirport(activeFlight.origin);
+    const dest = resolveAirport(activeFlight.destination);
 
     const origCoords =
-      selectedFlight.originCoords?.lat && selectedFlight.originCoords?.lng
-        ? selectedFlight.originCoords
+      activeFlight.originCoords?.lat && activeFlight.originCoords?.lng
+        ? activeFlight.originCoords
         : { lat: orig.lat, lng: orig.lng };
 
     const destCoords =
-      selectedFlight.destCoords?.lat && selectedFlight.destCoords?.lng
-        ? selectedFlight.destCoords
+      activeFlight.destCoords?.lat && activeFlight.destCoords?.lng
+        ? activeFlight.destCoords
         : { lat: dest.lat, lng: dest.lng };
 
     const totalDistKm = getDistanceKm(
@@ -306,7 +315,7 @@ export default function FlightFocusModal({
       destCoords.lng
     );
 
-    const initialSec = selectedFlight.initialSeconds || selectedFlight.totalSeconds || 7200;
+    const initialSec = activeFlight.initialSeconds || activeFlight.totalSeconds || 7200;
     const progress = Math.max(
       0,
       Math.min(1, (initialSec - flightTimer) / Math.max(1, initialSec))
@@ -316,20 +325,26 @@ export default function FlightFocusModal({
     const distRemainingKm = Math.round(totalDistKm * (1 - progress));
     const distRemainingMi = Math.round(distRemainingKm * 0.621371);
 
-    const altitude = selectedFlight.altitude ? `${Number(selectedFlight.altitude).toLocaleString()} ft` : '38,000 ft';
-    const speed = selectedFlight.speed
-      ? `${Math.round(selectedFlight.speed)} kts · ${Math.round(selectedFlight.speed * 1.852)} km/h`
+    const altitude = activeFlight.altitude
+      ? `${Number(activeFlight.altitude).toLocaleString()} ft`
+      : '38,000 ft';
+    const speed = activeFlight.speed
+      ? `${Math.round(activeFlight.speed)} kts · ${Math.round(activeFlight.speed * 1.852)} km/h`
       : '540 kts · 1,000 km/h';
 
     const arrivalInfo = computeArrivalInfo(
-      selectedFlight.estimatedArrival,
-      selectedFlight.destination,
+      activeFlight.estimatedArrival,
+      activeFlight.destination,
       destCoords.lng
     );
 
-    const depTzMinutes = getDestinationTzOffsetMinutes(selectedFlight.origin, origCoords.lng);
-    const depDate = new Date((selectedFlight.estimatedArrival - initialSec) * 1000 + depTzMinutes * 60 * 1000);
-    const depTimeStr = `${String(depDate.getUTCHours()).padStart(2, '0')}:${String(depDate.getUTCMinutes()).padStart(2, '0')}`;
+    const depTzMinutes = getDestinationTzOffsetMinutes(activeFlight.origin, origCoords.lng);
+    const depDate = new Date(
+      (activeFlight.estimatedArrival - initialSec) * 1000 + depTzMinutes * 60 * 1000
+    );
+    const depTimeStr = `${String(depDate.getUTCHours()).padStart(2, '0')}:${String(
+      depDate.getUTCMinutes()
+    ).padStart(2, '0')}`;
 
     return {
       orig,
@@ -346,9 +361,24 @@ export default function FlightFocusModal({
       arrivalInfo,
       depTimeStr,
     };
-  }, [selectedFlight, flightTimer]);
+  }, [activeFlight, flightTimer]);
 
   if (!isOpen) return null;
+
+  // Full screen Real Radar view (when screen is 'radar')
+  if (currentScreen === 'radar' && selectedFlight && telemetry) {
+    return (
+      <RealFlightRadar
+        flight={selectedFlight}
+        telemetry={telemetry}
+        flightTimer={flightTimer}
+        onClose={() => setCurrentScreen('cabin')}
+        onGiveUp={handleGiveUp}
+        onOpenSoundLibrary={() => setIsAmbientModalOpen && setIsAmbientModalOpen(true)}
+        onOpenWindowSeat={() => setIsWindowSeatOpen && setIsWindowSeatOpen(true)}
+      />
+    );
+  }
 
   return (
     <div
@@ -362,10 +392,7 @@ export default function FlightFocusModal({
         fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif",
       }}
     >
-      {/* Google Fonts: Space Grotesk (300/400/500) & Space Mono (400) */}
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500&family=Space+Mono:wght@400&display=swap');
-
         .ff-root {
           --bg: #000;
           --fg: #fff;
@@ -394,7 +421,6 @@ export default function FlightFocusModal({
           font-family: 'Space Mono', monospace;
         }
 
-        /* Split-flap flip animation */
         @keyframes ffSplitFlap {
           0% {
             transform: perspective(300px) rotateX(90deg);
@@ -412,41 +438,6 @@ export default function FlightFocusModal({
           animation: ffSplitFlap 450ms cubic-bezier(0.2, 0, 0, 1) both;
         }
 
-        /* Screen Transitions */
-        .ff-board-fade-out {
-          animation: ffFadeOut 150ms ease forwards;
-        }
-        .ff-cabin-fade-in {
-          animation: ffSlideUpIn 250ms ease-out forwards;
-        }
-        .ff-cabin-fade-out {
-          animation: ffSlideDownOut 150ms ease forwards;
-        }
-        .ff-board-fade-in {
-          animation: ffFadeIn 250ms ease forwards;
-        }
-        .ff-crossfade {
-          animation: ffFadeIn 200ms ease forwards;
-        }
-
-        @keyframes ffFadeOut {
-          from { opacity: 1; }
-          to { opacity: 0; }
-        }
-        @keyframes ffFadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes ffSlideUpIn {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes ffSlideDownOut {
-          from { opacity: 1; transform: translateY(0); }
-          to { opacity: 0; transform: translateY(8px); }
-        }
-
-        /* Pill buttons instant inversion */
         .ff-pill {
           transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
         }
@@ -457,12 +448,7 @@ export default function FlightFocusModal({
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .ff-flip-char,
-          .ff-board-fade-out,
-          .ff-cabin-fade-in,
-          .ff-cabin-fade-out,
-          .ff-board-fade-in,
-          .ff-crossfade {
+          .ff-flip-char {
             animation: none !important;
             transform: none !important;
             opacity: 1 !important;
@@ -470,7 +456,7 @@ export default function FlightFocusModal({
         }
       `}</style>
 
-      {/* Centered mobile-first container (390px, max 480px) */}
+      {/* Centered mobile-first container */}
       <div
         className="w-full max-w-[480px] mx-auto min-h-screen flex flex-col justify-between"
         style={{
@@ -480,12 +466,12 @@ export default function FlightFocusModal({
           paddingRight: '20px',
         }}
       >
-        {/* Navigation Tabs (Shown ONLY on Cabin and Radar, hidden on Board) */}
-        {currentScreen !== 'board' && (
+        {/* Navigation Tabs (Shown on Cabin) */}
+        {currentScreen === 'cabin' && (
           <header className="flex items-center justify-between w-full mb-6 pb-2">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
-                onClick={handleBackToBoard}
+                onClick={() => setCurrentScreen('board')}
                 aria-label="Back to flight board"
                 className="w-11 h-11 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--fg)] ff-pill select-none cursor-pointer"
               >
@@ -500,39 +486,42 @@ export default function FlightFocusModal({
               >
                 <button
                   role="tab"
-                  aria-selected={currentScreen === 'cabin'}
-                  onClick={() => setCurrentScreen('cabin')}
-                  className={`min-h-[38px] px-4 rounded-full text-[13px] font-normal ff-pill transition-colors cursor-pointer ${
-                    currentScreen === 'cabin'
-                      ? 'bg-[var(--fg)] text-[var(--bg)]'
-                      : 'bg-transparent text-[var(--m)] hover:text-[var(--fg)]'
-                  }`}
+                  aria-selected={true}
+                  className="min-h-[38px] px-4 rounded-full text-[13px] font-normal ff-pill bg-[var(--fg)] text-[var(--bg)] cursor-pointer"
                 >
                   Cabin
                 </button>
                 <button
                   role="tab"
-                  aria-selected={currentScreen === 'radar'}
+                  aria-selected={false}
                   onClick={() => setCurrentScreen('radar')}
-                  className={`min-h-[38px] px-4 rounded-full text-[13px] font-normal ff-pill transition-colors cursor-pointer ${
-                    currentScreen === 'radar'
-                      ? 'bg-[var(--fg)] text-[var(--bg)]'
-                      : 'bg-transparent text-[var(--m)] hover:text-[var(--fg)]'
-                  }`}
+                  className="min-h-[38px] px-4 rounded-full text-[13px] font-normal ff-pill bg-transparent text-[var(--m)] hover:text-[var(--fg)] transition-colors cursor-pointer"
                 >
                   Radar
                 </button>
               </div>
             </div>
 
-            {/* Close modal button */}
-            <button
-              onClick={onClose}
-              aria-label="Close flight focus"
-              className="w-11 h-11 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--m)] hover:text-[var(--fg)] ff-pill select-none cursor-pointer text-lg"
-            >
-              ×
-            </button>
+            <div className="flex items-center gap-2">
+              {/* زرار السماعة (Sound Library Modal) */}
+              <button
+                onClick={() => setIsAmbientModalOpen && setIsAmbientModalOpen(true)}
+                aria-label="Sound Library"
+                title="Sound Library"
+                className="w-11 h-11 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--fg)] hover:bg-[var(--fg)] hover:text-[var(--bg)] ff-pill select-none cursor-pointer"
+              >
+                <HeadphonesIcon size={18} />
+              </button>
+
+              {/* Close modal button */}
+              <button
+                onClick={onClose}
+                aria-label="Close flight focus"
+                className="w-11 h-11 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--m)] hover:text-[var(--fg)] ff-pill select-none cursor-pointer text-lg"
+              >
+                ×
+              </button>
+            </div>
           </header>
         )}
 
@@ -540,11 +529,7 @@ export default function FlightFocusModal({
         {/* SCREEN 1: BOARD (Departures / Arrivals)                                   */}
         {/* ========================================================================= */}
         {currentScreen === 'board' && (
-          <main
-            className={`flex-1 flex flex-col justify-between w-full ${
-              transitioning === 'board-to-cabin' ? 'ff-board-fade-out' : 'ff-board-fade-in'
-            }`}
-          >
+          <main className="flex-1 flex flex-col justify-between w-full">
             <div>
               {/* Header: Title + Close */}
               <div className="flex items-start justify-between mb-4">
@@ -556,13 +541,23 @@ export default function FlightFocusModal({
                     REAL-TIME GLOBAL FLIGHTS · SELECT TO BEGIN FOCUS
                   </p>
                 </div>
-                <button
-                  onClick={onClose}
-                  aria-label="Close flight focus"
-                  className="w-11 h-11 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--m)] hover:text-[var(--fg)] ff-pill select-none cursor-pointer text-lg"
-                >
-                  ×
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsAmbientModalOpen && setIsAmbientModalOpen(true)}
+                    aria-label="Sound Library"
+                    title="Sound Library"
+                    className="w-11 h-11 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--fg)] ff-pill select-none cursor-pointer"
+                  >
+                    <HeadphonesIcon size={18} />
+                  </button>
+                  <button
+                    onClick={onClose}
+                    aria-label="Close flight focus"
+                    className="w-11 h-11 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--m)] hover:text-[var(--fg)] ff-pill select-none cursor-pointer text-lg"
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
 
               {/* Pill toggle: Departures / Arrivals */}
@@ -624,7 +619,7 @@ export default function FlightFocusModal({
                   const remSec = f.remainingSeconds || Math.max(0, (f.estimatedArrival || 0) - now);
                   const isLanded = remSec <= 0;
                   const isBoarding = !isLanded && remSec <= 45 * 60;
-                  const isDelayed = !isLanded && i % 8 === 6; // Realistic airline schedule status
+                  const isDelayed = !isLanded && i % 8 === 6;
 
                   let statusText = 'ON TIME';
                   let statusClass = 'border border-[var(--hair)] text-[var(--fg)]';
@@ -640,13 +635,11 @@ export default function FlightFocusModal({
                     statusClass = 'border border-dashed border-[var(--m)] text-[var(--m)]';
                   }
 
-                  // Departure or arrival display time
                   const depApprox = new Date((f.estimatedArrival - (f.totalSeconds || 7200)) * 1000);
                   const rowTimeStr = `${String(depApprox.getHours()).padStart(2, '0')}:${String(
                     depApprox.getMinutes()
                   ).padStart(2, '0')}`;
 
-                  // Destination and Gate
                   const targetCity =
                     boardType === 'departures'
                       ? resolveAirport(f.destination).city
@@ -654,7 +647,6 @@ export default function FlightFocusModal({
                   const targetCode = boardType === 'departures' ? f.destination : f.origin;
                   const gateStr = `gate ${String.fromCharCode(65 + (i % 4))}${1 + ((i * 3) % 24)}`;
 
-                  // Arrival computation
                   const destAirport = resolveAirport(f.destination);
                   const { timeStr: arrivalTimeStr, dayOffsetStr } = computeArrivalInfo(
                     f.estimatedArrival,
@@ -667,12 +659,11 @@ export default function FlightFocusModal({
                       key={f.id || i}
                       role="button"
                       disabled={isLanded}
-                      onClick={() => handleSelectFlight(f)}
+                      onClick={() => handleSelectFlightToTicket(f)}
                       className={`w-full text-left py-3 min-h-[58px] grid grid-cols-12 gap-2 items-center transition-colors focus:outline-none focus:ring-1 focus:ring-[var(--fg)] rounded cursor-pointer ${
                         isLanded ? 'opacity-35 cursor-not-allowed' : 'hover:bg-[var(--fg)]/[0.03]'
                       }`}
                     >
-                      {/* Time */}
                       <div className="col-span-2 ff-mono text-[14px] text-[var(--fg)]">
                         <SplitFlapText
                           text={rowTimeStr}
@@ -682,7 +673,6 @@ export default function FlightFocusModal({
                         />
                       </div>
 
-                      {/* Flight + Route + Gate */}
                       <div className="col-span-5 flex flex-col justify-center min-w-0 pr-1">
                         <div className="flex items-center gap-1.5 text-[14px] font-normal text-[var(--fg)] truncate">
                           <SplitFlapText
@@ -698,7 +688,6 @@ export default function FlightFocusModal({
                         </span>
                       </div>
 
-                      {/* Left · Lands (Prominent) */}
                       <div className="col-span-3 text-right flex flex-col justify-center">
                         <span className="text-[14px] font-normal text-[var(--fg)] tabular-nums">
                           {formatDurationShort(remSec)}
@@ -709,7 +698,6 @@ export default function FlightFocusModal({
                         </span>
                       </div>
 
-                      {/* Status Pill */}
                       <div className="col-span-2 flex justify-end">
                         <span
                           className={`ff-mono text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-full text-center whitespace-nowrap ${statusClass}`}
@@ -723,7 +711,7 @@ export default function FlightFocusModal({
               </div>
             </div>
 
-            {/* Board Footer: Dark / Light Toggle */}
+            {/* Board Footer */}
             <footer className="pt-6 mt-6 border-t border-[var(--hair)] flex items-center justify-between">
               <span className="ff-mono text-[10.5px] text-[var(--t)] uppercase tracking-wider">
                 INFLIGHT FOCUS COMPANION
@@ -740,16 +728,206 @@ export default function FlightFocusModal({
         )}
 
         {/* ========================================================================= */}
+        {/* SCREEN 1.5: FLIGHT TICKET / BOARDING PASS + START FOCUS                   */}
+        {/* ========================================================================= */}
+        {currentScreen === 'ticket' && pendingFlight && telemetry && (
+          <main className="flex-1 flex flex-col justify-between w-full animate-in fade-in duration-200">
+            <div>
+              {/* Top Navigation */}
+              <div className="flex items-center justify-between mb-6 pb-2 border-b border-[var(--hair)]">
+                <button
+                  onClick={() => setCurrentScreen('board')}
+                  aria-label="Back to flight board"
+                  className="flex items-center gap-2 text-xs font-mono text-[var(--m)] hover:text-[var(--fg)] transition-colors cursor-pointer min-h-[44px]"
+                >
+                  <span>←</span>
+                  <span className="uppercase tracking-wider">Flight Board</span>
+                </button>
+                <button
+                  onClick={onClose}
+                  aria-label="Close"
+                  className="w-11 h-11 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--m)] hover:text-[var(--fg)] text-lg cursor-pointer"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Realistic Boarding Pass Ticket Card */}
+              <div className="w-full bg-white text-black rounded-3xl overflow-hidden shadow-2xl relative mb-6">
+                {/* Ticket Top Header */}
+                <div className="bg-neutral-900 text-white px-5 py-3.5 flex items-center justify-between border-b border-neutral-800">
+                  <div className="flex items-center gap-2">
+                    <PlaneGlyph className="text-white" />
+                    <span className="text-xs font-mono font-bold tracking-widest uppercase">
+                      BOARDING PASS
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono tracking-wider text-neutral-400">
+                    FOCUS CLASS
+                  </span>
+                </div>
+
+                <div className="p-6">
+                  {/* Airline & Flight Number */}
+                  <div className="flex justify-between items-center mb-6">
+                    <div>
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-neutral-400 block">
+                        AIRLINE
+                      </span>
+                      <span className="text-base font-bold text-neutral-900 tracking-tight">
+                        {pendingFlight.airline || 'Commercial Airline'}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-neutral-400 block">
+                        FLIGHT
+                      </span>
+                      <span className="text-base font-mono font-bold text-neutral-900">
+                        {pendingFlight.callsign}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Route & Times */}
+                  <div className="flex items-center justify-between py-4 border-y border-neutral-200">
+                    <div className="flex flex-col">
+                      <span className="text-3xl font-light tracking-tight text-neutral-900 font-mono">
+                        {pendingFlight.origin}
+                      </span>
+                      <span className="text-xs font-semibold text-neutral-600 mt-0.5">
+                        {telemetry.orig?.city || 'Origin'}
+                      </span>
+                      <span className="text-[11px] font-mono text-neutral-400 mt-1">
+                        DEP {telemetry.depTimeStr}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col items-center px-4">
+                      <span className="text-[11px] font-mono text-neutral-500 mb-1">
+                        {formatDurationShort(pendingFlight.remainingSeconds || pendingFlight.totalSeconds || 7200)}
+                      </span>
+                      <div className="w-20 h-[1.5px] bg-neutral-300 relative flex items-center justify-center">
+                        <div className="w-5 h-5 rounded-full bg-white border border-neutral-300 flex items-center justify-center text-neutral-700">
+                          <PlaneGlyph />
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono text-neutral-400 mt-1">NON-STOP</span>
+                    </div>
+
+                    <div className="flex flex-col items-end text-right">
+                      <span className="text-3xl font-light tracking-tight text-neutral-900 font-mono">
+                        {pendingFlight.destination}
+                      </span>
+                      <span className="text-xs font-semibold text-neutral-600 mt-0.5">
+                        {telemetry.dest?.city || 'Destination'}
+                      </span>
+                      <span className="text-[11px] font-mono text-neutral-400 mt-1">
+                        ARR {telemetry.arrivalInfo.timeStr}
+                        {telemetry.arrivalInfo.dayOffsetStr}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Flight Grid Information */}
+                  <div className="grid grid-cols-3 gap-4 pt-5 pb-3">
+                    <div>
+                      <span className="text-[9.5px] font-mono text-neutral-400 uppercase tracking-widest block">
+                        PASSENGER
+                      </span>
+                      <span className="text-xs font-bold text-neutral-900">Focus Pilot</span>
+                    </div>
+                    <div>
+                      <span className="text-[9.5px] font-mono text-neutral-400 uppercase tracking-widest block">
+                        SEAT
+                      </span>
+                      <span className="text-xs font-mono font-bold text-neutral-900">
+                        {selectedSeat || '14A'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9.5px] font-mono text-neutral-400 uppercase tracking-widest block">
+                        GATE
+                      </span>
+                      <span className="text-xs font-mono font-bold text-neutral-900">B12</span>
+                    </div>
+                    <div>
+                      <span className="text-[9.5px] font-mono text-neutral-400 uppercase tracking-widest block">
+                        AIRCRAFT
+                      </span>
+                      <span className="text-xs font-medium text-neutral-800 truncate block">
+                        {pendingFlight.model || 'Boeing 787-9'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9.5px] font-mono text-neutral-400 uppercase tracking-widest block">
+                        DISTANCE
+                      </span>
+                      <span className="text-xs font-mono font-bold text-neutral-900">
+                        {telemetry.totalDistKm.toLocaleString()} km
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9.5px] font-mono text-neutral-400 uppercase tracking-widest block">
+                        STATUS
+                      </span>
+                      <span className="text-xs font-mono font-bold text-neutral-900">BOARDING</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Perforated Divider with Semicircular Notches */}
+                <div className="relative w-full h-4 flex items-center justify-between px-[-10px] overflow-hidden">
+                  <div className="w-5 h-5 rounded-full bg-black -ml-2.5 shrink-0" />
+                  <div className="w-full border-b border-dashed border-neutral-300 mx-2" />
+                  <div className="w-5 h-5 rounded-full bg-black -mr-2.5 shrink-0" />
+                </div>
+
+                {/* Barcode Graphic Footer */}
+                <div className="px-6 py-4 bg-neutral-50 flex items-center justify-between">
+                  {/* Decorative Barcode */}
+                  <div className="flex items-center gap-[2px] h-9">
+                    {[3, 1, 4, 1, 2, 5, 1, 3, 2, 1, 4, 2, 1, 3, 5, 2, 1, 4, 1, 3, 2, 4, 1, 5, 2, 1, 3].map(
+                      (w, idx) => (
+                        <div
+                          key={idx}
+                          className="bg-neutral-800 h-full"
+                          style={{ width: `${w}px` }}
+                        />
+                      )
+                    )}
+                  </div>
+                  <span className="text-[10px] font-mono text-neutral-500 tracking-wider">
+                    {pendingFlight.callsign}-FOCUS-OK
+                  </span>
+                </div>
+              </div>
+
+              {/* START FOCUS BUTTON (زرار ستارت فوكس كما طلب المستخدم) */}
+              <button
+                onClick={handleStartFocus}
+                aria-label="Start Focus Session"
+                className="w-full py-4 rounded-2xl bg-white hover:bg-neutral-200 text-black font-bold text-base tracking-widest uppercase transition-all shadow-xl active:scale-95 cursor-pointer flex items-center justify-center gap-3 border border-white"
+              >
+                <PlaneGlyph className="text-black" />
+                <span>Start Focus</span>
+              </button>
+            </div>
+
+            <footer className="pt-4 text-center">
+              <span className="ff-mono text-[10.5px] text-[var(--m)] uppercase tracking-wider">
+                CONFIRM DETAILS & EMBARK ON FOCUS FLIGHT
+              </span>
+            </footer>
+          </main>
+        )}
+
+        {/* ========================================================================= */}
         {/* SCREEN 2: CABIN                                                           */}
         {/* ========================================================================= */}
         {currentScreen === 'cabin' && selectedFlight && telemetry && (
-          <main
-            className={`flex-1 flex flex-col justify-between w-full ${
-              transitioning === 'cabin-to-board' ? 'ff-cabin-fade-out' : 'ff-cabin-fade-in'
-            }`}
-          >
+          <main className="flex-1 flex flex-col justify-between w-full animate-in fade-in duration-200">
             <div>
-              {/* Top line: flight number (500) left, aircraft · seat right */}
+              {/* Top line */}
               <div className="flex items-center justify-between pb-3 border-b border-[var(--hair)]">
                 <span className="text-[16px] font-medium text-[var(--fg)] tracking-tight">
                   {selectedFlight.callsign}
@@ -759,7 +937,7 @@ export default function FlightFocusModal({
                 </span>
               </div>
 
-              {/* Route line: "LHR ⸺✈⸺ BKK" at 22px weight 300 */}
+              {/* Route line */}
               <div className="py-6 flex flex-col items-center">
                 <div className="flex items-center justify-center gap-3 w-full text-[22px] font-light text-[var(--fg)] tracking-wide">
                   <span>{selectedFlight.origin}</span>
@@ -781,7 +959,7 @@ export default function FlightFocusModal({
                 </div>
               </div>
 
-              {/* Countdown: centered "TIME TO DESTINATION" + live HH:MM:SS (weight 300) */}
+              {/* Countdown */}
               <div className="flex flex-col items-center py-6">
                 <span className="ff-mono text-[10.5px] uppercase tracking-widest text-[var(--t)] mb-1">
                   TIME TO DESTINATION
@@ -794,7 +972,7 @@ export default function FlightFocusModal({
                   {formatCountdown(flightTimer)}
                 </div>
 
-                {/* Progress: 1px grey line with a 3px white fill (no thick bar) */}
+                {/* Progress */}
                 <div className="relative w-full h-[3px] flex items-center my-4">
                   <div className="absolute inset-x-0 h-[1px] bg-[var(--hair)]" />
                   <div
@@ -804,7 +982,7 @@ export default function FlightFocusModal({
                 </div>
               </div>
 
-              {/* Info as a plain list with hairline dividers */}
+              {/* Info list */}
               <div className="divide-y divide-[var(--hair)] border-y border-[var(--hair)] mb-8">
                 <div className="flex items-center justify-between py-3 min-h-[44px]">
                   <span className="ff-mono text-[11px] text-[var(--m)]">Altitude</span>
@@ -833,7 +1011,7 @@ export default function FlightFocusModal({
                 </div>
               </div>
 
-              {/* Three outlined pill buttons in one row */}
+              {/* Three outlined pill buttons: Window seat, Cabin hum, Give up (replaced pause as requested) */}
               <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => setIsWindowSeatOpen && setIsWindowSeatOpen(true)}
@@ -853,12 +1031,11 @@ export default function FlightFocusModal({
                   Cabin hum
                 </button>
                 <button
-                  onClick={() => setIsFlightTimerRunning(!isFlightTimerRunning)}
-                  aria-pressed={!isFlightTimerRunning}
-                  aria-label={isFlightTimerRunning ? 'Pause countdown' : 'Resume countdown'}
-                  className="min-h-[44px] px-2 rounded-full border border-[var(--hair)] text-[12.5px] font-normal text-[var(--fg)] ff-pill flex items-center justify-center cursor-pointer text-center"
+                  onClick={handleGiveUp}
+                  aria-label="Give up flight session"
+                  className="min-h-[44px] px-2 rounded-full border border-red-500/30 text-red-400 hover:bg-red-500/10 text-[12.5px] font-normal ff-pill flex items-center justify-center cursor-pointer text-center"
                 >
-                  {isFlightTimerRunning ? 'Pause' : 'Resume'}
+                  Give up
                 </button>
               </div>
             </div>
@@ -866,429 +1043,12 @@ export default function FlightFocusModal({
             {/* Cabin Footer */}
             <footer className="pt-6 mt-6 border-t border-[var(--hair)] text-center">
               <span className="ff-mono text-[10.5px] text-[var(--m)] uppercase tracking-wider">
-                {isFlightTimerRunning ? 'Focus mode active · Cruise' : 'Session Paused'}
+                Focus mode active · Cruise
               </span>
             </footer>
           </main>
         )}
-
-        {/* ========================================================================= */}
-        {/* SCREEN 3: RADAR (Real Vector Map)                                         */}
-        {/* ========================================================================= */}
-        {currentScreen === 'radar' && selectedFlight && telemetry && (
-          <main className="flex-1 flex flex-col justify-between w-full ff-crossfade">
-            <div className="flex-1 flex flex-col">
-              {/* Full-height rounded container with real vector world map */}
-              <div
-                className="relative w-full rounded-[24px] overflow-hidden border border-[var(--hair)] flex-1 min-h-[440px] flex flex-col"
-                style={{
-                  backgroundColor: 'var(--bg)',
-                }}
-              >
-                {/* Real Vector Map Canvas/SVG Component */}
-                <RadarVectorMap
-                  flight={selectedFlight}
-                  telemetry={telemetry}
-                  theme={theme}
-                />
-
-                {/* Top-left: flight number + "LHR -> BKK" in tiny type */}
-                <div className="absolute top-4 left-4 z-10 select-none">
-                  <span className="ff-mono text-[11px] text-[var(--fg)] font-normal block leading-tight">
-                    {selectedFlight.callsign}
-                  </span>
-                  <span className="ff-mono text-[10px] text-[var(--m)] block mt-0.5">
-                    {selectedFlight.origin} → {selectedFlight.destination}
-                  </span>
-                </div>
-
-                {/* Top-right: two small circular buttons (pause, km/mi toggle) */}
-                <div className="absolute top-3.5 right-3.5 z-10 flex items-center gap-2">
-                  <button
-                    onClick={() => setIsFlightTimerRunning(!isFlightTimerRunning)}
-                    aria-label={isFlightTimerRunning ? 'Pause flight countdown' : 'Resume flight countdown'}
-                    aria-pressed={!isFlightTimerRunning}
-                    className="w-11 h-11 rounded-full border border-[var(--hair)] bg-[var(--bg)] text-[var(--fg)] flex items-center justify-center ff-pill select-none cursor-pointer"
-                  >
-                    <span className="ff-mono text-[11px] leading-none">
-                      {isFlightTimerRunning ? '❚❚' : '▶'}
-                    </span>
-                  </button>
-
-                  <button
-                    onClick={() => setUseMiles(!useMiles)}
-                    aria-label="Toggle units km or miles"
-                    aria-pressed={useMiles}
-                    className="w-11 h-11 rounded-full border border-[var(--hair)] bg-[var(--bg)] text-[var(--fg)] flex items-center justify-center ff-pill select-none cursor-pointer"
-                  >
-                    <span className="ff-mono text-[11px] leading-none uppercase">
-                      {useMiles ? 'mi' : 'km'}
-                    </span>
-                  </button>
-                </div>
-
-                {/* Bottom overlay with a fade: "Time remaining" left & "Distance remaining" right */}
-                <div
-                  className="absolute inset-x-0 bottom-0 z-10 pt-12 pb-5 px-5 flex items-end justify-between pointer-events-none select-none"
-                  style={{
-                    background:
-                      'linear-gradient(to top, var(--bg) 60%, rgba(0,0,0,0) 100%)',
-                  }}
-                >
-                  {/* Time remaining */}
-                  <div className="flex flex-col">
-                    <span className="ff-mono text-[10px] uppercase tracking-wider text-[var(--t)] mb-0.5">
-                      Time remaining
-                    </span>
-                    <div className="text-[26px] font-light text-[var(--fg)] tabular-nums leading-none">
-                      {Math.floor(flightTimer / 60)}
-                      <span className="ff-mono text-[11px] text-[var(--m)] font-normal ml-1">
-                        min
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Distance remaining */}
-                  <div className="flex flex-col text-right">
-                    <span className="ff-mono text-[10px] uppercase tracking-wider text-[var(--t)] mb-0.5">
-                      Distance remaining
-                    </span>
-                    <div className="text-[26px] font-light text-[var(--fg)] tabular-nums leading-none">
-                      {useMiles
-                        ? telemetry.distRemainingMi.toLocaleString()
-                        : telemetry.distRemainingKm.toLocaleString()}
-                      <span className="ff-mono text-[11px] text-[var(--m)] font-normal ml-1">
-                        {useMiles ? 'mi' : 'km'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </main>
-        )}
       </div>
-    </div>
-  );
-}
-
-// =============================================================================
-// SCREEN 3: RADAR REAL VECTOR WORLD MAP COMPONENT
-// =============================================================================
-function RadarVectorMap({ flight, telemetry, theme }) {
-  const containerRef = useRef(null);
-  const [redrawKey, setRedrawKey] = useState(0);
-
-  // Redraw map every ~10s as specified in PDF
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setRedrawKey((k) => k + 1);
-    }, 10000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Compute map SVG paths and projections
-  const mapData = useMemo(() => {
-    try {
-      const w = 440;
-      const h = 560;
-
-      const { currentPlane, origCoords, destCoords, progress } = telemetry;
-      const planeLat = currentPlane.lat;
-      const planeLng = currentPlane.lng;
-      const heading = currentPlane.heading;
-
-      // Fixed plane position: 64% screen height, 50% width
-      const planeScreenX = w * 0.5;
-      const planeScreenY = h * 0.64;
-
-      // Adaptive zoom scale based on remaining distance
-      const zoom = Math.max(140, Math.min(380, 1100000 / (telemetry.distRemainingKm + 1200)));
-
-      // Trigonometric projection with heading-up rotation around current plane position
-      const toRad = (deg) => (deg * Math.PI) / 180;
-      const radHeading = toRad(heading);
-      const cosH = Math.cos(-radHeading);
-      const sinH = Math.sin(-radHeading);
-
-      const projectCoord = (lat, lng) => {
-        let dLng = lng - planeLng;
-        while (dLng > 180) dLng -= 360;
-        while (dLng < -180) dLng += 360;
-
-        const xNorm = (dLng * Math.PI) / 180;
-        const latClamped = Math.max(-82, Math.min(82, lat));
-        const yNorm = Math.log(Math.tan(Math.PI / 4 + toRad(latClamped) / 2));
-
-        const latPlaneClamped = Math.max(-82, Math.min(82, planeLat));
-        const yPlaneNorm = Math.log(Math.tan(Math.PI / 4 + toRad(latPlaneClamped) / 2));
-        const dYNorm = yNorm - yPlaneNorm;
-
-        // Apply heading-up rotation
-        const unrotX = xNorm * zoom;
-        const unrotY = -dYNorm * zoom;
-
-        const rotX = unrotX * cosH - unrotY * sinH;
-        const rotY = unrotX * sinH + unrotY * cosH;
-
-        return {
-          x: planeScreenX + rotX,
-          y: planeScreenY + rotY,
-        };
-      };
-
-      // Faint 15-degree graticule lines
-      const graticules = [];
-      for (let lat = -75; lat <= 75; lat += 15) {
-        let d = '';
-        for (let lng = -180; lng <= 180; lng += 10) {
-          const pt = projectCoord(lat, lng);
-          d += d === '' ? `M ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}` : ` L ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`;
-        }
-        graticules.push(d);
-      }
-      for (let lng = -180; lng < 180; lng += 15) {
-        let d = '';
-        for (let lat = -75; lat <= 75; lat += 5) {
-          const pt = projectCoord(lat, lng);
-          d += d === '' ? `M ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}` : ` L ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`;
-        }
-        graticules.push(d);
-      }
-
-      // Simplified global continental land polygons
-      const continents = [
-        // Eurasia & Africa
-        [
-          { lat: 70, lng: -10 }, { lat: 71, lng: 28 }, { lat: 77, lng: 104 }, { lat: 66, lng: 170 },
-          { lat: 40, lng: 140 }, { lat: 22, lng: 114 }, { lat: 1, lng: 104 }, { lat: 8, lng: 77 },
-          { lat: 25, lng: 55 }, { lat: 12, lng: 44 }, { lat: -34, lng: 18 }, { lat: 5, lng: 1 },
-          { lat: 14, lng: -17 }, { lat: 36, lng: -6 }, { lat: 44, lng: -1 }, { lat: 58, lng: 5 }
-        ],
-        // North America
-        [
-          { lat: 72, lng: -156 }, { lat: 70, lng: -70 }, { lat: 47, lng: -53 }, { lat: 25, lng: -80 },
-          { lat: 15, lng: -92 }, { lat: 8, lng: -77 }, { lat: 18, lng: -105 }, { lat: 32, lng: -117 },
-          { lat: 48, lng: -124 }, { lat: 60, lng: -140 }, { lat: 65, lng: -168 }
-        ],
-        // South America
-        [
-          { lat: 12, lng: -72 }, { lat: -5, lng: -35 }, { lat: -23, lng: -42 }, { lat: -54, lng: -68 },
-          { lat: -18, lng: -70 }, { lat: -4, lng: -81 }, { lat: 8, lng: -77 }
-        ],
-        // Australia
-        [
-          { lat: -12, lng: 132 }, { lat: -20, lng: 148 }, { lat: -38, lng: 145 }, { lat: -32, lng: 116 },
-          { lat: -20, lng: 119 }
-        ],
-        // British Isles
-        [
-          { lat: 58, lng: -5 }, { lat: 58, lng: -2 }, { lat: 51, lng: 1 }, { lat: 50, lng: -5 },
-          { lat: 53, lng: -4 }
-        ],
-        // Japan
-        [
-          { lat: 45, lng: 142 }, { lat: 35, lng: 140 }, { lat: 31, lng: 131 }, { lat: 36, lng: 136 }
-        ]
-      ];
-
-      const landPaths = continents.map((poly) => {
-        return (
-          poly.reduce((acc, pt, i) => {
-            const p = projectCoord(pt.lat, pt.lng);
-            return i === 0 ? `M ${p.x.toFixed(1)} ${p.y.toFixed(1)}` : `${acc} L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
-          }, '') + ' Z'
-        );
-      });
-
-      // Great-circle route points
-      const numPoints = 80;
-      const flownPoints = [];
-      const remainingPoints = [];
-
-      for (let i = 0; i <= numPoints; i++) {
-        const t = i / numPoints;
-        const pt = interpolateGreatCircle(origCoords, destCoords, t);
-        const scr = projectCoord(pt.lat, pt.lng);
-        if (t <= progress) {
-          flownPoints.push(scr);
-        }
-        if (t >= progress) {
-          remainingPoints.push(scr);
-        }
-      }
-
-      const flownPathStr = flownPoints.reduce(
-        (acc, p, i) => (i === 0 ? `M ${p.x.toFixed(1)} ${p.y.toFixed(1)}` : `${acc} L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`),
-        ''
-      );
-
-      const remainingPathStr = remainingPoints.reduce(
-        (acc, p, i) => (i === 0 ? `M ${p.x.toFixed(1)} ${p.y.toFixed(1)}` : `${acc} L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`),
-        ''
-      );
-
-      // Origin & Destination airport screen coordinates
-      const origScreen = projectCoord(origCoords.lat, origCoords.lng);
-      const destScreen = projectCoord(destCoords.lat, destCoords.lng);
-
-      return {
-        w,
-        h,
-        planeScreenX,
-        planeScreenY,
-        graticules,
-        landPaths,
-        flownPathStr,
-        remainingPathStr,
-        origScreen,
-        destScreen,
-      };
-    } catch (err) {
-      console.warn('[Radar Vector Map Render Warning]:', err);
-      return null;
-    }
-  }, [telemetry, redrawKey]);
-
-  if (!mapData) {
-    return (
-      <div className="w-full h-full flex items-center justify-center ff-mono text-[11px] text-[var(--m)]">
-        RADAR INITIALIZING...
-      </div>
-    );
-  }
-
-  return (
-    <div
-      ref={containerRef}
-      className="relative w-full h-full flex-1 overflow-hidden transition-opacity duration-300"
-      style={{ minHeight: '440px' }}
-    >
-      <svg
-        viewBox={`0 0 ${mapData.w} ${mapData.h}`}
-        className="w-full h-full select-none"
-        preserveAspectRatio="xMidYMid slice"
-      >
-        <defs>
-          {/* Contrail linear gradient fading at tails */}
-          <linearGradient id="contrailGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--fg)" stopOpacity="0.75" />
-            <stop offset="100%" stopColor="var(--fg)" stopOpacity="0" />
-          </linearGradient>
-
-          {/* Stroke dashoffset animation for route line */}
-          <style>{`
-            @keyframes ffRouteDraw {
-              from { stroke-dashoffset: 1000; }
-              to { stroke-dashoffset: 0; }
-            }
-            .ff-route-remaining {
-              stroke-dasharray: 1000;
-              animation: ffRouteDraw 800ms ease-out forwards;
-            }
-          `}</style>
-        </defs>
-
-        {/* Ocean background */}
-        <rect width={mapData.w} height={mapData.h} fill="var(--bg)" />
-
-        {/* Faint 15-degree Graticules */}
-        {mapData.graticules.map((d, i) => (
-          <path
-            key={`grat-${i}`}
-            d={d}
-            fill="none"
-            stroke="var(--grid)"
-            strokeWidth="0.5"
-          />
-        ))}
-
-        {/* Land polygons (No Antarctica) */}
-        {mapData.landPaths.map((d, i) => (
-          <path
-            key={`land-${i}`}
-            d={d}
-            fill="var(--land)"
-            stroke="var(--border)"
-            strokeWidth="0.5"
-          />
-        ))}
-
-        {/* Great-circle Flown Route: dashed grey */}
-        {mapData.flownPathStr && (
-          <path
-            d={mapData.flownPathStr}
-            fill="none"
-            stroke="var(--m)"
-            strokeWidth="1.2"
-            strokeDasharray="3 3"
-          />
-        )}
-
-        {/* Great-circle Remaining Route: solid white */}
-        {mapData.remainingPathStr && (
-          <path
-            d={mapData.remainingPathStr}
-            fill="none"
-            stroke="var(--fg)"
-            strokeWidth="1.6"
-            className="ff-route-remaining"
-          />
-        )}
-
-        {/* Origin Airport: small outlined dot + upright mono label */}
-        <g transform={`translate(${mapData.origScreen.x}, ${mapData.origScreen.y})`}>
-          <circle r="3" fill="var(--bg)" stroke="var(--fg)" strokeWidth="1.2" />
-          <text
-            x="0"
-            y="-7"
-            textAnchor="middle"
-            fill="var(--m)"
-            className="ff-mono"
-            style={{ fontSize: '9px' }}
-          >
-            {flight.origin}
-          </text>
-        </g>
-
-        {/* Destination Airport: small outlined dot + upright mono label */}
-        <g transform={`translate(${mapData.destScreen.x}, ${mapData.destScreen.y})`}>
-          <circle r="3.5" fill="var(--bg)" stroke="var(--fg)" strokeWidth="1.4" />
-          <text
-            x="0"
-            y="-8"
-            textAnchor="middle"
-            fill="var(--fg)"
-            className="ff-mono"
-            style={{ fontSize: '9.5px' }}
-          >
-            {flight.destination}
-          </text>
-        </g>
-
-        {/* Two thin fading contrails behind plane wings */}
-        <line
-          x1={mapData.planeScreenX - 5}
-          y1={mapData.planeScreenY + 4}
-          x2={mapData.planeScreenX - 5}
-          y2={mapData.planeScreenY + 48}
-          stroke="url(#contrailGrad)"
-          strokeWidth="1"
-        />
-        <line
-          x1={mapData.planeScreenX + 5}
-          y1={mapData.planeScreenY + 4}
-          x2={mapData.planeScreenX + 5}
-          y2={mapData.planeScreenY + 48}
-          stroke="url(#contrailGrad)"
-          strokeWidth="1"
-        />
-
-        {/* Plane Silhouette: fixed at 64% screen height, pointing straight UP */}
-        <g transform={`translate(${mapData.planeScreenX - 12}, ${mapData.planeScreenY - 12})`}>
-          <PlaneSilhouette />
-        </g>
-      </svg>
     </div>
   );
 }
