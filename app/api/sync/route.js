@@ -488,6 +488,8 @@ export async function POST(req) {
         ? existingDailyLog.logs
         : {};
 
+      // Partial client payloads (pending habit keys only) overlay existing logs.
+      // Never replace the whole map with a stale full snapshot from another device.
       const mergedLogs = {
         ...existingLogs,
         ...dateDailyData

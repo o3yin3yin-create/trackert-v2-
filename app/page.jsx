@@ -7,6 +7,7 @@ import { useUser, useAuth, useClerk, Show, SignInButton, SignUpButton, UserButto
 import { clerkAppearance } from '../lib/clerkTheme';
 import { apiFetch, setApiTokenGetter } from '../lib/api';
 import { loadLocalOfflineState, saveLocalOfflineState, queueSyncMutation, resolveConflict, mergePomodoroTasksData, mergeTaskLists, generateSubtaskId, recomputeTaskCompletion, getPendingSyncQueue, clearPendingSyncQueue, clearLocalOfflineState } from '../lib/db';
+import { readPendingOverlay, writePendingOverlay, replacePendingOverlay, clearPendingOverlay, overlayHasPending, persistTaskKeysSync, pruneAcknowledgedOverlay, buildDeltaPayload, syncDebug, PENDING_PAYLOAD_KEY, PENDING_FLAG_KEY } from '../lib/syncPersist';
 import { motion } from 'framer-motion';
 import MinimalTimer from '../components/MinimalTimer';
 import { translations } from '../lib/translations';
@@ -1210,7 +1211,8 @@ function AppContent({ isPreview = false }) {
     if (isPreview) return getPreviewData().dailyData;
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('daybase_dailyData_v4');
-      return safeJson(saved, {});
+      const overlay = readPendingOverlay();
+      return { ...safeJson(saved, {}), ...(overlay.dailyData || {}) };
     }
     return {};
   });
@@ -1966,8 +1968,14 @@ function AppContent({ isPreview = false }) {
     if (typeof window !== 'undefined') {
       try {
         const parsed = JSON.parse(localStorage.getItem('daybase_daily_tasks_v4') || "[]");
-        if (Array.isArray(parsed)) {
-          return parsed.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈'));
+        const overlay = readPendingOverlay();
+        const dateStr = localStorage.getItem('daybase_daily_tasks_date_v4') || overlay.dailyTasksDateStr;
+        const overlayList = Array.isArray(overlay.dailyTasks)
+          ? overlay.dailyTasks
+          : (dateStr && Array.isArray(overlay.tasksByDate?.[dateStr]) ? overlay.tasksByDate[dateStr] : []);
+        const merged = mergeTaskLists(Array.isArray(parsed) ? parsed : [], overlayList);
+        if (Array.isArray(merged)) {
+          return merged.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈'));
         }
       } catch {}
     }
@@ -2092,7 +2100,9 @@ function AppContent({ isPreview = false }) {
   const [pomodoroTasksData, setPomodoroTasksData] = useState(() => {
     if (isPreview) return getPreviewData().pomodoroTasksData || {};
     if (typeof window !== 'undefined') {
-      return safeJson(localStorage.getItem('daybase_pomodoro_tasks_v1'), {});
+      const saved = safeJson(localStorage.getItem('daybase_pomodoro_tasks_v1'), {});
+      const overlay = readPendingOverlay();
+      return mergePomodoroTasksData(saved, overlay.tasksByDate || {});
     }
     return {};
   });
@@ -2112,14 +2122,47 @@ function AppContent({ isPreview = false }) {
         const localState = await loadLocalOfflineState();
         if (localState) {
           if (localState.habits && localState.habits.length > 0) setHabits(localState.habits);
-          if (localState.dailyData && Object.keys(localState.dailyData).length > 0) setDailyData(localState.dailyData);
+          if (localState.dailyData && Object.keys(localState.dailyData).length > 0) {
+            const overlay = readPendingOverlay();
+            setDailyData(prev => ({
+              ...(localState.dailyData || {}),
+              ...(prev || {}),
+              ...(overlay.dailyData || {}),
+            }));
+          }
           if (localState.sleepData && Object.keys(localState.sleepData).length > 0) setSleepData(localState.sleepData);
           if (localState.focusTimeData && Object.keys(localState.focusTimeData).length > 0) setFocusTimeData(localState.focusTimeData);
           if (localState.pomodoroTasksData && Object.keys(localState.pomodoroTasksData).length > 0) {
-            setPomodoroTasksData(localState.pomodoroTasksData);
+            const overlay = readPendingOverlay();
+            const fromLs = safeJson(localStorage.getItem('daybase_pomodoro_tasks_v1'), {});
+            const mergedTaskData = mergePomodoroTasksData(
+              localState.pomodoroTasksData,
+              mergePomodoroTasksData(fromLs, overlay.tasksByDate || {})
+            );
             const todayStr = getFormatDateStr(new Date());
-            if (Array.isArray(localState.pomodoroTasksData[todayStr])) {
-              const todayTasks = localState.pomodoroTasksData[todayStr].filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈'));
+            const lsDaily = (() => {
+              try {
+                const parsed = JSON.parse(localStorage.getItem('daybase_daily_tasks_v4') || '[]');
+                return Array.isArray(parsed) ? parsed : [];
+              } catch {
+                return [];
+              }
+            })();
+            const overlayToday = Array.isArray(overlay.dailyTasks)
+              ? overlay.dailyTasks
+              : (Array.isArray(overlay.tasksByDate?.[todayStr]) ? overlay.tasksByDate[todayStr] : []);
+            mergedTaskData[todayStr] = mergeTaskLists(
+              Array.isArray(mergedTaskData[todayStr]) ? mergedTaskData[todayStr] : [],
+              mergeTaskLists(lsDaily, overlayToday)
+            );
+            syncDebug('idb.merge', {
+              todayStr,
+              idbCount: Array.isArray(localState.pomodoroTasksData[todayStr]) ? localState.pomodoroTasksData[todayStr].length : 0,
+              mergedCount: Array.isArray(mergedTaskData[todayStr]) ? mergedTaskData[todayStr].length : 0,
+            });
+            setPomodoroTasksData(mergedTaskData);
+            if (Array.isArray(mergedTaskData[todayStr])) {
+              const todayTasks = mergedTaskData[todayStr].filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈'));
               if (todayTasks.length > 0) {
                 setDailyTasks(todayTasks);
                 setDailyTasksDateStr(todayStr);
@@ -2190,7 +2233,30 @@ function AppContent({ isPreview = false }) {
   const pushedMutationVersionRef = useRef(0);
   const dirtyDatesRef = useRef(new Set());
   const latestStateRef = useRef({});
-  const pendingDailyDataRef = useRef({});
+  const pendingDailyDataRef = useRef((() => {
+    if (typeof window === 'undefined' || isPreview) return {};
+    const overlay = readPendingOverlay();
+    return overlay.dailyData && typeof overlay.dailyData === 'object' ? { ...overlay.dailyData } : {};
+  })());
+  const pushBackoffMsRef = useRef(50);
+  const restoredPendingRef = useRef(false);
+  if (!restoredPendingRef.current && typeof window !== 'undefined' && !isPreview) {
+    restoredPendingRef.current = true;
+    try {
+      const overlay = readPendingOverlay();
+      const hasFlag = localStorage.getItem(PENDING_FLAG_KEY) === 'true';
+      if (hasFlag || overlayHasPending(overlay)) {
+        localMutationVersionRef.current = 1;
+        lastLocalMutationTimeRef.current = overlay.updatedAt || Date.now();
+        for (const d of Object.keys(overlay.tasksByDate || {})) {
+          if (d && d.length === 10) dirtyDatesRef.current.add(d);
+        }
+        if (overlay.dailyTasksDateStr && overlay.dailyTasksDateStr.length === 10) {
+          dirtyDatesRef.current.add(overlay.dailyTasksDateStr);
+        }
+      }
+    } catch (_) {}
+  }
 
   const deletedHabitIdsRef = useRef(new Set());
   if (typeof window !== 'undefined' && deletedHabitIdsRef.current.size === 0) {
@@ -2206,6 +2272,7 @@ function AppContent({ isPreview = false }) {
   }
 
   const markLocalMutation = useCallback((dateStr = null) => {
+    if (isPreview) return;
     localMutationVersionRef.current += 1;
     lastLocalMutationTimeRef.current = Date.now();
     if (dateStr && typeof dateStr === 'string' && dateStr.length === 10) {
@@ -2213,8 +2280,13 @@ function AppContent({ isPreview = false }) {
     }
     if (typeof window !== 'undefined') {
       localStorage.setItem('daybase_last_local_update', String(Date.now()));
-      localStorage.setItem('bokra_has_pending_sync', 'true');
+      localStorage.setItem(PENDING_FLAG_KEY, 'true');
     }
+    syncDebug('mutation', {
+      version: localMutationVersionRef.current,
+      dateStr,
+      dirtyDates: Array.from(dirtyDatesRef.current),
+    });
   }, []);
 
 
@@ -2229,7 +2301,6 @@ function AppContent({ isPreview = false }) {
       if (hasUnsynced || isPushingRef.current || timeSinceLocalMutation < 1200) {
         return; // User is actively editing or has pending/in-flight changes; never pull over active user input
       }
-      if (Object.keys(pendingDailyDataRef.current || {}).length > 0) return;
     }
 
     if (!isSilent) setIsSyncing(true);
@@ -2243,7 +2314,7 @@ function AppContent({ isPreview = false }) {
       } catch (_) {}
 
       const hasPendingQueue = Array.isArray(pendingQueue) && pendingQueue.length > 0;
-      const hasPendingFlag = typeof window !== 'undefined' && localStorage.getItem('bokra_has_pending_sync') === 'true';
+      const hasPendingFlag = typeof window !== 'undefined' && localStorage.getItem(PENDING_FLAG_KEY) === 'true';
       const hasUnsyncedMemory = localMutationVersionRef.current > pushedMutationVersionRef.current;
       const hasPendingChanges = hasPendingQueue || hasPendingFlag || hasUnsyncedMemory;
 
@@ -2278,25 +2349,51 @@ function AppContent({ isPreview = false }) {
           // Always merge against the latest in-memory snapshot. The fetch callback
           // captures stale React state, so using those values would uncheck habits
           // and re-open completed tasks after a poll.
+          const overlay = readPendingOverlay();
           const localStateToMerge = latestStateRef.current || {};
           const localHasHabits = (localStateToMerge?.habits?.length || 0) > 0;
           const remoteIsEmpty = !state.habits || state.habits.length === 0;
+          const pendingDaily = { ...(overlay.dailyData || {}), ...(pendingDailyDataRef.current || {}) };
+          const hasPendingOverlay = overlayHasPending({ dailyData: pendingDaily, tasksByDate: overlay.tasksByDate });
 
-          if (hasPendingChanges || (!isSilent && localHasHabits && remoteIsEmpty)) {
-            const localSnapshot = {
-              ...localStateToMerge,
-              dailyData: { ...(localStateToMerge.dailyData || {}), ...pendingDailyDataRef.current },
-              hasPendingChanges: true,
-            };
+          // Always merge local + pending overlay onto server state. Never replace
+          // locally-created tasks/habit checks that the server has not seen yet.
+          const localSnapshot = {
+            ...localStateToMerge,
+            dailyData: pendingDaily,
+            pomodoroTasksData: mergePomodoroTasksData(
+              localStateToMerge.pomodoroTasksData,
+              overlay.tasksByDate || {}
+            ),
+            hasPendingChanges: hasPendingChanges || hasPendingOverlay,
+          };
 
+          if (hasPendingChanges || hasPendingOverlay || (!isSilent && localHasHabits && remoteIsEmpty)) {
             authoritative = resolveConflict(localSnapshot, state);
 
             if (typeof window !== 'undefined') {
-              localStorage.setItem('bokra_has_pending_sync', 'true');
+              localStorage.setItem(PENDING_FLAG_KEY, 'true');
+            }
+            if (localMutationVersionRef.current <= pushedMutationVersionRef.current) {
+              localMutationVersionRef.current = pushedMutationVersionRef.current + 1;
             }
             if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
             pushTimerRef.current = setTimeout(executePush, 100);
+          } else {
+            authoritative = resolveConflict(localSnapshot, state);
           }
+
+          syncDebug('pull.merge', {
+            silent: isSilent,
+            hasPendingChanges,
+            hasPendingOverlay,
+            pendingDailyKeys: Object.keys(pendingDaily),
+            overlayDates: Object.keys(overlay.tasksByDate || {}),
+            remoteTaskDates: Object.keys(state.pomodoroTasksData || {}),
+          });
+
+          let mergedDailyForSave = authoritative.dailyData;
+          let mergedTasksForSave = authoritative.pomodoroTasksData;
 
           isApplyingRemoteRef.current = true;
           if (authoritative.isAdmin !== undefined) setIsAdmin(authoritative.isAdmin);
@@ -2353,21 +2450,26 @@ function AppContent({ isPreview = false }) {
              if (typeof window !== 'undefined') localStorage.setItem('daybase_habits_v4', JSON.stringify(cleanHabits));
           }
           if (authoritative.dailyData && typeof authoritative.dailyData === 'object') {
-             const pendingChecks = pendingDailyDataRef.current || {};
-             const isRecentLocalMutation = (Date.now() - lastLocalMutationTimeRef.current) < 4000;
-             const preserveLocal = hasPendingChanges || isRecentLocalMutation;
+             const pendingChecks = { ...(pendingDailyDataRef.current || {}), ...(overlay.dailyData || {}) };
              const mergedDaily = {
                ...authoritative.dailyData,
-               ...(preserveLocal ? (localStateToMerge.dailyData || {}) : {}),
                ...pendingChecks,
              };
+             const stillPending = {};
              for (const [k, v] of Object.entries(pendingChecks)) {
-               if (authoritative.dailyData[k] === v) {
-                 delete pendingChecks[k];
+               if (state.dailyData?.[k] !== v) {
+                 stillPending[k] = v;
                }
              }
+             pendingDailyDataRef.current = stillPending;
+             mergedDailyForSave = mergedDaily;
              setDailyData(mergedDaily);
              if (typeof window !== 'undefined') localStorage.setItem('daybase_dailyData_v4', JSON.stringify(mergedDaily));
+             syncDebug('pull.dailyData', {
+               pendingBefore: Object.keys(pendingChecks),
+               pendingAfter: Object.keys(stillPending),
+               overwritten: Object.keys(pendingChecks).filter((k) => state.dailyData?.[k] !== pendingChecks[k] && mergedDaily[k] === pendingChecks[k]),
+             });
           }
           if (authoritative.sleepData && typeof authoritative.sleepData === 'object') {
              setSleepData(authoritative.sleepData);
@@ -2378,10 +2480,26 @@ function AppContent({ isPreview = false }) {
              if (typeof window !== 'undefined') localStorage.setItem('daybase_focusTime_v4', JSON.stringify(authoritative.focusTimeData));
           }
           if (authoritative.pomodoroTasksData && typeof authoritative.pomodoroTasksData === 'object') {
+             const localTasksForMerge = mergePomodoroTasksData(
+               localStateToMerge.pomodoroTasksData,
+               overlay.tasksByDate || {}
+             );
              const mergedTaskData = mergePomodoroTasksData(
                authoritative.pomodoroTasksData,
-               localStateToMerge.pomodoroTasksData
+               localTasksForMerge
              );
+             const dropped = [];
+             for (const [date, list] of Object.entries(localTasksForMerge || {})) {
+               if (!Array.isArray(list)) continue;
+               const mergedTexts = new Set((mergedTaskData[date] || []).filter(t => t && !t.deleted).map(t => t.text?.trim()));
+               for (const t of list) {
+                 if (t && t.text && !t.deleted && !mergedTexts.has(t.text.trim())) {
+                   dropped.push({ date, text: t.text });
+                 }
+               }
+             }
+             if (dropped.length) syncDebug('pull.tasks.dropped', { dropped });
+             else syncDebug('pull.tasks', { dates: Object.keys(mergedTaskData) });
              const todayStr = getFormatDateStr(new Date());
 
              let todayTasks = Array.isArray(mergedTaskData[todayStr])
@@ -2428,9 +2546,14 @@ function AppContent({ isPreview = false }) {
 
              todayTasks = todayTasks.map(t => recomputeTaskCompletion({ ...t }));
              mergedTaskData[todayStr] = todayTasks;
+             mergedTasksForSave = mergedTaskData;
 
              setPomodoroTasksData(mergedTaskData);
-             if (typeof window !== 'undefined') localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(mergedTaskData));
+             if (typeof window !== 'undefined') {
+               localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(mergedTaskData));
+               localStorage.setItem('daybase_daily_tasks_v4', JSON.stringify(todayTasks));
+               localStorage.setItem('daybase_daily_tasks_date_v4', todayStr);
+             }
              setDailyTasks(todayTasks);
              setDailyTasksDateStr(todayStr);
           }
@@ -2469,8 +2592,22 @@ function AppContent({ isPreview = false }) {
             setHasSpotifyAccess(Boolean(authoritative.hasSpotifyAccess));
           }
 
-          // Cache authoritative server state into IndexedDB
-          saveLocalOfflineState(authoritative);
+          const remainingOverlay = pruneAcknowledgedOverlay(
+            { dailyData: pendingDailyDataRef.current, tasksByDate: overlay.tasksByDate, dailyTasks: overlay.dailyTasks, dailyTasksDateStr: overlay.dailyTasksDateStr, updatedAt: overlay.updatedAt },
+            state
+          );
+          if (overlayHasPending(remainingOverlay)) {
+            replacePendingOverlay(remainingOverlay);
+            pendingDailyDataRef.current = remainingOverlay.dailyData || {};
+          } else if (!overlayHasPending({ dailyData: pendingDailyDataRef.current, tasksByDate: {} })) {
+            clearPendingOverlay();
+          }
+
+          saveLocalOfflineState({
+            ...authoritative,
+            dailyData: mergedDailyForSave,
+            pomodoroTasksData: mergedTasksForSave,
+          });
           setTimeout(() => {
             isApplyingRemoteRef.current = false;
             if (localMutationVersionRef.current > pushedMutationVersionRef.current) {
@@ -2582,7 +2719,10 @@ function AppContent({ isPreview = false }) {
       'bokra_cached_clerk_token',
       'bokra_desktop_user',
       'bokra_desktop_token',
-      'daybase_last_local_update'
+      'daybase_last_local_update',
+      'bokra_pending_sync_overlay',
+      'bokra_pending_sync_payload',
+      'bokra_has_pending_sync',
     ];
     for (const k of keysToRemove) {
       try { localStorage.removeItem(k); } catch (_) {}
@@ -2726,7 +2866,7 @@ function AppContent({ isPreview = false }) {
     };
 
     const onPageHide = () => {
-      if (localMutationVersionRef.current > pushedMutationVersionRef.current) {
+      if (localMutationVersionRef.current > pushedMutationVersionRef.current || overlayHasPending(readPendingOverlay())) {
         if (executePushRef.current) executePushRef.current({ keepalive: true });
       }
     };
@@ -2790,37 +2930,85 @@ function AppContent({ isPreview = false }) {
       return;
     }
 
+    const keepalive = Boolean(options.keepalive);
+    const timezone = (typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : null) || 'UTC';
+    const deletedHabitsBeingPushed = Array.from(deletedHabitIdsRef.current);
+    const datesBeingPushed = Array.from(new Set([
+      ...(Array.isArray(latestStateRef.current?.targetDates) ? latestStateRef.current.targetDates : []),
+      ...Array.from(dirtyDatesRef.current || []),
+    ])).filter(d => typeof d === 'string' && d.length === 10);
+
+    const deltaPayload = buildDeltaPayload({
+      pomodoroTasksData: latestStateRef.current?.pomodoroTasksData,
+      targetDates: datesBeingPushed,
+      pendingDailyData: pendingDailyDataRef.current,
+      activeDateStr: latestStateRef.current?.activeDateStr,
+      clientTodayStr: realTodayStr,
+      timezone,
+      deletedHabitIds: deletedHabitsBeingPushed,
+    });
+
+    const fullSnapshot = {
+      ...latestStateRef.current,
+      deletedHabitIds: deletedHabitsBeingPushed,
+      timezone,
+      clientTodayStr: realTodayStr,
+      dailyData: {
+        ...Object.fromEntries(
+          Object.entries(latestStateRef.current?.dailyData || {}).filter(([k]) =>
+            datesBeingPushed.some(d => k.startsWith(d))
+          )
+        ),
+        ...(pendingDailyDataRef.current || {}),
+      },
+      dailyDataPartial: true,
+      pomodoroTasksData: deltaPayload.pomodoroTasksData,
+      targetDates: datesBeingPushed,
+      updatedAt: Date.now(),
+    };
+
+    const stateSnapshot = keepalive ? deltaPayload : fullSnapshot;
+    let body = JSON.stringify(stateSnapshot);
+    if (keepalive && body.length > 60000) {
+      const tiny = buildDeltaPayload({
+        pomodoroTasksData: latestStateRef.current?.pomodoroTasksData,
+        targetDates: Array.from(dirtyDatesRef.current || []),
+        pendingDailyData: pendingDailyDataRef.current,
+        activeDateStr: latestStateRef.current?.activeDateStr,
+        clientTodayStr: realTodayStr,
+        timezone,
+        deletedHabitIds: deletedHabitsBeingPushed,
+      });
+      body = JSON.stringify(tiny);
+    }
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(PENDING_FLAG_KEY, 'true');
+        localStorage.setItem(PENDING_PAYLOAD_KEY, body);
+      } catch (err) {
+        console.warn('[bokra Sync] Failed to persist pending payload:', err);
+      }
+    }
+    queueSyncMutation('STATE_DELTA', stateSnapshot);
+
     // If offline right now, queue locally
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      console.log("[bokra Sync] Offline: queuing mutation directly.");
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('bokra_has_pending_sync', 'true');
-      }
-      queueSyncMutation('STATE_SNAPSHOT', latestStateRef.current);
+      console.warn('[bokra Sync] Push skipped: offline. Mutation kept pending.');
+      syncDebug('push.offline', { bytes: body.length, dates: datesBeingPushed });
       return;
     }
 
     const versionToPush = localMutationVersionRef.current;
-    const datesBeingPushed = Array.isArray(latestStateRef.current?.targetDates)
-      ? [...latestStateRef.current.targetDates]
-      : [];
-    const deletedHabitsBeingPushed = Array.from(deletedHabitIdsRef.current);
     isPushingRef.current = true;
     setIsSyncing(true);
+    syncDebug('push.start', { keepalive, bytes: body.length, dates: datesBeingPushed, pendingDaily: Object.keys(pendingDailyDataRef.current || {}) });
 
     try {
-      const stateSnapshot = {
-        ...latestStateRef.current,
-        deletedHabitIds: deletedHabitsBeingPushed,
-        timezone: (typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : null) || 'UTC',
-        clientTodayStr: realTodayStr,
-        updatedAt: Date.now()
-      };
-
       const res = await apiFetch('/api/sync', {
         method: 'POST',
-        body: JSON.stringify(stateSnapshot),
-        ...options
+        body,
+        ...(keepalive ? { keepalive: true } : {}),
       });
 
       if (res.ok) {
@@ -2829,22 +3017,15 @@ function AppContent({ isPreview = false }) {
           lastServerUpdatedAtRef.current = resData.updatedAt;
         }
         pushedMutationVersionRef.current = versionToPush;
-        if (localMutationVersionRef.current === versionToPush) {
-          pendingDailyDataRef.current = {};
-        }
+        pushBackoffMsRef.current = 50;
 
-        // Clear successfully pushed dirty dates
-        for (const d of datesBeingPushed) {
-          dirtyDatesRef.current.delete(d);
-        }
-
-        // Clear ONLY the successfully pushed deleted habits
         for (const id of deletedHabitsBeingPushed) {
           deletedHabitIdsRef.current.delete(id);
         }
 
+        // Keep pendingDailyDataRef until GET acknowledges the values.
+
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('bokra_has_pending_sync');
           if (deletedHabitIdsRef.current.size === 0) {
             localStorage.removeItem('daybase_deleted_habits');
           } else {
@@ -2852,6 +3033,7 @@ function AppContent({ isPreview = false }) {
           }
         }
         clearPendingSyncQueue().catch(() => {});
+        try { localStorage.removeItem(PENDING_PAYLOAD_KEY); } catch (_) {}
 
         // Broadcast to other tabs on THIS device only AFTER server confirms successful save
         if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
@@ -2861,22 +3043,24 @@ function AppContent({ isPreview = false }) {
             bc.close();
           } catch (e) {}
         }
+        syncDebug('push.ok', { status: res.status, bytes: body.length, dates: datesBeingPushed });
       } else {
         throw new Error('Sync POST non-ok: ' + res.status);
       }
     } catch (err) {
-      console.warn("[bokra Sync] Push failed:", err);
+      console.warn('[bokra Sync] Push failed:', err);
+      syncDebug('push.error', { error: String(err?.message || err), bytes: body.length, dates: datesBeingPushed });
       if (typeof window !== 'undefined') {
-        localStorage.setItem('bokra_has_pending_sync', 'true');
+        localStorage.setItem(PENDING_FLAG_KEY, 'true');
       }
-      queueSyncMutation('STATE_SNAPSHOT', latestStateRef.current);
+      queueSyncMutation('STATE_DELTA', stateSnapshot);
+      pushBackoffMsRef.current = Math.min((pushBackoffMsRef.current || 50) * 2, 10000);
     } finally {
       isPushingRef.current = false;
       setIsSyncing(false);
-      // If user performed more mutations while this push was in flight, schedule next push immediately!
       if (localMutationVersionRef.current > pushedMutationVersionRef.current) {
         if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
-        pushTimerRef.current = setTimeout(executePush, 50);
+        pushTimerRef.current = setTimeout(executePush, pushBackoffMsRef.current || 50);
       }
     }
   }, [user, isCloudLoaded]);
@@ -4033,7 +4217,11 @@ function AppContent({ isPreview = false }) {
     setDailyData(prev => {
       nextVal = !prev[key];
       pendingDailyDataRef.current[key] = nextVal;
-      return { ...prev, [key]: nextVal };
+      const updated = { ...prev, [key]: nextVal };
+      persistTaskKeysSync({ isPreview, dailyData: updated });
+      if (!isPreview) writePendingOverlay({ dailyData: { ...pendingDailyDataRef.current } });
+      syncDebug('habit.toggle', { key, nextVal });
+      return updated;
     });
 
     // Also update any matching task in dailyTasks / pomodoroTasksData immediately
@@ -4083,18 +4271,18 @@ function AppContent({ isPreview = false }) {
     setDailyTasks(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
       if (!Array.isArray(next)) return [];
-      const prevByText = new Map((Array.isArray(prev) ? prev : []).map(t => [t?.text, t]));
+      const prevByText = new Map((Array.isArray(prev) ? prev : []).map(t => [(typeof t?.text === 'string' ? t.text.trim() : t?.text), t]));
       const clean = next
         .filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.name?.includes('✈'))
         .map(t => {
-          const old = prevByText.get(t.text);
-          let item = { ...t };
+          const old = prevByText.get(t.text.trim());
+          let item = { ...t, text: t.text.trim() };
           if (Array.isArray(item.subtasks)) {
             recomputeTaskCompletion(item);
           }
           const isCompleted = Boolean(item.completed);
           const wasCompleted = Boolean(old?.completed);
-          const statusChanged = !old || wasCompleted !== isCompleted;
+          const statusChanged = !old || wasCompleted !== isCompleted || Boolean(old?.deleted) !== Boolean(item.deleted);
           item.completed = isCompleted;
           item.rolledOver = isCompleted ? false : Boolean(item.rolledOver);
           if (statusChanged) {
@@ -4105,10 +4293,15 @@ function AppContent({ isPreview = false }) {
           return item;
         });
 
-      if (typeof window !== 'undefined') {
-        const storageKey = isPreview ? 'preview_tasks_v1' : 'daybase_daily_tasks_v4';
-        localStorage.setItem(storageKey, JSON.stringify(clean));
+      persistTaskKeysSync({ isPreview, dailyTasks: clean, dateStr: targetDate });
+      if (!isPreview) {
+        writePendingOverlay({
+          dailyTasks: clean,
+          dailyTasksDateStr: targetDate,
+          tasksByDate: { [targetDate]: clean },
+        });
       }
+      syncDebug('tasks.update', { date: targetDate, count: clean.length, texts: clean.map(t => t.text) });
 
       // (c) Completing a task also updates the habit log immediately if matching habit or subItem exists
       setDailyData(prevDaily => {
@@ -4159,9 +4352,7 @@ function AppContent({ isPreview = false }) {
             }
           }
         }
-        if (typeof window !== 'undefined' && !isPreview) {
-          localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(nextMap));
-        }
+        persistTaskKeysSync({ isPreview, pomodoroTasksData: nextMap, dailyTasks: clean, dateStr: targetDate });
         return nextMap;
       });
       return clean;
@@ -4180,10 +4371,15 @@ function AppContent({ isPreview = false }) {
           ? { ...t, deleted: true, completed: false, rolledOver: false, updatedAt: stampedAt }
           : t
       ));
-      if (typeof window !== 'undefined') {
-        const storageKey = isPreview ? 'preview_tasks_v1' : 'daybase_daily_tasks_v4';
-        localStorage.setItem(storageKey, JSON.stringify(updated));
+      persistTaskKeysSync({ isPreview, dailyTasks: updated, dateStr: targetDate });
+      if (!isPreview) {
+        writePendingOverlay({
+          dailyTasks: updated,
+          dailyTasksDateStr: targetDate,
+          tasksByDate: { [targetDate]: updated },
+        });
       }
+      syncDebug('task.delete', { date: targetDate, text: taskToDelete.text });
       return updated;
     });
 
@@ -4211,9 +4407,7 @@ function AppContent({ isPreview = false }) {
           }
         }
       }
-      if (typeof window !== 'undefined' && !isPreview) {
-        localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(nextMap));
-      }
+      persistTaskKeysSync({ isPreview, pomodoroTasksData: nextMap, dateStr: targetDate });
       return nextMap;
     });
   };
@@ -4378,12 +4572,32 @@ function AppContent({ isPreview = false }) {
     const newTask = {
       text: parentText,
       completed: false,
+      deleted: false,
       updatedAt: now,
       ...(subtasks.length > 0 ? { subtasks } : {})
     };
     recomputeTaskCompletion(newTask);
+    syncDebug('task.add', { text: parentText, subtasks: subtasks.length, ts: now });
 
-    updateDailyTasks(prev => [...prev, newTask]);
+    updateDailyTasks(prev => {
+      const list = Array.isArray(prev) ? prev : [];
+      let revived = false;
+      const next = list.map(t => {
+        if (t && typeof t.text === 'string' && t.text.trim() === parentText) {
+          revived = true;
+          return {
+            ...t,
+            ...newTask,
+            deleted: false,
+            completed: false,
+            rolledOver: false,
+            updatedAt: now,
+          };
+        }
+        return t;
+      });
+      return revived ? next : [...next, newTask];
+    });
     setNewTaskInput("");
     setDraftSubtasks([]);
     setDraftSubtaskInput("");
