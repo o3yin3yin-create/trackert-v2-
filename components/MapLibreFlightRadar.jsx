@@ -143,8 +143,6 @@ function applyMonochromeTheme(map, isDark) {
 export default function MapLibreFlightRadar({
   flight,
   estimate,
-  isTimerRunning,
-  onToggleTimer,
   onClose,
   onOpenWindowSeat,
   onOpenSoundLibrary,
@@ -511,31 +509,13 @@ export default function MapLibreFlightRadar({
       </header>
 
       {/* 3. Side Circular Floating Controls */}
-      {/* Left Side: Pause/Resume + Sound Library */}
+      {/* Left Side: Sound Library */}
       <div
         className="absolute left-4 top-24 z-30 flex flex-col gap-3"
         style={{
           paddingTop: 'max(env(safe-area-inset-top, 0px), 8px)',
         }}
       >
-        <button
-          onClick={onToggleTimer}
-          aria-label={isTimerRunning ? 'Pause focus timer' : 'Resume focus timer'}
-          title={isTimerRunning ? 'Pause' : 'Resume'}
-          className="w-12 h-12 rounded-full bg-black/55 backdrop-blur-xl border border-white/20 text-white hover:bg-white/20 flex items-center justify-center transition-all active:scale-90 shadow-xl cursor-pointer"
-        >
-          {isTimerRunning ? (
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-              <rect x="5" y="4" width="4" height="16" rx="1" />
-              <rect x="15" y="4" width="4" height="16" rx="1" />
-            </svg>
-          ) : (
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-              <polygon points="5 3 19 12 5 21 5 3" />
-            </svg>
-          )}
-        </button>
-
         <button
           onClick={onOpenSoundLibrary}
           aria-label="Sound Library"

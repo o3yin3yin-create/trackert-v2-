@@ -3299,7 +3299,8 @@ function AppContent({ isPreview = false }) {
     }
     
     // Flight timer runs purely on timestamp delta now and is always live!
-    const remaining = selectedFlight.estimatedArrival - currentUnixTime;
+    const arr = selectedFlight.estimatedArrival || selectedFlight.arrival || (currentUnixTime + 3600);
+    const remaining = arr - currentUnixTime;
     
     if (remaining > 0) {
       setFlightTimer(remaining);

@@ -192,20 +192,29 @@ export default function FlightFocusModal({
     setAnimKey((k) => k + 1);
   }, [durationFilter, searchQuery]);
 
-  // Active flight: selected or pending
-  const activeFlight = selectedFlight || pendingFlight;
+  // Local state for active flight to ensure instant rendering without waiting for prop roundtrips
+  const [activeFlight, setActiveFlight] = useState(() => selectedFlight || null);
+
+  useEffect(() => {
+    if (selectedFlight) {
+      setActiveFlight(selectedFlight);
+    }
+  }, [selectedFlight]);
+
+  // Flight currently being viewed or tracked
+  const flightToTrack = activeFlight || selectedFlight || pendingFlight;
 
   // Single source of truth estimate hook: purely clock-based, 1Hz, no network
-  const estimate = usePlaneEstimate(activeFlight);
+  const estimate = usePlaneEstimate(flightToTrack);
 
   // Track focused time independently when session is active and timer is running
   useEffect(() => {
-    if (!isFlightTimerRunning || !selectedFlight || estimate?.isLanded) return;
+    if (!isFlightTimerRunning || !flightToTrack || estimate?.isLanded) return;
     const interval = setInterval(() => {
       setFocusedSeconds((s) => s + 1);
     }, 1000);
     return () => clearInterval(interval);
-  }, [isFlightTimerRunning, selectedFlight, estimate?.isLanded]);
+  }, [isFlightTimerRunning, flightToTrack, estimate?.isLanded]);
 
   // Step 1 -> Step 2: Board to Ticket
   const handleSelectFlightToTicket = (f) => {
@@ -215,9 +224,15 @@ export default function FlightFocusModal({
 
   // Step 2 -> Step 3: Ticket to Cabin (Start Focus)
   const handleStartFocus = () => {
-    if (!pendingFlight) return;
-    setSelectedFlight(pendingFlight);
-    setIsFlightTimerRunning(true);
+    const chosen = pendingFlight || flightToTrack;
+    if (!chosen) return;
+    setActiveFlight(chosen);
+    if (typeof setSelectedFlight === 'function') {
+      setSelectedFlight(chosen);
+    }
+    if (typeof setIsFlightTimerRunning === 'function') {
+      setIsFlightTimerRunning(true);
+    }
     setFocusedSeconds(0);
     setCurrentScreen('cabin');
   };
@@ -225,8 +240,13 @@ export default function FlightFocusModal({
   // Give Up / Abandon Session
   const handleGiveUp = () => {
     if (typeof window !== 'undefined' && window.confirm('Give up this focus flight? Your session will end.')) {
-      setIsFlightTimerRunning(false);
-      setSelectedFlight(null);
+      if (typeof setIsFlightTimerRunning === 'function') {
+        setIsFlightTimerRunning(false);
+      }
+      if (typeof setSelectedFlight === 'function') {
+        setSelectedFlight(null);
+      }
+      setActiveFlight(null);
       setPendingFlight(null);
       setCurrentScreen('board');
     }
@@ -234,8 +254,13 @@ export default function FlightFocusModal({
 
   // Finish session after landing
   const handleFinishSession = () => {
-    setIsFlightTimerRunning(false);
-    setSelectedFlight(null);
+    if (typeof setIsFlightTimerRunning === 'function') {
+      setIsFlightTimerRunning(false);
+    }
+    if (typeof setSelectedFlight === 'function') {
+      setSelectedFlight(null);
+    }
+    setActiveFlight(null);
     setPendingFlight(null);
     setCurrentScreen('board');
   };
@@ -243,13 +268,11 @@ export default function FlightFocusModal({
   if (!isOpen) return null;
 
   // SCREEN 3: RADAR (MapLibre GL JS)
-  if (currentScreen === 'radar' && selectedFlight && estimate) {
+  if (currentScreen === 'radar' && flightToTrack && estimate) {
     return (
       <MapLibreFlightRadar
-        flight={selectedFlight}
+        flight={flightToTrack}
         estimate={estimate}
-        isTimerRunning={isFlightTimerRunning}
-        onToggleTimer={() => setIsFlightTimerRunning(!isFlightTimerRunning)}
         onClose={() => setCurrentScreen('cabin')}
         onOpenWindowSeat={() => setIsWindowSeatOpen && setIsWindowSeatOpen(true)}
         onOpenSoundLibrary={() => setIsAmbientModalOpen && setIsAmbientModalOpen(true)}
@@ -436,21 +459,21 @@ export default function FlightFocusModal({
                 </div>
               </div>
 
-              {/* Search Bar */}
-              <div className="mb-4">
+              {/* Compact Search Bar */}
+              <div className="mb-3">
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search flight number or route (e.g. AFR446, LHR)..."
-                  className="w-full px-3.5 py-2.5 rounded-full border border-[var(--hair)] bg-transparent text-[13px] text-[var(--fg)] placeholder:text-[var(--m)] outline-none focus:border-[var(--fg)] font-mono transition-colors"
+                  placeholder="Search flight or route (e.g. AFR446, LHR)..."
+                  className="w-full px-3 py-1.5 rounded-full border border-[var(--hair)] bg-transparent text-[11px] text-[var(--fg)] placeholder:text-[var(--m)] outline-none focus:border-[var(--fg)] font-mono transition-colors"
                 />
               </div>
 
               {/* Duration Filters: Under 1h, 1-3h, 3h+ */}
-              <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1 select-none">
+              <div className="flex items-center gap-1.5 mb-4 overflow-x-auto pb-1 select-none">
                 {[
-                  { id: 'all', label: 'All Sessions' },
+                  { id: 'all', label: 'All' },
                   { id: 'under1h', label: 'Under 1h' },
                   { id: '1-3h', label: '1–3h' },
                   { id: '3h+', label: '3h+' },
@@ -458,7 +481,7 @@ export default function FlightFocusModal({
                   <button
                     key={flt.id}
                     onClick={() => setDurationFilter(flt.id)}
-                    className={`min-h-[34px] px-3.5 rounded-full text-[12px] font-normal border ff-pill whitespace-nowrap cursor-pointer ${
+                    className={`min-h-[28px] px-3 rounded-full text-[11px] font-normal border ff-pill whitespace-nowrap cursor-pointer ${
                       durationFilter === flt.id
                         ? 'bg-[var(--fg)] text-[var(--bg)] border-[var(--fg)]'
                         : 'bg-transparent text-[var(--m)] border-[var(--hair)] hover:text-[var(--fg)]'
@@ -469,12 +492,11 @@ export default function FlightFocusModal({
                 ))}
               </div>
 
-              {/* Table Header: TIME | FLIGHT | LEFT · LANDS | STATUS */}
+              {/* Table Header: TIME | FLIGHT | LEFT · LANDS (No Status) */}
               <div className="grid grid-cols-12 gap-2 pb-2 border-b border-[var(--hair)] ff-mono text-[9.5px] text-[var(--t)] uppercase tracking-wider select-none">
-                <div className="col-span-2">TIME</div>
+                <div className="col-span-3">TIME</div>
                 <div className="col-span-5">FLIGHT</div>
-                <div className="col-span-3 text-right">LEFT · LANDS</div>
-                <div className="col-span-2 text-right">STATUS</div>
+                <div className="col-span-4 text-right">LEFT · LANDS</div>
               </div>
 
               {/* Flight Rows */}
@@ -518,62 +540,47 @@ export default function FlightFocusModal({
                   const arrDay = new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: destAirport.timezone || 'UTC' }).format(arrDate);
                   const dayOffset = Number(arrDay) !== Number(depDay) ? '+1' : '';
 
-                  const isBoarding = f.remainingSeconds > f.totalSeconds - 1800; // In first 30 mins
-
                   return (
                     <button
                       key={f.id || f.flightNumber}
                       role="button"
                       onClick={() => handleSelectFlightToTicket(f)}
-                      className="w-full text-left py-3 min-h-[58px] grid grid-cols-12 gap-2 items-center transition-colors focus:outline-none focus:ring-1 focus:ring-[var(--fg)] rounded cursor-pointer hover:bg-[var(--fg)]/[0.03]"
+                      className="w-full text-left py-2.5 min-h-[52px] grid grid-cols-12 gap-2 items-center transition-colors focus:outline-none focus:ring-1 focus:ring-[var(--fg)] rounded cursor-pointer hover:bg-[var(--fg)]/[0.03]"
                     >
                       {/* TIME */}
-                      <div className="col-span-2 ff-mono text-[14px] text-[var(--fg)]">
+                      <div className="col-span-3 ff-mono text-[13px] text-[var(--fg)]">
                         <SplitFlapText
                           text={depTimeFormatted}
                           rowIndex={i}
                           animKey={animKey}
-                          className="ff-mono text-[14px]"
+                          className="ff-mono text-[13px]"
                         />
                       </div>
 
                       {/* FLIGHT: Number + glyph + "ORIGIN -> DEST" */}
                       <div className="col-span-5 flex flex-col justify-center min-w-0 pr-1">
-                        <div className="flex items-center gap-1.5 text-[14px] font-normal text-[var(--fg)] truncate">
+                        <div className="flex items-center gap-1.5 text-[13px] font-normal text-[var(--fg)] truncate">
                           <SplitFlapText
                             text={f.flightNumber}
                             rowIndex={i}
                             animKey={animKey}
-                            className="font-normal text-[14px]"
+                            className="font-normal text-[13px]"
                           />
                           <PlaneGlyph className="text-[var(--m)] shrink-0" />
                         </div>
-                        <span className="text-[11px] text-[var(--m)] truncate mt-0.5">
+                        <span className="text-[10.5px] text-[var(--m)] truncate mt-0.5">
                           {f.origin} → {f.destination} ({destAirport.city})
                         </span>
                       </div>
 
                       {/* LEFT · LANDS */}
-                      <div className="col-span-3 text-right flex flex-col justify-center">
-                        <span className="text-[14px] font-normal text-[var(--fg)] tabular-nums">
+                      <div className="col-span-4 text-right flex flex-col justify-center">
+                        <span className="text-[13px] font-normal text-[var(--fg)] tabular-nums">
                           {formatDuration(f.remainingSeconds)}
                         </span>
-                        <span className="ff-mono text-[10.5px] text-[var(--m)] tabular-nums mt-0.5">
+                        <span className="ff-mono text-[10px] text-[var(--m)] tabular-nums mt-0.5">
                           lands {arrTimeFormatted}
                           {dayOffset && ` ${dayOffset}`}
-                        </span>
-                      </div>
-
-                      {/* STATUS CHIP */}
-                      <div className="col-span-2 flex justify-end">
-                        <span
-                          className={`ff-mono text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-full text-center whitespace-nowrap ${
-                            isBoarding
-                              ? 'bg-[var(--fg)] text-[var(--bg)] border border-[var(--fg)]'
-                              : 'border border-[var(--hair)] text-[var(--fg)]'
-                          }`}
-                        >
-                          {isBoarding ? 'BOARDING' : 'ON TIME'}
                         </span>
                       </div>
                     </button>
@@ -787,11 +794,17 @@ export default function FlightFocusModal({
         {/* ========================================================================= */}
         {/* SCREEN 2: CABIN                                                           */}
         {/* ========================================================================= */}
-        {currentScreen === 'cabin' && selectedFlight && estimate && (
+        {currentScreen === 'cabin' && flightToTrack && (
           <main className="flex-1 flex flex-col justify-between w-full animate-in fade-in duration-200">
             <div>
-              {/* Flight landed completion screen */}
-              {estimate.isLanded ? (
+              {!estimate ? (
+                <div className="py-24 flex flex-col items-center justify-center text-center">
+                  <PlaneGlyph className="text-[var(--m)] animate-pulse w-8 h-8 mb-4" />
+                  <span className="ff-mono text-xs text-[var(--m)] uppercase tracking-widest">
+                    Boarding cabin...
+                  </span>
+                </div>
+              ) : estimate.isLanded ? (
                 <div className="py-12 flex flex-col items-center text-center">
                   <div className="w-16 h-16 rounded-full border border-[var(--hair)] flex items-center justify-center text-[var(--fg)] mb-6">
                     <PlaneGlyph style={{ width: 24, height: 24 }} />
@@ -800,7 +813,7 @@ export default function FlightFocusModal({
                     Landed. Session complete
                   </h2>
                   <p className="ff-mono text-xs text-[var(--m)] mb-8">
-                    {estimate.orig.city} ({selectedFlight.origin}) → {estimate.dest.city} ({selectedFlight.destination})
+                    {estimate.orig.city} ({flightToTrack.origin}) → {estimate.dest.city} ({flightToTrack.destination})
                   </p>
                   <div className="w-full divide-y divide-[var(--hair)] border-y border-[var(--hair)] mb-8">
                     <div className="flex justify-between py-3">
@@ -818,7 +831,7 @@ export default function FlightFocusModal({
                     <div className="flex justify-between py-3">
                       <span className="ff-mono text-xs text-[var(--m)]">Aircraft</span>
                       <span className="text-xs text-[var(--fg)] font-mono">
-                        {selectedFlight.aircraft}
+                        {flightToTrack.aircraft}
                       </span>
                     </div>
                   </div>
@@ -834,23 +847,23 @@ export default function FlightFocusModal({
                   {/* Top Line */}
                   <div className="flex items-center justify-between pb-3 border-b border-[var(--hair)]">
                     <span className="text-[16px] font-medium text-[var(--fg)] tracking-tight">
-                      {selectedFlight.flightNumber}
+                      {flightToTrack.flightNumber || flightToTrack.callsign}
                     </span>
                     <span className="ff-mono text-[11px] text-[var(--m)] uppercase tracking-wider">
-                      {selectedFlight.aircraft} · {selectedSeat || '14A'}
+                      {flightToTrack.aircraft || flightToTrack.model} · {selectedSeat || '14A'}
                     </span>
                   </div>
 
                   {/* Route Line: ORIGIN ——✈—— DEST */}
                   <div className="py-6 flex flex-col items-center">
                     <div className="flex items-center justify-center gap-3 w-full text-[22px] font-light text-[var(--fg)] tracking-wide">
-                      <span>{selectedFlight.origin}</span>
+                      <span>{flightToTrack.origin}</span>
                       <div className="flex-1 max-w-[120px] flex items-center justify-center gap-1.5">
                         <div className="h-[1px] flex-1 bg-[var(--hair)]" />
                         <PlaneGlyph className="text-[var(--fg)]" />
                         <div className="h-[1px] flex-1 bg-[var(--hair)]" />
                       </div>
-                      <span>{selectedFlight.destination}</span>
+                      <span>{flightToTrack.destination}</span>
                     </div>
 
                     <div className="flex items-center justify-between w-full mt-2 ff-mono text-[10.5px] text-[var(--m)]">
@@ -915,12 +928,12 @@ export default function FlightFocusModal({
                     </div>
                   </div>
 
-                  {/* Pills: Window seat, Cabin hum, Pause/Resume, Give up */}
-                  <div className="grid grid-cols-4 gap-2">
+                  {/* Pills: Window seat, Cabin hum, Give up (No Pause button!) */}
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       onClick={() => setIsWindowSeatOpen && setIsWindowSeatOpen(true)}
                       aria-label="Open window seat overlay"
-                      className="min-h-[44px] px-1 rounded-full border border-[var(--hair)] text-[12px] font-normal text-[var(--fg)] ff-pill flex items-center justify-center cursor-pointer text-center"
+                      className="min-h-[44px] px-2 rounded-full border border-[var(--hair)] text-[12px] font-normal text-[var(--fg)] ff-pill flex items-center justify-center cursor-pointer text-center"
                     >
                       Window seat
                     </button>
@@ -928,23 +941,16 @@ export default function FlightFocusModal({
                       onClick={toggleCabinHum}
                       aria-pressed={isCabinHumPlaying}
                       aria-label="Toggle cabin hum sound"
-                      className={`min-h-[44px] px-1 rounded-full border border-[var(--hair)] text-[12px] font-normal ff-pill flex items-center justify-center cursor-pointer text-center ${
+                      className={`min-h-[44px] px-2 rounded-full border border-[var(--hair)] text-[12px] font-normal ff-pill flex items-center justify-center cursor-pointer text-center ${
                         isCabinHumPlaying ? 'bg-[var(--fg)] text-[var(--bg)]' : 'text-[var(--fg)]'
                       }`}
                     >
                       Cabin hum
                     </button>
                     <button
-                      onClick={() => setIsFlightTimerRunning(!isFlightTimerRunning)}
-                      aria-label={isFlightTimerRunning ? 'Pause focus timer' : 'Resume focus timer'}
-                      className="min-h-[44px] px-1 rounded-full border border-[var(--hair)] text-[12px] font-normal text-[var(--fg)] ff-pill flex items-center justify-center cursor-pointer text-center"
-                    >
-                      {isFlightTimerRunning ? 'Pause' : 'Resume'}
-                    </button>
-                    <button
                       onClick={handleGiveUp}
                       aria-label="Give up flight session"
-                      className="min-h-[44px] px-1 rounded-full border border-red-500/30 text-red-400 hover:bg-red-500/10 text-[12px] font-normal ff-pill flex items-center justify-center cursor-pointer text-center"
+                      className="min-h-[44px] px-2 rounded-full border border-red-500/30 text-red-400 hover:bg-red-500/10 text-[12px] font-normal ff-pill flex items-center justify-center cursor-pointer text-center"
                     >
                       Give up
                     </button>
@@ -956,7 +962,7 @@ export default function FlightFocusModal({
             {/* Cabin Footer */}
             <footer className="pt-6 mt-6 border-t border-[var(--hair)] text-center">
               <span className="ff-mono text-[10.5px] text-[var(--m)] uppercase tracking-wider">
-                {isFlightTimerRunning ? 'Focus mode active · Cruise' : 'Session Paused'}
+                Focus mode active · In Flight
               </span>
             </footer>
           </main>
