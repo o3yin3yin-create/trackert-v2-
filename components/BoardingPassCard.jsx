@@ -2,13 +2,22 @@ import React, { useMemo } from 'react';
 import { Plane, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const BoardingPassCard = ({ flight, seat, date, isArrived, lang, isExpanded, onToggleExpand }) => {
-  const distance = Math.round(
+const BoardingPassCard = ({ flight = {}, seat, date, isArrived, lang, isExpanded, onToggleExpand }) => {
+  const origLon = flight.originCoords?.lng ?? flight.originCoords?.lon ?? 0;
+  const destLon = flight.destCoords?.lng ?? flight.destCoords?.lon ?? 0;
+  const origLat = flight.originCoords?.lat ?? 0;
+  const destLat = flight.destCoords?.lat ?? 0;
+
+  const distance = flight.totalDistance || Math.round(
     Math.sqrt(
-      ((flight.originCoords?.lat || 0) - (flight.destCoords?.lat || 0)) ** 2 + 
-      ((flight.originCoords?.lng || 0) - (flight.destCoords?.lng || 0)) ** 2
+      (origLat - destLat) ** 2 + 
+      (origLon - destLon) ** 2
     ) * 111
-  );
+  ) || 2500;
+
+  const totalSec = flight.totalSeconds || flight.initialSeconds || flight.remainingSeconds || 7200;
+  const durationHours = Math.floor(totalSec / 3600);
+  const durationMins = Math.floor((totalSec % 3600) / 60);
 
   const barcodeBars = useMemo(() => {
     let hash = 0;
@@ -53,7 +62,7 @@ const BoardingPassCard = ({ flight, seat, date, isArrived, lang, isExpanded, onT
               Duration
             </span>
             <span className={`${isExpanded ? 'text-sm' : 'text-xs'} font-black text-black transition-all duration-300`}>
-              {Math.floor((flight.totalSeconds || flight.remainingSeconds) / 3600)}h {Math.floor(((flight.totalSeconds || flight.remainingSeconds) % 3600) / 60)}m
+              {durationHours}h {durationMins}m
             </span>
           </div>
 
@@ -67,7 +76,7 @@ const BoardingPassCard = ({ flight, seat, date, isArrived, lang, isExpanded, onT
               </button>
             )}
             <span className={`${isExpanded ? 'text-4xl' : 'text-2xl'} font-black tracking-tighter truncate w-full text-right mt-1 transition-all duration-300`}>{flight.destination}</span>
-            <span className={`${isExpanded ? 'text-sm' : 'text-[10px]'} font-semibold text-gray-400 capitalize truncate w-full text-right transition-all duration-300`}>{flight.destination} City</span>
+            <span className={`${isExpanded ? 'text-sm' : 'text-[10px]'} font-semibold text-gray-400 capitalize truncate w-full text-right transition-all duration-300`}>{flight.destCity || flight.destination} City</span>
           </div>
         </div>
 
@@ -75,7 +84,7 @@ const BoardingPassCard = ({ flight, seat, date, isArrived, lang, isExpanded, onT
           <div className="grid grid-cols-2 gap-y-6 gap-x-4 mt-8">
             <div className="flex flex-col">
               <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Flight No.</span>
-              <span className="text-lg font-black">{flight.callsign}</span>
+              <span className="text-lg font-black">{flight.flightNumber || flight.callsign || 'FLIGHT'}</span>
             </div>
             <div className="flex flex-col items-end">
               <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Distance</span>

@@ -4,66 +4,42 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { generateGreatCircleArc } from '@/lib/flightSchedule';
 
-const DEFAULT_STYLE_URL =
-  process.env.NEXT_PUBLIC_MAP_STYLE_URL || 'https://tiles.openfreemap.org/styles/liberty';
-
-// Simple fallback world GeoJSON coordinates (offline fallback)
-const FALLBACK_WORLD_GEOJSON = {
-  type: 'FeatureCollection',
-  features: [
-    {
-      type: 'Feature',
-      properties: {},
-      geometry: {
-        type: 'Polygon',
-        coordinates: [
-          [
-            [-10, 70], [28, 71], [104, 77], [170, 66], [140, 40], [114, 22], [104, 1],
-            [77, 8], [55, 25], [44, 12], [18, -34], [1, 5], [-17, 14], [-6, 36], [-1, 44],
-            [5, 58], [-10, 70]
+// High-reliability styles using Retina basemap tiles (Carto Dark / Voyager)
+const getMapStyle = (isDark) => ({
+  version: 8,
+  glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+  sources: {
+    'basemap-tiles': {
+      type: 'raster',
+      tiles: isDark
+        ? [
+            'https://a.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png',
+            'https://b.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png',
+            'https://c.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png',
+            'https://d.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png',
           ]
-        ]
-      }
+        : [
+            'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+            'https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+            'https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+            'https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+          ],
+      tileSize: 256,
+      attribution: '© OpenStreetMap contributors, © CARTO',
     },
+  },
+  layers: [
     {
-      type: 'Feature',
-      properties: {},
-      geometry: {
-        type: 'Polygon',
-        coordinates: [
-          [
-            [-156, 72], [-70, 70], [-53, 47], [-80, 25], [-92, 15], [-77, 8], [-105, 18],
-            [-117, 32], [-124, 48], [-140, 60], [-168, 65], [-156, 72]
-          ]
-        ]
-      }
+      id: 'basemap-layer',
+      type: 'raster',
+      source: 'basemap-tiles',
+      paint: {
+        'raster-opacity': 1,
+        'raster-fade-duration': 0,
+      },
     },
-    {
-      type: 'Feature',
-      properties: {},
-      geometry: {
-        type: 'Polygon',
-        coordinates: [
-          [
-            [-72, 12], [-35, -5], [-42, -23], [-68, -54], [-70, -18], [-81, -4], [-77, 8], [-72, 12]
-          ]
-        ]
-      }
-    },
-    {
-      type: 'Feature',
-      properties: {},
-      geometry: {
-        type: 'Polygon',
-        coordinates: [
-          [
-            [132, -12], [148, -20], [145, -38], [116, -32], [119, -20], [132, -12]
-          ]
-        ]
-      }
-    }
-  ]
-};
+  ],
+});
 
 // Adaptive default zoom based on remaining distance
 function getAdaptiveZoom(distKm) {
@@ -73,71 +49,6 @@ function getAdaptiveZoom(distKm) {
   if (distKm > 1500) return 5.6;
   if (distKm > 600) return 6.8;
   return 7.8;
-}
-
-// Transform map layers for ultra-minimal monochrome dark / light style
-function applyMonochromeTheme(map, isDark) {
-  try {
-    const bg = isDark ? '#000000' : '#ffffff';
-    const land = isDark ? '#0e0e0e' : '#f2f2f2';
-    const border = isDark ? '#2b2b2b' : '#cfcfcf';
-    const road = isDark ? '#1c1c1c' : '#e5e5e5';
-    const label = isDark ? '#8a8a8a' : '#555555';
-
-    const layers = map.getStyle()?.layers || [];
-    for (const l of layers) {
-      // Background / Water
-      if (l.type === 'background') {
-        map.setPaintProperty(l.id, 'background-color', bg);
-      } else if (l.id.includes('water')) {
-        if (l.type === 'fill') map.setPaintProperty(l.id, 'fill-color', bg);
-        if (l.type === 'line') map.setPaintProperty(l.id, 'line-color', bg);
-      }
-      // Land / Parks
-      else if (
-        l.id.includes('land') ||
-        l.id.includes('park') ||
-        l.id.includes('wood') ||
-        l.id.includes('grass')
-      ) {
-        if (l.type === 'fill') map.setPaintProperty(l.id, 'fill-color', land);
-      }
-      // Country Borders
-      else if (l.id.includes('boundary') || l.id.includes('border') || l.id.includes('admin')) {
-        if (l.type === 'line') {
-          map.setPaintProperty(l.id, 'line-color', border);
-          map.setPaintProperty(l.id, 'line-width', 0.5);
-        }
-      }
-      // Roads (very faint, only high zoom)
-      else if (
-        l.id.includes('road') ||
-        l.id.includes('transportation') ||
-        l.id.includes('highway')
-      ) {
-        if (l.type === 'line') {
-          map.setPaintProperty(l.id, 'line-color', road);
-          map.setPaintProperty(l.id, 'line-opacity', 0.35);
-        }
-      }
-      // POI & 3D buildings (disable)
-      else if (
-        l.id.includes('poi') ||
-        l.id.includes('building') ||
-        l.id.includes('aeroway')
-      ) {
-        map.setLayoutProperty(l.id, 'visibility', 'none');
-      }
-      // Labels
-      else if (l.type === 'symbol') {
-        map.setPaintProperty(l.id, 'text-color', label);
-        map.setPaintProperty(l.id, 'text-halo-color', bg);
-        map.setPaintProperty(l.id, 'text-halo-width', 1);
-      }
-    }
-  } catch (err) {
-    console.warn('[MapLibre monochrome style apply warning]:', err);
-  }
 }
 
 export default function MapLibreFlightRadar({
@@ -247,13 +158,13 @@ export default function MapLibreFlightRadar({
 
         mapInstance = new Map({
           container: containerRef.current,
-          style: DEFAULT_STYLE_URL,
+          style: getMapStyle(isDark),
           center: [initialPosition.lon || initialPosition.lng, initialPosition.lat],
           bearing: initialHeading,
           pitch: 0,
           maxPitch: 0,
-          minZoom: 3,
-          maxZoom: 9,
+          minZoom: 2,
+          maxZoom: 10,
           zoom: initialZoom,
           fadeDuration: 0,
           attributionControl: false,
@@ -273,12 +184,8 @@ export default function MapLibreFlightRadar({
         mapInstance.on('pitchstart', handleUserGesture);
         mapInstance.on('zoomstart', handleUserGesture);
 
-        // When style loads, apply monochrome tokens & add route layers
-        mapInstance.on('load', () => {
-          isLoadedRef.current = true;
-          applyMonochromeTheme(mapInstance, isDark);
-
-          // Add Route Source & Layers
+        const addRouteLayers = () => {
+          if (!mapInstance) return;
           const routeData = buildRouteGeoJson(estimate);
           if (!mapInstance.getSource('flight-route')) {
             mapInstance.addSource('flight-route', {
@@ -293,8 +200,8 @@ export default function MapLibreFlightRadar({
               source: 'flight-route',
               filter: ['==', 'status', 'flown'],
               paint: {
-                'line-color': '#777777',
-                'line-width': 1.5,
+                'line-color': '#888888',
+                'line-width': 2,
                 'line-dasharray': [3, 3],
               },
             });
@@ -307,7 +214,7 @@ export default function MapLibreFlightRadar({
               filter: ['==', 'status', 'remaining'],
               paint: {
                 'line-color': isDark ? '#ffffff' : '#000000',
-                'line-width': 2,
+                'line-width': 2.5,
               },
             });
 
@@ -318,10 +225,10 @@ export default function MapLibreFlightRadar({
               source: 'flight-route',
               filter: ['==', '$type', 'Point'],
               paint: {
-                'circle-radius': 4.5,
-                'circle-color': isDark ? '#000000' : '#ffffff',
-                'circle-stroke-color': isDark ? '#ffffff' : '#000000',
-                'circle-stroke-width': 1.5,
+                'circle-radius': 5,
+                'circle-color': isDark ? '#ffffff' : '#000000',
+                'circle-stroke-color': isDark ? '#000000' : '#ffffff',
+                'circle-stroke-width': 2,
               },
             });
 
@@ -334,46 +241,28 @@ export default function MapLibreFlightRadar({
               layout: {
                 'text-field': ['get', 'iata'],
                 'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-                'text-size': 11,
-                'text-offset': [0, -1.2],
+                'text-size': 12,
+                'text-offset': [0, -1.3],
                 'text-anchor': 'bottom',
                 'text-rotation-alignment': 'viewport',
                 'text-pitch-alignment': 'viewport',
               },
               paint: {
-                'text-color': '#8a8a8a',
-                'text-halo-color': isDark ? '#000000' : '#ffffff',
-                'text-halo-width': 1,
+                'text-color': '#ffffff',
+                'text-halo-color': '#000000',
+                'text-halo-width': 1.5,
               },
             });
           }
+        };
+
+        mapInstance.on('load', () => {
+          isLoadedRef.current = true;
+          addRouteLayers();
         });
 
-        // Offline / Style failure fallback
         mapInstance.on('error', (e) => {
-          if (!isLoadedRef.current) {
-            console.warn('[MapLibre tile/style error, fallback]:', e);
-            try {
-              if (!mapInstance.getSource('fallback-world')) {
-                mapInstance.addSource('fallback-world', {
-                  type: 'geojson',
-                  data: FALLBACK_WORLD_GEOJSON,
-                });
-                mapInstance.addLayer({
-                  id: 'fallback-land',
-                  type: 'fill',
-                  source: 'fallback-world',
-                  paint: { 'fill-color': isDark ? '#0e0e0e' : '#f2f2f2' },
-                });
-                mapInstance.addLayer({
-                  id: 'fallback-borders',
-                  type: 'line',
-                  source: 'fallback-world',
-                  paint: { 'line-color': isDark ? '#2b2b2b' : '#cfcfcf', 'line-width': 0.5 },
-                });
-              }
-            } catch {}
-          }
+          console.warn('[MapLibre error/tile retry]:', e?.error?.message || e);
         });
       } catch (err) {
         console.warn('[MapLibre init error]:', err);
@@ -396,7 +285,6 @@ export default function MapLibreFlightRadar({
   // Update theme paint properties when theme switches (never recreate map instance!)
   useEffect(() => {
     if (mapRef.current && isLoadedRef.current) {
-      applyMonochromeTheme(mapRef.current, isDark);
       try {
         if (mapRef.current.getLayer('flight-route-remaining')) {
           mapRef.current.setPaintProperty(

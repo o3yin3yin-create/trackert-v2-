@@ -109,6 +109,41 @@ export async function GET(req) {
     }
 
     if (matchingHabits.length === 0) {
+      // Also check Athkar habits in user timezone
+      const athkarHabits = await prisma.habit.findMany({
+        where: {
+          OR: [
+            { category: 'adhkar' },
+            { id: 'adhkar' },
+            { name: { contains: 'أذكار' } },
+            { name: { contains: 'adhkar', mode: 'insensitive' } },
+          ],
+        },
+        include: {
+          user: true,
+        },
+      });
+
+      for (const habit of athkarHabits) {
+        const userTz = habit.user?.timezone || 'Africa/Cairo';
+        let userHour = now.getHours();
+        try {
+          const dtf = new Intl.DateTimeFormat('en-US', { timeZone: userTz, hour: 'numeric', hour12: false });
+          userHour = parseInt(dtf.format(now), 10);
+        } catch {}
+
+        if (userHour === 7 || userHour === 17) {
+          matchingHabits.push({
+            ...habit,
+            customMessage: userHour === 7
+              ? 'أذكار الصباح ☀️: حان وقت أذكار الصباح، ابدأ يومك بذكر الله وحصّن نفسك.'
+              : 'أذكار المساء 🌙: حان وقت أذكار المساء، حصّن نفسك واختم يومك بذكر الله.',
+          });
+        }
+      }
+    }
+
+    if (matchingHabits.length === 0) {
       return NextResponse.json({ success: true, message: "No habits scheduled at this time." });
     }
 

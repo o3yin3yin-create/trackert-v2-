@@ -1235,16 +1235,16 @@ function AppContent({ isPreview = false }) {
 
   const [themeColor, setThemeColor] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('daybase_themeColor_v4') || '#FF9F0A';
+      return localStorage.getItem('daybase_themeColor_v4') || '#FFFFFF';
     }
-    return '#FF9F0A';
+    return '#FFFFFF';
   });
 
   const [auroraColor, setAuroraColor] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('daybase_aurora_color') || '#00F0FF';
+      return localStorage.getItem('daybase_aurora_color') || '#FFFFFF';
     }
-    return '#00F0FF';
+    return '#FFFFFF';
   });
 
   const [auroraIntensity, setAuroraIntensity] = useState(() => {
@@ -1373,6 +1373,45 @@ function AppContent({ isPreview = false }) {
     }
     return [];
   });
+
+  const handleSaveFinishedTicket = useCallback((flight) => {
+    if (!flight) return;
+    setFinishedTickets(prev => {
+      const exists = prev.some(t => t.id === flight.id || (t.flightNumber === flight.flightNumber && Math.abs((t.completedAt || 0) - Date.now()) < 60000));
+      if (exists) return prev;
+      const newTicket = {
+        ...flight,
+        id: flight.id || `${flight.flightNumber || 'FLT'}-${Date.now()}`,
+        flightNumber: flight.flightNumber || flight.callsign,
+        callsign: flight.flightNumber || flight.callsign,
+        seat: flight.seat || selectedSeat || '14A',
+        date: flight.date || new Date().toLocaleDateString(),
+        completedAt: Date.now(),
+        totalDistance: flight.totalDistance || 2500,
+      };
+      const updated = [newTicket, ...prev];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('trackert_finished_tickets_v1', JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, [selectedSeat]);
+
+  // Auto-finish flight if it reached destination while app was closed or offline
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = JSON.parse(localStorage.getItem('daybase_active_flight') || 'null');
+      if (saved?.flight) {
+        const arr = saved.flight.estimatedArrival || saved.flight.arrival;
+        const now = Math.floor(Date.now() / 1000);
+        if (arr && now >= arr) {
+          handleSaveFinishedTicket(saved.flight);
+          localStorage.removeItem('daybase_active_flight');
+        }
+      }
+    } catch {}
+  }, [handleSaveFinishedTicket]);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -3335,19 +3374,12 @@ function AppContent({ isPreview = false }) {
       setFlightTimer(0);
       setIsFlightTimerRunning(false);
       flightLastTickRef.current = null;
-      // Only trigger sound once when it first hits 0
-      if (flightTimer > 0) {
-        playAirportChime();
-        setIsBoardingPassOpen(true);
-        setFinishedTickets(prev => {
-          if (prev.length > 0 && prev[0].id === selectedFlight.id && Date.now() - prev[0].completedAt < 10000) return prev;
-          const newTicket = { ...selectedFlight, seat: selectedSeat, date: new Date().toLocaleDateString(), completedAt: Date.now() };
-          const updated = [newTicket, ...prev];
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('trackert_finished_tickets_v1', JSON.stringify(updated));
-          }
-          return updated;
-        });
+      if (selectedFlight) {
+        handleSaveFinishedTicket(selectedFlight);
+        if (flightTimer > 0) {
+          playAirportChime();
+          setIsBoardingPassOpen(true);
+        }
       }
     }
   }, [currentUnixTime, isFlightTimerRunning, selectedFlight]);
@@ -5185,22 +5217,26 @@ function AppContent({ isPreview = false }) {
   };
 
   // --- Score Calculations ---
-  let totalPossible = 0;
-  let totalCompleted = 0;
+  // Each habit has equal weight (1/N of total), regardless of whether it has sub-items (multi) or is single.
+  // For a listed habit (multi), its completion fraction (checked / totalSubItems) determines its proportional share.
+  let habitFractionsSum = 0;
+  const numActiveHabits = activeScheduledHabits.length;
 
   activeScheduledHabits.forEach(h => {
     if (h.type === 'single') {
-      totalPossible += 1;
-      if (dailyData[`${activeDateStr}-${h.id}`]) totalCompleted += 1;
+      if (dailyData[`${activeDateStr}-${h.id}`]) habitFractionsSum += 1;
     } else {
-      totalPossible += h.subItems.length;
-      h.subItems.forEach(sub => {
-        if (dailyData[`${activeDateStr}-${h.id}-${sub}`]) totalCompleted += 1;
-      });
+      const subs = Array.isArray(h.subItems) ? h.subItems : [];
+      if (subs.length > 0) {
+        const checked = subs.filter(sub => dailyData[`${activeDateStr}-${h.id}-${sub}`]).length;
+        habitFractionsSum += (checked / subs.length);
+      } else if (dailyData[`${activeDateStr}-${h.id}`]) {
+        habitFractionsSum += 1;
+      }
     }
   });
 
-  const targetScore = totalPossible === 0 ? 0 : (totalCompleted / totalPossible) * 100;
+  const targetScore = numActiveHabits === 0 ? 0 : (habitFractionsSum / numActiveHabits) * 100;
   const animatedScore = useAnimatedScore(targetScore);
   const scoreDisplay = animatedScore % 1 === 0 ? animatedScore.toFixed(0) : animatedScore.toFixed(1);
 
@@ -5218,21 +5254,24 @@ function AppContent({ isPreview = false }) {
       currentDay.setDate(startOfWeek.getDate() + i);
       const currentStr = getFormatDateStr(currentDay);
 
-      let dayTotal = 0;
-      let dayComp = 0;
+      let dayFractionsSum = 0;
+      let dayHabitsCount = 0;
       habits.forEach(h => {
         if (!isHabitScheduledForDate(h, currentStr)) return;
+        dayHabitsCount += 1;
         if (h.type === 'single') {
-          dayTotal += 1;
-          if (dailyData[`${currentStr}-${h.id}`]) dayComp += 1;
+          if (dailyData[`${currentStr}-${h.id}`]) dayFractionsSum += 1;
         } else {
-          dayTotal += h.subItems.length;
-          h.subItems.forEach(sub => {
-            if (dailyData[`${currentStr}-${h.id}-${sub}`]) dayComp += 1;
-          });
+          const subs = Array.isArray(h.subItems) ? h.subItems : [];
+          if (subs.length > 0) {
+            const checked = subs.filter(sub => dailyData[`${currentStr}-${h.id}-${sub}`]).length;
+            dayFractionsSum += (checked / subs.length);
+          } else if (dailyData[`${currentStr}-${h.id}`]) {
+            dayFractionsSum += 1;
+          }
         }
       });
-      const dayScore = dayTotal > 0 ? (dayComp / dayTotal) * 100 : 0;
+      const dayScore = dayHabitsCount > 0 ? (dayFractionsSum / dayHabitsCount) * 100 : 0;
       const isColumnToday = currentStr === realTodayStr;
       // focus in minutes, capped to 180 for chart scale
       const focusMins = Math.min(Math.round((focusTimeData[currentStr] || 0) / 60), 180);
@@ -5994,6 +6033,11 @@ function AppContent({ isPreview = false }) {
       const friendFirstName = (rawFriendName.trim().split(/\s+/)[0] || rawFriendName).trim();
       const friendAvatar = friend?.user?.avatar || 'sparkles';
       const isPinned = Boolean(friend?.isPinned);
+      const isDistinguished = Boolean(
+        friend?.user?.isAdmin ||
+        friend?.isAdmin ||
+        ['omar', 'helbawy', 'omarelhelbawy'].includes(String(friend?.user?.username || friend?.username || '').toLowerCase())
+      );
       const island = getIslandDetails(friend?.presence);
 
       const renderIslandIcon = (type, iconSize = 12) => {
@@ -6026,7 +6070,9 @@ function AppContent({ isPreview = false }) {
           >
             {/* Left: Avatar + Friend First Name (Always visible) */}
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <div className="relative w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center shrink-0 border border-white/10">
+              <div className={`relative w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center shrink-0 border ${
+                isDistinguished ? 'border-amber-400/60 shadow-[0_0_8px_rgba(251,191,36,0.3)]' : 'border-white/10'
+              }`}>
                 <AvatarIcon name={friendAvatar} size={15} className="text-white" />
               </div>
 
@@ -6034,6 +6080,11 @@ function AppContent({ isPreview = false }) {
                 <span className="text-[13px] font-bold text-white tracking-tight truncate leading-tight">
                   {friendFirstName}
                 </span>
+                {isDistinguished && (
+                  <span className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40 shrink-0" title="Verified">
+                    <Check size={8} strokeWidth={3.5} />
+                  </span>
+                )}
                 {isPinned && (
                   <Pin size={11} className="text-white/40 fill-white/20 shrink-0" />
                 )}
@@ -6078,7 +6129,9 @@ function AppContent({ isPreview = false }) {
         >
           {/* Left: Avatar + Friend First Name */}
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-            <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 text-white flex items-center justify-center font-bold text-base uppercase shrink-0 border border-white/10">
+            <div className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 text-white flex items-center justify-center font-bold text-base uppercase shrink-0 border ${
+              isDistinguished ? 'border-amber-400/60 shadow-[0_0_8px_rgba(251,191,36,0.3)]' : 'border-white/10'
+            }`}>
               <AvatarIcon name={friendAvatar} size={18} className="text-white" />
             </div>
 
@@ -6086,6 +6139,11 @@ function AppContent({ isPreview = false }) {
               <span className="font-bold text-white text-[15px] sm:text-[16px] tracking-tight leading-tight shrink-0">
                 {friendFirstName}
               </span>
+              {isDistinguished && (
+                <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40 shrink-0 ml-0.5" title="Verified">
+                  <Check size={8} strokeWidth={3.5} />
+                </span>
+              )}
               {isPinned && (
                 <Pin size={12} className="text-white/40 fill-white/20 shrink-0" />
               )}
@@ -7861,6 +7919,7 @@ function AppContent({ isPreview = false }) {
             setIsWindowSeatOpen={setIsWindowSeatOpen}
             selectedSeat={selectedSeat}
             setIsAmbientModalOpen={setIsAmbientModalOpen}
+            onSaveFinishedTicket={handleSaveFinishedTicket}
           />,
           document.body
         )}

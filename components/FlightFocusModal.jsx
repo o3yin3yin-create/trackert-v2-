@@ -113,10 +113,12 @@ export default function FlightFocusModal({
   setIsWindowSeatOpen,
   selectedSeat = '14A',
   setIsAmbientModalOpen,
+  onSaveFinishedTicket,
 }) {
   // Screens: 'board' | 'ticket' | 'cabin' | 'radar'
   const [currentScreen, setCurrentScreen] = useState(() => (selectedFlight ? 'cabin' : 'board'));
   const [pendingFlight, setPendingFlight] = useState(null);
+  const hasSavedLandedRef = useRef(false);
 
   // Board Filters & Search
   const [durationFilter, setDurationFilter] = useState('all'); // 'all' | 'under1h' | '1-3h' | '3h+'
@@ -207,6 +209,15 @@ export default function FlightFocusModal({
   // Single source of truth estimate hook: purely clock-based, 1Hz, no network
   const estimate = usePlaneEstimate(flightToTrack);
 
+  // Auto-switch to cabin if flight is currently active and user opens modal
+  useEffect(() => {
+    if (isOpen && (selectedFlight || activeFlight)) {
+      if (currentScreen === 'board' || currentScreen === 'ticket') {
+        setCurrentScreen('cabin');
+      }
+    }
+  }, [isOpen, selectedFlight, activeFlight, currentScreen]);
+
   // Track focused time independently when session is active and timer is running
   useEffect(() => {
     if (!isFlightTimerRunning || !flightToTrack || estimate?.isLanded) return;
@@ -215,6 +226,22 @@ export default function FlightFocusModal({
     }, 1000);
     return () => clearInterval(interval);
   }, [isFlightTimerRunning, flightToTrack, estimate?.isLanded]);
+
+  // Automatically save ticket into finished tickets as soon as the flight lands
+  useEffect(() => {
+    if (estimate?.isLanded && flightToTrack && !hasSavedLandedRef.current) {
+      hasSavedLandedRef.current = true;
+      if (typeof onSaveFinishedTicket === 'function') {
+        onSaveFinishedTicket({
+          ...flightToTrack,
+          seat: selectedSeat || '14A',
+          totalDistance: estimate?.totalDistKm || 2500,
+          originCity: estimate?.orig?.city,
+          destCity: estimate?.dest?.city,
+        });
+      }
+    }
+  }, [estimate?.isLanded, flightToTrack, onSaveFinishedTicket, selectedSeat, estimate?.totalDistKm, estimate?.orig?.city, estimate?.dest?.city]);
 
   // Step 1 -> Step 2: Board to Ticket
   const handleSelectFlightToTicket = (f) => {
@@ -226,6 +253,7 @@ export default function FlightFocusModal({
   const handleStartFocus = () => {
     const chosen = pendingFlight || flightToTrack;
     if (!chosen) return;
+    hasSavedLandedRef.current = false;
     setActiveFlight(chosen);
     if (typeof setSelectedFlight === 'function') {
       setSelectedFlight(chosen);
@@ -248,12 +276,22 @@ export default function FlightFocusModal({
       }
       setActiveFlight(null);
       setPendingFlight(null);
+      hasSavedLandedRef.current = false;
       setCurrentScreen('board');
     }
   };
 
   // Finish session after landing
   const handleFinishSession = () => {
+    if (flightToTrack && typeof onSaveFinishedTicket === 'function') {
+      onSaveFinishedTicket({
+        ...flightToTrack,
+        seat: selectedSeat || '14A',
+        totalDistance: estimate?.totalDistKm || 2500,
+        originCity: estimate?.orig?.city,
+        destCity: estimate?.dest?.city,
+      });
+    }
     if (typeof setIsFlightTimerRunning === 'function') {
       setIsFlightTimerRunning(false);
     }
@@ -262,6 +300,7 @@ export default function FlightFocusModal({
     }
     setActiveFlight(null);
     setPendingFlight(null);
+    hasSavedLandedRef.current = false;
     setCurrentScreen('board');
   };
 
@@ -372,13 +411,16 @@ export default function FlightFocusModal({
         {currentScreen === 'cabin' && (
           <header className="flex items-center justify-between w-full mb-6 pb-2">
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentScreen('board')}
-                aria-label="Back to flight board"
-                className="w-11 h-11 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--fg)] ff-pill select-none cursor-pointer"
-              >
-                <span className="text-base leading-none">←</span>
-              </button>
+              {/* Back button only appears if no focus session is active */}
+              {(!selectedFlight && !isFlightTimerRunning && !activeFlight) && (
+                <button
+                  onClick={() => setCurrentScreen('board')}
+                  aria-label="Back to flight board"
+                  className="w-11 h-11 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--fg)] ff-pill select-none cursor-pointer"
+                >
+                  <span className="text-base leading-none">←</span>
+                </button>
+              )}
 
               {/* Cabin / Radar toggle tabs */}
               <div
@@ -459,15 +501,26 @@ export default function FlightFocusModal({
                 </div>
               </div>
 
-              {/* Compact Search Bar */}
-              <div className="mb-3">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search flight or route (e.g. AFR446, LHR)..."
-                  className="w-full px-3 py-1.5 rounded-full border border-[var(--hair)] bg-transparent text-[11px] text-[var(--fg)] placeholder:text-[var(--m)] outline-none focus:border-[var(--fg)] font-mono transition-colors"
-                />
+              {/* Ultra-compact Search Bar */}
+              <div className="mb-2.5 max-w-[260px]">
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search flight or route..."
+                    className="w-full h-7 pl-3 pr-7 rounded-full border border-[var(--hair)] bg-transparent text-[10px] text-[var(--fg)] placeholder:text-[var(--m)] outline-none focus:border-[var(--fg)] font-mono transition-colors"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 text-[var(--m)] hover:text-[var(--fg)] text-xs cursor-pointer select-none"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Duration Filters: Under 1h, 1-3h, 3h+ */}

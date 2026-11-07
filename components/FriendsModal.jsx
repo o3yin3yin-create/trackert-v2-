@@ -718,6 +718,11 @@ export default function FriendsModal({
                 <span className="text-[20px] font-bold tracking-tight text-[#0a0a0a] truncate leading-tight">
                   {friendName}
                 </span>
+                {(selectedFriend.user?.isAdmin || ['omar', 'helbawy', 'omarelhelbawy'].includes(String(selectedFriend.user?.username || '').toLowerCase())) && (
+                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-400 text-black border border-amber-500/50 shrink-0 ml-0.5" title="Verified">
+                    <Check size={10} strokeWidth={3.5} />
+                  </span>
+                )}
                 {selectedFriend.user?.hasSharedScheduleWithMe && (
                   <button
                     type="button"
@@ -1524,6 +1529,11 @@ export default function FriendsModal({
                                 <span className="font-bold text-white text-[16px] truncate leading-tight">
                                   {f.displayName}
                                 </span>
+                                {(f.user?.isAdmin || ['omar', 'helbawy', 'omarelhelbawy'].includes(String(f.user?.username || '').toLowerCase())) && (
+                                  <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40 shrink-0 ml-0.5" title="Verified">
+                                    <Check size={8} strokeWidth={3.5} />
+                                  </span>
+                                )}
                                 {pinnedFriendUsername && (pinnedFriendUsername.toLowerCase() === (f.user?.username || f.displayName || '').toLowerCase()) && (
                                   <Pin size={12} className="text-white/50 fill-white/20 shrink-0" title="Pinned to Home" />
                                 )}

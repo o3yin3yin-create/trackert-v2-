@@ -4,7 +4,7 @@ import prisma from '@/lib/prisma';
 import { getAuthUserId } from '@/lib/auth-server';
 import { getCorsHeaders, handleCorsOptions } from '@/lib/cors';
 import { rateLimit, getClientIp } from '@/lib/rateLimit';
-import { reconcileLecturePushes } from '@/lib/pushSchedule';
+import { reconcileLecturePushes, reconcileAthkarPushes } from '@/lib/pushSchedule';
 import { mergeTaskLists } from '@/lib/taskMerge';
 
 function formatDateInTimeZone(date, timeZone) {
@@ -551,6 +551,7 @@ export async function POST(req) {
 
     if (state.habits && Array.isArray(state.habits)) {
       reconcileLecturePushes(user.id, state.timezone).catch(() => {});
+      reconcileAthkarPushes(user.id, state.timezone).catch(() => {});
     }
 
     const finalUser = await prisma.user.update({
