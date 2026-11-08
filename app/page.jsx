@@ -77,6 +77,48 @@ function detectClientPlatform() {
   return 'web';
 }
 
+function SettingsRow({ icon: Icon, iconProps = {}, title, subtitle, trailing, onClick, href, target, rel, danger = false, disabled = false, className, iconClassName }) {
+  const tone = danger
+    ? 'bg-red-500/5 hover:bg-red-500/10 border-red-500/20'
+    : 'bg-white/5 hover:bg-white/10 border-white/10';
+  const containerClass = className || `w-full text-left p-4 rounded-2xl border flex items-center justify-between transition-colors ${tone} ${onClick || href ? 'cursor-pointer' : ''}`;
+  const content = (
+    <>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className={iconClassName || `w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${danger ? 'bg-red-500/15 text-red-400' : 'bg-white/10 text-white'}`}>
+          <Icon size={18} {...iconProps} />
+        </div>
+        <div className="flex flex-col min-w-0">
+          <span className={`text-sm font-bold ${danger ? 'text-red-400' : 'text-white'}`}>{title}</span>
+          {subtitle && <span className="text-[11px] text-white/40 font-normal truncate">{subtitle}</span>}
+        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        {trailing !== undefined ? trailing : <ChevronRight size={18} className="text-white/40" />}
+      </div>
+    </>
+  );
+  if (href) {
+    return <a href={href} target={target} rel={rel} onClick={onClick} className={containerClass}>{content}</a>;
+  }
+  if (onClick) {
+    return <button type="button" onClick={onClick} disabled={disabled} className={containerClass}>{content}</button>;
+  }
+  return <div className={containerClass}>{content}</div>;
+}
+
+const APPEARANCE_COLOR_NAMES = {
+  '#ffffff': 'White',
+  '#ff9f0a': 'Amber',
+  '#00f0ff': 'Cyan',
+  '#30d158': 'Emerald',
+  '#bf5af2': 'Purple',
+  '#ff375f': 'Pink',
+  '#ffd60a': 'Yellow',
+  '#0a84ff': 'Blue',
+};
+const appearanceColorName = (hex) => APPEARANCE_COLOR_NAMES[(hex || '').toLowerCase()] || (hex || '').toUpperCase();
+
 export function isAthkarHabit(h) {
   if (!h) return false;
   return (
@@ -1926,6 +1968,8 @@ function AppContent({ isPreview = false }) {
   const [theme, setTheme] = useState('dark');
   const [bgStyle, setBgStyle] = useState('aurora'); // 'aurora' | 'solid'
   const t = (key) => translations[lang][key] || key;
+  const tEn = (key) => translations.en[key] || key;
+  const auroraGlowAlpha = Math.round((auroraIntensity / 100) * 0.5 * 255).toString(16).padStart(2, '0');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -9400,282 +9444,270 @@ function AppContent({ isPreview = false }) {
                     </button>
                   </div>
 
-                  {/* Appearance Options List */}
-                  <div className="flex flex-col gap-4 pb-8">
-
-                    {/* Section 1: Background Style (Aurora vs Solid) */}
-                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <Sparkles size={18} className="text-white/80" />
-                          <span className="text-sm font-bold text-white">
-                            {isAr ? 'نمط الخلفية' : 'Background Style'}
-                          </span>
-                        </div>
-                        <span className="text-[11px] font-semibold text-white/40">
-                          {bgStyle === 'aurora' ? (isAr ? 'توهج الأورورا' : 'Aurora Glow') : (isAr ? 'سواد خالص' : 'Deep Solid')}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 mt-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setBgStyle('aurora');
-                            if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', 'aurora');
-                            markLocalMutation();
-                            haptic('light');
-                          }}
-                          className={`p-3.5 rounded-xl border flex flex-col items-center gap-2 transition-all active:scale-95 cursor-pointer ${
-                            bgStyle === 'aurora'
-                              ? 'bg-white/15 border-white text-white shadow-lg'
-                              : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white'
-                          }`}
-                        >
-                          <Sparkles size={20} className="text-white" />
-                          <span className="text-xs font-bold">{isAr ? 'أورورا' : 'Aurora'}</span>
-                          <span className="text-[10px] text-white/40 text-center">{isAr ? 'توهج هادئ متدرج' : 'Ambient glow'}</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setBgStyle('solid');
-                            if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', 'solid');
-                            markLocalMutation();
-                            haptic('light');
-                          }}
-                          className={`p-3.5 rounded-xl border flex flex-col items-center gap-2 transition-all active:scale-95 cursor-pointer ${
-                            bgStyle === 'solid'
-                              ? 'bg-white/15 border-white text-white shadow-lg'
-                              : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white'
-                          }`}
-                        >
-                          <Moon size={20} className="text-white" />
-                          <span className="text-xs font-bold">{isAr ? 'سوليد' : 'Solid'}</span>
-                          <span className="text-[10px] text-white/40 text-center">{isAr ? 'سواد نقي ومينيمال' : 'Pure minimalist'}</span>
-                        </button>
-                      </div>
-
-                      {/* Aurora Customization: Color & Brightness (Separated from app Theme & Root) */}
-                      {bgStyle === 'aurora' && (
-                        <div className="mt-2 pt-3 border-t border-white/10 flex flex-col gap-3.5 animate-in fade-in duration-200">
-                          
-                          {/* Aurora Color Control */}
-                          <div className="flex flex-col gap-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-white/70">
-                                {isAr ? 'لون الأورورا (مستقل عن لون البرنامج)' : 'Aurora Color (Independent)'}
-                              </span>
-                              <div 
-                                className="w-4 h-4 rounded-full border border-white/30 shadow-md" 
-                                style={{ backgroundColor: auroraColor }} 
-                              />
-                            </div>
-
-                            <div className="flex items-center justify-between gap-1.5 pt-0.5">
-                              {[
-                                { c: '#00F0FF', name: 'Cyan' },
-                                { c: '#BF5AF2', name: 'Purple' },
-                                { c: '#FF375F', name: 'Pink' },
-                                { c: '#30D158', name: 'Emerald' },
-                                { c: '#FF9F0A', name: 'Amber' },
-                                { c: '#0A84FF', name: 'Blue' },
-                                { c: '#FFFFFF', name: 'White' },
-                              ].map(({ c }) => (
-                                <button
-                                  key={c}
-                                  type="button"
-                                  onClick={() => {
-                                    setAuroraColor(c);
-                                    if (typeof window !== 'undefined') localStorage.setItem('daybase_aurora_color', c);
-                                    markLocalMutation();
-                                    haptic('light');
-                                  }}
-                                  className={`w-7 h-7 rounded-full transition-transform active:scale-90 flex items-center justify-center cursor-pointer ${
-                                    auroraColor.toLowerCase() === c.toLowerCase() ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-black' : 'hover:scale-105 opacity-80 hover:opacity-100'
-                                  }`}
-                                  style={{ backgroundColor: c }}
-                                >
-                                  {auroraColor.toLowerCase() === c.toLowerCase() && (
-                                    <Check size={12} className={c === '#FFFFFF' ? 'text-black' : 'text-white'} strokeWidth={3} />
-                                  )}
-                                </button>
-                              ))}
-
-                              {/* Custom Color Picker for Aurora */}
-                              <label className="relative w-7 h-7 rounded-full border border-white/20 hover:border-white/40 flex items-center justify-center cursor-pointer overflow-hidden bg-white/10 transition-all shrink-0">
-                                <Plus size={12} className="text-white/60" />
-                                <input 
-                                  type="color" 
-                                  value={auroraColor} 
-                                  onChange={(e) => {
-                                    setAuroraColor(e.target.value);
-                                    if (typeof window !== 'undefined') localStorage.setItem('daybase_aurora_color', e.target.value);
-                                    markLocalMutation();
-                                  }} 
-                                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" 
-                                />
-                              </label>
-                            </div>
-                          </div>
-
-                          {/* Aurora Brightness / Intensity Slider */}
-                          <div className="flex flex-col gap-2 pt-1">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-white/70">
-                                {isAr ? 'شدة سطوع الأورورا' : 'Aurora Brightness'}
-                              </span>
-                              <span className="text-xs font-mono font-bold text-white px-2 py-0.5 rounded-md bg-white/10">
-                                {auroraIntensity}%
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                              <span className="text-[10px] text-white/40 font-bold">{isAr ? 'خافت' : 'Dim'}</span>
-                              <input
-                                type="range"
-                                min="0"
-                                max="100"
-                                step="5"
-                                value={auroraIntensity}
-                                onChange={(e) => {
-                                  const val = parseInt(e.target.value, 10);
-                                  setAuroraIntensity(val);
-                                  if (typeof window !== 'undefined') localStorage.setItem('daybase_aurora_intensity', String(val));
-                                  markLocalMutation();
-                                }}
-                                className="flex-1 accent-white h-1.5 bg-white/20 rounded-lg cursor-pointer"
-                              />
-                              <span className="text-[10px] text-white/40 font-bold">{isAr ? 'ساطع' : 'Bright'}</span>
-                            </div>
-
-                            {/* Quick Presets for Intensity */}
-                            <div className="grid grid-cols-4 gap-1.5 mt-0.5">
-                              {[
-                                { labelAr: 'خافت 20%', labelEn: '20%', val: 20 },
-                                { labelAr: 'طبيعي 40%', labelEn: '40%', val: 40 },
-                                { labelAr: 'واضح 65%', labelEn: '65%', val: 65 },
-                                { labelAr: 'أقصى 100%', labelEn: '100%', val: 100 },
-                              ].map((preset) => (
-                                <button
-                                  key={preset.val}
-                                  type="button"
-                                  onClick={() => {
-                                    setAuroraIntensity(preset.val);
-                                    if (typeof window !== 'undefined') localStorage.setItem('daybase_aurora_intensity', String(preset.val));
-                                    markLocalMutation();
-                                    haptic('light');
-                                  }}
-                                  className={`py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                                    auroraIntensity === preset.val 
-                                      ? 'bg-white text-black font-black' 
-                                      : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'
-                                  }`}
-                                >
-                                  {isAr ? preset.labelAr : preset.labelEn}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                        </div>
-                      )}
+                  {/* Live Preview */}
+                  <div className="flex flex-col gap-2 mb-5">
+                    <div className="flex items-center justify-between px-1">
+                      <span className="text-[11px] font-bold text-white/40 uppercase tracking-wider">Live preview</span>
+                      <span className="text-[10px] font-mono font-bold text-white/40">
+                        {bgStyle === 'aurora' ? `Aurora · ${auroraIntensity}%` : 'Solid'}
+                      </span>
                     </div>
-
-                    {/* Section 2: Accent Color */}
-                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <SlidersHorizontal size={18} className="text-white/80" />
-                          <span className="text-sm font-bold text-white">
-                            {isAr ? 'لون البرنامج والأزرار' : 'Accent Color'}
+                    <div
+                      className="relative h-32 rounded-2xl border border-white/10 overflow-hidden transition-colors duration-300"
+                      style={{
+                        background: bgStyle === 'aurora'
+                          ? `radial-gradient(120% 130% at 15% -10%, ${auroraColor}${auroraGlowAlpha} 0%, transparent 55%), radial-gradient(120% 130% at 90% 110%, ${auroraColor}${auroraGlowAlpha} 0%, transparent 55%), #050505`
+                          : '#050505',
+                      }}
+                    >
+                      <div className="absolute inset-0 p-3.5 flex flex-col justify-center gap-2">
+                        <div className="flex items-center justify-between px-0.5">
+                          <span className="text-sm font-black text-white tracking-tight">
+                            Sunday <span className="text-white/40 font-bold">08</span>
+                          </span>
+                          <span className="w-6 h-6 rounded-full bg-white/10 border border-white/10 flex items-center justify-center">
+                            <Headphones size={12} className="text-white/70" />
                           </span>
                         </div>
-                        <div className="w-5 h-5 rounded-full border border-white/30 shadow-md" style={{ backgroundColor: themeColor }} />
+                        <div
+                          className="rounded-xl px-3 py-2.5 flex items-center justify-between"
+                          style={{ backgroundColor: themeColor, color: '#000000', boxShadow: `0 10px 25px -8px ${themeColor}66` }}
+                        >
+                          <span className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-[11px] font-bold tracking-tight truncate">Morning workout</span>
+                            <span className="flex items-center gap-0.5 text-[9px] font-bold opacity-60 shrink-0">
+                              <Flame size={10} strokeWidth={2.5} /> 16
+                            </span>
+                          </span>
+                          <span className="w-6 h-6 rounded-full bg-black flex items-center justify-center shrink-0">
+                            <Check size={12} className="text-white" strokeWidth={3} />
+                          </span>
+                        </div>
                       </div>
+                    </div>
+                  </div>
 
-                      {/* Preset Palette Circles + Custom Color Input */}
-                      <div className="flex items-center justify-between gap-2 pt-1">
-                        {['#FFFFFF', '#FF9F0A', '#00F0FF', '#30D158', '#BF5AF2', '#FF375F', '#FFD60A'].map((c) => (
+                  {/* Appearance Options */}
+                  <div className="flex flex-col gap-5 pb-8">
+
+                    {/* Group: Background */}
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">Background</span>
+                      <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-3">
+                        <div className="grid grid-cols-2 gap-2">
                           <button
-                            key={c}
                             type="button"
                             onClick={() => {
-                              setThemeColor(c);
-                              if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', c);
+                              setBgStyle('aurora');
+                              if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', 'aurora');
                               markLocalMutation();
                               haptic('light');
                             }}
-                            className={`w-8 h-8 rounded-full transition-transform active:scale-90 flex items-center justify-center ${
-                              themeColor.toLowerCase() === c.toLowerCase() ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-black' : 'hover:scale-105'
+                            className={`p-3 rounded-xl border flex flex-col gap-2 transition-all active:scale-95 cursor-pointer ${
+                              bgStyle === 'aurora'
+                                ? 'bg-white/15 border-white shadow-lg'
+                                : 'bg-white/5 border-white/10 hover:bg-white/10'
                             }`}
-                            style={{ backgroundColor: c }}
                           >
-                            {themeColor.toLowerCase() === c.toLowerCase() && (
-                              <Check size={14} className={c === '#FFFFFF' ? 'text-black' : 'text-white'} strokeWidth={3} />
-                            )}
+                            <div
+                              className="w-full h-14 rounded-lg border border-white/10"
+                              style={{ background: `radial-gradient(110% 120% at 25% -10%, ${auroraColor}${auroraGlowAlpha} 0%, transparent 60%), #0a0a0a` }}
+                            />
+                            <div className="flex items-center justify-between w-full">
+                              <span className={`text-xs font-bold ${bgStyle === 'aurora' ? 'text-white' : 'text-white/60'}`}>Aurora</span>
+                              {bgStyle === 'aurora' && <Check size={14} className="text-white" strokeWidth={3} />}
+                            </div>
+                            <span className="text-[10px] text-white/40 text-left">Ambient glow</span>
                           </button>
-                        ))}
 
-                        {/* Custom Picker */}
-                        <label className="relative w-8 h-8 rounded-full border border-white/20 hover:border-white/40 flex items-center justify-center cursor-pointer overflow-hidden bg-white/10 transition-all">
-                          <Plus size={14} className="text-white/60" />
-                          <input 
-                            type="color" 
-                            value={themeColor} 
-                            onChange={(e) => {
-                              setThemeColor(e.target.value);
-                              if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', e.target.value);
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBgStyle('solid');
+                              if (typeof window !== 'undefined') localStorage.setItem('daybase_bgstyle', 'solid');
                               markLocalMutation();
-                            }} 
-                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" 
-                          />
-                        </label>
+                              haptic('light');
+                            }}
+                            className={`p-3 rounded-xl border flex flex-col gap-2 transition-all active:scale-95 cursor-pointer ${
+                              bgStyle === 'solid'
+                                ? 'bg-white/15 border-white shadow-lg'
+                                : 'bg-white/5 border-white/10 hover:bg-white/10'
+                            }`}
+                          >
+                            <div className="w-full h-14 rounded-lg border border-white/10 bg-[#0a0a0a]" />
+                            <div className="flex items-center justify-between w-full">
+                              <span className={`text-xs font-bold ${bgStyle === 'solid' ? 'text-white' : 'text-white/60'}`}>Solid</span>
+                              {bgStyle === 'solid' && <Check size={14} className="text-white" strokeWidth={3} />}
+                            </div>
+                            <span className="text-[10px] text-white/40 text-left">Pure minimalist</span>
+                          </button>
+                        </div>
+
+                        {/* Aurora Controls */}
+                        {bgStyle === 'aurora' && (
+                          <div className="pt-3 border-t border-white/10 flex flex-col gap-4 animate-in fade-in duration-200">
+
+                            {/* Glow Color */}
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-white/70">Glow color</span>
+                                <span className="text-[10px] font-mono font-bold text-white/50">{appearanceColorName(auroraColor)}</span>
+                              </div>
+                              <div className="flex items-center justify-between gap-1.5">
+                                {['#00F0FF', '#BF5AF2', '#FF375F', '#30D158', '#FF9F0A', '#0A84FF', '#FFFFFF'].map((c) => (
+                                  <button
+                                    key={c}
+                                    type="button"
+                                    onClick={() => {
+                                      setAuroraColor(c);
+                                      if (typeof window !== 'undefined') localStorage.setItem('daybase_aurora_color', c);
+                                      markLocalMutation();
+                                      haptic('light');
+                                    }}
+                                    className={`w-8 h-8 rounded-full transition-transform active:scale-90 flex items-center justify-center cursor-pointer ${
+                                      auroraColor.toLowerCase() === c.toLowerCase() ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-black' : 'hover:scale-105 opacity-80 hover:opacity-100'
+                                    }`}
+                                    style={{ backgroundColor: c }}
+                                  >
+                                    {auroraColor.toLowerCase() === c.toLowerCase() && (
+                                      <Check size={12} className={c === '#FFFFFF' ? 'text-black' : 'text-white'} strokeWidth={3} />
+                                    )}
+                                  </button>
+                                ))}
+                                <label className="relative w-8 h-8 rounded-full border border-white/20 hover:border-white/40 flex items-center justify-center cursor-pointer overflow-hidden bg-white/10 transition-all shrink-0">
+                                  <Plus size={12} className="text-white/60" />
+                                  <input
+                                    type="color"
+                                    value={auroraColor}
+                                    onChange={(e) => {
+                                      setAuroraColor(e.target.value);
+                                      if (typeof window !== 'undefined') localStorage.setItem('daybase_aurora_color', e.target.value);
+                                      markLocalMutation();
+                                    }}
+                                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                  />
+                                </label>
+                              </div>
+                            </div>
+
+                            {/* Brightness */}
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-white/70">Brightness</span>
+                                <span className="text-xs font-mono font-bold text-white px-2 py-0.5 rounded-md bg-white/10">{auroraIntensity}%</span>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-[10px] text-white/40 font-bold">Dim</span>
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="100"
+                                  step="5"
+                                  value={auroraIntensity}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value, 10);
+                                    setAuroraIntensity(val);
+                                    if (typeof window !== 'undefined') localStorage.setItem('daybase_aurora_intensity', String(val));
+                                    markLocalMutation();
+                                  }}
+                                  className="flex-1 accent-white h-1.5 bg-white/20 rounded-lg cursor-pointer"
+                                />
+                                <span className="text-[10px] text-white/40 font-bold">Bright</span>
+                              </div>
+                              <div className="grid grid-cols-4 gap-1.5">
+                                {[20, 40, 65, 100].map((val) => (
+                                  <button
+                                    key={val}
+                                    type="button"
+                                    onClick={() => {
+                                      setAuroraIntensity(val);
+                                      if (typeof window !== 'undefined') localStorage.setItem('daybase_aurora_intensity', String(val));
+                                      markLocalMutation();
+                                      haptic('light');
+                                    }}
+                                    className={`py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                                      auroraIntensity === val
+                                        ? 'bg-white text-black font-black'
+                                        : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'
+                                    }`}
+                                  >
+                                    {val}%
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* Section 3: Customize & Reorder Widgets */}
-                    <button 
-                      onClick={() => { setIsAppearanceModalOpen(false); setIsWidgetsModalOpen(true); }} 
-                      className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center">
-                          <LayoutGrid size={20} />
+                    {/* Group: Accent Color */}
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">Accent color</span>
+                      <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-white/70">Buttons, streaks & highlights</span>
+                          <span className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-white/50">
+                            <span className="w-3 h-3 rounded-full border border-white/30" style={{ backgroundColor: themeColor }} />
+                            {appearanceColorName(themeColor)}
+                          </span>
                         </div>
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-white">
-                            {'Widgets Order & Sizing'}
-                          </span>
-                          <span className="text-[11px] text-white/50 font-normal">
-                            {'Reorder, smart auto & full/compact sizes'}
-                          </span>
+                        <div className="flex items-center justify-between gap-2">
+                          {['#FFFFFF', '#FF9F0A', '#00F0FF', '#30D158', '#BF5AF2', '#FF375F', '#FFD60A'].map((c) => (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => {
+                                setThemeColor(c);
+                                if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', c);
+                                markLocalMutation();
+                                haptic('light');
+                              }}
+                              className={`w-9 h-9 rounded-full transition-transform active:scale-90 flex items-center justify-center cursor-pointer ${
+                                themeColor.toLowerCase() === c.toLowerCase() ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-black' : 'hover:scale-105'
+                              }`}
+                              style={{ backgroundColor: c }}
+                            >
+                              {themeColor.toLowerCase() === c.toLowerCase() && (
+                                <Check size={14} className={c === '#FFFFFF' ? 'text-black' : 'text-white'} strokeWidth={3} />
+                              )}
+                            </button>
+                          ))}
+                          <label className="relative w-9 h-9 rounded-full border border-white/20 hover:border-white/40 flex items-center justify-center cursor-pointer overflow-hidden bg-white/10 transition-all shrink-0">
+                            <Plus size={14} className="text-white/60" />
+                            <input
+                              type="color"
+                              value={themeColor}
+                              onChange={(e) => {
+                                setThemeColor(e.target.value);
+                                if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', e.target.value);
+                                markLocalMutation();
+                              }}
+                              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                            />
+                          </label>
                         </div>
                       </div>
-                      <ChevronRight size={18} className={`text-white/40 `} />
-                    </button>
+                    </div>
 
-                    {/* Section 4: Change Avatar */}
-                    <button 
-                      onClick={() => { setIsAppearanceModalOpen(false); setIsAvatarModalOpen(true); }} 
-                      className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                          <AvatarIcon name={isMounted ? avatar : 'user'} size={20} />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-white">
-                            {'Change Avatar'}
-                          </span>
-                          <span className="text-[11px] text-white/50 font-normal">
-                            {'Pick your profile persona'}
-                          </span>
-                        </div>
-                      </div>
-                      <ChevronRight size={18} className={`text-white/40 `} />
-                    </button>
+                    {/* Group: Personalize */}
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">Personalize</span>
+                      <SettingsRow
+                        icon={LayoutGrid}
+                        title="Widgets order & sizing"
+                        subtitle="Reorder, smart auto & full/compact sizes"
+                        onClick={() => { setIsAppearanceModalOpen(false); setIsWidgetsModalOpen(true); }}
+                      />
+                      <SettingsRow
+                        icon={AvatarIcon}
+                        iconProps={{ name: isMounted ? avatar : 'user' }}
+                        title="Change avatar"
+                        subtitle="Pick your profile persona"
+                        onClick={() => { setIsAppearanceModalOpen(false); setIsAvatarModalOpen(true); }}
+                      />
+                    </div>
 
                   </div>
                 </div>
@@ -10355,19 +10387,10 @@ function AppContent({ isPreview = false }) {
                       <div>
                         {/* Header */}
                         <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
-                          <div className="flex items-center gap-3">
-                            <button 
-                              onClick={() => setIsSettingsMenuOpen(false)} 
-                              className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
-                              aria-label="Back"
-                            >
-                              <ChevronLeft size={20} className={''} />
-                            </button>
-                            <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
-                              <Settings size={22} className="text-white/80" /> {t('settings')}
-                            </h2>
-                          </div>
-                          <button onClick={() => setIsSettingsMenuOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                          <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                            <Settings size={22} className="text-white/80" /> {tEn('settings')}
+                          </h2>
+                          <button onClick={() => setIsSettingsMenuOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all" aria-label={tEn('done')}>
                             <X size={18} />
                           </button>
                         </div>
@@ -10375,154 +10398,138 @@ function AppContent({ isPreview = false }) {
                         {/* Restructured Apple-style Grouped Settings */}
                         <div className="flex flex-col gap-5 pb-8">
 
-                          {/* Account Card / Auth Header */}
-                          {isSignedIn && user ? (
-                            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
-                              <div className="flex items-center gap-3.5 min-w-0">
-                                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
-                                  <AvatarIcon name={isMounted ? avatar : 'user'} size={24} />
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <span className="text-base font-bold text-white truncate">
-                                      {user.fullName || user.firstName || 'Explorer'}
-                                    </span>
-                                    {isAdmin && (
-                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[9px] font-mono font-bold tracking-wider uppercase shrink-0">
-                                        DEV
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="text-xs text-white/40 truncate">
-                                    {user.primaryEmailAddress?.emailAddress || 'bokra companion'}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <button
-                                  onClick={() => { setIsSettingsMenuOpen(false); setIsAvatarModalOpen(true); }}
-                                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-all active:scale-95"
-                                >
-                                  {'Edit'}
-                                </button>
-                                <button
-                                  onClick={handleSignOut}
-                                  className="px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-bold transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
-                                  title="Sign Out"
-                                >
-                                  <LogOut size={13} />
-                                  <span>Sign Out</span>
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-3">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center shrink-0">
-                                    <User size={20} />
-                                  </div>
-                                  <div className="flex flex-col">
-                                    <span className="text-sm font-bold text-white">Sign In to bokra</span>
-                                    <span className="text-[11px] text-white/50 font-normal">Sync habits & backup your progress</span>
-                                  </div>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setIsSettingsMenuOpen(false);
-                                    handleAuthAction();
-                                  }}
-                                  className="px-4 py-2 rounded-xl bg-white text-black text-xs font-bold hover:bg-white/90 transition-all active:scale-95 shadow-sm cursor-pointer"
-                                >
-                                  Sign In
-                                </button>
-                              </div>
-                              <div className="pt-2 border-t border-white/5 flex items-center justify-between">
-                                <span className="text-[11px] text-white/40">Using app in guest mode</span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (typeof window !== 'undefined' && window.confirm('Clear all local habits and reset app?')) {
-                                      clearUserLocalData().then(() => {
-                                        resetStateToCleanDefaults();
-                                        setIsSettingsMenuOpen(false);
-                                      });
-                                    }
-                                  }}
-                                  className="text-[11px] text-white/40 hover:text-red-400 underline transition-colors cursor-pointer"
-                                >
-                                  Reset Local Data
-                                </button>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Group 1: Appearance & Customization */}
+                          {/* Group: Account */}
                           <div className="flex flex-col gap-1.5">
                             <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">
-                              {'Style & Appearance'}
+                              {tEn('settingsAccount')}
                             </span>
-                            <button 
-                              onClick={() => { setIsSettingsMenuOpen(false); setIsAppearanceModalOpen(true); }} 
-                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center">
-                                  <Palette size={20} />
+                            {isSignedIn && user ? (
+                              <>
+                                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
+                                  <div className="flex items-center gap-3.5 min-w-0">
+                                    <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
+                                      <AvatarIcon name={isMounted ? avatar : 'user'} size={24} />
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <span className="text-base font-bold text-white truncate">
+                                          {user.fullName || user.firstName || 'Explorer'}
+                                        </span>
+                                        {isAdmin && (
+                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[9px] font-mono font-bold tracking-wider uppercase shrink-0">
+                                            DEV
+                                          </span>
+                                        )}
+                                      </div>
+                                      <span className="text-xs text-white/40 truncate">
+                                        {user.primaryEmailAddress?.emailAddress || 'bokra companion'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => { setIsSettingsMenuOpen(false); setIsAvatarModalOpen(true); }}
+                                    className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-all active:scale-95 shrink-0"
+                                  >
+                                    {tEn('edit')}
+                                  </button>
                                 </div>
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-bold text-white">
-                                    {'Appearance & Style'}
-                                  </span>
-                                  <span className="text-[11px] text-white/50 font-normal">
-                                    {'Aurora/Solid, Accent Color, Widgets, Avatar'}
-                                  </span>
+                                <SettingsRow danger icon={LogOut} title={tEn('signOut')} onClick={handleSignOut} />
+                              </>
+                            ) : (
+                              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center shrink-0">
+                                      <User size={20} />
+                                    </div>
+                                    <div className="flex flex-col">
+                                      <span className="text-sm font-bold text-white">{tEn('signInTitle')}</span>
+                                      <span className="text-[11px] text-white/50 font-normal">{tEn('signInDesc')}</span>
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setIsSettingsMenuOpen(false);
+                                      handleAuthAction();
+                                    }}
+                                    className="px-4 py-2 rounded-xl bg-white text-black text-xs font-bold hover:bg-white/90 transition-all active:scale-95 shadow-sm cursor-pointer"
+                                  >
+                                    {tEn('signIn')}
+                                  </button>
+                                </div>
+                                <div className="pt-2 border-t border-white/5 flex items-center justify-between">
+                                  <span className="text-[11px] text-white/40">{tEn('guestMode')}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (typeof window !== 'undefined' && window.confirm('Clear all local habits and reset app?')) {
+                                        clearUserLocalData().then(() => {
+                                          resetStateToCleanDefaults();
+                                          setIsSettingsMenuOpen(false);
+                                        });
+                                      }
+                                    }}
+                                    className="text-[11px] text-white/40 hover:text-red-400 underline transition-colors cursor-pointer"
+                                  >
+                                    {tEn('resetLocalData')}
+                                  </button>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <div className="w-3.5 h-3.5 rounded-full border border-white/30" style={{ backgroundColor: themeColor }} />
-                                <ChevronRight size={18} className={`text-white/40 `} />
-                              </div>
-                            </button>
+                            )}
                           </div>
 
-
-                          {/* Group 2: Integrations */}
+                          {/* Group: Preferences */}
                           <div className="flex flex-col gap-1.5">
                             <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">
-                              {'Integrations'}
+                              {tEn('settingsPreferences')}
                             </span>
-                            <div className="w-full text-left p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center">
-                                  <Radio size={20} strokeWidth={2.5} />
-                                </div>
-                                <div className="flex flex-col">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm font-bold text-white">Spotify</span>
-                                    {isSpotifyConnected && (
-                                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                        Connected
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="text-[11px] text-white/50 font-normal">
-                                    {isSpotifyConnected 
-                                      ? 'Linked to your account' 
-                                      : hasSpotifyAccess 
-                                      ? 'Music playback & sync' 
-                                      : 'Beta feature (Invite code required)'}
-                                  </span>
-                                </div>
-                              </div>
-                              {isSpotifyConnected ? (
+                            <SettingsRow
+                              icon={Palette}
+                              title={tEn('appearance')}
+                              subtitle={tEn('appearanceDesc')}
+                              onClick={() => { setIsSettingsMenuOpen(false); setIsAppearanceModalOpen(true); }}
+                              trailing={
+                                <>
+                                  <div className="w-3.5 h-3.5 rounded-full border border-white/30" style={{ backgroundColor: themeColor }} />
+                                  <ChevronRight size={18} className="text-white/40" />
+                                </>
+                              }
+                            />
+                            <PushNotificationsCard
+                              lang="en"
+                              isSignedIn={Boolean(isSignedIn && user)}
+                              onAuthRequired={() => {
+                                setIsSettingsMenuOpen(false);
+                                handleAuthAction();
+                              }}
+                            />
+                            {(hasSpotifyAccess || isSpotifyConnected) && (
+                            <SettingsRow
+                              icon={Radio}
+                              iconProps={{ strokeWidth: 2.5 }}
+                              title={
+                                <span className="flex items-center gap-2">
+                                  {tEn('spotify')}
+                                  {isSpotifyConnected && (
+                                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                      {tEn('spotifyConnected')}
+                                    </span>
+                                  )}
+                                </span>
+                              }
+                              subtitle={isSpotifyConnected
+                                ? tEn('spotifyLinked')
+                                : hasSpotifyAccess
+                                ? tEn('spotifySync')
+                                : tEn('spotifyBeta')}
+                              trailing={isSpotifyConnected ? (
                                 <button
                                   type="button"
                                   onClick={handleDisconnectSpotify}
                                   className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-red-500/20 text-white/70 hover:text-red-400 transition-all cursor-pointer active:scale-95"
                                 >
-                                  Disconnect
+                                  {tEn('disconnect')}
                                 </button>
                               ) : (
                                 <button
@@ -10538,328 +10545,191 @@ function AppContent({ isPreview = false }) {
                                   }}
                                   className="px-3.5 py-1.5 rounded-xl text-xs font-black bg-white text-black hover:bg-white/90 transition-all active:scale-95 flex items-center gap-1.5 shadow-md cursor-pointer"
                                 >
-                                  {'Connect'}
+                                  {tEn('connect')}
                                 </button>
                               )}
-                            </div>
+                            />
+                            )}
                           </div>
 
-                          {/* Group: Notifications */}
+                          {/* Group: Activity & Privacy */}
                           <div className="flex flex-col gap-1.5">
                             <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">
-                              {lang === 'ar' ? 'الإشعارات والتنبيهات' : 'Notifications'}
+                              {tEn('settingsActivity')}
                             </span>
-                            <PushNotificationsCard
-                              lang={lang}
-                              isSignedIn={Boolean(isSignedIn && user)}
-                              onAuthRequired={() => {
-                                setIsSettingsMenuOpen(false);
-                                handleAuthAction();
-                              }}
+                            <SettingsRow
+                              icon={BarChart2}
+                              title={tEn('analytics')}
+                              subtitle={tEn('analyticsDesc')}
+                              onClick={() => { setIsSettingsMenuOpen(false); setIsAnalyticsModalOpen(true); }}
+                            />
+                            <SettingsRow
+                              icon={Users}
+                              title={tEn('friendsTitle')}
+                              subtitle={tEn('friendsDesc')}
+                              onClick={() => { setIsSettingsMenuOpen(false); setSelectedFriendForModal(null); setIsFriendsModalOpen(true); }}
+                            />
+                            <SettingsRow
+                              icon={Shield}
+                              title={tEn('privacy')}
+                              subtitle="Ghost mode & sharing controls"
+                              onClick={() => { setIsSettingsMenuOpen(false); setIsPrivacyModalOpen(true); }}
+                            />
+                            <SettingsRow
+                              icon={ShieldAlert}
+                              title={tEn('emergencyCards')}
+                              subtitle={tEn('emergencyCardsDesc')}
+                              onClick={() => { setIsSettingsMenuOpen(false); setIsCardsModalOpen(true); }}
                             />
                           </div>
 
-                          {/* Group 3: Tools & Utilities */}
+                          {/* Group: App & Support */}
                           <div className="flex flex-col gap-1.5">
                             <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">
-                              {'Tools & Analytics'}
+                              {tEn('settingsAppSupport')}
                             </span>
-
-                            {/* Friends */}
-                            <button onClick={() => { setIsSettingsMenuOpen(false); setSelectedFriendForModal(null); setIsFriendsModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors cursor-pointer">
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><Users size={18} /></div>
-                                <span className="text-sm font-bold text-white">{t('friendsTitle')}</span>
-                              </div>
-                              <ChevronRight size={18} className="text-white/40" />
-                            </button>
-
-                            {/* Privacy & Sharing */}
-                            <button 
-                              onClick={() => { setIsSettingsMenuOpen(false); setIsPrivacyModalOpen(true); }} 
-                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors cursor-pointer"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center">
-                                  <Shield size={18} />
-                                </div>
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-bold text-white">{t('privacy')}</span>
-                                  <span className="text-[11px] text-white/50 font-normal">{t('ghostMode')} & {t('shareWithFriends')}</span>
-                                </div>
-                              </div>
-                              <ChevronRight size={18} className="text-white/40" />
-                            </button>
-
-                            {/* Analytics */}
-                            <button onClick={() => { setIsSettingsMenuOpen(false); setIsAnalyticsModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><BarChart2 size={18} /></div>
-                                <span className="text-sm font-bold text-white">{t('analytics')}</span>
-                              </div>
-                              <ChevronRight size={18} className={`text-white/40 `} />
-                            </button>
-
-                            {/* Emergency Cards */}
-                            <button onClick={() => { setIsSettingsMenuOpen(false); setIsCardsModalOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><ShieldAlert size={18} /></div>
-                                <span className="text-sm font-bold text-white">{t('emergencyCards')}</span>
-                              </div>
-                              <ChevronRight size={18} className={`text-white/40 `} />
-                            </button>
-
-                            {/* How to Use / Guide */}
-                            <a 
-                              href="/guide" 
-                              onClick={() => setIsSettingsMenuOpen(false)} 
-                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><BookOpen size={18} /></div>
-                                <span className="text-sm font-bold text-white">{t('howToUse')}</span>
-                              </div>
-                              <ChevronRight size={18} className="text-white/40" />
-                            </a>
-
-                            {/* Check for Updates / Package Updater */}
-                            <button 
-                              type="button"
+                            <SettingsRow
+                              icon={RotateCcw}
+                              iconProps={{ className: updateInfo.isChecking ? 'animate-spin' : '' }}
+                              className={`w-full text-left p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                                updateInfo.hasUpdate
+                                  ? 'bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-teal-500/15 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.25)] ring-1 ring-emerald-500/40 animate-pulse'
+                                  : 'bg-white/5 hover:bg-white/10 border-white/10'
+                              }`}
+                              iconClassName={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                                updateInfo.hasUpdate ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white'
+                              }`}
+                              title={
+                                <span className="flex items-center gap-2">
+                                  {tEn('checkUpdates')}
+                                  {updateInfo.hasUpdate ? (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500 text-black text-[10px] font-mono font-black uppercase tracking-wider shadow-sm">
+                                      {tEn('updateAvailable')}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-mono text-white/40">
+                                      v{APP_CLIENT_VERSION}
+                                    </span>
+                                  )}
+                                </span>
+                              }
+                              subtitle={updateInfo.hasUpdate
+                                ? `${tEn('newVersionAvailable')} v${updateInfo.latestVersion}`
+                                : tEn('updateDesc')}
                               onClick={() => {
                                 setIsSettingsMenuOpen(false);
                                 setIsUpdateModalOpen(true);
                                 checkForAppUpdates(true);
-                              }} 
-                              className={`w-full text-left p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between text-base font-bold text-white ${
-                                updateInfo.hasUpdate 
-                                  ? 'bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-teal-500/15 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.25)] ring-1 ring-emerald-500/40 animate-pulse' 
-                                  : 'bg-white/5 hover:bg-white/10 border-white/10'
-                              }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                                  updateInfo.hasUpdate ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white'
-                                }`}>
-                                  <RotateCcw size={18} className={updateInfo.isChecking ? 'animate-spin' : ''} />
-                                </div>
-                                <div className="flex flex-col">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm font-bold text-white">{t('checkUpdates')}</span>
-                                    {updateInfo.hasUpdate ? (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500 text-black text-[10px] font-mono font-black uppercase tracking-wider shadow-sm">
-                                        {isAr ? 'تحديث متاح' : 'UPDATE'}
-                                      </span>
-                                    ) : (
-                                      <span className="text-[10px] font-mono text-white/40">
-                                        v{APP_CLIENT_VERSION}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="text-[11px] text-white/40 font-normal">
-                                    {updateInfo.hasUpdate 
-                                      ? (isAr ? `إصدار جديد متوفر: v${updateInfo.latestVersion}` : `New version available: v${updateInfo.latestVersion}`)
-                                      : t('updateDesc')}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {updateInfo.hasUpdate && (
-                                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                                )}
-                                <ChevronRight size={18} className="text-white/40" />
-                              </div>
-                            </button>
-
-                            {/* Download Apps */}
-                            <a 
-                              href="/download" 
-                              onClick={() => setIsSettingsMenuOpen(false)} 
-                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><Download size={18} /></div>
-                                <span className="text-sm font-bold text-white">{t('downloadApps')}</span>
-                              </div>
-                              <ChevronRight size={18} className="text-white/40" />
-                            </a>
-
-                            {/* Share App (Copy Download Link) */}
-                            <button 
-                              type="button"
-                              onClick={handleShareApp} 
-                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors cursor-pointer"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center">
-                                  {appLinkCopied ? (
-                                    <Check size={18} className="text-emerald-400" />
-                                  ) : (
-                                    <Share2 size={18} />
+                              }}
+                              trailing={
+                                <>
+                                  {updateInfo.hasUpdate && (
+                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
                                   )}
-                                </div>
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-bold text-white">
-                                    {appLinkCopied ? (isAr ? 'تم نسخ الرابط!' : 'Link Copied!') : (isAr ? 'مشاركة التطبيق' : 'Share App')}
-                                  </span>
-                                  <span className="text-[11px] text-white/40 font-normal">
-                                    {isAr ? 'نسخ رابط تحميل التطبيق للأصدقاء' : 'Copy download page link'}
-                                  </span>
-                                </div>
-                              </div>
-                              {appLinkCopied ? (
+                                  <ChevronRight size={18} className="text-white/40" />
+                                </>
+                              }
+                            />
+                            <SettingsRow
+                              icon={BookOpen}
+                              title={tEn('howToUse')}
+                              subtitle={tEn('howToUseDesc')}
+                              href="/guide"
+                              onClick={() => setIsSettingsMenuOpen(false)}
+                            />
+                            <SettingsRow
+                              icon={Download}
+                              title={tEn('downloadApps')}
+                              subtitle={tEn('downloadAppsDesc')}
+                              href="/download"
+                              onClick={() => setIsSettingsMenuOpen(false)}
+                            />
+                            <SettingsRow
+                              icon={appLinkCopied ? Check : Share2}
+                              iconProps={appLinkCopied ? { className: 'text-emerald-400' } : {}}
+                              title={appLinkCopied ? tEn('linkCopied') : tEn('shareApp')}
+                              subtitle={tEn('shareAppDesc')}
+                              onClick={handleShareApp}
+                              trailing={appLinkCopied ? (
                                 <span className="text-xs font-mono font-bold text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                                  {isAr ? 'تم النسخ' : 'Copied'}
+                                  {tEn('copiedBadge')}
                                 </span>
-                              ) : (
-                                <ChevronRight size={18} className="text-white/40" />
-                              )}
-                            </button>
-
-                            {/* Clear Cache */}
-                            <button 
-                              type="button"
-                              onClick={handleClearCache} 
+                              ) : undefined}
+                            />
+                            <SettingsRow
+                              icon={isClearingCache ? Loader2 : RotateCcw}
+                              iconProps={isClearingCache ? { className: 'animate-spin' } : {}}
+                              title={cacheClearedSuccess ? tEn('cacheCleared') : tEn('clearCache')}
+                              subtitle={tEn('clearCacheDesc')}
+                              onClick={handleClearCache}
                               disabled={isClearingCache}
-                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors cursor-pointer"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center">
-                                  {isClearingCache ? (
-                                    <Loader2 size={18} className="animate-spin" />
-                                  ) : (
-                                    <RotateCcw size={18} />
-                                  )}
-                                </div>
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-bold text-white">
-                                    {cacheClearedSuccess ? t('cacheCleared') : t('clearCache')}
-                                  </span>
-                                  <span className="text-[11px] text-white/40 font-normal">
-                                    {t('clearCacheDesc')}
-                                  </span>
-                                </div>
-                              </div>
-                              {cacheClearedSuccess ? (
-                                <Check size={18} className="text-emerald-400" />
-                              ) : (
-                                <ChevronRight size={18} className="text-white/40" />
-                              )}
-                            </button>
-
-                            {/* Admin Dashboard */}
+                              trailing={cacheClearedSuccess ? <Check size={18} className="text-emerald-400" /> : undefined}
+                            />
                             {isAdmin && (
-                              <button onClick={() => { setIsSettingsMenuOpen(false); setIsAdminPanelOpen(true); }} className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><Users size={18} /></div>
-                                  <span className="text-sm font-bold text-white">Admin Dashboard</span>
-                                </div>
-                                <ChevronRight size={18} className={`text-white/40 `} />
-                              </button>
+                              <SettingsRow
+                                icon={Users}
+                                title={tEn('adminDashboard')}
+                                onClick={() => { setIsSettingsMenuOpen(false); setIsAdminPanelOpen(true); }}
+                              />
                             )}
                           </div>
 
-                          {/* Group 4: About, Legal & Support */}
+                          {/* Group: About */}
                           <div className="flex flex-col gap-1.5">
                             <span className="text-[11px] font-bold text-white/40 px-1 uppercase tracking-wider">
-                              {lang === 'ar' ? 'عن التطبيق والدعم والقانوني' : 'About & Legal'}
+                              {tEn('settingsAbout')}
                             </span>
-
-                            {/* About Page */}
-                            <a 
-                              href="/about" 
-                              onClick={() => setIsSettingsMenuOpen(false)} 
-                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><Info size={18} /></div>
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-bold text-white">{lang === 'ar' ? 'عن بكره (About us)' : 'About bokra'}</span>
-                                  <span className="text-[11px] text-white/40 font-normal">{lang === 'ar' ? 'فلسفة التطبيق ورؤيتنا' : 'Philosophy and vision'}</span>
-                                </div>
-                              </div>
-                              <ChevronRight size={18} className="text-white/40" />
-                            </a>
-
-                            {/* Terms of Service */}
-                            <a 
-                              href="/terms" 
-                              onClick={() => setIsSettingsMenuOpen(false)} 
-                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><FileText size={18} /></div>
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-bold text-white">{lang === 'ar' ? 'شروط الاستخدام' : 'Terms of Service'}</span>
-                                  <span className="text-[11px] text-white/40 font-normal">{lang === 'ar' ? 'الحقوق وضوابط الخدمة' : 'Usage policies and terms'}</span>
-                                </div>
-                              </div>
-                              <ChevronRight size={18} className="text-white/40" />
-                            </a>
-
-                            {/* Security & Privacy */}
-                            <a 
-                              href="/security" 
-                              onClick={() => setIsSettingsMenuOpen(false)} 
-                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><Shield size={18} /></div>
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-bold text-white">{lang === 'ar' ? 'الأمان والخصوصية' : 'Security & Privacy'}</span>
-                                  <span className="text-[11px] text-white/40 font-normal">{lang === 'ar' ? 'تشفير البيانات وحماية حسابك' : 'Encryption and data protection'}</span>
-                                </div>
-                              </div>
-                              <ChevronRight size={18} className="text-white/40" />
-                            </a>
-
-                            {/* Official Instagram */}
-                            <a 
-                              href="https://www.instagram.com/bokra.101?cplk=MTdsaGE0M3pwejMxeQ%3D%3D&utm_source=qr" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><ExternalLink size={18} /></div>
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-bold text-white">{lang === 'ar' ? 'انستغرام التطبيق الرسمي' : 'Official Instagram'}</span>
-                                  <span className="text-[11px] text-white/40 font-mono">@bokra.101</span>
-                                </div>
-                              </div>
-                              <ChevronRight size={18} className="text-white/40" />
-                            </a>
-
-                            {/* Support Email */}
-                            <a 
-                              href="mailto:bokra.support@gmail.com" 
-                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><Mail size={18} /></div>
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-bold text-white">{lang === 'ar' ? 'الدعم الفني المباشر' : 'Support Email'}</span>
-                                  <span className="text-[11px] text-white/40 font-mono">bokra.support@gmail.com</span>
-                                </div>
-                              </div>
-                              <ChevronRight size={18} className="text-white/40" />
-                            </a>
-
-                            {/* Creator Account */}
-                            <a 
-                              href="https://www.instagram.com/jj3_xx?igsh=MWVkaGI5ZjNsb3Nreg%3D%3D&utm_source=qr" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between text-base font-bold text-white transition-colors"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center"><User size={18} /></div>
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-bold text-white">{lang === 'ar' ? 'حساب المطور الشخصي' : 'Creator Profile'}</span>
-                                  <span className="text-[11px] text-white/40 font-mono">@jj3_xx</span>
-                                </div>
-                              </div>
-                              <ChevronRight size={18} className="text-white/40" />
-                            </a>
+                            <SettingsRow
+                              icon={Info}
+                              title={tEn('aboutApp')}
+                              subtitle={tEn('aboutAppDesc')}
+                              href="/about"
+                              onClick={() => setIsSettingsMenuOpen(false)}
+                            />
+                            <SettingsRow
+                              icon={FileText}
+                              title={tEn('terms')}
+                              subtitle={tEn('termsDesc')}
+                              href="/terms"
+                              onClick={() => setIsSettingsMenuOpen(false)}
+                            />
+                            <SettingsRow
+                              icon={Shield}
+                              title={tEn('securityPrivacy')}
+                              subtitle={tEn('securityDesc')}
+                              href="/security"
+                              onClick={() => setIsSettingsMenuOpen(false)}
+                            />
+                            <div className="grid grid-cols-3 gap-1.5">
+                              <a
+                                href="https://www.instagram.com/bokra.101?cplk=MTdsaGE0M3pwejMxeQ%3D%3D&utm_source=qr"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex flex-col items-center gap-1 transition-colors"
+                              >
+                                <ExternalLink size={16} className="text-white/60" />
+                                <span className="text-[10px] font-bold text-white/60 text-center">{tEn('officialInstagram')}</span>
+                                <span className="text-[9px] font-mono text-white/35">@bokra.101</span>
+                              </a>
+                              <a
+                                href="mailto:bokra.support@gmail.com"
+                                className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex flex-col items-center gap-1 transition-colors"
+                              >
+                                <Mail size={16} className="text-white/60" />
+                                <span className="text-[10px] font-bold text-white/60 text-center">{tEn('supportEmail')}</span>
+                                <span className="text-[9px] font-mono text-white/35 truncate w-full text-center">bokra.support@gmail.com</span>
+                              </a>
+                              <a
+                                href="https://www.instagram.com/jj3_xx?igsh=MWVkaGI5ZjNsb3Nreg%3D%3D&utm_source=qr"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex flex-col items-center gap-1 transition-colors"
+                              >
+                                <User size={16} className="text-white/60" />
+                                <span className="text-[10px] font-bold text-white/60 text-center">{tEn('creatorProfile')}</span>
+                                <span className="text-[9px] font-mono text-white/35">@jj3_xx</span>
+                              </a>
+                            </div>
                           </div>
 
 
@@ -10869,20 +10739,11 @@ function AppContent({ isPreview = false }) {
                         {/* Creator Signature / Footer */}
                         <div className="flex justify-center items-center py-4 opacity-50 hover:opacity-100 transition-opacity">
                           <span className="text-[10px] font-bold tracking-widest uppercase select-none text-center text-white/50">
-                            {t('creatorSignature')} <a href="https://www.instagram.com/jj3_xx?igsh=MWVkaGI5ZjNsb3Nreg%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" style={{ color: themeColor }} className="underline decoration-dashed underline-offset-4 font-bold">6afra</a>
+                            {tEn('creatorSignature')} <a href="https://www.instagram.com/jj3_xx?igsh=MWVkaGI5ZjNsb3Nreg%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" style={{ color: themeColor }} className="underline decoration-dashed underline-offset-4 font-bold">6afra</a>
                           </span>
                         </div>
                       </div>
 
-                      {/* Bottom Done Button */}
-                      <div className="pt-4 pb-6">
-                        <button 
-                          onClick={() => setIsSettingsMenuOpen(false)} 
-                          className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
-                        >
-                          {'Close'}
-                        </button>
-                      </div>
                     </div>
                   </div>,
                   document.body
