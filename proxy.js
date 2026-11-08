@@ -1,5 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getCorsHeaders, handleCorsOptions } from './lib/cors';
 
 const isProtectedRoute = createRouteMatcher([
@@ -63,6 +63,18 @@ const handler = clerkMiddleware(async (auth, req) => {
 });
 
 export function proxy(req, event) {
+  // Clerk production instances reject localhost origins, so present the deployed origin when proxying locally
+  if (req.nextUrl.pathname.startsWith('/__clerk') && ['localhost', '127.0.0.1'].includes(req.nextUrl.hostname)) {
+    const headers = new Headers(req.headers);
+    headers.set('x-forwarded-host', 'bokra101.vercel.app');
+    headers.set('x-forwarded-proto', 'https');
+    const init = { method: req.method, headers };
+    if (req.body) {
+      init.body = req.body;
+      init.duplex = 'half';
+    }
+    return handler(new NextRequest(req.nextUrl, init), event);
+  }
   return handler(req, event);
 }
 
