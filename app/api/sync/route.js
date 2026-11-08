@@ -193,6 +193,7 @@ export async function GET(req) {
       isAdmin: user.isAdmin,
       isBlocked: user.isBlocked,
       mission: (user.grantedCards && typeof user.grantedCards === 'object' && user.grantedCards._mission) || "",
+      preferences: (user.grantedCards && typeof user.grantedCards === 'object' && user.grantedCards._prefs && typeof user.grantedCards._prefs === 'object') ? user.grantedCards._prefs : {},
       emergencyCards: user.emergencyCards || [],
       grantedCardsLog: user.grantedCards || {},
       finishedTickets: user.finishedTickets || [],
@@ -286,6 +287,10 @@ export async function POST(req) {
       : { ...existingGranted };
     if (state.mission !== undefined && state.mission !== null) {
       newGranted._mission = state.mission;
+    }
+    if (state.preferences && typeof state.preferences === 'object' && !Array.isArray(state.preferences)) {
+      const existingPrefs = (existingGranted._prefs && typeof existingGranted._prefs === 'object') ? existingGranted._prefs : {};
+      newGranted._prefs = { ...existingPrefs, ...state.preferences };
     }
 
     // 1. Maintain persistent Tombstones (_deletedHabits) in user metadata

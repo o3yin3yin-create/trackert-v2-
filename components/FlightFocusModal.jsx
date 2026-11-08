@@ -148,6 +148,7 @@ export default function FlightFocusModal({
     try {
       localStorage.setItem('flight_focus_theme', next);
     } catch {}
+    window.dispatchEvent(new Event('bokra-prefs-changed'));
   }, [theme]);
 
   // Flights schedule list from single source getFlights()

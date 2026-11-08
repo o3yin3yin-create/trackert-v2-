@@ -2119,6 +2119,7 @@ function AppContent({ isPreview = false }) {
       localStorage.setItem('bokra_widgets_config', JSON.stringify(newConfig));
     }
   };
+  const [prefsRev, setPrefsRev] = useState(0);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -2513,6 +2514,39 @@ function AppContent({ isPreview = false }) {
           if (authoritative.mission !== undefined) {
              setMission(authoritative.mission);
              if (typeof window !== 'undefined') localStorage.setItem('daybase_mission_v4', authoritative.mission);
+          }
+          const prefs = authoritative.preferences;
+          if (prefs && typeof prefs === 'object') {
+             if (typeof prefs.auroraColor === 'string' && prefs.auroraColor) {
+               setAuroraColor(prefs.auroraColor);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_aurora_color', prefs.auroraColor);
+             }
+             if (prefs.auroraIntensity !== undefined && prefs.auroraIntensity !== null) {
+               const intensity = Math.max(0, Math.min(100, Number(prefs.auroraIntensity) || 0));
+               setAuroraIntensity(intensity);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_aurora_intensity', String(intensity));
+             }
+             if (Array.isArray(prefs.widgetsConfig) && prefs.widgetsConfig.length > 0 && prefs.widgetsConfig.every(w => w && typeof w.id === 'string')) {
+               setWidgetsConfig(prefs.widgetsConfig);
+               if (typeof window !== 'undefined') localStorage.setItem('bokra_widgets_config', JSON.stringify(prefs.widgetsConfig));
+             }
+             if (prefs.habitNotes && typeof prefs.habitNotes === 'object') {
+               setHabitNotes(prefs.habitNotes);
+               if (typeof window !== 'undefined') localStorage.setItem('daybase_habitNotes_v4', JSON.stringify(prefs.habitNotes));
+             }
+             if (typeof prefs.pinnedFriend === 'string') {
+               setPinnedFriendUsername(prefs.pinnedFriend);
+               if (typeof window !== 'undefined') {
+                 if (prefs.pinnedFriend) localStorage.setItem('daybase_pinned_friend_username', prefs.pinnedFriend);
+                 else localStorage.removeItem('daybase_pinned_friend_username');
+               }
+             }
+             if (prefs.flightTheme === 'dark' || prefs.flightTheme === 'light') {
+               if (typeof window !== 'undefined') localStorage.setItem('flight_focus_theme', prefs.flightTheme);
+             }
+          }
+          if (!state.preferences || Object.keys(state.preferences).length === 0) {
+             markLocalMutation();
           }
 
           if (Array.isArray(authoritative.habits)) {
@@ -3168,8 +3202,24 @@ function AppContent({ isPreview = false }) {
   }, [
     habits, dailyData, sleepData, themeColor, habitCards, grantedCardsLog, 
     theme, bgStyle, lang, focusTimeData, pomodoroTasksData, finishedTickets, mission,
-    dailyTasks, dailyTasksDateStr, avatar, user, isCloudLoaded, executePush
+    dailyTasks, dailyTasksDateStr, avatar, user, isCloudLoaded, executePush,
+    auroraColor, auroraIntensity, widgetsConfig, habitNotes, pinnedFriendUsername, prefsRev
   ]);
+
+  useEffect(() => {
+    if (!isMounted || isPreview || !isCloudLoaded) return;
+    if (isApplyingRemoteRef.current) return;
+    markLocalMutation();
+  }, [auroraColor, auroraIntensity, widgetsConfig, habitNotes, pinnedFriendUsername, prefsRev, isMounted, isPreview, isCloudLoaded, markLocalMutation]);
+
+  useEffect(() => {
+    const handlePrefsChanged = () => {
+      setPrefsRev(r => r + 1);
+      markLocalMutation();
+    };
+    window.addEventListener('bokra-prefs-changed', handlePrefsChanged);
+    return () => window.removeEventListener('bokra-prefs-changed', handlePrefsChanged);
+  }, [markLocalMutation]);
 
   // --- Live Time Tick for absolute timers ---
   const [currentUnixTime, setCurrentUnixTime] = useState(() => Math.floor(Date.now() / 1000));
@@ -3716,6 +3766,14 @@ function AppContent({ isPreview = false }) {
     theme, bgStyle, lang, focusTimeData, pomodoroTasksData: activePomodoroTasks,
     emergencyCards: habitCards, finishedTickets, mission, avatar, deletedHabitIds: Array.from(deletedHabitIdsRef.current),
     spotifyRefreshToken: typeof window !== 'undefined' ? localStorage.getItem('daybase_spotify_refresh_token') || null : null,
+    preferences: {
+      auroraColor,
+      auroraIntensity,
+      widgetsConfig,
+      habitNotes,
+      pinnedFriend: pinnedFriendUsername || '',
+      flightTheme: typeof window !== 'undefined' ? localStorage.getItem('flight_focus_theme') || '' : '',
+    },
     targetDates: syncTargetDates,
     activeDateStr,
     clientTodayStr: realTodayStr,
