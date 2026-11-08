@@ -10508,16 +10508,8 @@ function AppContent({ isPreview = false }) {
                             <SettingsRow
                               icon={Radio}
                               iconProps={{ strokeWidth: 2.5 }}
-                              title={
-                                <span className="flex items-center gap-2">
-                                  {tEn('spotify')}
-                                  {isSpotifyConnected && (
-                                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                      {tEn('spotifyConnected')}
-                                    </span>
-                                  )}
-                                </span>
-                              }
+                              iconClassName={isSpotifyConnected ? 'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/15 text-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.3)]' : undefined}
+                              title={tEn('spotify')}
                               subtitle={isSpotifyConnected
                                 ? tEn('spotifyLinked')
                                 : hasSpotifyAccess

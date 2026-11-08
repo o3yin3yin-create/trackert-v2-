@@ -61,10 +61,9 @@ export default function PushNotificationsCard({
   const copy = {
     title: isAr ? 'إشعارات الدفع' : 'Push notifications',
     desc: isAr ? 'تنبيهات المحاضرات والأصدقاء وجلسات التركيز' : 'Lecture, friend, and focus alerts',
-    enable: isAr ? 'تفعيل الإشعارات' : 'Enable notifications',
-    recheck: isAr ? 'فحص الإذن' : 'Check Permission',
+    enable: isAr ? 'تفعيل' : 'Enable',
+    recheck: isAr ? 'فحص الإذن' : 'Recheck',
     signIn: isAr ? 'تسجيل الدخول للتفعيل' : 'Sign in to enable',
-    enabled: isAr ? 'الإشعارات مفعّلة' : 'Notifications on',
     denied: isAr ? 'مرفوضة من المتصفح. اضغط على أيقونة الإعدادات في شريط الرابط واجعل الإشعارات سماح (Allow).' : 'Blocked in the browser. Allow notifications in your browser site settings.',
     iosHint: isAr
       ? 'على آيفون: أضف bokra للشاشة الرئيسية أولاً، ثم افتحها من الأيقونة وفعّل الإشعارات.'
@@ -182,52 +181,54 @@ export default function PushNotificationsCard({
     }
   };
 
+  const enabled = permission === 'granted';
+  const denied = permission === 'denied';
+
   return (
-    <div className="w-full text-left p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-3 text-base font-bold text-white">
+    <div className="w-full text-left p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between gap-3">
       <div className="flex items-center gap-3 min-w-0">
-        <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center shrink-0">
-          <Bell size={20} strokeWidth={2.5} />
+        <div
+          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+            enabled
+              ? 'bg-emerald-500/15 text-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.3)]'
+              : denied
+              ? 'bg-amber-500/15 text-amber-400 shadow-[0_0_14px_rgba(251,191,36,0.2)]'
+              : 'bg-white/10 text-white/60'
+          }`}
+        >
+          <Bell size={18} strokeWidth={2.5} />
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-sm font-bold text-white">{copy.title}</span>
-          <span className="text-[11px] text-white/50 font-normal leading-relaxed">
-            {needsHomeScreen ? copy.iosHint : copy.desc}
+          <span className="text-sm font-bold text-white truncate">{copy.title}</span>
+          <span className={`text-[11px] font-normal truncate ${error ? 'text-red-400' : denied || needsHomeScreen ? 'text-amber-400/90' : 'text-white/40'}`}>
+            {error || (needsHomeScreen ? copy.iosHint : denied ? copy.denied : copy.desc)}
           </span>
-          {permission === 'denied' && !needsHomeScreen && (
-            <span className="text-[11px] text-amber-400/90 font-normal mt-1">{copy.denied}</span>
-          )}
-          {error && <span className="text-[11px] text-red-400 font-normal mt-1 break-words">{error}</span>}
         </div>
       </div>
-      {needsHomeScreen ? null : permission === 'granted' ? (
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              showLocalNotification(
-                isAr ? 'تجربة إشعار bokra' : 'bokra Notification Test',
-                {
-                  body: isAr ? 'الإشعارات تعمل بنجاح مع الصوت والتنبيه.' : 'Notifications are working with sound and alerts.',
-                  tag: 'test_notification',
-                }
-              );
-            }}
-            className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-all active:scale-95 cursor-pointer"
-          >
-            {isAr ? 'تجربة' : 'Test'}
-          </button>
-          <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-            {copy.enabled}
-          </span>
-        </div>
+      {needsHomeScreen ? null : enabled ? (
+        <button
+          type="button"
+          onClick={() => {
+            showLocalNotification(
+              isAr ? 'تجربة إشعار bokra' : 'bokra Notification Test',
+              {
+                body: isAr ? 'الإشعارات تعمل بنجاح مع الصوت والتنبيه.' : 'Notifications are working with sound and alerts.',
+                tag: 'test_notification',
+              }
+            );
+          }}
+          className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-all active:scale-95 cursor-pointer"
+        >
+          {isAr ? 'تجربة' : 'Test'}
+        </button>
       ) : (
         <button
           type="button"
           onClick={onEnable}
           disabled={busy}
-          className="shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-black bg-white text-black hover:bg-white/90 transition-all active:scale-95 disabled:opacity-40 cursor-pointer"
+          className="shrink-0 px-3 py-1 rounded-lg text-[11px] font-black bg-white text-black hover:bg-white/90 transition-all active:scale-95 disabled:opacity-40 cursor-pointer"
         >
-          {busy ? '…' : permission === 'denied' ? copy.recheck : copy.enable}
+          {busy ? '…' : denied ? copy.recheck : copy.enable}
         </button>
       )}
     </div>
