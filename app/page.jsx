@@ -9838,30 +9838,38 @@ function AppContent({ isPreview = false }) {
 
           {/* --- DAILY TASKS PAGE (FULL SCREEN) --- */}
           {isTasksModalOpen && createPortal(
-            <div className="fixed inset-0 z-[10000] bg-black overflow-y-auto">
-              <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">
-                <div>
-                  {/* Header */}
-                  <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
-                    <div className="flex items-center gap-3">
-                      <button 
-                        onClick={() => setIsTasksModalOpen(false)} 
-                        className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
-                        aria-label="Back"
-                      >
-                        <ChevronLeft size={20} className={''} />
-                      </button>
-                      <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
-                        <ListChecks size={24} className="text-white/80" /> {t('todaysTasks')}
-                      </h2>
-                    </div>
-                    <button onClick={() => setIsTasksModalOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
-                      <X size={18} />
+            <div className="fixed inset-0 z-[10000] bg-black flex flex-col">
+              <div className="w-full max-w-lg mx-auto flex-1 flex flex-col min-h-0 px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2rem)]">
+                {/* Header */}
+                <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/10 shrink-0">
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => setIsTasksModalOpen(false)} 
+                      className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
+                      aria-label="Back"
+                    >
+                      <ChevronLeft size={20} className={''} />
                     </button>
+                    <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                      <ListChecks size={24} className="text-white/80" /> {t('todaysTasks')}
+                    </h2>
                   </div>
+                  <button onClick={() => setIsTasksModalOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                    <X size={18} />
+                  </button>
+                </div>
 
-                  {/* Add New Task Input Card */}
-                  <div className="flex flex-col gap-2 mb-6">
+                {/* Task Items List (Scrollable) */}
+                <div className="flex-1 overflow-y-auto min-h-0 flex flex-col gap-3 pb-6">
+                  {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).map((task, idx) => renderTaskItem(task, idx, true))}
+                  {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).length === 0 && (
+                    <div className="text-center text-white/30 text-xs font-bold uppercase tracking-widest py-16">{t('noTasks')}</div>
+                  )}
+                </div>
+
+                {/* Bottom Add Bar (In place of Close button) */}
+                <div className="shrink-0 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] border-t border-white/10 bg-black">
+                  <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
                       <button
                         type="button"
@@ -9942,24 +9950,6 @@ function AppContent({ isPreview = false }) {
                       </div>
                     )}
                   </div>
-
-                  {/* Task Items List */}
-                  <div className="flex flex-col gap-3 pb-8">
-                    {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).map((task, idx) => renderTaskItem(task, idx, true))}
-                    {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).length === 0 && (
-                      <div className="text-center text-white/30 text-xs font-bold uppercase tracking-widest py-16">{t('noTasks')}</div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Bottom Done Button */}
-                <div className="pt-4 pb-6">
-                  <button 
-                    onClick={() => setIsTasksModalOpen(false)} 
-                    className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
-                  >
-                    {'Close'}
-                  </button>
                 </div>
               </div>
             </div>, 
