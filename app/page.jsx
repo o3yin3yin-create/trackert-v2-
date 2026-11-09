@@ -10022,7 +10022,7 @@ function AppContent({ isPreview = false }) {
           {/* --- DAILY TASKS PAGE (FULL SCREEN) --- */}
           {isTasksModalOpen && createPortal(
             <div className="fixed inset-0 z-[10000] bg-black flex flex-col">
-              <div className="w-full max-w-lg mx-auto flex-1 flex flex-col min-h-0 px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2rem)]">
+              <div className="w-full max-w-lg mx-auto flex-1 flex flex-col min-h-0 px-5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)]">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/10 shrink-0">
                   <div className="flex items-center gap-3">

@@ -78,7 +78,7 @@ export default function AthkarModal({
     <div className="fixed inset-0 z-[100020] bg-black flex flex-col justify-between overflow-hidden animate-in fade-in duration-150">
       
       {/* Minimal Header */}
-      <header className="sticky top-0 z-30 bg-black/95 backdrop-blur-md pt-[calc(env(safe-area-inset-top,0px)+0.5rem)]">
+      <header className="sticky top-0 z-30 bg-black/95 backdrop-blur-md pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-2">
         <div className="max-w-2xl mx-auto px-4 pb-3 flex items-center justify-between">
           
           {/* Close button */}

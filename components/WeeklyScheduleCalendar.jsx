@@ -322,7 +322,7 @@ export default function WeeklyScheduleCalendar({
         </div>
       )}
 
-      <div className="min-h-screen w-full max-w-4xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+3rem)] flex flex-col justify-between">
+      <div className="min-h-screen w-full max-w-4xl mx-auto px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+3rem)] flex flex-col justify-between">
         
         <div>
           {/* Header */}

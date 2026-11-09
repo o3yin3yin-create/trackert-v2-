@@ -21,8 +21,48 @@ export interface ActiveTrackInfo {
   item: SoundItem;
 }
 
+export interface RemoteAmbientSession {
+  deviceId: string;
+  deviceName: string;
+  platform: string;
+  isPlaying: boolean;
+  activeTracks: { soundId: string; volume: number }[];
+  masterVolume: number;
+  isMuted: boolean;
+  targetDeviceId?: string | null;
+  updatedAt: number;
+}
+
+function getOrCreateDeviceId(): string {
+  if (typeof window === 'undefined') return 'server';
+  try {
+    let id = localStorage.getItem('bokra_ambient_device_id');
+    if (!id) {
+      id = `dev_${Math.random().toString(36).slice(2, 9)}_${Date.now().toString(36)}`;
+      localStorage.setItem('bokra_ambient_device_id', id);
+    }
+    return id;
+  } catch (_) {
+    return `dev_${Date.now()}`;
+  }
+}
+
+function detectDeviceName(): string {
+  if (typeof navigator === 'undefined') return 'Web Player';
+  const ua = navigator.userAgent;
+  if (/iPhone/i.test(ua)) return 'iPhone';
+  if (/iPad/i.test(ua)) return 'iPad';
+  if (/Macintosh/i.test(ua)) return 'MacBook';
+  if (/Windows/i.test(ua)) return 'Windows PC';
+  if (/Android/i.test(ua)) return 'Android Device';
+  if (/Linux/i.test(ua)) return 'Linux Device';
+  return 'Web Player';
+}
+
 export function useAmbientMixer() {
   const engineRef = useRef<SoundEngine | null>(null);
+  const deviceIdRef = useRef<string>('init');
+  const deviceNameRef = useRef<string>('Web Player');
 
   const [activeTracks, setActiveTracks] = useState<ActiveTrackInfo[]>([]);
   const [masterVolume, setMasterVolumeState] = useState<number>(0.8);
@@ -31,6 +71,11 @@ export function useAmbientMixer() {
   const [recentSounds, setRecentSounds] = useState<string[]>([]);
   const [customPresets, setCustomPresets] = useState<SoundMixPreset[]>([]);
   const [limitWarning, setLimitWarning] = useState<string | null>(null);
+
+  // Cross-device sync state (Spotify Connect style)
+  const [remoteSession, setRemoteSession] = useState<RemoteAmbientSession | null>(null);
+  const lastSyncTimestampRef = useRef<number>(0);
+  const isUpdatingFromRemoteRef = useRef<boolean>(false);
 
   // Sleep timer state: minutes remaining, total target minutes, active status
   const [timerRemainingSeconds, setTimerRemainingSeconds] = useState<number | null>(null);
@@ -42,6 +87,9 @@ export function useAmbientMixer() {
   // Initialize engine & local storage state
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    deviceIdRef.current = getOrCreateDeviceId();
+    deviceNameRef.current = detectDeviceName();
 
     const engine = SoundEngine.getInstance();
     engineRef.current = engine;
@@ -109,6 +157,11 @@ export function useAmbientMixer() {
         try {
           localStorage.setItem('bokra_ambient_last_mix', JSON.stringify(mixObj));
         } catch (_) {}
+      }
+
+      // Sync to cloud for cross-device Spotify Connect experience
+      if (!isUpdatingFromRemoteRef.current) {
+        pushStateToServer(detailed, engine.getMasterVolume(), engine.getIsMuted());
       }
     };
 
@@ -295,6 +348,229 @@ export function useAmbientMixer() {
     return false;
   }, []);
 
+  // Push local playback state to server for cross-device sync
+  const pushStateToServer = useCallback(async (tracks: ActiveTrackInfo[], masterVol: number, muted: boolean) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const isPlaying = tracks.length > 0;
+      await fetch('/api/ambient/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deviceId: deviceIdRef.current,
+          deviceName: deviceNameRef.current,
+          platform: /iPhone|iPad|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+          isPlaying,
+          activeTracks: tracks.map((t) => ({ soundId: t.soundId, volume: t.volume })),
+          masterVolume: masterVol,
+          isMuted: muted,
+        }),
+      });
+      lastSyncTimestampRef.current = Date.now();
+    } catch (_) {}
+  }, []);
+
+  // Cross-device synchronization polling (Spotify Connect style)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let isMounted = true;
+    const pollRemoteSession = async () => {
+      try {
+        const res = await fetch('/api/ambient/session', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!isMounted) return;
+
+        const serverSession: RemoteAmbientSession | null = data.session;
+        if (!serverSession || !serverSession.isPlaying) {
+          setRemoteSession(null);
+          return;
+        }
+
+        const isCurrentDevice = serverSession.deviceId === deviceIdRef.current;
+
+        if (isCurrentDevice) {
+          // This device is the active audio emitter
+          setRemoteSession(null);
+
+          // Check if remote device sent remote control updates
+          if (serverSession.updatedAt > lastSyncTimestampRef.current + 600) {
+            lastSyncTimestampRef.current = serverSession.updatedAt;
+            const engine = engineRef.current || SoundEngine.getInstance();
+            const currentTracks = engine.getActiveTracks();
+
+            const serverTrackMap = new Map(serverSession.activeTracks.map((t) => [t.soundId, t.volume]));
+            const currentTrackMap = new Map(currentTracks.map((t) => [t.soundId, t.volume]));
+
+            let hasDifference = false;
+            if (serverTrackMap.size !== currentTrackMap.size) {
+              hasDifference = true;
+            } else {
+              for (const [sId, vol] of serverTrackMap.entries()) {
+                if (Math.abs((currentTrackMap.get(sId) ?? -1) - vol) > 0.04) {
+                  hasDifference = true;
+                  break;
+                }
+              }
+            }
+
+            if (hasDifference && !isUpdatingFromRemoteRef.current) {
+              isUpdatingFromRemoteRef.current = true;
+              const mixObj: { [id: string]: number } = {};
+              serverSession.activeTracks.forEach((t) => {
+                mixObj[t.soundId] = t.volume;
+              });
+              await engine.loadMix(mixObj);
+              setTimeout(() => {
+                isUpdatingFromRemoteRef.current = false;
+              }, 400);
+            }
+          }
+        } else {
+          // Another device is actively playing (e.g. laptop or phone)!
+          setRemoteSession(serverSession);
+
+          // If playback was explicitly handed over to this device
+          if (serverSession.targetDeviceId === deviceIdRef.current) {
+            const engine = engineRef.current || SoundEngine.getInstance();
+            const mixObj: { [id: string]: number } = {};
+            serverSession.activeTracks.forEach((t) => {
+              mixObj[t.soundId] = t.volume;
+            });
+            await engine.loadMix(mixObj);
+            setRemoteSession(null);
+            pushStateToServer(
+              serverSession.activeTracks.map((t) => ({
+                soundId: t.soundId,
+                volume: t.volume,
+                item: SOUND_CATALOG.find((s) => s.id === t.soundId)!,
+              })),
+              serverSession.masterVolume,
+              serverSession.isMuted
+            );
+          }
+        }
+      } catch (_) {}
+    };
+
+    const interval = setInterval(pollRemoteSession, 3200);
+    pollRemoteSession();
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [pushStateToServer]);
+
+  // Transfer playback from remote device to this device
+  const transferPlaybackToHere = useCallback(async () => {
+    if (!remoteSession) return;
+    const engine = engineRef.current || SoundEngine.getInstance();
+    const mixObj: { [id: string]: number } = {};
+    remoteSession.activeTracks.forEach((t) => {
+      mixObj[t.soundId] = t.volume;
+    });
+
+    await engine.loadMix(mixObj);
+    const detailedTracks: ActiveTrackInfo[] = remoteSession.activeTracks
+      .map((t) => {
+        const item = SOUND_CATALOG.find((s) => s.id === t.soundId);
+        return item ? { soundId: t.soundId, volume: t.volume, item } : null;
+      })
+      .filter(Boolean) as ActiveTrackInfo[];
+
+    setRemoteSession(null);
+    await pushStateToServer(detailedTracks, remoteSession.masterVolume, remoteSession.isMuted);
+  }, [remoteSession, pushStateToServer]);
+
+  // Remote controls: control volume or tracks on remote device
+  const remoteSetVolume = useCallback(
+    async (soundId: string, volume: number) => {
+      if (!remoteSession) return;
+      const updatedTracks = remoteSession.activeTracks.map((t) =>
+        t.soundId === soundId ? { ...t, volume } : t
+      );
+      setRemoteSession({ ...remoteSession, activeTracks: updatedTracks, updatedAt: Date.now() });
+
+      try {
+        await fetch('/api/ambient/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            deviceId: remoteSession.deviceId,
+            deviceName: remoteSession.deviceName,
+            platform: remoteSession.platform,
+            isPlaying: true,
+            activeTracks: updatedTracks,
+            masterVolume: remoteSession.masterVolume,
+            isMuted: remoteSession.isMuted,
+          }),
+        });
+      } catch (_) {}
+    },
+    [remoteSession]
+  );
+
+  const remoteToggleTrack = useCallback(
+    async (soundId: string) => {
+      if (!remoteSession) return;
+      const exists = remoteSession.activeTracks.some((t) => t.soundId === soundId);
+      let updatedTracks = [];
+      if (exists) {
+        updatedTracks = remoteSession.activeTracks.filter((t) => t.soundId !== soundId);
+      } else {
+        const soundItem = SOUND_CATALOG.find((s) => s.id === soundId);
+        const defVol = soundItem ? soundItem.defaultVolume : 0.5;
+        updatedTracks = [...remoteSession.activeTracks, { soundId, volume: defVol }];
+      }
+
+      setRemoteSession({
+        ...remoteSession,
+        activeTracks: updatedTracks,
+        isPlaying: updatedTracks.length > 0,
+        updatedAt: Date.now(),
+      });
+
+      try {
+        await fetch('/api/ambient/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            deviceId: remoteSession.deviceId,
+            deviceName: remoteSession.deviceName,
+            platform: remoteSession.platform,
+            isPlaying: updatedTracks.length > 0,
+            activeTracks: updatedTracks,
+            masterVolume: remoteSession.masterVolume,
+            isMuted: remoteSession.isMuted,
+          }),
+        });
+      } catch (_) {}
+    },
+    [remoteSession]
+  );
+
+  const remoteStopAll = useCallback(async () => {
+    if (!remoteSession) return;
+    setRemoteSession(null);
+    try {
+      await fetch('/api/ambient/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deviceId: remoteSession.deviceId,
+          deviceName: remoteSession.deviceName,
+          platform: remoteSession.platform,
+          isPlaying: false,
+          activeTracks: [],
+          masterVolume: remoteSession.masterVolume,
+          isMuted: remoteSession.isMuted,
+        }),
+      });
+    } catch (_) {}
+  }, [remoteSession]);
+
   return {
     activeTracks,
     activeTracksCount: activeTracks.length,
@@ -308,6 +584,14 @@ export function useAmbientMixer() {
     timerRemainingSeconds,
     timerSelectedMinutes,
     autoStartWithPomodoro,
+    remoteSession,
+    isRemoteActive: Boolean(remoteSession?.isPlaying),
+    currentDeviceId: deviceIdRef.current,
+    currentDeviceName: deviceNameRef.current,
+    transferPlaybackToHere,
+    remoteSetVolume,
+    remoteToggleTrack,
+    remoteStopAll,
     toggleSound,
     setVolume,
     setMasterVolume,

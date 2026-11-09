@@ -237,29 +237,85 @@ export class SoundEngine {
   }
 
   /**
-   * Procedural Noise Synthesis in Web Audio API:
-   * Generates a 6-second seamless looping AudioBuffer.
+   * Seamless Equal-Power Loop Post-Processor for AudioBuffers
+   * Blends the tail into the head with constant-energy sin/cos curve.
+   * Completely eliminates clicks, pops, volume dips, and cuts on loop boundaries.
+   */
+  private makeSeamlessLoopBuffer(ctx: AudioContext, rawBuffer: AudioBuffer): AudioBuffer {
+    const sampleRate = rawBuffer.sampleRate;
+    const numChannels = rawBuffer.numberOfChannels;
+    const rawLength = rawBuffer.length;
+
+    // Crossfade duration: 1.5 seconds, or up to 8% of the file
+    const fadeSamples = Math.min(Math.floor(sampleRate * 1.5), Math.floor(rawLength * 0.08));
+    if (fadeSamples < 256 || rawLength <= fadeSamples * 2) {
+      return rawBuffer;
+    }
+
+    const loopedLength = rawLength - fadeSamples;
+    const loopedBuffer = ctx.createBuffer(numChannels, loopedLength, sampleRate);
+
+    for (let c = 0; c < numChannels; c++) {
+      const inData = rawBuffer.getChannelData(c);
+      const outData = loopedBuffer.getChannelData(c);
+
+      // Copy the steady body
+      for (let i = fadeSamples; i < loopedLength; i++) {
+        outData[i] = inData[i];
+      }
+
+      // Equal-power crossfade (sin/cos) between tail and head
+      const tailOffset = loopedLength;
+      for (let i = 0; i < fadeSamples; i++) {
+        const progress = i / fadeSamples;
+        const headGain = Math.sin(progress * Math.PI * 0.5);
+        const tailGain = Math.cos(progress * Math.PI * 0.5);
+        outData[i] = inData[i] * headGain + inData[tailOffset + i] * tailGain;
+      }
+    }
+
+    return loopedBuffer;
+  }
+
+  /**
+   * Studio-Grade Procedural Noise Synthesis in Web Audio API:
+   * Generates deep, warm, smooth noise buffers (Spotify-grade acoustics)
+   * with 100% seamless, click-free equal-power overlap-add looping.
    */
   private createNoiseBuffer(noiseType: 'white' | 'pink' | 'brown' | 'green'): AudioBuffer {
     if (!this.audioCtx) throw new Error('AudioContext missing');
 
     const sampleRate = this.audioCtx.sampleRate;
-    const durationSeconds = 6;
-    const bufferSize = sampleRate * durationSeconds;
-    const buffer = this.audioCtx.createBuffer(2, bufferSize, sampleRate);
+    const durationSeconds = 16; // 16s buffer gives organic variety and eliminates repetition
+    const crossfadeSeconds = 2.0; // 2s smooth overlap
+    const bodySamples = sampleRate * durationSeconds;
+    const fadeSamples = Math.floor(sampleRate * crossfadeSeconds);
+    const totalSamples = bodySamples + fadeSamples;
+
+    // Temporary buffer to hold generated audio before crossfading
+    const tempL = new Float32Array(totalSamples);
+    const tempR = new Float32Array(totalSamples);
 
     for (let channel = 0; channel < 2; channel++) {
-      const data = buffer.getChannelData(channel);
+      const data = channel === 0 ? tempL : tempR;
 
-      if (noiseType === 'white' || noiseType === 'green') {
-        // Uniform random distribution [-1.0, 1.0]
-        for (let i = 0; i < bufferSize; i++) {
-          data[i] = Math.random() * 2 - 1;
+      if (noiseType === 'white') {
+        // Smooth White Noise: Gentle 6.5kHz lowpass roll-off to eliminate harsh piercing static
+        // Sounds like a soft, soothing air conditioner or luxury room fan
+        let lp = 0;
+        const alpha = Math.exp(-2 * Math.PI * 6500 / sampleRate);
+        for (let i = 0; i < totalSamples; i++) {
+          const white = Math.random() * 2 - 1;
+          lp = (1 - alpha) * white + alpha * lp;
+          data[i] = lp * 0.75;
         }
       } else if (noiseType === 'pink') {
-        // Paul Kellet's refined 7-pole IIR filter on white noise (-3dB/octave)
+        // Pink Noise: Paul Kellet 7-pole IIR filter (-3dB/octave) + gentle top-end de-harshing
+        // Sounds like gentle, steady rainfall or distant breeze
         let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
-        for (let i = 0; i < bufferSize; i++) {
+        let lp = 0;
+        const alpha = Math.exp(-2 * Math.PI * 4500 / sampleRate);
+        for (let i = 0; i < totalSamples; i++) {
           const white = Math.random() * 2 - 1;
           b0 = 0.99886 * b0 + white * 0.0555179;
           b1 = 0.99332 * b1 + white * 0.0750759;
@@ -267,33 +323,93 @@ export class SoundEngine {
           b3 = 0.86650 * b3 + white * 0.3104856;
           b4 = 0.55000 * b4 + white * 0.5329522;
           b5 = -0.7616 * b5 - white * 0.0168980;
-          data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+          const rawPink = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
           b6 = white * 0.115926;
+          lp = (1 - alpha) * rawPink + alpha * lp;
+          data[i] = lp * 0.85;
         }
       } else if (noiseType === 'brown') {
-        // Leaky integrated white noise (-6dB/octave)
+        // Spotify-grade Deep Brown Noise:
+        // Deep, warm, velvety rumble like an airplane cabin or waterfall.
+        // Double lowpass at 420Hz + highpass at 32Hz (eliminates harshness and speaker rumble)
         let lastOut = 0.0;
-        for (let i = 0; i < bufferSize; i++) {
-          const white = Math.random() * 2 - 1;
-          lastOut = (lastOut + 0.02 * white) / 1.02;
-          data[i] = lastOut * 3.5;
-        }
-      }
+        let lp1 = 0.0, lp2 = 0.0;
+        let hpInPrev = 0.0, hpOutPrev = 0.0;
+        const alphaLp = Math.exp(-2 * Math.PI * 420 / sampleRate);
+        const alphaHp = Math.exp(-2 * Math.PI * 32 / sampleRate);
 
-      // Smooth zero-crossing envelope at loop edges (10ms fade in/out) to guarantee zero click
-      const fadeSamples = Math.floor(sampleRate * 0.02);
-      for (let i = 0; i < fadeSamples; i++) {
-        const factor = i / fadeSamples;
-        data[i] *= factor;
-        data[bufferSize - 1 - i] *= factor;
+        for (let i = 0; i < totalSamples; i++) {
+          const white = Math.random() * 2 - 1;
+          // Leaky integration (-6dB/oct)
+          lastOut = (lastOut + 0.016 * white) / 1.016;
+
+          // 2-pole gentle lowpass filter
+          lp1 = (1 - alphaLp) * lastOut + alphaLp * lp1;
+          lp2 = (1 - alphaLp) * lp1 + alphaLp * lp2;
+
+          // Gentle 32Hz highpass to prevent muddy DC offset
+          const hpOut = alphaHp * (hpOutPrev + lp2 - hpInPrev);
+          hpInPrev = lp2;
+          hpOutPrev = hpOut;
+
+          // Soft knee saturation for velvet warmth
+          const scaled = hpOut * 4.2;
+          data[i] = Math.tanh(scaled) * 0.82;
+        }
+      } else if (noiseType === 'green') {
+        // Green Noise: Center frequency ~600Hz (nature band 250Hz - 2200Hz)
+        // With organic slow-breathing amplitude modulation (~0.08Hz) mimicking ocean surf / wind
+        let lp = 0.0;
+        let hpInPrev = 0.0, hpOutPrev = 0.0;
+        const alphaLp = Math.exp(-2 * Math.PI * 2200 / sampleRate);
+        const alphaHp = Math.exp(-2 * Math.PI * 250 / sampleRate);
+
+        for (let i = 0; i < totalSamples; i++) {
+          const white = Math.random() * 2 - 1;
+
+          // High-pass at 250Hz
+          const hpOut = alphaHp * (hpOutPrev + white - hpInPrev);
+          hpInPrev = white;
+          hpOutPrev = hpOut;
+
+          // Low-pass at 2200Hz
+          lp = (1 - alphaLp) * hpOut + alphaLp * lp;
+
+          // Gentle organic wave breathing
+          const lfo = 1.0 + 0.12 * Math.sin((2 * Math.PI * 0.08 * i) / sampleRate);
+          data[i] = lp * 1.6 * lfo;
+        }
       }
     }
 
-    return buffer;
+    // Now build final seamless AudioBuffer of bodySamples with equal-power overlap-add
+    const finalBuffer = this.audioCtx.createBuffer(2, bodySamples, sampleRate);
+
+    for (let channel = 0; channel < 2; channel++) {
+      const src = channel === 0 ? tempL : tempR;
+      const dest = finalBuffer.getChannelData(channel);
+
+      // Copy steady body
+      for (let i = fadeSamples; i < bodySamples; i++) {
+        dest[i] = src[i];
+      }
+
+      // Equal-power crossfade between the extra tail and the head
+      for (let i = 0; i < fadeSamples; i++) {
+        const t = i / fadeSamples;
+        const headGain = Math.sin(t * Math.PI * 0.5);
+        const tailGain = Math.cos(t * Math.PI * 0.5);
+        const tailIndex = bodySamples + i;
+        dest[i] = src[i] * headGain + src[tailIndex] * tailGain;
+      }
+    }
+
+    return finalBuffer;
   }
 
   /**
    * Fetch and decode an audio file with offline CacheStorage fallback and in-memory caching.
+   * Post-processes every file with seamless equal-power crossfading to eliminate loop gaps.
    */
   private async loadAudioBuffer(sound: SoundItem): Promise<AudioBuffer | null> {
     if (this.bufferCache.has(sound.id)) {
@@ -349,8 +465,10 @@ export class SoundEngine {
         }
 
         const decoded = await ctx.decodeAudioData(arrayBuf);
-        this.bufferCache.set(sound.id, decoded);
-        return decoded;
+        // Apply seamless loop crossfade to eliminate any end-to-beginning clicks/cuts
+        const seamlessDecoded = this.makeSeamlessLoopBuffer(ctx, decoded);
+        this.bufferCache.set(sound.id, seamlessDecoded);
+        return seamlessDecoded;
       } catch (err) {
         console.error(`[SoundEngine] Could not load audio file ${sound.src}:`, err);
         return null;

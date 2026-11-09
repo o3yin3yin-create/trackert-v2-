@@ -623,8 +623,9 @@ export default function WindowSeat({
       {/* Absolute Close button with auto-hide */}
       <button 
         onClick={(e) => { e.stopPropagation(); onClose(); }}
-        className="absolute top-10 right-8 z-[10000000] w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all active:scale-90 pointer-events-auto border border-white/5"
+        className="absolute right-8 z-[10000000] w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md flex items-center justify-center transition-all active:scale-90 pointer-events-auto border border-white/5"
         style={{ 
+          top: 'calc(max(env(safe-area-inset-top, 0px), 24px) + 16px)',
           cursor: 'pointer',
           opacity: showControls ? 1 : 0,
           transform: `translateY(${showControls ? 0 : '-15px'})`,

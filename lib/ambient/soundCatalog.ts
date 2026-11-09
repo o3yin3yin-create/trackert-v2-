@@ -271,6 +271,32 @@ export const SOUND_CATALOG: SoundItem[] = [
     defaultVolume: 0.45,
     license: 'Creative Commons 0 (CC0) / Public Domain',
   },
+  {
+    id: 'street_calm',
+    nameEn: 'Calm Street',
+    nameAr: 'شارع هادئ',
+    category: 'places',
+    type: 'file',
+    src: '/sounds/street-calm.mp3',
+    icon: 'Compass',
+    descriptionEn: 'Gentle outdoor ambience with distant footsteps and light city breeze.',
+    descriptionAr: 'أجواء شارع هادئة مع خطوات مشاة ونسيم مدينة خفيف يبعث على الراحة.',
+    defaultVolume: 0.5,
+    license: 'Creative Commons 0 (CC0) / Wikimedia Commons',
+  },
+  {
+    id: 'street_busy',
+    nameEn: 'Busy Street',
+    nameAr: 'شارع مزدحم',
+    category: 'places',
+    type: 'file',
+    src: '/sounds/street-busy.mp3',
+    icon: 'Building2',
+    descriptionEn: 'Dynamic urban streetscape with distant traffic and active city pulse.',
+    descriptionAr: 'نبض المدينة الحيوي مع حركة مرور متوازنة وحيوية شوارع دافئة.',
+    defaultVolume: 0.45,
+    license: 'Creative Commons 0 (CC0) / Wikimedia Commons',
+  },
 
   // ---------------- OTHER (Focus & Rhythm) ----------------
   {

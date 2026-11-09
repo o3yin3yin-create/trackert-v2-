@@ -135,7 +135,7 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
         className="w-full max-w-5xl h-[92vh] max-h-[880px] bg-[#0A0A0C] border border-white/10 rounded-[28px] sm:rounded-[32px] relative z-10 flex flex-col shadow-2xl overflow-hidden font-sans text-white select-none"
       >
         {/* Top Control Bar */}
-        <div className="px-6 py-4.5 pt-[calc(env(safe-area-inset-top,0px)+1.2rem)] border-b border-white/10 flex items-center justify-between shrink-0 bg-[#0E0F14]/70 backdrop-blur-lg">
+        <div className="px-6 py-4.5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-5 border-b border-white/10 flex items-center justify-between shrink-0 bg-[#0E0F14]/70 backdrop-blur-lg">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white shadow-inner shrink-0">
               <Shield size={20} className="text-white" />

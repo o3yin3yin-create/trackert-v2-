@@ -5,13 +5,13 @@ import {
   Play, Pause, Star, Volume2, 
   Radio, Activity, Waves, Leaf, CloudRain, CloudDrizzle, CloudLightning, 
   Compass, Wind, Sun, Moon, Coffee, BookOpen, Navigation, Plane, Flame, 
-  RotateCw, Laptop, Clock, Music, Airplay, Sparkles
+  RotateCw, Laptop, Clock, Music, Airplay, Sparkles, Building2
 } from 'lucide-react';
 
 const ICON_MAP = {
   Radio, Activity, Waves, Leaf, CloudRain, CloudDrizzle, CloudLightning,
   Compass, Wind, Sun, Moon, Coffee, BookOpen, Navigation, Plane, Flame,
-  RotateCw, Laptop, Clock, Music, Airplay, Sparkles
+  RotateCw, Laptop, Clock, Music, Airplay, Sparkles, Building2
 };
 
 export default function SoundCard({
