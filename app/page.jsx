@@ -2117,6 +2117,11 @@ function AppContent({ isPreview = false }) {
   const [isFocusTasksViewOpen, setIsFocusTasksViewOpen] = useState(false);
   const [isWidgetsModalOpen, setIsWidgetsModalOpen] = useState(false);
   const [isAppearanceModalOpen, setIsAppearanceModalOpen] = useState(false);
+  const [isCardsModalOpen, setIsCardsModalOpen] = useState(false);
+  const [isPresetsModalOpen, setIsPresetsModalOpen] = useState(false);
+  const [isAthkarModalOpen, setIsAthkarModalOpen] = useState(false);
+  const [athkarModalType, setAthkarModalType] = useState('morning');
+  const [athkarHabitId, setAthkarHabitId] = useState(null);
   const [spotifyNotification, setSpotifyNotification] = useState(null);
 
   // Dynamic Home Screen Widgets Config
@@ -3594,9 +3599,164 @@ function AppContent({ isPreview = false }) {
     setTimeout(() => setIsManageMounted(false), 300);
   };
 
-  // Close all modals/pages — ensures only one is visible at a time
-  const closeAllModals = (skipManage = false) => {
+  // --- Centralized Stepwise Navigation Back-Stack System ---
+  const [navStack, setNavStack] = useState([]);
+  const navStackRef = useRef([]);
+  navStackRef.current = navStack;
+  const isPoppingFromNavRef = useRef(false);
+
+  const setScreenVisible = (screenId, visible, meta = {}) => {
+    switch (screenId) {
+      case 'settings':
+        setIsSettingsMenuOpen(visible);
+        break;
+      case 'appearance':
+        setIsAppearanceModalOpen(visible);
+        break;
+      case 'widgets':
+        setIsWidgetsModalOpen(visible);
+        break;
+      case 'avatar':
+        setIsAvatarModalOpen(visible);
+        break;
+      case 'analytics':
+        setIsAnalyticsModalOpen(visible);
+        if (!visible) {
+          setIsTicketsHistoryViewOpen(false);
+          setIsFocusTasksViewOpen(false);
+        }
+        break;
+      case 'friends':
+        setIsFriendsModalOpen(visible);
+        if (!visible) setSelectedFriendForModal(null);
+        else if (meta?.selectedFriend) setSelectedFriendForModal(meta.selectedFriend);
+        break;
+      case 'schedule':
+        setIsScheduleCalendarOpen(visible);
+        if (!visible) setViewedFriendSchedule(null);
+        else if (meta?.friendSchedule) setViewedFriendSchedule(meta.friendSchedule);
+        break;
+      case 'privacy':
+        setIsPrivacyModalOpen(visible);
+        break;
+      case 'cards':
+        setIsCardsModalOpen(visible);
+        break;
+      case 'tasks':
+        setIsTasksModalOpen(visible);
+        break;
+      case 'howto':
+        setIsHowToUseOpen(visible);
+        break;
+      case 'update':
+        setIsUpdateModalOpen(visible);
+        break;
+      case 'admin':
+        setIsAdminPanelOpen(visible);
+        break;
+      case 'spotifyInvite':
+        setIsSpotifyInviteModalOpen(visible);
+        break;
+      case 'boardingPass':
+        setIsBoardingPassOpen(visible);
+        break;
+      case 'ambient':
+        setIsAmbientModalOpen(visible);
+        break;
+      case 'presets':
+        setIsPresetsModalOpen(visible);
+        break;
+      case 'athkar':
+        setIsAthkarModalOpen(visible);
+        break;
+      case 'pomodoro':
+        setIsPomodoroOpen(visible);
+        break;
+      case 'flightFocus':
+        setIsFlightFocusOpen(visible);
+        break;
+      case 'windowSeat':
+        setIsWindowSeatOpen(visible);
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Push a child screen onto the stack (hides current screen, reveals child)
+  const pushNav = (screenId, meta = {}) => {
+    const currentStack = navStackRef.current;
+    const currentScreen = currentStack[currentStack.length - 1];
+    if (currentScreen) {
+      setScreenVisible(currentScreen.id, false, currentScreen.meta);
+    }
+    const nextStack = [...currentStack, { id: screenId, meta }];
+    navStackRef.current = nextStack;
+    setNavStack(nextStack);
+    setScreenVisible(screenId, true, meta);
+
+    if (typeof window !== 'undefined') {
+      try {
+        window.history.pushState({ modalNav: screenId }, '');
+      } catch (e) {}
+    }
+  };
+
+  // Step back exactly one screen in the sequence
+  const popNav = (triggerHistoryBack = true) => {
+    const currentStack = navStackRef.current;
+    if (currentStack.length === 0) {
+      closeAllModals(false, triggerHistoryBack);
+      return;
+    }
+
+    const popped = currentStack[currentStack.length - 1];
+    setScreenVisible(popped.id, false, popped.meta);
+
+    const nextStack = currentStack.slice(0, -1);
+    navStackRef.current = nextStack;
+    setNavStack(nextStack);
+
+    if (nextStack.length > 0) {
+      const prevScreen = nextStack[nextStack.length - 1];
+      setScreenVisible(prevScreen.id, true, prevScreen.meta);
+    }
+
+    if (triggerHistoryBack && typeof window !== 'undefined' && window.history.state?.modalNav) {
+      isPoppingFromNavRef.current = true;
+      try {
+        window.history.back();
+      } catch (e) {
+        isPoppingFromNavRef.current = false;
+      }
+    }
+  };
+
+  // Open a root screen from Home (or reset stack to just this screen)
+  const openNav = (screenId, meta = {}) => {
+    const currentStack = navStackRef.current;
+    currentStack.forEach(s => setScreenVisible(s.id, false, s.meta));
+    const nextStack = [{ id: screenId, meta }];
+    navStackRef.current = nextStack;
+    setNavStack(nextStack);
+    setScreenVisible(screenId, true, meta);
+
+    if (typeof window !== 'undefined') {
+      try {
+        window.history.pushState({ modalNav: screenId }, '');
+      } catch (e) {}
+    }
+  };
+
+  // Close all modals/pages — clears the stack and returns to Home
+  const closeAllModals = (skipManage = false, triggerHistoryBack = false) => {
+    navStackRef.current.forEach(s => setScreenVisible(s.id, false, s.meta));
+    navStackRef.current = [];
+    setNavStack([]);
+
     setIsAnalyticsModalOpen(false);
+    setIsTicketsHistoryViewOpen(false);
+    setIsFocusTasksViewOpen(false);
     setIsTasksModalOpen(false);
     setIsPomodoroOpen(false);
     setIsAmbientModalOpen(false);
@@ -3611,6 +3771,16 @@ function AppContent({ isPreview = false }) {
     setIsFriendsModalOpen(false);
     setSelectedFriendForModal(null);
     setIsScheduleCalendarOpen(false);
+    setViewedFriendSchedule(null);
+    setIsPrivacyModalOpen(false);
+    setIsUpdateModalOpen(false);
+    setIsAdminPanelOpen(false);
+    setIsSpotifyInviteModalOpen(false);
+    setIsBoardingPassOpen(false);
+    setIsWindowSeatOpen(false);
+    setIsPresetsModalOpen(false);
+    setIsAthkarModalOpen(false);
+
     setIsEditVisible(false);
     setTimeout(() => setIsEditMounted(false), 300);
     if (!skipManage) {
@@ -3619,20 +3789,40 @@ function AppContent({ isPreview = false }) {
     }
   };
 
-  // Nav helpers: close everything, then open the target
+  // Listen to mobile hardware/browser back gesture & popstate
+  useEffect(() => {
+    const handlePopState = () => {
+      if (isPoppingFromNavRef.current) {
+        isPoppingFromNavRef.current = false;
+        return;
+      }
+      if (navStackRef.current.length > 0) {
+        popNav(false);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Nav helpers: open the target via navigation stack
   const navTo = (target) => {
-    closeAllModals();
-    if (target === 'analytics') setIsAnalyticsModalOpen(true);
-    else if (target === 'tasks') setIsTasksModalOpen(true);
-    else if (target === 'schedule') setIsScheduleCalendarOpen(true);
-    else if (target === 'pomodoro') setIsPomodoroOpen(true);
-    else if (target === 'ambient') setIsAmbientModalOpen(true);
-    else if (target === 'flight') setIsFlightFocusOpen(true);
-    else if (target === 'friends') {
-      setSelectedFriendForModal(null);
-      setIsFriendsModalOpen(true);
+    if (target === 'home') {
+      closeAllModals();
+      topRef.current?.scrollIntoView({ behavior: 'smooth' });
+      return;
     }
-    else if (target === 'home') topRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const mapping = {
+      analytics: 'analytics',
+      tasks: 'tasks',
+      schedule: 'schedule',
+      pomodoro: 'pomodoro',
+      ambient: 'ambient',
+      flight: 'flightFocus',
+      friends: 'friends',
+    };
+    if (mapping[target]) {
+      openNav(mapping[target]);
+    }
   };
   
   const [newHabitName, setNewHabitName] = useState("");
@@ -3669,7 +3859,6 @@ function AppContent({ isPreview = false }) {
   const [habitReminderMessage, setHabitReminderMessage] = useState("");
 
   // --- Emergency Cards Modal ---
-  const [isCardsModalOpen, setIsCardsModalOpen] = useState(false);
 
   function getFormatDateStr(date) {
     if (!date) return "";
@@ -5099,18 +5288,11 @@ function AppContent({ isPreview = false }) {
     handleCloseAdd();
   };
 
-  const [isPresetsModalOpen, setIsPresetsModalOpen] = useState(false);
-
-  // Athkar Modal State
-  const [isAthkarModalOpen, setIsAthkarModalOpen] = useState(false);
-  const [athkarModalType, setAthkarModalType] = useState('morning');
-  const [athkarHabitId, setAthkarHabitId] = useState(null);
-
   const handleOpenAthkar = (habit, subItemName) => {
     setAthkarHabitId(habit.id);
     const isEvening = subItemName?.includes('مساء') || subItemName?.toLowerCase().includes('evening');
     setAthkarModalType(isEvening ? 'evening' : 'morning');
-    setIsAthkarModalOpen(true);
+    pushNav('athkar');
   };
 
   const handleAthkarCompleted = (completedType) => {
@@ -7896,7 +8078,7 @@ function AppContent({ isPreview = false }) {
                 <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
                   <div className="flex items-center gap-3">
                     <button 
-                      onClick={() => setIsCardsModalOpen(false)} 
+                      onClick={popNav} 
                       className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                       aria-label="Back"
                     >
@@ -7909,7 +8091,7 @@ function AppContent({ isPreview = false }) {
                       <span className="text-white/40 text-xs font-semibold mt-0.5">{t('streakRule')}</span>
                     </div>
                   </div>
-                  <button onClick={() => setIsCardsModalOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                  <button onClick={popNav} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
                     <X size={18} />
                   </button>
                 </div>
@@ -7995,7 +8177,7 @@ function AppContent({ isPreview = false }) {
               {/* Bottom Done Button */}
               <div className="pt-4 pb-6">
                 <button 
-                  onClick={() => setIsCardsModalOpen(false)} 
+                  onClick={popNav} 
                   className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
                 >
                   {'Close'}
@@ -8026,7 +8208,7 @@ function AppContent({ isPreview = false }) {
               setIsFlightTimerRunning(true);
             }}
             onClose={() => {
-              setIsBoardingPassOpen(false);
+              popNav();
               if (flightTimer === 0) {
                 // If they finished, closing the ticket resets the flight
                 setSelectedFlight(null);
@@ -8057,7 +8239,7 @@ function AppContent({ isPreview = false }) {
           <FlightFocusModal
             isOpen={isFlightFocusOpen}
             onClose={() => {
-              setIsFlightFocusOpen(false);
+              popNav();
               if (!isFlightTimerRunning) {
                 setSelectedFlight(null);
                 setFlightDurationFilter(null);
@@ -8069,9 +8251,9 @@ function AppContent({ isPreview = false }) {
             setIsFlightTimerRunning={setIsFlightTimerRunning}
             isCabinHumPlaying={isCabinHumPlaying}
             toggleCabinHum={toggleCabinHum}
-            setIsWindowSeatOpen={setIsWindowSeatOpen}
+            setIsWindowSeatOpen={(isOpen) => isOpen ? pushNav('windowSeat') : popNav()}
             selectedSeat={selectedSeat}
-            setIsAmbientModalOpen={setIsAmbientModalOpen}
+            setIsAmbientModalOpen={(isOpen) => isOpen ? pushNav('ambient') : popNav()}
             onSaveFinishedTicket={handleSaveFinishedTicket}
             flightFocusedSeconds={flightFocusedSeconds}
           />,
@@ -8094,7 +8276,7 @@ function AppContent({ isPreview = false }) {
                   <div className="w-full flex justify-between items-center mb-6 pb-4 border-b border-white/10">
                     <div className="flex items-center gap-3">
                       <button 
-                        onClick={() => setIsPomodoroOpen(false)} 
+                        onClick={popNav} 
                         className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                         aria-label="Back"
                       >
@@ -8104,7 +8286,7 @@ function AppContent({ isPreview = false }) {
                         <Timer size={24} className="text-orange-400" /> {t('pomodoro')}
                       </h2>
                     </div>
-                    <button onClick={() => setIsPomodoroOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                    <button onClick={popNav} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
                       <X size={18} />
                     </button>
                   </div>
@@ -8337,10 +8519,7 @@ function AppContent({ isPreview = false }) {
                       onClick={() => {
                         handleDismissNotification(activeInAppNotification.id, false, 'schedule_share', activeInAppNotification.user?.username);
                         const friendObj = friendsList.find(f => (f.user?.username || '').toLowerCase() === (activeInAppNotification.user?.username || '').toLowerCase());
-                        if (friendObj) {
-                          setSelectedFriendForModal(friendObj);
-                        }
-                        setIsFriendsModalOpen(true);
+                        openNav('friends', { selectedFriend: friendObj || null });
                       }}
                       className="px-3 py-1.5 rounded-xl bg-white text-black font-bold text-xs hover:bg-white/90 active:scale-95 transition-all shadow-sm cursor-pointer flex items-center gap-1"
                     >
@@ -8629,7 +8808,7 @@ function AppContent({ isPreview = false }) {
               <div className="relative flex items-center justify-center gap-2 shrink-0 window-no-drag" data-no-drag>
                 <button
                   type="button"
-                  onClick={() => setIsAmbientModalOpen(true)}
+                  onClick={() => openNav('ambient')}
                   className="w-9 h-9 rounded-full bg-white/[0.06] hover:bg-white/15 text-white/70 hover:text-white flex items-center justify-center border border-white/10 transition-all active:scale-95 cursor-pointer shadow-sm"
                   title={isAr ? 'الأصوات المحيطية' : 'Ambient Sounds'}
                   aria-label={isAr ? 'الأصوات المحيطية' : 'Ambient Sounds'}
@@ -8640,7 +8819,7 @@ function AppContent({ isPreview = false }) {
                   <div 
                     className="w-9 h-9 rounded-full flex items-center justify-center border border-white/25 shadow-sm bg-white/10 text-white select-none cursor-pointer hover:border-white/50 transition-all active:scale-95"
                     title="Omar Helbawy"
-                    onClick={() => setIsSettingsMenuOpen(true)}
+                    onClick={() => openNav('settings')}
                   >
                     <AvatarIcon name={avatar || 'sparkles'} size={18} className="text-white" />
                   </div>
@@ -8798,7 +8977,7 @@ function AppContent({ isPreview = false }) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setIsPresetsModalOpen(true)}
+                      onClick={() => openNav('presets')}
                       className="px-5 py-3 rounded-full text-xs font-bold transition-all duration-200 active:scale-95 border border-white/15 bg-white/5 hover:bg-white/10 text-white flex items-center gap-2 cursor-pointer"
                     >
                       <Sparkles size={14} className="text-amber-400" />
@@ -8938,7 +9117,7 @@ function AppContent({ isPreview = false }) {
                 <div className="flex items-center justify-between mb-4 select-none">
                   <div 
                     className="flex items-center gap-2 cursor-pointer group"
-                    onClick={() => setIsTasksModalOpen(true)}
+                    onClick={() => openNav('tasks')}
                     title="Open Tasks Modal"
                   >
                     <ListChecks size={18} style={{ color: themeColor }} />
@@ -9055,7 +9234,14 @@ function AppContent({ isPreview = false }) {
                   <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
                     <div className="flex items-center gap-3">
                       <button 
-                        onClick={() => { setIsAnalyticsModalOpen(false); setIsTicketsHistoryViewOpen(false); setIsFocusTasksViewOpen(false); }} 
+                        onClick={() => {
+                          if (isTicketsHistoryViewOpen || isFocusTasksViewOpen) {
+                            setIsTicketsHistoryViewOpen(false);
+                            setIsFocusTasksViewOpen(false);
+                          } else {
+                            popNav();
+                          }
+                        }} 
                         className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                         aria-label="Back"
                       >
@@ -9063,7 +9249,7 @@ function AppContent({ isPreview = false }) {
                       </button>
                       <h2 className="text-2xl font-black tracking-tight text-white">{t('analytics')}</h2>
                     </div>
-                    <button onClick={() => { setIsAnalyticsModalOpen(false); setIsTicketsHistoryViewOpen(false); setIsFocusTasksViewOpen(false); }} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                    <button onClick={() => { setIsTicketsHistoryViewOpen(false); setIsFocusTasksViewOpen(false); popNav(); }} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
                       <X size={18} />
                     </button>
                   </div>
@@ -9227,10 +9413,7 @@ function AppContent({ isPreview = false }) {
                                       setSelectedFlight(ticket);
                                       setSelectedSeat(ticket.seat);
                                       setFlightTimer(0);
-                                      setIsBoardingPassOpen(true);
-                                      setIsAnalyticsModalOpen(false);
-                                      setIsTicketsHistoryViewOpen(false);
-                                      setIsFocusTasksViewOpen(false);
+                                      pushNav('boardingPass');
                                     } else {
                                       setExpandedTicketIndex(idx);
                                     }
@@ -9264,7 +9447,7 @@ function AppContent({ isPreview = false }) {
                 {/* Bottom Done Button */}
                 <div className="pt-4 pb-6">
                   <button 
-                    onClick={() => { setIsAnalyticsModalOpen(false); setIsTicketsHistoryViewOpen(false); setIsFocusTasksViewOpen(false); }} 
+                    onClick={() => { setIsTicketsHistoryViewOpen(false); setIsFocusTasksViewOpen(false); popNav(); }} 
                     className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
                   >
                     {'Close'}
@@ -9284,7 +9467,7 @@ function AppContent({ isPreview = false }) {
                   <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
                     <div className="flex items-center gap-3">
                       <button 
-                        onClick={() => { setIsWidgetsModalOpen(false); setIsSettingsMenuOpen(true); }} 
+                        onClick={popNav} 
                         className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                         aria-label="Back"
                       >
@@ -9299,7 +9482,7 @@ function AppContent({ isPreview = false }) {
                         </span>
                       </div>
                     </div>
-                    <button onClick={() => setIsWidgetsModalOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                    <button onClick={popNav} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
                       <X size={18} />
                     </button>
                   </div>
@@ -9514,7 +9697,7 @@ function AppContent({ isPreview = false }) {
                 {/* Bottom Done Action */}
                 <div className="pt-4 pb-2">
                   <button 
-                    onClick={() => setIsWidgetsModalOpen(false)}
+                    onClick={popNav}
                     className="w-full py-4 rounded-2xl bg-white text-black font-black text-sm tracking-wide transition-all active:scale-[0.98] shadow-xl hover:bg-white/90"
                   >
                     {'Done'}
@@ -9534,7 +9717,7 @@ function AppContent({ isPreview = false }) {
                   <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
                     <div className="flex items-center gap-3">
                       <button 
-                        onClick={() => { setIsAppearanceModalOpen(false); setIsSettingsMenuOpen(true); }} 
+                        onClick={popNav} 
                         className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                         aria-label="Back"
                       >
@@ -9549,7 +9732,7 @@ function AppContent({ isPreview = false }) {
                         </span>
                       </div>
                     </div>
-                    <button onClick={() => setIsAppearanceModalOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                    <button onClick={popNav} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
                       <X size={18} />
                     </button>
                   </div>
@@ -9808,14 +9991,14 @@ function AppContent({ isPreview = false }) {
                         icon={LayoutGrid}
                         title="Widgets order & sizing"
                         subtitle="Reorder, smart auto & full/compact sizes"
-                        onClick={() => { setIsAppearanceModalOpen(false); setIsWidgetsModalOpen(true); }}
+                        onClick={() => pushNav('widgets')}
                       />
                       <SettingsRow
                         icon={AvatarIcon}
                         iconProps={{ name: isMounted ? avatar : 'user' }}
                         title="Change avatar"
                         subtitle="Pick your profile persona"
-                        onClick={() => { setIsAppearanceModalOpen(false); setIsAvatarModalOpen(true); }}
+                        onClick={() => pushNav('avatar')}
                       />
                     </div>
 
@@ -9825,7 +10008,7 @@ function AppContent({ isPreview = false }) {
                 {/* Bottom Done Action */}
                 <div className="pt-4 pb-2">
                   <button 
-                    onClick={() => { setIsAppearanceModalOpen(false); setIsSettingsMenuOpen(true); }}
+                    onClick={popNav}
                     className="w-full py-4 rounded-2xl bg-white text-black font-black text-sm tracking-wide transition-all active:scale-[0.98] shadow-xl hover:bg-white/90"
                   >
                     {'Done'}
@@ -9844,7 +10027,7 @@ function AppContent({ isPreview = false }) {
                 <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/10 shrink-0">
                   <div className="flex items-center gap-3">
                     <button 
-                      onClick={() => setIsTasksModalOpen(false)} 
+                      onClick={popNav} 
                       className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                       aria-label="Back"
                     >
@@ -9854,7 +10037,7 @@ function AppContent({ isPreview = false }) {
                       <ListChecks size={24} className="text-white/80" /> {t('todaysTasks')}
                     </h2>
                   </div>
-                  <button onClick={() => setIsTasksModalOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                  <button onClick={popNav} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
                     <X size={18} />
                   </button>
                 </div>
@@ -9968,7 +10151,7 @@ function AppContent({ isPreview = false }) {
                   <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/10 sticky top-0 bg-black/95 backdrop-blur-md z-20 pt-1">
                     <div className="flex items-center gap-3">
                       <button 
-                        onClick={() => setIsHowToUseOpen(false)} 
+                        onClick={popNav} 
                         className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90 cursor-pointer"
                         aria-label="Back"
                       >
@@ -10103,7 +10286,7 @@ function AppContent({ isPreview = false }) {
                 {/* Bottom Done Button */}
                 <div className="pt-4 pb-6 sticky bottom-0 bg-black/90 backdrop-blur-md">
                   <button 
-                    onClick={() => setIsHowToUseOpen(false)} 
+                    onClick={popNav} 
                     className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white text-black hover:bg-white/90 shadow-lg cursor-pointer"
                   >
                     {guideLang === 'ar' ? 'فهمت كل شيء' : 'Got it'}
@@ -10370,9 +10553,11 @@ function AppContent({ isPreview = false }) {
               <button onClick={() => navTo('tasks')} aria-label="Tasks" title="Tasks" className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/10 text-white/50 hover:text-white transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
               <button 
                 onClick={() => {
-                  setSelectedFriendForModal(null);
-                  setIsFriendsModalOpen(true);
-                  setIsSettingsMenuOpen(false);
+                  if (isFriendsModalOpen) {
+                    popNav();
+                  } else {
+                    openNav('friends');
+                  }
                   setIsFocusMenuOpen(false);
                 }} 
                 className={`relative w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${
@@ -10468,7 +10653,11 @@ function AppContent({ isPreview = false }) {
               <div className="relative">
                 <button 
                   onClick={() => {
-                    setIsSettingsMenuOpen(!isSettingsMenuOpen);
+                    if (isSettingsMenuOpen) {
+                      popNav();
+                    } else {
+                      openNav('settings');
+                    }
                     setIsFocusMenuOpen(false);
                   }} 
                   className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 relative ${isSettingsMenuOpen ? 'bg-white/20 text-white shadow-sm' : 'hover:bg-white/10 text-white/50 hover:text-white'}`}
@@ -10490,7 +10679,7 @@ function AppContent({ isPreview = false }) {
                           <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
                             <Settings size={22} className="text-white/80" /> {tEn('settings')}
                           </h2>
-                          <button onClick={() => setIsSettingsMenuOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all" aria-label={tEn('done')}>
+                          <button onClick={popNav} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all" aria-label={tEn('done')}>
                             <X size={18} />
                           </button>
                         </div>
@@ -10527,7 +10716,7 @@ function AppContent({ isPreview = false }) {
                                     </div>
                                   </div>
                                   <button
-                                    onClick={() => { setIsSettingsMenuOpen(false); setIsAvatarModalOpen(true); }}
+                                    onClick={() => pushNav('avatar')}
                                     className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-all active:scale-95 shrink-0"
                                   >
                                     {tEn('edit')}
@@ -10588,7 +10777,7 @@ function AppContent({ isPreview = false }) {
                               icon={Palette}
                               title={tEn('appearance')}
                               subtitle={tEn('appearanceDesc')}
-                              onClick={() => { setIsSettingsMenuOpen(false); setIsAppearanceModalOpen(true); }}
+                              onClick={() => pushNav('appearance')}
                               trailing={
                                 <>
                                   <div className="w-3.5 h-3.5 rounded-full border border-white/30" style={{ backgroundColor: themeColor }} />
@@ -10628,8 +10817,7 @@ function AppContent({ isPreview = false }) {
                                   type="button"
                                   onClick={() => {
                                     if (!hasSpotifyAccess) {
-                                      setIsSettingsMenuOpen(false);
-                                      setIsSpotifyInviteModalOpen(true);
+                                      pushNav('spotifyInvite');
                                     } else {
                                       const loginUrl = typeof window !== 'undefined' && (window.__TAURI_INTERNALS__ || window.location.protocol === 'tauri:') ? 'https://bokra101.vercel.app/api/spotify/login' : '/api/spotify/login';
                                       window.location.href = loginUrl;
@@ -10653,25 +10841,25 @@ function AppContent({ isPreview = false }) {
                               icon={BarChart2}
                               title={tEn('analytics')}
                               subtitle={tEn('analyticsDesc')}
-                              onClick={() => { setIsSettingsMenuOpen(false); setIsAnalyticsModalOpen(true); }}
+                              onClick={() => pushNav('analytics')}
                             />
                             <SettingsRow
                               icon={Users}
                               title={tEn('friendsTitle')}
                               subtitle={tEn('friendsDesc')}
-                              onClick={() => { setIsSettingsMenuOpen(false); setSelectedFriendForModal(null); setIsFriendsModalOpen(true); }}
+                              onClick={() => pushNav('friends')}
                             />
                             <SettingsRow
                               icon={Shield}
                               title={tEn('privacy')}
                               subtitle="Ghost mode & sharing controls"
-                              onClick={() => { setIsSettingsMenuOpen(false); setIsPrivacyModalOpen(true); }}
+                              onClick={() => pushNav('privacy')}
                             />
                             <SettingsRow
                               icon={ShieldAlert}
                               title={tEn('emergencyCards')}
                               subtitle={tEn('emergencyCardsDesc')}
-                              onClick={() => { setIsSettingsMenuOpen(false); setIsCardsModalOpen(true); }}
+                              onClick={() => pushNav('cards')}
                             />
                           </div>
 
@@ -10709,8 +10897,7 @@ function AppContent({ isPreview = false }) {
                                 ? `${tEn('newVersionAvailable')} v${updateInfo.latestVersion}`
                                 : tEn('updateDesc')}
                               onClick={() => {
-                                setIsSettingsMenuOpen(false);
-                                setIsUpdateModalOpen(true);
+                                pushNav('update');
                                 checkForAppUpdates(true);
                               }}
                               trailing={
@@ -10761,7 +10948,7 @@ function AppContent({ isPreview = false }) {
                               <SettingsRow
                                 icon={Users}
                                 title={tEn('adminDashboard')}
-                                onClick={() => { setIsSettingsMenuOpen(false); setIsAdminPanelOpen(true); }}
+                                onClick={() => pushNav('admin')}
                               />
                             )}
                           </div>
@@ -10851,7 +11038,7 @@ function AppContent({ isPreview = false }) {
                       <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
                         <div className="flex items-center gap-3">
                           <button 
-                            onClick={() => setIsAvatarModalOpen(false)} 
+                            onClick={popNav} 
                             className="p-2.5 bg-white/10 rounded-full hover:bg-white/20 text-white transition-all active:scale-90"
                             aria-label="Back"
                           >
@@ -10859,7 +11046,7 @@ function AppContent({ isPreview = false }) {
                           </button>
                           <h2 className="text-2xl font-black tracking-tight text-white">Choose Avatar</h2>
                         </div>
-                        <button onClick={() => setIsAvatarModalOpen(false)} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
+                        <button onClick={popNav} className="p-2.5 bg-white/5 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-all">
                           <X size={18} />
                         </button>
                       </div>
@@ -10886,7 +11073,7 @@ function AppContent({ isPreview = false }) {
                                   body: JSON.stringify({ avatar: av, updatedAt: Date.now() })
                                 }).catch(() => {});
                               }
-                              setIsAvatarModalOpen(false);
+                              popNav();
                             }}
                             className={`relative aspect-square rounded-2xl flex items-center justify-center border-2 transition-all duration-200 active:scale-95 bg-white/5 text-white ${avatar === av ? 'border-[#FF9F0A] shadow-[0_0_20px_rgba(255,159,10,0.3)] text-[#FF9F0A]' : 'border-white/10 hover:border-white/30'}`}
                           >
@@ -10899,7 +11086,7 @@ function AppContent({ isPreview = false }) {
                     {/* Bottom Done Button */}
                     <div className="pt-4 pb-6">
                       <button 
-                        onClick={() => setIsAvatarModalOpen(false)} 
+                        onClick={popNav} 
                         className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
                       >
                         {'Close'}
@@ -10916,7 +11103,7 @@ function AppContent({ isPreview = false }) {
           {/* Window Seat Screensaver */}
           {isWindowSeatOpen && createPortal(
             <WindowSeat 
-              onClose={() => setIsWindowSeatOpen(false)} 
+              onClose={popNav} 
               lang={lang}
               flight={selectedFlight} 
               flightTimer={flightTimer} 
@@ -10936,7 +11123,7 @@ function AppContent({ isPreview = false }) {
           {isAdminPanelOpen && createPortal(
             <AdminPanel 
               isOpen={isAdminPanelOpen}
-              onClose={() => setIsAdminPanelOpen(false)}
+              onClose={popNav}
               lang={lang}
               themeColor={themeColor}
               isRtl={false}
@@ -10948,16 +11135,10 @@ function AppContent({ isPreview = false }) {
           {isFriendsModalOpen && typeof document !== 'undefined' && createPortal(
             <FriendsModal 
               isOpen={isFriendsModalOpen}
-              onClose={() => {
-                setIsFriendsModalOpen(false);
-                setSelectedFriendForModal(null);
-              }}
+              onClose={popNav}
               onJoinSession={handleJoinFriendSession}
               onOpenFriendSchedule={(friendData) => {
-                setViewedFriendSchedule(friendData);
-                setIsFriendsModalOpen(false);
-                setSelectedFriendForModal(null);
-                setIsScheduleCalendarOpen(true);
+                pushNav('schedule', { friendSchedule: friendData });
               }}
               initialSelectedFriend={selectedFriendForModal}
               myUsername={user?.username || ''}
@@ -10984,10 +11165,7 @@ function AppContent({ isPreview = false }) {
           {isScheduleCalendarOpen && typeof document !== 'undefined' && createPortal(
             <WeeklyScheduleCalendar
               isOpen={isScheduleCalendarOpen}
-              onClose={() => {
-                setIsScheduleCalendarOpen(false);
-                setViewedFriendSchedule(null);
-              }}
+              onClose={popNav}
               habits={viewedFriendSchedule ? viewedFriendSchedule.habits : habits}
               onUpdateHabits={handleUpdateScheduleHabits}
               lang={lang}
@@ -11007,7 +11185,7 @@ function AppContent({ isPreview = false }) {
           {isPrivacyModalOpen && typeof document !== 'undefined' && createPortal(
             <PrivacyModal 
               isOpen={isPrivacyModalOpen}
-              onClose={() => setIsPrivacyModalOpen(false)}
+              onClose={popNav}
               lang={lang}
             />,
             document.body
@@ -11017,7 +11195,7 @@ function AppContent({ isPreview = false }) {
           {!isPreview && (
             <SpotifyInviteModal 
               isOpen={isSpotifyInviteModalOpen}
-              onClose={() => setIsSpotifyInviteModalOpen(false)}
+              onClose={popNav}
               onSuccess={() => setHasSpotifyAccess(true)}
               isSignedIn={Boolean(isSignedIn && user)}
             />
@@ -11085,7 +11263,7 @@ function AppContent({ isPreview = false }) {
           {isUpdateModalOpen && typeof document !== 'undefined' && createPortal(
             <UpdateModal 
               isOpen={isUpdateModalOpen}
-              onClose={() => setIsUpdateModalOpen(false)}
+              onClose={popNav}
               updateInfo={updateInfo}
               onCheckAgain={checkForAppUpdates}
               lang={lang}
@@ -11097,7 +11275,7 @@ function AppContent({ isPreview = false }) {
           {isPresetsModalOpen && typeof document !== 'undefined' && createPortal(
             <HabitPresetsModal 
               isOpen={isPresetsModalOpen}
-              onClose={() => setIsPresetsModalOpen(false)}
+              onClose={popNav}
               onAddPreset={handleAddPresetDirect}
               existingHabitNames={habits.map(h => h.name)}
               lang={lang}
@@ -11110,7 +11288,7 @@ function AppContent({ isPreview = false }) {
           {isAthkarModalOpen && typeof document !== 'undefined' && createPortal(
             <AthkarModal 
               isOpen={isAthkarModalOpen}
-              onClose={() => setIsAthkarModalOpen(false)}
+              onClose={popNav}
               initialType={athkarModalType}
               themeColor={themeColor}
               lang={lang}
@@ -11123,7 +11301,7 @@ function AppContent({ isPreview = false }) {
           {isAmbientModalOpen && typeof document !== 'undefined' && createPortal(
             <AmbientSoundModal 
               isOpen={isAmbientModalOpen}
-              onClose={() => setIsAmbientModalOpen(false)}
+              onClose={popNav}
               lang={lang}
               themeColor={themeColor}
               pomodoroRemainingSeconds={pomodoroTime}
