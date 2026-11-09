@@ -34,7 +34,7 @@ try {
   // Fallback to native push event listener below
 }
 
-const CACHE_NAME = 'bokra-cache-v10';
+const CACHE_NAME = 'bokra-cache-v11';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',
@@ -83,16 +83,25 @@ self.addEventListener('fetch', (event) => {
 
   if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached;
-        return fetch(request).then((networkResponse) => {
+      (async () => {
+        try {
+          const networkResponse = await fetch(request);
           if (networkResponse && networkResponse.status === 200) {
-            const clone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            const cc = networkResponse.headers.get('cache-control') || '';
+            if (cc.includes('immutable')) {
+              const clone = networkResponse.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            }
+            return networkResponse;
           }
-          return networkResponse;
-        }).catch(() => cached);
-      })
+          const cached = await caches.match(request);
+          return cached || networkResponse;
+        } catch (e) {
+          const cached = await caches.match(request);
+          if (cached) return cached;
+          return new Response('', { status: 408, statusText: 'Offline Chunk' });
+        }
+      })()
     );
     return;
   }

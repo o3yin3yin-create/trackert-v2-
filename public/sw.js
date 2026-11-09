@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bokra-cache-v10';
+const CACHE_NAME = 'bokra-cache-v11';
 
 // Essential core assets to pre-cache during installation
 const PRECACHE_ASSETS = [
@@ -53,11 +53,15 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (!url.protocol.startsWith('http')) return;
 
-  // Never intercept or cache API routes, Clerk auth, or auth navigation
+  // Never intercept or cache API routes, Clerk auth, auth navigation, or map tiles
   if (
     url.hostname.includes('clerk') ||
     url.hostname.includes('firebaseio.com') ||
     url.hostname.includes('googleapis.com') ||
+    url.hostname.includes('tile.openstreetmap.org') ||
+    url.hostname.includes('demotiles.maplibre.org') ||
+    url.hostname.includes('basemaps.cartocdn.com') ||
+    url.hostname.includes('openfreemap.org') ||
     url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/__clerk') ||
     url.pathname.startsWith('/sign-in') ||
@@ -66,24 +70,30 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 1. Immutable Next.js static assets (_next/static/...) -> Cache-First
-  // These chunks contain hashes in their filename and never change content.
+  // 1. Next.js static assets (_next/static/...) -> Network-first, cache only immutable builds.
+  // Dev (Turbopack) reuses chunk URLs across edits, so cache-first would serve stale code.
+  // Production chunks ship `Cache-Control: immutable`, so only those are safe to cache.
   if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
-      caches.match(request).then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        return fetch(request).then((networkResponse) => {
+      (async () => {
+        try {
+          const networkResponse = await fetch(request);
           if (networkResponse && networkResponse.status === 200) {
-            const clone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            const cc = networkResponse.headers.get('cache-control') || '';
+            if (cc.includes('immutable')) {
+              const clone = networkResponse.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            }
+            return networkResponse;
           }
-          return networkResponse;
-        }).catch(() => {
+          const cached = await caches.match(request);
+          return cached || networkResponse;
+        } catch (e) {
+          const cached = await caches.match(request);
+          if (cached) return cached;
           return new Response('', { status: 408, statusText: 'Offline Chunk' });
-        });
-      })
+        }
+      })()
     );
     return;
   }

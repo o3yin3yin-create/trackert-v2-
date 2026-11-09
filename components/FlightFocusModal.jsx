@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { getFlights, usePlaneEstimate, resolveAirport } from '@/lib/flightSchedule';
+import { getFlights, getDayOffset, usePlaneEstimate, resolveAirport } from '@/lib/flightSchedule';
 
 const MapLibreFlightRadar = dynamic(() => import('./MapLibreFlightRadar'), {
   ssr: false,
@@ -114,6 +114,7 @@ export default function FlightFocusModal({
   selectedSeat = '14A',
   setIsAmbientModalOpen,
   onSaveFinishedTicket,
+  flightFocusedSeconds = 0,
 }) {
   // Screens: 'board' | 'ticket' | 'cabin' | 'radar'
   const [currentScreen, setCurrentScreen] = useState(() => (selectedFlight ? 'cabin' : 'board'));
@@ -125,8 +126,15 @@ export default function FlightFocusModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [animKey, setAnimKey] = useState(0);
 
-  // Track focused study time separately (while flight continues in real clock time)
-  const [focusedSeconds, setFocusedSeconds] = useState(0);
+  // 1Hz board clock — drives live remaining time and cycles flight instances.
+  const [boardNowSec, setBoardNowSec] = useState(() => Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    const id = setInterval(() => setBoardNowSec(Math.floor(Date.now() / 1000)), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Give-up confirmation overlay (inline, monochrome, matches ff- theme)
+  const [showGiveUpConfirm, setShowGiveUpConfirm] = useState(false);
 
   // Monochrome Theme: 'dark' | 'light'
   const [theme, setTheme] = useState(() => {
@@ -151,20 +159,12 @@ export default function FlightFocusModal({
     window.dispatchEvent(new Event('bokra-prefs-changed'));
   }, [theme]);
 
-  // Flights schedule list from single source getFlights()
-  const [allFlights, setAllFlights] = useState(() => getFlights());
+  // Flights schedule list derived from the live board clock (no interval refresh).
+  const allFlights = useMemo(() => getFlights(boardNowSec), [boardNowSec]);
 
-  // Refresh flights pool periodically
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setAllFlights(getFlights());
-    }, 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Filtered flights for Board
+  // Filtered flights for Board — live remaining computed from the board clock.
   const displayedFlights = useMemo(() => {
-    let list = [...allFlights];
+    let list = allFlights.map((f) => ({ ...f, remainingSeconds: Math.max(0, f.arrival - boardNowSec) }));
 
     // Duration filter
     if (durationFilter === 'under1h') {
@@ -188,7 +188,7 @@ export default function FlightFocusModal({
     }
 
     return list;
-  }, [allFlights, durationFilter, searchQuery]);
+  }, [allFlights, durationFilter, searchQuery, boardNowSec]);
 
   // Trigger split flap animation when filter changes
   useEffect(() => {
@@ -209,6 +209,9 @@ export default function FlightFocusModal({
 
   // Single source of truth estimate hook: purely clock-based, 1Hz, no network
   const estimate = usePlaneEstimate(flightToTrack);
+  // Dedicated estimate for the ticket screen so it stays correct even if an
+  // active flight exists when the user boards a new one.
+  const ticketEstimate = usePlaneEstimate(currentScreen === 'ticket' ? pendingFlight : null);
 
   // Auto-switch to cabin if flight is currently active and user opens modal
   useEffect(() => {
@@ -219,15 +222,6 @@ export default function FlightFocusModal({
     }
   }, [isOpen, selectedFlight, activeFlight, currentScreen]);
 
-  // Track focused time independently when session is active and timer is running
-  useEffect(() => {
-    if (!isFlightTimerRunning || !flightToTrack || estimate?.isLanded) return;
-    const interval = setInterval(() => {
-      setFocusedSeconds((s) => s + 1);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isFlightTimerRunning, flightToTrack, estimate?.isLanded]);
-
   // Automatically save ticket into finished tickets as soon as the flight lands
   useEffect(() => {
     if (estimate?.isLanded && flightToTrack && !hasSavedLandedRef.current) {
@@ -236,13 +230,14 @@ export default function FlightFocusModal({
         onSaveFinishedTicket({
           ...flightToTrack,
           seat: selectedSeat || '14A',
-          totalDistance: estimate?.totalDistKm || 2500,
+          totalDistance: estimate?.totalDistKm,
           originCity: estimate?.orig?.city,
           destCity: estimate?.dest?.city,
+          focusedSeconds: flightFocusedSeconds,
         });
       }
     }
-  }, [estimate?.isLanded, flightToTrack, onSaveFinishedTicket, selectedSeat, estimate?.totalDistKm, estimate?.orig?.city, estimate?.dest?.city]);
+  }, [estimate?.isLanded, flightToTrack, onSaveFinishedTicket, selectedSeat, estimate?.totalDistKm, estimate?.orig?.city, estimate?.dest?.city, flightFocusedSeconds]);
 
   // Step 1 -> Step 2: Board to Ticket
   const handleSelectFlightToTicket = (f) => {
@@ -262,24 +257,25 @@ export default function FlightFocusModal({
     if (typeof setIsFlightTimerRunning === 'function') {
       setIsFlightTimerRunning(true);
     }
-    setFocusedSeconds(0);
     setCurrentScreen('cabin');
   };
 
-  // Give Up / Abandon Session
+  // Give Up / Abandon Session (opens inline confirmation)
   const handleGiveUp = () => {
-    if (typeof window !== 'undefined' && window.confirm('Give up this focus flight? Your session will end.')) {
-      if (typeof setIsFlightTimerRunning === 'function') {
-        setIsFlightTimerRunning(false);
-      }
-      if (typeof setSelectedFlight === 'function') {
-        setSelectedFlight(null);
-      }
-      setActiveFlight(null);
-      setPendingFlight(null);
-      hasSavedLandedRef.current = false;
-      setCurrentScreen('board');
+    setShowGiveUpConfirm(true);
+  };
+  const confirmGiveUp = () => {
+    setShowGiveUpConfirm(false);
+    if (typeof setIsFlightTimerRunning === 'function') {
+      setIsFlightTimerRunning(false);
     }
+    if (typeof setSelectedFlight === 'function') {
+      setSelectedFlight(null);
+    }
+    setActiveFlight(null);
+    setPendingFlight(null);
+    hasSavedLandedRef.current = false;
+    setCurrentScreen('board');
   };
 
   // Finish session after landing
@@ -288,9 +284,10 @@ export default function FlightFocusModal({
       onSaveFinishedTicket({
         ...flightToTrack,
         seat: selectedSeat || '14A',
-        totalDistance: estimate?.totalDistKm || 2500,
+        totalDistance: estimate?.totalDistKm,
         originCity: estimate?.orig?.city,
         destCity: estimate?.dest?.city,
+        focusedSeconds: flightFocusedSeconds,
       });
     }
     if (typeof setIsFlightTimerRunning === 'function') {
@@ -305,6 +302,17 @@ export default function FlightFocusModal({
     setCurrentScreen('board');
   };
 
+  // Deterministic pseudo-gate derived from the flight number so each flight
+  // has a stable gate label without pretending it's live data.
+  const deriveGate = (flightNumber) => {
+    let h = 0;
+    const s = String(flightNumber || 'FLT');
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    const letter = String.fromCharCode(65 + (h % 6));
+    const number = ((h >> 3) % 24) + 1;
+    return `${letter}${number}`;
+  };
+
   if (!isOpen) return null;
 
   // SCREEN 3: RADAR (MapLibre GL JS)
@@ -316,8 +324,6 @@ export default function FlightFocusModal({
         onClose={() => setCurrentScreen('cabin')}
         onOpenWindowSeat={() => setIsWindowSeatOpen && setIsWindowSeatOpen(true)}
         onOpenSoundLibrary={() => setIsAmbientModalOpen && setIsAmbientModalOpen(true)}
-        theme={theme}
-        onToggleTheme={toggleTheme}
       />
     );
   }
@@ -480,7 +486,7 @@ export default function FlightFocusModal({
                     Choose your flight
                   </h1>
                   <p className="ff-mono text-[10.5px] text-[var(--t)] uppercase tracking-wider mt-1">
-                    REAL SCHEDULED FLIGHTS IN AIR NOW · ESTIMATED RADAR
+                    REAL ROUTES & AIRCRAFT · ESTIMATED TIMES
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -592,7 +598,7 @@ export default function FlightFocusModal({
 
                   const depDay = new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: origAirport.timezone || 'UTC' }).format(depDate);
                   const arrDay = new Intl.DateTimeFormat('en-GB', { day: 'numeric', timeZone: destAirport.timezone || 'UTC' }).format(arrDate);
-                  const dayOffset = Number(arrDay) !== Number(depDay) ? '+1' : '';
+                  const dayOffset = getDayOffset(f.departure, f.arrival, origAirport.timezone || 'UTC', destAirport.timezone || 'UTC');
 
                   return (
                     <button
@@ -630,7 +636,7 @@ export default function FlightFocusModal({
                       {/* LEFT · LANDS */}
                       <div className="col-span-4 text-right flex flex-col justify-center">
                         <span className="text-[13px] font-normal text-[var(--fg)] tabular-nums">
-                          {formatDuration(f.remainingSeconds)}
+                          {formatDuration(Math.max(0, f.arrival - boardNowSec))}
                         </span>
                         <span className="ff-mono text-[10px] text-[var(--m)] tabular-nums mt-0.5">
                           lands {arrTimeFormatted}
@@ -662,7 +668,7 @@ export default function FlightFocusModal({
         {/* ========================================================================= */}
         {/* SCREEN 1.5: TICKET (BOARDING PASS)                                        */}
         {/* ========================================================================= */}
-        {currentScreen === 'ticket' && pendingFlight && estimate && (
+        {currentScreen === 'ticket' && pendingFlight && ticketEstimate && (
           <main className="flex-1 flex flex-col justify-between w-full animate-in fade-in duration-200">
             <div>
               <div className="flex items-center justify-between mb-6 pb-2 border-b border-[var(--hair)]">
@@ -723,16 +729,16 @@ export default function FlightFocusModal({
                         {pendingFlight.origin}
                       </span>
                       <span className="text-xs font-semibold text-neutral-600 mt-0.5">
-                        {estimate.orig?.city}
+                        {ticketEstimate.orig?.city}
                       </span>
                       <span className="text-[11px] font-mono text-neutral-400 mt-1">
-                        DEP {estimate.depTime}
+                        DEP {ticketEstimate.depTime}
                       </span>
                     </div>
 
                     <div className="flex flex-col items-center px-4">
                       <span className="text-[11px] font-mono text-neutral-500 mb-1">
-                        {formatDuration(estimate.timeRemainingSec)}
+                        {formatDuration(ticketEstimate.timeRemainingSec)}
                       </span>
                       <div className="w-20 h-[1.5px] bg-neutral-300 relative flex items-center justify-center">
                         <div className="w-5 h-5 rounded-full bg-white border border-neutral-300 flex items-center justify-center text-neutral-700">
@@ -747,11 +753,11 @@ export default function FlightFocusModal({
                         {pendingFlight.destination}
                       </span>
                       <span className="text-xs font-semibold text-neutral-600 mt-0.5">
-                        {estimate.dest?.city}
+                        {ticketEstimate.dest?.city}
                       </span>
                       <span className="text-[11px] font-mono text-neutral-400 mt-1">
-                        ARR {estimate.arrTime}
-                        {estimate.dayOffset && ` ${estimate.dayOffset}`}
+                        ARR {ticketEstimate.arrTime}
+                        {ticketEstimate.dayOffset && ` ${ticketEstimate.dayOffset}`}
                       </span>
                     </div>
                   </div>
@@ -775,14 +781,14 @@ export default function FlightFocusModal({
                       <span className="text-[9.5px] font-mono text-neutral-400 uppercase tracking-widest block">
                         GATE
                       </span>
-                      <span className="text-xs font-mono font-bold text-neutral-900">B12</span>
+                      <span className="text-xs font-mono font-bold text-neutral-900">{deriveGate(pendingFlight.flightNumber)}</span>
                     </div>
                     <div>
                       <span className="text-[9.5px] font-mono text-neutral-400 uppercase tracking-widest block">
                         DURATION
                       </span>
                       <span className="text-xs font-medium text-neutral-800">
-                        {formatDuration(estimate.timeRemainingSec)}
+                        {formatDuration(ticketEstimate.timeRemainingSec)}
                       </span>
                     </div>
                     <div>
@@ -790,7 +796,7 @@ export default function FlightFocusModal({
                         DISTANCE
                       </span>
                       <span className="text-xs font-mono font-bold text-neutral-900">
-                        {estimate.totalDistKm.toLocaleString()} km
+                        {ticketEstimate.totalDistKm.toLocaleString()} km
                       </span>
                     </div>
                     <div>
@@ -873,7 +879,7 @@ export default function FlightFocusModal({
                     <div className="flex justify-between py-3">
                       <span className="ff-mono text-xs text-[var(--m)]">Focused Time</span>
                       <span className="text-xs text-[var(--fg)] font-mono">
-                        {Math.floor(focusedSeconds / 60)} min {focusedSeconds % 60}s
+                        {Math.floor(flightFocusedSeconds / 60)} min {flightFocusedSeconds % 60}s
                       </span>
                     </div>
                     <div className="flex justify-between py-3">
@@ -1022,6 +1028,32 @@ export default function FlightFocusModal({
           </main>
         )}
       </div>
+
+      {/* Inline Give-Up Confirmation Overlay */}
+      {showGiveUpConfirm && (
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-[320px] mx-5 bg-[var(--bg)] border border-[var(--hair)] rounded-3xl p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-[var(--fg)] mb-2 tracking-tight">Give up this flight?</h3>
+            <p className="text-sm text-[var(--m)] mb-6 leading-relaxed">
+              Your focus session will end and you'll return to the board.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowGiveUpConfirm(false)}
+                className="flex-1 py-3 rounded-xl border border-[var(--hair)] text-[var(--fg)] text-sm font-bold hover:bg-[var(--fg)]/[0.05] transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmGiveUp}
+                className="flex-1 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-bold hover:bg-red-500/20 transition-colors cursor-pointer"
+              >
+                Give up
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

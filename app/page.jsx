@@ -1416,12 +1416,22 @@ function AppContent({ isPreview = false }) {
     return [];
   });
 
+  // Authoritative per-session focused time — survives modal close/reopen via localStorage.
+  const [flightFocusedSeconds, setFlightFocusedSeconds] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = JSON.parse(localStorage.getItem('daybase_active_flight') || 'null');
+        return Number(saved?.focusedSeconds) || 0;
+      } catch {}
+    }
+    return 0;
+  });
+  const flightSessionIdRef = useRef(selectedFlight?.id ?? null);
+
   const handleSaveFinishedTicket = useCallback((flight) => {
     if (!flight) return;
     setFinishedTickets(prev => {
-      const exists = prev.some(t => t.id === flight.id || (t.flightNumber === flight.flightNumber && Math.abs((t.completedAt || 0) - Date.now()) < 60000));
-      if (exists) return prev;
-      const newTicket = {
+      const baseTicket = {
         ...flight,
         id: flight.id || `${flight.flightNumber || 'FLT'}-${Date.now()}`,
         flightNumber: flight.flightNumber || flight.callsign,
@@ -1429,9 +1439,31 @@ function AppContent({ isPreview = false }) {
         seat: flight.seat || selectedSeat || '14A',
         date: flight.date || new Date().toLocaleDateString(),
         completedAt: Date.now(),
-        totalDistance: flight.totalDistance || 2500,
+        totalDistance: flight.totalDistance,
+        originCity: flight.originCity,
+        destCity: flight.destCity,
+        focusedSeconds: flight.focusedSeconds ?? 0,
       };
-      const updated = [newTicket, ...prev];
+      const existingIdx = prev.findIndex(t => t.id === baseTicket.id || (t.flightNumber === baseTicket.flightNumber && Math.abs((t.completedAt || 0) - Date.now()) < 60000));
+      let updated;
+      if (existingIdx >= 0) {
+        // Merge: keep existing data, fill missing fields from the richer payload.
+        const existing = prev[existingIdx];
+        const merged = {
+          ...existing,
+          ...baseTicket,
+          seat: existing.seat || baseTicket.seat,
+          totalDistance: existing.totalDistance || baseTicket.totalDistance || 2500,
+          originCity: existing.originCity || baseTicket.originCity,
+          destCity: existing.destCity || baseTicket.destCity,
+          focusedSeconds: Math.max(existing.focusedSeconds || 0, baseTicket.focusedSeconds || 0),
+          completedAt: existing.completedAt || baseTicket.completedAt,
+        };
+        updated = [...prev];
+        updated[existingIdx] = merged;
+      } else {
+        updated = [baseTicket, ...prev];
+      }
       if (typeof window !== 'undefined') {
         localStorage.setItem('trackert_finished_tickets_v1', JSON.stringify(updated));
       }
@@ -2544,6 +2576,9 @@ function AppContent({ isPreview = false }) {
              if (prefs.flightTheme === 'dark' || prefs.flightTheme === 'light') {
                if (typeof window !== 'undefined') localStorage.setItem('flight_focus_theme', prefs.flightTheme);
              }
+             if (prefs.flightUnits === 'km' || prefs.flightUnits === 'mi') {
+               if (typeof window !== 'undefined') localStorage.setItem('flight_focus_units', prefs.flightUnits);
+             }
           }
           if (!state.preferences || Object.keys(state.preferences).length === 0) {
              markLocalMutation();
@@ -3430,6 +3465,12 @@ function AppContent({ isPreview = false }) {
       flightLastTickRef.current = null;
       return;
     }
+
+    // Reset accumulator when the session id changes (new flight started).
+    if (flightSessionIdRef.current !== selectedFlight.id) {
+      flightSessionIdRef.current = selectedFlight.id;
+      setFlightFocusedSeconds(0);
+    }
     
     // Flight timer runs purely on timestamp delta now and is always live!
     const arr = selectedFlight.estimatedArrival || selectedFlight.arrival || (currentUnixTime + 3600);
@@ -3457,6 +3498,8 @@ function AppContent({ isPreview = false }) {
             localStorage.setItem('daybase_focusTime_v4', JSON.stringify(updated));
             return updated;
           });
+
+          setFlightFocusedSeconds(prev => prev + delta);
           
           // Flight time is no longer added to pomodoro Tasks Data. It is only kept in finishedTickets.
         }
@@ -3469,14 +3512,18 @@ function AppContent({ isPreview = false }) {
       setIsFlightTimerRunning(false);
       flightLastTickRef.current = null;
       if (selectedFlight) {
-        handleSaveFinishedTicket(selectedFlight);
+        handleSaveFinishedTicket({
+          ...selectedFlight,
+          seat: selectedSeat || '14A',
+          focusedSeconds: flightFocusedSeconds,
+        });
         if (flightTimer > 0) {
           playAirportChime();
-          setIsBoardingPassOpen(true);
+          if (!isFlightFocusOpen) setIsBoardingPassOpen(true);
         }
       }
     }
-  }, [currentUnixTime, isFlightTimerRunning, selectedFlight]);
+  }, [currentUnixTime, isFlightTimerRunning, selectedFlight, flightFocusedSeconds, flightFocusedSeconds, isFlightFocusOpen, selectedSeat, handleSaveFinishedTicket]);
 
   // --- Modals & Inputs ---
   const [isEditingMission, setIsEditingMission] = useState(false);
@@ -3773,6 +3820,7 @@ function AppContent({ isPreview = false }) {
       habitNotes,
       pinnedFriend: pinnedFriendUsername || '',
       flightTheme: typeof window !== 'undefined' ? localStorage.getItem('flight_focus_theme') || '' : '',
+      flightUnits: typeof window !== 'undefined' ? localStorage.getItem('flight_focus_units') || '' : '',
     },
     targetDates: syncTargetDates,
     activeDateStr,
@@ -4257,19 +4305,27 @@ function AppContent({ isPreview = false }) {
   useEffect(() => {
     if (!isMounted) return;
     if (isFlightTimerRunning && selectedFlight) {
-      const data = { flight: selectedFlight };
+      const data = { flight: selectedFlight, focusedSeconds: flightFocusedSeconds };
       if (typeof window !== 'undefined') {
         localStorage.setItem('daybase_active_flight', JSON.stringify(data));
       }
+    } else {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('daybase_active_flight');
+      }
+    }
+  }, [isFlightTimerRunning, selectedFlight, isMounted, flightFocusedSeconds]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    if (isFlightTimerRunning && selectedFlight) {
+      const data = { flight: selectedFlight };
       syncSessionRef.current.lastSyncedType = 'flight';
       apiFetch('/api/session', { 
         method: 'POST', 
         body: JSON.stringify({ type: 'flight', data }) 
       }).catch(() => {});
     } else {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('daybase_active_flight');
-      }
       if (syncSessionRef.current.lastSyncedType === 'flight') {
         syncSessionRef.current.lastSyncedType = null;
         apiFetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
@@ -8009,19 +8065,15 @@ function AppContent({ isPreview = false }) {
             }}
             selectedFlight={selectedFlight}
             setSelectedFlight={setSelectedFlight}
-            flightTimer={flightTimer}
-            setFlightTimer={setFlightTimer}
             isFlightTimerRunning={isFlightTimerRunning}
             setIsFlightTimerRunning={setIsFlightTimerRunning}
-            flightOptions={flightOptions}
-            flightLoading={flightLoading}
-            fetchFlights={fetchFlights}
             isCabinHumPlaying={isCabinHumPlaying}
             toggleCabinHum={toggleCabinHum}
             setIsWindowSeatOpen={setIsWindowSeatOpen}
             selectedSeat={selectedSeat}
             setIsAmbientModalOpen={setIsAmbientModalOpen}
             onSaveFinishedTicket={handleSaveFinishedTicket}
+            flightFocusedSeconds={flightFocusedSeconds}
           />,
           document.body
         )}

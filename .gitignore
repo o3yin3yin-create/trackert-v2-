@@ -63,6 +63,7 @@ assetlinks.json
 dist
 src-tauri/target/
 .api_backup/
+.settings*backup*/
 db_backup_*.json
 tests/
 audit-screenshots/

@@ -19,6 +19,13 @@ const BoardingPassCard = ({ flight = {}, seat, date, isArrived, lang, isExpanded
   const durationHours = Math.floor(totalSec / 3600);
   const durationMins = Math.floor((totalSec % 3600) / 60);
 
+  const focusedSec = Number(flight.focusedSeconds) || 0;
+  const focusLabel = focusedSec > 0
+    ? (focusedSec >= 3600
+        ? `${Math.floor(focusedSec / 3600)}h ${Math.floor((focusedSec % 3600) / 60)}m`
+        : `${Math.floor(focusedSec / 60)}m ${focusedSec % 60}s`)
+    : '—';
+
   const barcodeBars = useMemo(() => {
     let hash = 0;
     const str = flight.id || 'abc';
@@ -91,8 +98,8 @@ const BoardingPassCard = ({ flight = {}, seat, date, isArrived, lang, isExpanded
               <span className="text-lg font-black">{distance} km</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Boarding</span>
-              <span className="text-lg font-black text-black">{currentTime}</span>
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Focus Time</span>
+              <span className="text-lg font-black">{focusLabel}</span>
             </div>
             <div className="flex flex-col items-end">
               <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Date</span>
