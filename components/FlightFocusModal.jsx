@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { getFlights, getDayOffset, usePlaneEstimate, resolveAirport } from '@/lib/flightSchedule';
+import { playFlightArrivalChime } from '@/lib/flightAudio';
 
 const MapLibreFlightRadar = dynamic(() => import('./MapLibreFlightRadar'), {
   ssr: false,
@@ -222,10 +223,11 @@ export default function FlightFocusModal({
     }
   }, [isOpen, selectedFlight, activeFlight, currentScreen]);
 
-  // Automatically save ticket into finished tickets as soon as the flight lands
+  // Automatically save ticket into finished tickets and announce arrival as soon as the flight lands
   useEffect(() => {
     if (estimate?.isLanded && flightToTrack && !hasSavedLandedRef.current) {
       hasSavedLandedRef.current = true;
+      playFlightArrivalChime();
       if (typeof onSaveFinishedTicket === 'function') {
         onSaveFinishedTicket({
           ...flightToTrack,
@@ -236,8 +238,11 @@ export default function FlightFocusModal({
           focusedSeconds: flightFocusedSeconds,
         });
       }
+      if (currentScreen === 'radar') {
+        setCurrentScreen('cabin');
+      }
     }
-  }, [estimate?.isLanded, flightToTrack, onSaveFinishedTicket, selectedSeat, estimate?.totalDistKm, estimate?.orig?.city, estimate?.dest?.city, flightFocusedSeconds]);
+  }, [estimate?.isLanded, flightToTrack, onSaveFinishedTicket, selectedSeat, estimate?.totalDistKm, estimate?.orig?.city, estimate?.dest?.city, flightFocusedSeconds, currentScreen]);
 
   // Step 1 -> Step 2: Board to Ticket
   const handleSelectFlightToTicket = (f) => {

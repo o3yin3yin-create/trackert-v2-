@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { generateGreatCircleArc, getGreatCirclePoint, getGreatCircleBearing } from '@/lib/flightSchedule';
+import { playFlightArrivalChime } from '@/lib/flightAudio';
 
 const OPENFREEMAP_TILEJSON = 'https://tiles.openfreemap.org/planet';
 const FALLBACK_TILE_URL = 'https://tiles.openfreemap.org/planet/20261101_080013_pt/{z}/{x}/{y}.pbf';
@@ -79,12 +80,21 @@ export default function MapLibreFlightRadar({
   onOpenWindowSeat,
   onOpenSoundLibrary,
 }) {
-
   const containerRef = useRef(null);
+  const canvasRef = useRef(null);
   const mapRef = useRef(null);
   const isLoadedRef = useRef(false);
   const estimateRef = useRef(estimate);
   estimateRef.current = estimate;
+
+  // Play loud and clear arrival announcement chime the second flight lands
+  const hasAnnouncedArrivalRef = useRef(false);
+  useEffect(() => {
+    if (estimate?.isLanded && !hasAnnouncedArrivalRef.current) {
+      hasAnnouncedArrivalRef.current = true;
+      playFlightArrivalChime();
+    }
+  }, [estimate?.isLanded]);
 
   const [useMiles, setUseMiles] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -96,81 +106,45 @@ export default function MapLibreFlightRadar({
     return false;
   });
 
-  const buildRouteGeoJson = useCallback(
-    (est, exactProgress) => {
+  const buildRouteGeoJson = useCallback((est) => {
+    if (!est?.origCoords || !est?.destCoords) {
+      return { type: 'FeatureCollection', features: [] };
+    }
 
-      if (!est?.origCoords || !est?.destCoords) {
-        return { type: 'FeatureCollection', features: [] };
-      }
+    const allPoints = generateGreatCircleArc(est.origCoords, est.destCoords, 60);
 
-      const allPoints = generateGreatCircleArc(est.origCoords, est.destCoords, 60);
-      const progress = Math.max(0, Math.min(1, exactProgress ?? est.progress ?? 0));
-
-      // Plane sits at the exact fractional progress so it glides continuously
-      // between arc vertices instead of snapping once per segment.
-      const exact = getGreatCirclePoint(est.origCoords, est.destCoords, progress);
-
-      // Faded contrail: a short sub-arc of the recent path behind the aircraft,
-      // drawn with a gradient that fades out the farther it gets from the plane.
-      const totalKm = Math.max(1, est.totalDistKm || 1000);
-      const trailStart = Math.max(0, progress - 160 / totalKm);
-      const trailPoints = [];
-      const trailSteps = 24;
-      for (let i = 0; i <= trailSteps; i++) {
-        const t = trailStart + (progress - trailStart) * (i / trailSteps);
-        const p = getGreatCirclePoint(est.origCoords, est.destCoords, t);
-        trailPoints.push([p.lon, p.lat]);
-      }
-
-      return {
-        type: 'FeatureCollection',
-        features: [
-          {
-            type: 'Feature',
-            properties: { role: 'route' },
-            geometry: {
-              type: 'LineString',
-              coordinates: allPoints,
-            },
+    return {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          properties: { role: 'route' },
+          geometry: {
+            type: 'LineString',
+            coordinates: allPoints,
           },
-          {
-            type: 'Feature',
-            properties: { role: 'trail' },
-            geometry: {
-              type: 'LineString',
-              coordinates: trailPoints,
-            },
+        },
+        {
+          type: 'Feature',
+          properties: { iata: est.flight?.origin, role: 'origin' },
+          geometry: {
+            type: 'Point',
+            coordinates: [est.origCoords.lon, est.origCoords.lat],
           },
-          {
-            type: 'Feature',
-            properties: { iata: est.flight.origin, role: 'origin' },
-            geometry: {
-              type: 'Point',
-              coordinates: [est.origCoords.lon, est.origCoords.lat],
-            },
+        },
+        {
+          type: 'Feature',
+          properties: { iata: est.flight?.destination, role: 'dest' },
+          geometry: {
+            type: 'Point',
+            coordinates: [est.destCoords.lon, est.destCoords.lat],
           },
-          {
-            type: 'Feature',
-            properties: { iata: est.flight.destination, role: 'dest' },
-            geometry: {
-              type: 'Point',
-              coordinates: [est.destCoords.lon, est.destCoords.lat],
-            },
-          },
-          {
-            type: 'Feature',
-            properties: { role: 'plane' },
-            geometry: {
-              type: 'Point',
-              coordinates: [exact.lon, exact.lat],
-            },
-          },
-        ],
-      };
-    },
-    []
-  );
+        },
+      ],
+    };
+  }, []);
 
+  // Initialize MapLibre
   useEffect(() => {
     let mapInstance = null;
     let cancelled = false;
@@ -183,8 +157,6 @@ export default function MapLibreFlightRadar({
         if (cancelled || !containerRef.current || mapRef.current) return;
         const Map = maplibre.Map || maplibre.default?.Map;
 
-        // OpenFreeMap rotates the dated tile path; resolve the current one from
-        // TileJSON, falling back to a known-good path if the lookup is slow.
         let tileUrl = FALLBACK_TILE_URL;
         try {
           const ctrl = new AbortController();
@@ -233,10 +205,7 @@ export default function MapLibreFlightRadar({
         mapInstance.doubleClickZoom.disable();
         mapInstance.touchZoomRotate.disable();
 
-        // Anchor the aircraft at the lower third of the viewport. The camera
-        // tracks the plane's geo position; top padding shifts the rendered center
-        // down to 2/3 height so the plane sits 1/3 up from the bottom, fixed,
-        // while the map scrolls downward beneath it.
+        // Anchor the aircraft at 2/3 of viewport height (lower third).
         const applyTrackingPadding = () => {
           const h = mapInstance.getContainer().clientHeight || 0;
           mapInstance.setPadding({ top: h / 3, bottom: 0, left: 0, right: 0 });
@@ -245,16 +214,16 @@ export default function MapLibreFlightRadar({
         mapInstance.on('resize', applyTrackingPadding);
 
         const addRouteLayers = () => {
-          if (!mapInstance) return;
+          if (!mapInstance || cancelled) return;
           const routeData = buildRouteGeoJson(estimateRef.current);
 
           if (!mapInstance.getSource('flight-route')) {
             mapInstance.addSource('flight-route', {
               type: 'geojson',
               data: routeData,
-              lineMetrics: true,
             });
 
+            // Thin transparent continuous great-circle flight path from start to end
             mapInstance.addLayer({
               id: 'flight-route-line',
               type: 'line',
@@ -265,59 +234,24 @@ export default function MapLibreFlightRadar({
                 'line-join': 'round',
               },
               paint: {
-                'line-color': '#a3a3a3',
-                'line-width': 1.5,
-                'line-dasharray': [1, 3],
-                'line-opacity': 0.4,
+                'line-color': '#ffffff',
+                'line-width': 1.0,
+                'line-opacity': 0.35,
               },
             });
 
-            mapInstance.addLayer({
-              id: 'flight-trail',
-              type: 'line',
-              source: 'flight-route',
-              filter: ['==', 'role', 'trail'],
-              layout: {
-                'line-cap': 'round',
-                'line-join': 'round',
-              },
-              paint: {
-                'line-width': 3,
-                'line-blur': 1.5,
-                'line-gradient': [
-                  'interpolate', ['linear'], ['line-progress'],
-                  0, 'rgba(255,255,255,0)',
-                  1, 'rgba(255,255,255,0.5)',
-                ],
-              },
-            });
-
+            // Origin / Destination airport dots
             mapInstance.addLayer({
               id: 'flight-airports',
               type: 'circle',
               source: 'flight-route',
               filter: ['all', ['==', '$type', 'Point'], ['has', 'iata']],
               paint: {
-                'circle-radius': 5,
+                'circle-radius': 4.5,
                 'circle-color': '#ffffff',
-                'circle-stroke-color': '#333333',
-                'circle-stroke-width': 2,
-                'circle-opacity': 0.8,
-              },
-            });
-
-            mapInstance.addLayer({
-              id: 'flight-plane',
-              type: 'symbol',
-              source: 'flight-route',
-              filter: ['==', 'role', 'plane'],
-              layout: {
-                'icon-image': 'plane-icon',
-                'icon-size': 0.6,
-                'icon-rotate': 0,
-                'icon-rotation-alignment': 'viewport',
-                'icon-allow-overlap': true,
-                'icon-ignore-placement': true,
+                'circle-stroke-color': '#222222',
+                'circle-stroke-width': 1.5,
+                'circle-opacity': 0.85,
               },
             });
           }
@@ -326,48 +260,11 @@ export default function MapLibreFlightRadar({
         const installOverlays = () => {
           if (cancelled || isLoadedRef.current || !mapInstance) return;
           try {
-            const planeSize = 64;
-            const planeCanvas = document.createElement('canvas');
-            planeCanvas.width = planeSize;
-            planeCanvas.height = planeSize;
-            const planeCtx = planeCanvas.getContext('2d');
-            planeCtx.fillStyle = '#ffffff';
-            planeCtx.shadowColor = 'rgba(0,0,0,0.6)';
-            planeCtx.shadowBlur = 6;
-            planeCtx.shadowOffsetY = 1.5;
-            planeCtx.beginPath();
-            planeCtx.moveTo(32, 2);
-            planeCtx.bezierCurveTo(33.9, 2, 35, 5.2, 35, 9);
-            planeCtx.lineTo(35, 24);
-            planeCtx.lineTo(60, 38);
-            planeCtx.lineTo(60, 41.5);
-            planeCtx.lineTo(35, 33.5);
-            planeCtx.lineTo(35, 47);
-            planeCtx.lineTo(43, 53);
-            planeCtx.lineTo(43, 56);
-            planeCtx.lineTo(32, 52.5);
-            planeCtx.lineTo(21, 56);
-            planeCtx.lineTo(21, 53);
-            planeCtx.lineTo(29, 47);
-            planeCtx.lineTo(29, 33.5);
-            planeCtx.lineTo(4, 41.5);
-            planeCtx.lineTo(4, 38);
-            planeCtx.lineTo(29, 24);
-            planeCtx.lineTo(29, 9);
-            planeCtx.bezierCurveTo(29, 5.2, 30.1, 2, 32, 2);
-            planeCtx.closePath();
-            planeCtx.fill();
-            if (!mapInstance.hasImage('plane-icon')) {
-              mapInstance.addImage('plane-icon', planeCtx.getImageData(0, 0, planeSize, planeSize));
-            }
-
             addRouteLayers();
             isLoadedRef.current = true;
           } catch {}
         };
 
-        // Overlays need the parsed stylesheet, which lands asynchronously after
-        // style.load on slow networks; retry until the install succeeds.
         let installRetry = null;
         const stopRetry = () => { if (installRetry) { clearInterval(installRetry); installRetry = null; } };
         const tryInstall = () => {
@@ -393,18 +290,16 @@ export default function MapLibreFlightRadar({
         isLoadedRef.current = false;
       }
     };
-  }, []);
+  }, [buildRouteGeoJson]);
 
-  // Continuous tracker: derive the plane's exact position from the wall clock
-  // every frame and pin the camera to it, so the aircraft stays dead-center and
-  // glides in real time instead of stepping (and lagging) once per second.
+  // Continuous Map Tracking Loop
   useEffect(() => {
     let rafId = null;
     let last = 0;
 
     const tick = (now) => {
       rafId = requestAnimationFrame(tick);
-      if (now - last < 33) return; // ~30fps is plenty for a slow-moving aircraft
+      if (now - last < 33) return; // ~30fps
       last = now;
 
       const map = mapRef.current;
@@ -423,17 +318,192 @@ export default function MapLibreFlightRadar({
       const heading = getGreatCircleBearing(pos, est.destCoords);
 
       try {
-        const source = map.getSource('flight-route');
-        if (source && typeof source.setData === 'function') {
-          source.setData(buildRouteGeoJson(est, progress));
-        }
         map.jumpTo({ center: [pos.lon, pos.lat], bearing: heading });
       } catch {}
     };
 
     rafId = requestAnimationFrame(tick);
     return () => { if (rafId) cancelAnimationFrame(rafId); };
-  }, [buildRouteGeoJson]);
+  }, []);
+
+  // 60FPS Smoke Contrail Simulation & Render Loop (Thinner, Smaller, Slower & Continuous)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId = null;
+    const SPEED = 1.25; // Gentle, realistic slow backward drift matching map speed
+    const MAX_POINTS = 180; // Elegant long contrail streaming behind the aircraft
+    const leftTrail = [];
+    const rightTrail = [];
+    const microPuffs = [];
+    const MAX_PUFFS = 90;
+
+    // Set high-DPI canvas resolution
+    const resizeCanvas = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // Pre-warm contrail so it's already gracefully formed when opening the screen
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight * (2 / 3);
+    for (let i = 0; i < MAX_POINTS; i++) {
+      const yOffset = i * SPEED;
+      leftTrail.unshift({ x: cx - 10, y: cy + 4 + yOffset, age: i });
+      rightTrail.unshift({ x: cx + 10, y: cy + 4 + yOffset, age: i });
+    }
+
+    let frame = 0;
+    const render = () => {
+      animId = requestAnimationFrame(render);
+      frame++;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const curCx = w / 2;
+      const curCy = h * (2 / 3);
+      const leftEngine = { x: curCx - 10, y: curCy + 4 };
+      const rightEngine = { x: curCx + 10, y: curCy + 4 };
+
+      // Append new point at nozzle
+      leftTrail.unshift({ x: leftEngine.x, y: leftEngine.y, age: 0 });
+      rightTrail.unshift({ x: rightEngine.x, y: rightEngine.y, age: 0 });
+
+      // Update existing trail points
+      for (let i = leftTrail.length - 1; i >= 0; i--) {
+        const pt = leftTrail[i];
+        pt.age++;
+        pt.y += SPEED;
+        if (pt.y > h + 50 || pt.age > MAX_POINTS) {
+          leftTrail.splice(i, 1);
+        }
+      }
+      for (let i = rightTrail.length - 1; i >= 0; i--) {
+        const pt = rightTrail[i];
+        pt.age++;
+        pt.y += SPEED;
+        if (pt.y > h + 50 || pt.age > MAX_POINTS) {
+          rightTrail.splice(i, 1);
+        }
+      }
+
+      // Add delicate micro-puffs along the trail for soft realistic atmospheric vapor texture
+      if (frame % 2 === 0 && microPuffs.length < MAX_PUFFS) {
+        microPuffs.push({
+          x: leftEngine.x,
+          y: leftEngine.y + 1,
+          vx: 0,
+          vy: SPEED + 0.1,
+          r: 0.6 + Math.random() * 0.3,
+          growth: 0.012 + Math.random() * 0.008,
+          alpha: 0.65,
+          life: 0,
+          maxLife: 140,
+        });
+        microPuffs.push({
+          x: rightEngine.x,
+          y: rightEngine.y + 1,
+          vx: 0,
+          vy: SPEED + 0.1,
+          r: 0.6 + Math.random() * 0.3,
+          growth: 0.012 + Math.random() * 0.008,
+          alpha: 0.65,
+          life: 0,
+          maxLife: 140,
+        });
+      }
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Helper to render smooth, continuous, completely straight twin streams
+      const drawStream = (trail) => {
+        if (trail.length < 2) return;
+        const total = trail.length;
+
+        // Pass 1: Soft outer condensation vapor haze (straight, subtle, thin)
+        ctx.beginPath();
+        ctx.moveTo(trail[0].x, trail[0].y);
+        for (let i = 1; i < total; i++) {
+          ctx.lineTo(trail[i].x, trail[i].y);
+        }
+        const hazeGrad = ctx.createLinearGradient(0, curCy + 4, 0, curCy + 4 + MAX_POINTS * SPEED);
+        hazeGrad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+        hazeGrad.addColorStop(0.3, 'rgba(240, 245, 255, 0.25)');
+        hazeGrad.addColorStop(0.8, 'rgba(220, 230, 255, 0.08)');
+        hazeGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.strokeStyle = hazeGrad;
+        ctx.lineWidth = 2.4;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+
+        // Pass 2: Sharp, thin brilliant white core line (perfectly straight)
+        ctx.beginPath();
+        ctx.moveTo(trail[0].x, trail[0].y);
+        for (let i = 1; i < total; i++) {
+          ctx.lineTo(trail[i].x, trail[i].y);
+        }
+        const coreGrad = ctx.createLinearGradient(0, curCy + 4, 0, curCy + 4 + MAX_POINTS * SPEED);
+        coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+        coreGrad.addColorStop(0.2, 'rgba(255, 255, 255, 0.85)');
+        coreGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.35)');
+        coreGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.strokeStyle = coreGrad;
+        ctx.lineWidth = 1.0;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+      };
+
+      drawStream(leftTrail);
+      drawStream(rightTrail);
+
+      // Render micro atmospheric condensation puffs for organic texture
+      for (let i = microPuffs.length - 1; i >= 0; i--) {
+        const p = microPuffs[i];
+        p.life++;
+        if (p.life >= p.maxLife || p.y > h + 40) {
+          microPuffs.splice(i, 1);
+          continue;
+        }
+
+        p.x += p.vx;
+        p.y += p.vy;
+        p.r += p.growth;
+
+        const progress = p.life / p.maxLife;
+        const a = p.alpha * Math.pow(1 - progress, 1.35);
+        if (a < 0.01) continue;
+
+        const puff = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+        puff.addColorStop(0, `rgba(255, 255, 255, ${a})`);
+        puff.addColorStop(0.4, `rgba(240, 245, 255, ${a * 0.5})`);
+        puff.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+        ctx.fillStyle = puff;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
+
+    animId = requestAnimationFrame(render);
+
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resizeCanvas);
+    };
+  }, []);
 
   const toggleUnits = () => {
     const next = !useMiles;
@@ -470,177 +540,238 @@ export default function MapLibreFlightRadar({
         .radar-panel { animation: radarRise 480ms cubic-bezier(0.2, 0, 0, 1) both; }
         .radar-cluster { animation: radarFade 600ms 120ms both; }
         .radar-hud { animation: radarFade 900ms 200ms both; }
-        .radar-readout {
-          padding: clamp(36px, 7vh, 80px) clamp(20px, 6.4vw, 88px) max(env(safe-area-inset-bottom, 0px), 14px);
-          background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.5) 35%, rgba(0,0,0,0.9));
-        }
-        .radar-readout-grid {
-          display: grid;
-          grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-          gap: clamp(12px, 4vw, 64px);
-          max-width: 1280px;
-          margin: 0 auto;
-        }
-        .radar-readout-label {
-          font-size: clamp(11px, 3vw, 30px);
-          font-weight: 600;
-          line-height: 1.35;
-          letter-spacing: 0.015em;
-          color: rgba(255,255,255,0.65);
-          white-space: nowrap;
-        }
-        .radar-readout-value {
-          display: flex;
-          align-items: baseline;
-          gap: clamp(6px, 2vw, 26px);
-          margin: clamp(10px, 2vw, 24px) 0 0;
-          font-size: clamp(28px, 8.8vw, 100px);
-          font-weight: 300;
-          font-variant-numeric: tabular-nums;
-          line-height: 1;
-          letter-spacing: -0.045em;
-          color: #fff;
-          white-space: nowrap;
-        }
-        .radar-readout-unit {
-          font-size: clamp(13px, 3.2vw, 36px);
-          font-weight: 400;
-          letter-spacing: -0.02em;
-          color: rgba(255,255,255,0.6);
-        }
-        .radar-distance { padding-top: clamp(24px, 6vw, 64px); }
-        .radar-attribution { margin-top: clamp(24px, 6vh, 64px); }
-        @media (max-height: 500px) {
-          .radar-readout { padding-top: 16px; }
-          .radar-readout-label { font-size: 12px; }
-          .radar-readout-value { font-size: 36px; margin-top: 8px; }
-          .radar-readout-unit { font-size: 15px; }
-          .radar-distance { padding-top: 12px; }
-          .radar-attribution { margin-top: 16px; }
-        }
         @media (prefers-reduced-motion: reduce) {
           .radar-strip, .radar-panel, .radar-cluster, .radar-hud { animation: none !important; }
         }
       `}</style>
 
+      {/* MapLibre Basemap Container */}
       <div ref={containerRef} className="absolute inset-0 w-full h-full" />
 
-      {/* Viewfinder corner brackets */}
-      <div className="radar-hud absolute inset-x-3 top-16 bottom-56 z-10 pointer-events-none">
-        <span className="absolute left-0 top-0 w-5 h-5 border-l border-t border-white/25" />
-        <span className="absolute right-0 top-0 w-5 h-5 border-r border-t border-white/25" />
-        <span className="absolute left-0 bottom-0 w-5 h-5 border-l border-b border-white/25" />
-        <span className="absolute right-0 bottom-0 w-5 h-5 border-r border-b border-white/25" />
+      {/* Animated Smoke Contrail Canvas Overlay */}
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-20 pointer-events-none" />
+
+      {/* Realistic Commercial Twinjet Aircraft Silhouette (matching reference image) */}
+      <div
+        className="absolute z-20 pointer-events-none transform -translate-x-1/2 -translate-y-1/2"
+        style={{ left: '50%', top: '66.666%' }}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 64 72"
+          width="54"
+          height="61"
+          className="drop-shadow-[0_8px_18px_rgba(0,0,0,0.7)]"
+        >
+          <defs>
+            <linearGradient id="fuselage-gradient" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#e8e9ec" />
+              <stop offset="45%" stopColor="#ffffff" />
+              <stop offset="100%" stopColor="#d6d8dc" />
+            </linearGradient>
+            <linearGradient id="wing-left-grad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#ffffff" />
+              <stop offset="100%" stopColor="#ebecee" />
+            </linearGradient>
+            <linearGradient id="wing-right-grad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#ebecee" />
+              <stop offset="100%" stopColor="#d2d4d8" />
+            </linearGradient>
+            <linearGradient id="engine-gradient" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#ced1d6" />
+              <stop offset="50%" stopColor="#ffffff" />
+              <stop offset="100%" stopColor="#a8acb2" />
+            </linearGradient>
+          </defs>
+
+          {/* Left Wing & Winglet */}
+          <path
+            d="M27.8 21 L3 36.2 L3 38.8 L27.8 38 Z"
+            fill="url(#wing-left-grad)"
+          />
+          <path d="M3 36.2 L1.8 33.2 L3.6 33.5 L3.2 36.2 Z" fill="#ffffff" />
+
+          {/* Right Wing & Winglet */}
+          <path
+            d="M36.2 21 L61 36.2 L61 38.8 L36.2 38 Z"
+            fill="url(#wing-right-grad)"
+          />
+          <path d="M61 36.2 L62.2 33.2 L60.4 33.5 L60.8 36.2 Z" fill="#ffffff" />
+
+          {/* Horizontal Tail Stabilizers */}
+          <path d="M29.5 57 L14 65.5 L14 67.5 L29.5 64 Z" fill="#dedfe2" />
+          <path d="M34.5 57 L50 65.5 L50 67.5 L34.5 64 Z" fill="#c8cbd0" />
+
+          {/* Left Jet Engine & Pylon */}
+          <rect x="21.4" y="27" width="1.2" height="9" fill="#888c94" opacity="0.8" />
+          <path d="M20.5 26.5 Q22 25.5 23.5 26.5 L23.5 39 Q22 40 20.5 39 Z" fill="url(#engine-gradient)" />
+          <ellipse cx="22" cy="26.3" rx="1.5" ry="0.8" fill="#1f2329" />
+          <ellipse cx="22" cy="39.2" rx="1.3" ry="0.6" fill="#14171a" />
+
+          {/* Right Jet Engine & Pylon */}
+          <rect x="41.4" y="27" width="1.2" height="9" fill="#888c94" opacity="0.8" />
+          <path d="M40.5 26.5 Q42 25.5 43.5 26.5 L43.5 39 Q42 40 40.5 39 Z" fill="url(#engine-gradient)" />
+          <ellipse cx="42" cy="26.3" rx="1.5" ry="0.8" fill="#1f2329" />
+          <ellipse cx="42" cy="39.2" rx="1.3" ry="0.6" fill="#14171a" />
+
+          {/* Fuselage Main Body */}
+          <path
+            d="M32 2 C34.6 2 36.2 6.5 36.2 12.5 L36.2 55.5 C36.2 61.8 33.6 68.2 32 70 C30.4 68.2 27.8 61.8 27.8 55.5 L27.8 12.5 C27.8 6.5 29.4 2 32 2 Z"
+            fill="url(#fuselage-gradient)"
+          />
+
+          {/* Cockpit Window Visor */}
+          <path d="M29.8 10.2 Q32 9.2 34.2 10.2 L34.7 12.2 Q32 11.3 29.3 12.2 Z" fill="#1b2028" />
+
+          {/* Vertical Stabilizer Dorsal Spine */}
+          <path d="M31.6 48 L32.4 48 L32.2 67 L31.8 67 Z" fill="#ffffff" opacity="0.95" />
+
+          {/* Wing Root Aerodynamic Fairings */}
+          <path d="M27.8 34 Q29.8 38 27.8 42 Z" fill="#d2d5da" />
+          <path d="M36.2 34 Q34.2 38 36.2 42 Z" fill="#bec2c8" />
+        </svg>
       </div>
 
-      {/* Flight strip */}
+      {/* Viewfinder HUD Corner Brackets */}
+      <div className="radar-hud absolute inset-x-4 top-28 bottom-40 z-10 pointer-events-none">
+        <span className="absolute left-0 top-0 w-4 h-4 border-l border-t border-white/20" />
+        <span className="absolute right-0 top-0 w-4 h-4 border-r border-t border-white/20" />
+        <span className="absolute left-0 bottom-0 w-4 h-4 border-l border-b border-white/20" />
+        <span className="absolute right-0 bottom-0 w-4 h-4 border-r border-b border-white/20" />
+      </div>
+
+      {/* Flight Strip Header - lowered past Apple Dynamic Island / Status Bar blur */}
       <header
         className="radar-strip absolute inset-x-0 top-0 z-30 pointer-events-none"
         style={{
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.45) 55%, rgba(0,0,0,0) 100%)',
-          paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)',
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 65%, rgba(0,0,0,0) 100%)',
+          paddingTop: 'calc(max(env(safe-area-inset-top, 0px), 32px) + 26px)',
         }}
       >
-        <div className="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 pb-7">
+        <div className="flex items-center gap-2.5 sm:gap-3 px-5 sm:px-6 pb-6">
           <span className="font-sans text-sm sm:text-base font-bold tracking-[0.14em] text-white">
             {flight?.flightNumber || 'FLIGHT'}
           </span>
           <span className="h-3.5 w-px bg-white/20" />
-          <span className="flex items-center gap-1.5 font-mono text-[11px] sm:text-xs tracking-wider text-white/60">
+          <span className="flex items-center gap-1.5 font-mono text-[11px] sm:text-xs tracking-wider text-white/70">
             <span>{flight?.origin}</span>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" className="rotate-90 text-white/40">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" className="rotate-90 text-white/50">
               <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
             </svg>
             <span>{flight?.destination}</span>
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-[#ff9f0a] animate-pulse" />
-            <span className="font-mono text-[9px] tracking-[0.2em] text-white/40">EST</span>
+            <span className="font-mono text-[9px] tracking-[0.2em] text-white/50">EST</span>
           </span>
           <div className="flex-1" />
           <button
             onClick={onClose}
             aria-label="Exit Radar view"
-            className="pointer-events-auto shrink-0 w-9 h-9 rounded-full border border-white/15 bg-white/5 backdrop-blur-md text-white/70 hover:text-white hover:bg-white/15 active:scale-95 transition-all cursor-pointer flex items-center justify-center text-base"
+            className="pointer-events-auto shrink-0 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white/80 hover:text-white active:scale-95 transition-all cursor-pointer flex items-center justify-center text-lg leading-none"
           >
             ×
           </button>
         </div>
       </header>
 
-      {/* Instrument switch cluster */}
+      {/* Instrument Switch Cluster - Borderless floating circular icons */}
       <div
-        className="radar-cluster absolute right-3 z-30 flex flex-col gap-2"
-        style={{ top: 'calc(max(env(safe-area-inset-top, 0px), 12px) + 64px)' }}
+        className="radar-cluster absolute right-4 z-30 flex flex-col gap-3 pointer-events-auto"
+        style={{ top: 'calc(max(env(safe-area-inset-top, 0px), 32px) + 82px)' }}
       >
         <button
           onClick={onOpenSoundLibrary}
           aria-label="Sound Library"
           title="Sound Library"
-          className="w-12 h-12 rounded-lg border border-white/15 bg-black/65 backdrop-blur-xl text-white/80 hover:text-white hover:bg-white/10 active:scale-95 transition-all cursor-pointer shadow-lg flex flex-col items-center justify-center gap-0.5"
+          className="w-11 h-11 rounded-full bg-black/45 hover:bg-black/70 backdrop-blur-xl text-white/85 hover:text-white active:scale-95 transition-all cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.5)] flex items-center justify-center group"
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:scale-110">
             <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" />
           </svg>
-          <span className="font-mono text-[7px] tracking-[0.18em] text-white/40">SND</span>
         </button>
         <button
           onClick={onOpenWindowSeat}
           aria-label="Window seat"
           title="Window seat"
-          className="w-12 h-12 rounded-lg border border-white/15 bg-black/65 backdrop-blur-xl text-white/80 hover:text-white hover:bg-white/10 active:scale-95 transition-all cursor-pointer shadow-lg flex flex-col items-center justify-center gap-0.5"
+          className="w-11 h-11 rounded-full bg-black/45 hover:bg-black/70 backdrop-blur-xl text-white/85 hover:text-white active:scale-95 transition-all cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.5)] flex items-center justify-center group"
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-hover:scale-110">
             <rect x="5" y="3" width="14" height="18" rx="7" />
           </svg>
-          <span className="font-mono text-[7px] tracking-[0.18em] text-white/40">SEAT</span>
         </button>
       </div>
 
-      <footer className="radar-panel radar-readout absolute inset-x-0 bottom-0 z-30 pointer-events-none font-sans">
-        <dl className="radar-readout-grid">
-          <div className="min-w-0">
-            <dt className="radar-readout-label">Time Remaining</dt>
-            <dd className="radar-readout-value">
-              <span>{minutesRemaining}</span>
-              <span className="radar-readout-unit">min</span>
-            </dd>
+      {/* Footer Readout - Time and Distance aligned on the exact same row/baseline and pushed lower */}
+      <footer
+        className="radar-panel absolute inset-x-0 bottom-0 z-30 pointer-events-none font-sans"
+        style={{
+          background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.55) 40%, rgba(0,0,0,0.92) 100%)',
+          paddingBottom: 'calc(max(env(safe-area-inset-bottom, 0px), 14px) + 8px)',
+        }}
+      >
+        <div className="max-w-xl mx-auto px-6 sm:px-8">
+          <div className="flex items-end justify-between">
+            {/* Time Remaining Column */}
+            <div className="flex flex-col">
+              <span className="text-[13px] sm:text-[14px] font-semibold text-white/60 tracking-normal mb-1.5">
+                Time Remaining
+              </span>
+              <div className="flex items-baseline gap-1.5 leading-none">
+                <span className="text-[34px] sm:text-[42px] font-light tracking-tight text-white tabular-nums">
+                  {minutesRemaining}
+                </span>
+                <span className="text-[14px] sm:text-[16px] font-normal text-white/60">
+                  min
+                </span>
+              </div>
+            </div>
+
+            {/* Distance Remaining Column */}
+            <div className="flex flex-col items-end text-right">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <span className="text-[13px] sm:text-[14px] font-semibold text-white/60 tracking-normal">
+                  Distance Remaining
+                </span>
+                <button
+                  onClick={toggleUnits}
+                  aria-label={`Switch distance to ${useMiles ? 'kilometers' : 'miles'}`}
+                  title="Toggle km and miles"
+                  className="pointer-events-auto rounded border border-white/25 px-1.5 py-0.5 font-mono text-[9px] leading-none text-white/70 hover:text-white hover:border-white/60 transition-colors cursor-pointer"
+                >
+                  {distUnit.toUpperCase()}
+                </button>
+              </div>
+              <div className="flex items-baseline gap-1.5 leading-none">
+                <span className="text-[34px] sm:text-[42px] font-light tracking-tight text-white tabular-nums">
+                  {distValue}
+                </span>
+                <span className="text-[14px] sm:text-[16px] font-normal text-white/60">
+                  {distUnit}
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="radar-distance min-w-0">
-            <dt className="radar-readout-label flex items-center gap-1 sm:gap-2">
-              <span>Distance Remaining</span>
-              <button
-                onClick={toggleUnits}
-                aria-label={`Switch distance to ${useMiles ? 'kilometers' : 'miles'}`}
-                title="Toggle km and miles"
-                className="pointer-events-auto shrink-0 rounded-md border border-white/30 px-1.5 py-0.5 font-mono text-[0.7em] leading-none text-white/65 hover:text-white hover:border-white/60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white transition-colors cursor-pointer"
-              >
-                {distUnit.toUpperCase()}
-              </button>
-            </dt>
-            <dd className="radar-readout-value">
-              <span>{distValue}</span>
-              <span className="radar-readout-unit">{distUnit}</span>
-            </dd>
+
+          {/* Map Attribution */}
+          <div className="flex justify-end gap-3 pt-3 text-[9px] text-white/35">
+            <a
+              href="https://openfreemap.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="pointer-events-auto hover:text-white/70 hover:underline"
+            >
+              © OpenFreeMap
+            </a>
+            <a
+              href="https://www.openstreetmap.org/copyright"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="pointer-events-auto hover:text-white/70 hover:underline"
+            >
+              © OSM
+            </a>
           </div>
-        </dl>
-        <div className="radar-attribution flex justify-end gap-3 text-[9px] text-white/40">
-          <a
-            href="https://openfreemap.org"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="pointer-events-auto hover:text-white/70 hover:underline"
-          >
-            © OpenFreeMap
-          </a>
-          <a
-            href="https://www.openstreetmap.org/copyright"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="pointer-events-auto hover:text-white/70 hover:underline"
-          >
-            © OSM
-          </a>
         </div>
       </footer>
     </div>
