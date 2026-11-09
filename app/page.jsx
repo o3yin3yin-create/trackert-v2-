@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Download, RotateCcw, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map as MapIcon, Plane, Maximize, Minimize, Dices, Users, User, Calendar, CalendarDays, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut, Mail, Info, Headphones, Lock } from 'lucide-react';
+import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Focus, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Download, RotateCcw, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map as MapIcon, Plane, Maximize, Minimize, Dices, Users, User, Calendar, CalendarDays, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut, Mail, Info, Headphones, Lock } from 'lucide-react';
 import React, { useState, useEffect, useRef, useCallback, useMemo, Component } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -10588,7 +10588,7 @@ function AppContent({ isPreview = false }) {
                   title={t('focus')}
                   aria-label={t('focus')}
                 >
-                  <Target size={18} />
+                  <Focus size={18} />
                 </button>
 
                 {isFocusMenuOpen && (
@@ -10600,7 +10600,7 @@ function AppContent({ isPreview = false }) {
                     <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-64 bg-[#18181b]/95 backdrop-blur-2xl rounded-2xl p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.7)] z-[10001] border border-white/10 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-150">
                       <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-white/40 flex items-center justify-between">
                         <span>{t('focus')}</span>
-                        <Target size={13} className="text-white/30" />
+                        <Focus size={13} className="text-white/30" />
                       </div>
 
                       {/* Pomodoro Option */}
