@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { FlightRadar24API } from 'flightradarapi';
 import { rateLimit, getClientIp } from '@/lib/rateLimit';
-import { resolveAirport } from '@/lib/aviationData';
+import { resolveAirport, getDistanceKm } from '@/lib/aviationData';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,7 +90,21 @@ export async function GET(request) {
         const alt = latest?.alt ?? 0;
         const spd = latest?.spd ?? 0;
         const dep = details?.time?.real?.departure || details?.time?.scheduled?.departure;
-        const arr = details?.time?.estimated?.arrival || details?.time?.scheduled?.arrival;
+        let arr = details?.time?.estimated?.arrival || details?.time?.scheduled?.arrival;
+
+        // If arrival time is in the past (delayed flight) or missing, compute dynamically from remaining distance
+        const nowSec = Math.floor(Date.now() / 1000);
+        const destIata = details?.airport?.destination?.code?.iata;
+        const destPos = details?.airport?.destination?.position;
+        if ((!arr || arr <= nowSec) && lat !== undefined && lng !== undefined && (destPos || destIata)) {
+          const destAirport = resolveAirport(destIata || 'CAI');
+          const dLat = destPos?.latitude ?? destAirport.lat;
+          const dLng = destPos?.longitude ?? destAirport.lng;
+          const distKm = getDistanceKm(lat, lng, dLat, dLng);
+          const speedKmh = Math.max(450, (spd || 450) * 1.852);
+          const remSec = Math.round((distKm / speedKmh) * 3600);
+          arr = nowSec + remSec;
+        }
 
         if (lat !== undefined && lng !== undefined) {
           const payload = {

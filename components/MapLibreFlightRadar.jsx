@@ -669,17 +669,24 @@ export default function MapLibreFlightRadar({
   };
 
   const est = estimateRef.current;
-  const totalSec = Math.max(
-    0,
-    liveTelemetry?.arrival
-      ? liveTelemetry.arrival - Math.floor(Date.now() / 1000)
-      : (estimate?.timeRemainingSec || 0)
-  );
-
   let currentDistKm = estimate?.distRemainingKm || 0;
   if (liveTelemetry && typeof liveTelemetry.lat === 'number' && est?.destCoords) {
     const destLon = est.destCoords.lon ?? est.destCoords.lng;
     currentDistKm = Math.round(getDistanceKm(liveTelemetry.lat, liveTelemetry.lng, est.destCoords.lat, destLon));
+  }
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  let totalSec = 0;
+
+  if (liveTelemetry?.arrival && liveTelemetry.arrival > nowSec) {
+    totalSec = liveTelemetry.arrival - nowSec;
+  } else if (currentDistKm > 0) {
+    // Robust dynamic estimate for delayed flights or when FR24 scheduled arrival is in the past
+    const rawSpeed = liveTelemetry?.speed || estimate?.speed || 450;
+    const speedKmh = Math.max(450, rawSpeed * (liveTelemetry?.speed ? 1.852 : 1));
+    totalSec = Math.round((currentDistKm / speedKmh) * 3600);
+  } else {
+    totalSec = Math.max(0, estimate?.timeRemainingSec || 0);
   }
 
   const minutesRemaining = Math.ceil(totalSec / 60).toLocaleString('en-US');
