@@ -113,6 +113,8 @@ export default function MapLibreFlightRadar({
 }) {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
+  const planeRef = useRef(null);
+  const planePosRef = useRef(null);
   const mapRef = useRef(null);
   const isLoadedRef = useRef(false);
   const estimateRef = useRef(estimate);
@@ -188,7 +190,7 @@ export default function MapLibreFlightRadar({
       return { type: 'FeatureCollection', features: [] };
     }
 
-    const allPoints = generateGreatCircleArc(est.origCoords, est.destCoords, 60);
+    const allPoints = generateGreatCircleArc(est.origCoords, est.destCoords, 180);
 
     return {
       type: 'FeatureCollection',
@@ -206,7 +208,7 @@ export default function MapLibreFlightRadar({
           properties: { iata: est.flight?.origin, role: 'origin' },
           geometry: {
             type: 'Point',
-            coordinates: [est.origCoords.lon, est.origCoords.lat],
+            coordinates: [est.origCoords.lon ?? est.origCoords.lng, est.origCoords.lat],
           },
         },
         {
@@ -214,7 +216,7 @@ export default function MapLibreFlightRadar({
           properties: { iata: est.flight?.destination, role: 'dest' },
           geometry: {
             type: 'Point',
-            coordinates: [est.destCoords.lon, est.destCoords.lat],
+            coordinates: [est.destCoords.lon ?? est.destCoords.lng, est.destCoords.lat],
           },
         },
       ],
@@ -284,8 +286,10 @@ export default function MapLibreFlightRadar({
 
         // Anchor the aircraft at 2/3 of viewport height (lower third).
         const applyTrackingPadding = () => {
-          const h = mapInstance.getContainer().clientHeight || 0;
-          mapInstance.setPadding({ top: h / 3, bottom: 0, left: 0, right: 0 });
+          if (!mapInstance) return;
+          const container = mapInstance.getContainer();
+          const h = container?.clientHeight || window.innerHeight || 0;
+          mapInstance.setPadding({ top: Math.round(h / 3), bottom: 0, left: 0, right: 0 });
         };
         applyTrackingPadding();
         mapInstance.on('resize', applyTrackingPadding);
@@ -369,6 +373,18 @@ export default function MapLibreFlightRadar({
     };
   }, [buildRouteGeoJson]);
 
+  // Keep route geojson updated if flight route endpoints change
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isLoadedRef.current) return;
+    try {
+      const src = map.getSource('flight-route');
+      if (src && typeof src.setData === 'function') {
+        src.setData(buildRouteGeoJson(estimateRef.current));
+      }
+    } catch {}
+  }, [flight?.id, flight?.origin, flight?.destination, buildRouteGeoJson]);
+
   // Continuous Map Tracking Loop (60FPS buttery smooth dead-reckoning)
   useEffect(() => {
     let rafId = null;
@@ -422,10 +438,29 @@ export default function MapLibreFlightRadar({
 
       // Calculate smooth point and bearing on the continuous flight path
       const pos = getGreatCirclePoint(est.origCoords, est.destCoords, nextProg);
-      const heading = getGreatCircleBearing(pos, est.destCoords);
+      // Sample local forward tangent for exact heading
+      const posNext = getGreatCirclePoint(est.origCoords, est.destCoords, Math.min(1, nextProg + 0.0006));
+      const heading = getGreatCircleBearing(pos, posNext);
 
       try {
         map.jumpTo({ center: [pos.lon, pos.lat], bearing: heading });
+
+        // Project the EXACT WebGL screen pixel coordinate of pos
+        const screenPt = map.project([pos.lon, pos.lat]);
+        const screenPtNext = map.project([posNext.lon, posNext.lat]);
+
+        const dx = screenPtNext.x - screenPt.x;
+        const dy = screenPtNext.y - screenPt.y;
+        let screenAngle = 0;
+        if (Math.hypot(dx, dy) > 0.001) {
+          screenAngle = Math.atan2(dx, -dy) * (180 / Math.PI);
+        }
+
+        planePosRef.current = { x: screenPt.x, y: screenPt.y, angle: screenAngle };
+
+        if (planeRef.current) {
+          planeRef.current.style.transform = `translate3d(${screenPt.x}px, ${screenPt.y}px, 0) translate(-50%, -50%) rotate(${screenAngle.toFixed(2)}deg)`;
+        }
       } catch {}
     };
 
@@ -467,8 +502,8 @@ export default function MapLibreFlightRadar({
     const cy = window.innerHeight * (2 / 3);
     for (let i = 0; i < MAX_POINTS; i++) {
       const yOffset = i * SPEED;
-      leftTrail.unshift({ x: cx - 10, y: cy + 4 + yOffset, age: i });
-      rightTrail.unshift({ x: cx + 10, y: cy + 4 + yOffset, age: i });
+      leftTrail.unshift({ x: cx - 8.75, y: cy + 2.8 + yOffset, age: i });
+      rightTrail.unshift({ x: cx + 8.75, y: cy + 2.8 + yOffset, age: i });
     }
 
     let frame = 0;
@@ -477,10 +512,22 @@ export default function MapLibreFlightRadar({
       frame++;
       const w = window.innerWidth;
       const h = window.innerHeight;
-      const curCx = w / 2;
-      const curCy = h * (2 / 3);
-      const leftEngine = { x: curCx - 10, y: curCy + 4 };
-      const rightEngine = { x: curCx + 10, y: curCy + 4 };
+      const posInfo = planePosRef.current;
+      const curCx = posInfo ? posInfo.x : w / 2;
+      const curCy = posInfo ? posInfo.y : h * (2 / 3);
+      const curAngle = ((posInfo?.angle || 0) * Math.PI) / 180;
+      const cosA = Math.cos(curAngle);
+      const sinA = Math.sin(curAngle);
+
+      // Local engine nozzle offsets relative to plane center
+      const leftEngine = {
+        x: curCx + (-8.75 * cosA - 2.8 * sinA),
+        y: curCy + (-8.75 * sinA + 2.8 * cosA),
+      };
+      const rightEngine = {
+        x: curCx + (8.75 * cosA - 2.8 * sinA),
+        y: curCy + (8.75 * sinA + 2.8 * cosA),
+      };
 
       // Append new point at nozzle
       leftTrail.unshift({ x: leftEngine.x, y: leftEngine.y, age: 0 });
@@ -543,7 +590,7 @@ export default function MapLibreFlightRadar({
         for (let i = 1; i < total; i++) {
           ctx.lineTo(trail[i].x, trail[i].y);
         }
-        const hazeGrad = ctx.createLinearGradient(0, curCy + 4, 0, curCy + 4 + MAX_POINTS * SPEED);
+        const hazeGrad = ctx.createLinearGradient(0, curCy + 2.8, 0, curCy + 2.8 + MAX_POINTS * SPEED);
         hazeGrad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
         hazeGrad.addColorStop(0.3, 'rgba(240, 245, 255, 0.25)');
         hazeGrad.addColorStop(0.8, 'rgba(220, 230, 255, 0.08)');
@@ -560,7 +607,7 @@ export default function MapLibreFlightRadar({
         for (let i = 1; i < total; i++) {
           ctx.lineTo(trail[i].x, trail[i].y);
         }
-        const coreGrad = ctx.createLinearGradient(0, curCy + 4, 0, curCy + 4 + MAX_POINTS * SPEED);
+        const coreGrad = ctx.createLinearGradient(0, curCy + 2.8, 0, curCy + 2.8 + MAX_POINTS * SPEED);
         coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
         coreGrad.addColorStop(0.2, 'rgba(255, 255, 255, 0.85)');
         coreGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.35)');
@@ -642,7 +689,7 @@ export default function MapLibreFlightRadar({
   const distUnit = useMiles ? 'mi' : 'km';
 
   return (
-    <div className="fixed inset-0 z-[10000] w-screen h-screen overflow-hidden bg-black select-none">
+    <div className="fixed inset-0 z-[10000] w-full h-full overflow-hidden bg-black select-none">
       <style jsx global>{`
         @keyframes radarDrop {
           from { transform: translateY(-12px); opacity: 0; }
@@ -673,14 +720,20 @@ export default function MapLibreFlightRadar({
 
       {/* Realistic Commercial Twinjet Aircraft Silhouette (matching reference image) */}
       <div
-        className="absolute z-20 pointer-events-none transform -translate-x-1/2 -translate-y-1/2"
-        style={{ left: '50%', top: '66.666%' }}
+        ref={planeRef}
+        className="absolute z-20 pointer-events-none"
+        style={{
+          left: 0,
+          top: 0,
+          transform: 'translate3d(50vw, 66.666vh, 0) translate(-50%, -50%)',
+          willChange: 'transform',
+        }}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 64 72"
-          width="54"
-          height="61"
+          width="56"
+          height="63"
           className="drop-shadow-[0_8px_18px_rgba(0,0,0,0.7)]"
         >
           <defs>
