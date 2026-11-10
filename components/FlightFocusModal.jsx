@@ -524,8 +524,8 @@ export default function FlightFocusModal({
       <div
         className="w-full max-w-[480px] mx-auto min-h-screen flex flex-col justify-between"
         style={{
-          paddingTop: 'calc(max(env(safe-area-inset-top, 0px), 16px) + 8px)',
-          paddingBottom: 'calc(max(env(safe-area-inset-bottom, 0px), 16px) + 8px)',
+          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 2rem)',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)',
           paddingLeft: '20px',
           paddingRight: '20px',
         }}
@@ -539,7 +539,7 @@ export default function FlightFocusModal({
                 <button
                   onClick={() => setCurrentScreen('board')}
                   aria-label="Back to flight board"
-                  className="w-11 h-11 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--fg)] ff-pill select-none cursor-pointer"
+                  className="w-10 h-10 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--fg)] ff-pill select-none cursor-pointer"
                 >
                   <span className="text-base leading-none">←</span>
                 </button>
@@ -554,7 +554,7 @@ export default function FlightFocusModal({
                 <button
                   role="tab"
                   aria-selected={true}
-                  className="min-h-[38px] px-4 rounded-full text-[13px] font-normal ff-pill bg-[var(--fg)] text-[var(--bg)] cursor-pointer"
+                  className="min-h-[36px] px-4 rounded-full text-[13px] font-normal ff-pill bg-[var(--fg)] text-[var(--bg)] cursor-pointer"
                 >
                   Cabin
                 </button>
@@ -562,7 +562,7 @@ export default function FlightFocusModal({
                   role="tab"
                   aria-selected={false}
                   onClick={() => setCurrentScreen('radar')}
-                  className="min-h-[38px] px-4 rounded-full text-[13px] font-normal ff-pill bg-transparent text-[var(--m)] hover:text-[var(--fg)] transition-colors cursor-pointer"
+                  className="min-h-[36px] px-4 rounded-full text-[13px] font-normal ff-pill bg-transparent text-[var(--m)] hover:text-[var(--fg)] transition-colors cursor-pointer"
                 >
                   Radar
                 </button>
@@ -574,14 +574,14 @@ export default function FlightFocusModal({
                 onClick={() => setIsAmbientModalOpen && setIsAmbientModalOpen(true)}
                 aria-label="Sound Library"
                 title="Sound Library"
-                className="w-11 h-11 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--fg)] hover:bg-[var(--fg)] hover:text-[var(--bg)] ff-pill select-none cursor-pointer"
+                className="w-10 h-10 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--fg)] hover:bg-[var(--fg)] hover:text-[var(--bg)] ff-pill select-none cursor-pointer"
               >
-                <HeadphonesIcon size={18} />
+                <HeadphonesIcon size={17} />
               </button>
               <button
                 onClick={onClose}
                 aria-label="Close flight focus"
-                className="w-11 h-11 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--m)] hover:text-[var(--fg)] ff-pill select-none cursor-pointer text-lg"
+                className="w-10 h-10 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--m)] hover:text-[var(--fg)] ff-pill select-none cursor-pointer text-lg"
               >
                 ×
               </button>
@@ -597,39 +597,39 @@ export default function FlightFocusModal({
             <div>
               {/* Header: Title + Sound button + Close */}
               <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h1 className="text-[24px] font-normal tracking-tight text-[var(--fg)] leading-tight">
+                <div className="min-w-0 pr-2">
+                  <h1 className="text-[22px] sm:text-[24px] font-normal tracking-tight text-[var(--fg)] leading-tight truncate">
                     Choose your flight
                   </h1>
-                  <p className="ff-mono text-[10.5px] uppercase tracking-wider mt-1 flex items-center gap-1.5">
+                  <p className="ff-mono text-[10px] sm:text-[10.5px] uppercase tracking-wider mt-1 flex items-center gap-1.5 whitespace-nowrap">
                     <span
-                      className={`w-1.5 h-1.5 rounded-full ${
+                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                         !isOffline && liveFlights.length > 0 ? 'bg-[#30d158] animate-pulse' : 'bg-[#ff9f0a]'
                       } inline-block`}
                     />
-                    <span className={!isOffline && liveFlights.length > 0 ? 'text-[#30d158]' : 'text-[#ff9f0a]'}>
-                      {!isOffline && liveFlights.length > 0 ? 'LIVE RADAR' : 'OFFLINE MODE'}
+                    <span className={`font-semibold shrink-0 ${!isOffline && liveFlights.length > 0 ? 'text-[#30d158]' : 'text-[#ff9f0a]'}`}>
+                      {!isOffline && liveFlights.length > 0 ? 'LIVE RADAR' : 'OFFLINE'}
                     </span>
-                    <span className="text-[var(--t)]">
+                    <span className="text-[var(--m)] truncate">
                       {!isOffline && liveFlights.length > 0
-                        ? `· FLIGHTRADAR24 (${displayedFlights.length} AIRBORNE)`
-                        : '· SIMULATED ROUTES'}
+                        ? `· ${displayedFlights.length} AIRBORNE`
+                        : '· 25 ROUTES'}
                     </span>
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => setIsAmbientModalOpen && setIsAmbientModalOpen(true)}
                     aria-label="Sound Library"
                     title="Sound Library"
-                    className="w-11 h-11 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--fg)] ff-pill select-none cursor-pointer"
+                    className="w-10 h-10 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--fg)] ff-pill select-none cursor-pointer"
                   >
-                    <HeadphonesIcon size={18} />
+                    <HeadphonesIcon size={17} />
                   </button>
                   <button
                     onClick={onClose}
                     aria-label="Close flight focus"
-                    className="w-11 h-11 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--m)] hover:text-[var(--fg)] ff-pill select-none cursor-pointer text-lg"
+                    className="w-10 h-10 flex items-center justify-center rounded-full border border-[var(--hair)] text-[var(--m)] hover:text-[var(--fg)] ff-pill select-none cursor-pointer text-lg"
                   >
                     ×
                   </button>
@@ -637,13 +637,13 @@ export default function FlightFocusModal({
               </div>
 
               {/* Ultra-compact Search Bar */}
-              <div className="mb-2.5 max-w-[280px]">
+              <div className="mb-2.5 max-w-[270px]">
                 <div className="relative flex items-center">
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search live flight (e.g. SWR16, MS985)..."
+                    placeholder="Search flight (e.g. SWR16)..."
                     className="w-full h-7 pl-3 pr-8 rounded-full border border-[var(--hair)] bg-transparent text-[10px] text-[var(--fg)] placeholder:text-[var(--m)] outline-none focus:border-[var(--fg)] font-mono transition-colors"
                   />
                   {isSearchingLive && (
