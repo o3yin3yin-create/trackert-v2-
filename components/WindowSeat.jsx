@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X, Sun, Moon, Clock, Volume2, VolumeX } from 'lucide-react';
 
 // Vertex shader (simple pass-through)
@@ -226,20 +226,58 @@ const lerpColor = (c1, c2, t) => [
   lerp(c1[2], c2[2], t),
 ];
 
+// Astronomical solar calculation for current date and observer latitude (NOAA standard)
+// Automatically handles winter standard time (التوقيت الشتوي), summer DST, and seasonal sunset/sunrise
+function getAstronomicalSolarTimes(date = new Date(), lat = 30.0) {
+  const start = new Date(date.getFullYear(), 0, 0);
+  const diff = date - start;
+  const dayOfYear = Math.floor(diff / 86400000);
+  
+  const gamma = (2 * Math.PI / 365) * (dayOfYear - 1);
+  const decl = 0.006918 - 0.399912 * Math.cos(gamma) + 0.070257 * Math.sin(gamma)
+             - 0.006758 * Math.cos(2 * gamma) + 0.000907 * Math.sin(2 * gamma);
+             
+  const latRad = lat * (Math.PI / 180);
+  
+  // Sunset (sun center 90.833 deg from zenith)
+  const cosSunset = (Math.cos(90.833 * Math.PI / 180) - Math.sin(latRad) * Math.sin(decl)) / (Math.cos(latRad) * Math.cos(decl));
+  const haSunset = Math.acos(Math.max(-1, Math.min(1, cosSunset))) * (180 / Math.PI);
+  
+  // Civil dusk (sun 6 deg below horizon -> 96 deg zenith, when dark night arrives)
+  const cosDusk = (Math.cos(96.0 * Math.PI / 180) - Math.sin(latRad) * Math.sin(decl)) / (Math.cos(latRad) * Math.cos(decl));
+  const haDusk = Math.acos(Math.max(-1, Math.min(1, cosDusk))) * (180 / Math.PI);
+
+  const solarNoon = 12.0;
+  const sunset = solarNoon + (haSunset / 15.0);
+  const duskEnd = solarNoon + (haDusk / 15.0);
+  const sunrise = solarNoon - (haSunset / 15.0);
+  const dawnStart = solarNoon - (haDusk / 15.0);
+
+  return { dawnStart, sunrise, sunset, duskEnd };
+}
+
 export default function WindowSeat({ 
   onClose, 
   seat = '5A', 
   lang = 'ar',
+  flight = null,
+  flightTimer = null,
+  originCoords = null,
+  destCoords = null,
   isAudioOn = false,
   onToggleAudio = () => {},
-  audioVolume = 0.55
+  audioVolume = 0.55,
+  setAudioVolume = () => {},
 }) {
   const canvasRef = useRef(null);
   const animationFrameRef = useRef(null);
   const containerRef = useRef(null);
 
-  // Time & Override controls
-  const [localTime, setLocalTime] = useState(12); // float representation: 0 to 24
+  // Time & Override controls (initialized immediately to exact current local time)
+  const [localTime, setLocalTime] = useState(() => {
+    const d = new Date();
+    return d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
+  });
   const [isManualTime, setIsManualTime] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [weather, setWeather] = useState(0); // 0: Normal, 1: Stormy, 2: Clear
@@ -318,31 +356,41 @@ export default function WindowSeat({
   const isRightWindow = seatString.includes('F') || seatString.includes('E') || seatString.includes('D');
   const showWing = false; // Airplane wing completely removed as requested
 
-  // Dynamic values calculation based on localTime (0.0 to 24.0)
-  // We establish 4 solar phases: Day, Sunset, Night, Sunrise
+  // Dynamic values calculation based on localTime (0.0 to 24.0) and astronomical solar schedule
+  // Calculates exact seasonal sunrise, golden hour, sunset, and night for the observer's location and date
+  const solarTimes = useMemo(() => {
+    const obsLat = flight?.livePosition?.lat || originCoords?.lat || 30.0;
+    return getAstronomicalSolarTimes(new Date(), obsLat);
+  }, [flight?.livePosition?.lat, originCoords?.lat]);
+
   const getSkyParameters = (hour) => {
-    let phase = 'day';
+    const s = solarTimes;
+    let phase = 'night';
     let t = 0.0;
 
-    if (hour >= 6.0 && hour < 7.5) {
+    if (hour < s.dawnStart) {
+      phase = 'night';
+      t = 0.0;
+    } else if (hour >= s.dawnStart && hour < s.sunrise) {
       phase = 'dawn';
-      t = (hour - 6.0) / 1.5;
-    } else if (hour >= 7.5 && hour < 9.0) {
+      t = (hour - s.dawnStart) / Math.max(0.1, s.sunrise - s.dawnStart);
+    } else if (hour >= s.sunrise && hour < s.sunrise + 1.2) {
       phase = 'morning';
-      t = (hour - 7.5) / 1.5;
-    } else if (hour >= 9.0 && hour < 17.5) {
+      t = (hour - s.sunrise) / 1.2;
+    } else if (hour >= s.sunrise + 1.2 && hour < s.sunset - 0.8) {
       phase = 'day';
       t = 0.0;
-    } else if (hour >= 17.5 && hour < 19.0) {
+    } else if (hour >= s.sunset - 0.8 && hour < s.sunset) {
       phase = 'afternoon';
-      t = (hour - 17.5) / 1.5;
-    } else if (hour >= 19.0 && hour < 20.5) {
+      t = (hour - (s.sunset - 0.8)) / 0.8;
+    } else if (hour >= s.sunset && hour < s.duskEnd) {
       phase = 'dusk';
-      t = (hour - 19.0) / 1.5;
+      t = (hour - s.sunset) / Math.max(0.1, s.duskEnd - s.sunset);
     } else {
       phase = 'night';
       t = 0.0;
     }
+    t = Math.max(0, Math.min(1, t));
 
     // Define palettes
     const DayPalette = {
@@ -1079,7 +1127,7 @@ export default function WindowSeat({
           <div className="flex items-center gap-3">
             {isManualTime ? (
               <>
-                {localTime < 5 || localTime >= 19.5 ? (
+                {localTime < solarTimes.sunrise || localTime >= solarTimes.sunset ? (
                   <Moon size={16} className="text-white/60" />
                 ) : (
                   <Sun size={16} className="text-white animate-spin-slow" />
