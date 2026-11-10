@@ -7,7 +7,7 @@ import { playFlightArrivalChime } from '@/lib/flightAudio';
 
 const OPENFREEMAP_TILEJSON = 'https://tiles.openfreemap.org/planet';
 const FALLBACK_TILE_URL = 'https://tiles.openfreemap.org/planet/20261101_080013_pt/{z}/{x}/{y}.pbf';
-const RADAR_ZOOM = 8;
+const RADAR_ZOOM = 10;
 
 // Dead-reckoning: project point forward along a bearing by distance (in km)
 function projectPoint(lat, lon, bearingDeg, distKm) {
