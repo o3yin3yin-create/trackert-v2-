@@ -35,6 +35,12 @@ const fragmentShaderSource = `
     return fract(p.x * p.y * p.z);
   }
 
+  vec3 hash33(vec3 p) {
+    p = fract(p * vec3(443.897, 441.423, 437.195));
+    p += dot(p, p.yxz + 19.19);
+    return fract((p.xxy + p.yxx) * p.zyx);
+  }
+
   float noise(in vec3 x) {
     vec3 p = floor(x);
     vec3 f = fract(x);
@@ -91,22 +97,58 @@ const fragmentShaderSource = `
       vec3 hcCol = mix(u_cloudBase, u_cloudLight, cirrus);
       hcCol += u_sunColor * pow(sunGlow, 4.0) * 0.8;
       
-      // رفعنا الشفافية في النهار بالذات عشان يبان واضح على السما الزرقا
-      float hcAlpha = cirrus * smoothstep(0.02, 0.15, rd.y) * mix(2.0, 1.0, u_nightMode);
+      // رفعنا الشفافية في النهار بالذات عشان يبان واضح على السما الزرقا، وبالليل شفاف وخفيف عشان النجوم تبان بوضوح
+      float hcAlpha = cirrus * smoothstep(0.02, 0.15, rd.y) * mix(2.0, 0.08, u_nightMode);
       hcAlpha = clamp(hcAlpha, 0.0, 1.0);
       finalSky = mix(finalSky, hcCol, hcAlpha);
     }
 
+    // === REALISTIC NIGHT SKY & MICRO PINPOINT STARFIELD ===
     if (u_nightMode > 0.02 && rd.y > 0.0) {
-      float nebula = noise(rd * 3.5 + vec3(5.0, 12.0, 2.0)) * 0.16 * u_nightMode;
-      finalSky += vec3(0.12, 0.08, 0.22) * nebula * smoothstep(0.0, 0.1, rd.y);
-      vec3 starCoord = rd * 600.0;
-      vec3 starIpos = floor(starCoord);
-      float starHash = hash(starIpos);
-      if (starHash > 0.985) { 
-        float brightness = (starHash - 0.985) * 66.0; 
-        vec3 colorTint = mix(vec3(0.8, 0.9, 1.0), vec3(1.0, 0.9, 0.8), hash(starIpos + 1.0));
-        finalSky += colorTint * brightness * u_nightMode * smoothstep(0.0, 0.12, rd.y);
+      // 1. Subtle Deep Space Milky Way Dust Band
+      float mwCoord = rd.x * 0.72 + rd.y * 0.55 - rd.z * 0.42;
+      float mwBand = exp(-mwCoord * mwCoord * 3.8);
+      if (mwBand > 0.01) {
+        float mwDust1 = noise(rd * 7.0 + vec3(1.2, 5.8, 3.4));
+        float mwDust2 = noise(rd * 15.0 + vec3(4.1, 2.3, 8.7));
+        float mwGlow = mwBand * max(0.0, (mwDust1 * 0.65 + mwDust2 * 0.35) - 0.25);
+        vec3 mwColor = vec3(0.06, 0.09, 0.18);
+        finalSky += mwColor * mwGlow * 1.5 * u_nightMode * smoothstep(0.0, 0.18, rd.y);
+      }
+
+      // 2. High-Density Micro Pinpoint Starfield (1-2 screen pixels, sharp diamonds)
+      // Layer 1: Dense, fine background stars (distant pinpricks)
+      vec3 sGrid = rd * 520.0;
+      vec3 sCell = floor(sGrid);
+      vec3 sFract = fract(sGrid) - 0.5;
+      vec3 sRnd = hash33(sCell);
+      vec3 sPos = sFract - (sRnd - 0.5) * 0.85;
+      float sDist = length(sPos);
+      float sPoint = max(0.0, 1.0 - sDist * 4.8);
+      sPoint = sPoint * sPoint * sPoint; // Sharp cubic peak: exactly 1-2 screen pixels
+      
+      if (sRnd.x > 0.60 && sPoint > 0.001) {
+        float sMag = pow(sRnd.y, 4.2); // Power-law distribution: predominantly faint stars
+        float sTwinkle = 0.78 + 0.22 * sin(u_time * 2.0 + sRnd.z * 50.0);
+        vec3 sCol = mix(vec3(0.85, 0.92, 1.0), vec3(1.0, 0.94, 0.82), sRnd.z);
+        finalSky += sCol * sPoint * sMag * 2.8 * sTwinkle * u_nightMode * smoothstep(0.01, 0.10, rd.y);
+      }
+
+      // Layer 2: Sparse bright navigation stars (sharp sparkling gems)
+      vec3 sGrid2 = (rd + vec3(0.18, 0.41, 0.67)) * 340.0;
+      vec3 sCell2 = floor(sGrid2);
+      vec3 sFract2 = fract(sGrid2) - 0.5;
+      vec3 sRnd2 = hash33(sCell2);
+      vec3 sPos2 = sFract2 - (sRnd2 - 0.5) * 0.85;
+      float sDist2 = length(sPos2);
+      float sPoint2 = max(0.0, 1.0 - sDist2 * 4.2);
+      sPoint2 = sPoint2 * sPoint2 * sPoint2;
+      
+      if (sRnd2.x > 0.89 && sPoint2 > 0.001) {
+        float sMag2 = 1.0 + sRnd2.y * 2.2;
+        float sTwinkle2 = 0.72 + 0.28 * sin(u_time * 2.8 + sRnd2.z * 40.0);
+        vec3 sCol2 = mix(vec3(0.82, 0.94, 1.0), vec3(1.0, 0.88, 0.70), sRnd2.y);
+        finalSky += sCol2 * sPoint2 * sMag2 * 1.8 * sTwinkle2 * u_nightMode * smoothstep(0.01, 0.10, rd.y);
       }
     }
 
