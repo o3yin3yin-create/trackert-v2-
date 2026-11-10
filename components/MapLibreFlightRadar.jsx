@@ -140,25 +140,10 @@ export default function MapLibreFlightRadar({
   const liveTelemetryRef = useRef(flight?.livePosition || null);
   const [liveTelemetry, setLiveTelemetry] = useState(flight?.livePosition || null);
 
-  // High-precision telemetry smoothing engine for 60fps buttery movement
-  const smoothTelemetryRef = useRef({
-    current: flight?.livePosition ? {
-      lat: flight.livePosition.lat,
-      lon: flight.livePosition.lng ?? flight.livePosition.lon,
-      bearing: flight.livePosition.hd ?? flight.livePosition.angle ?? 0,
-      speedKmh: Math.max(300, (flight.livePosition.spd || flight.speed || 450) * 1.852),
-    } : null,
-    prevAnchor: null,
-    targetAnchor: flight?.livePosition ? {
-      lat: flight.livePosition.lat,
-      lon: flight.livePosition.lng ?? flight.livePosition.lon,
-      bearing: flight.livePosition.hd ?? flight.livePosition.angle ?? 0,
-      timeMs: typeof performance !== 'undefined' ? performance.now() : Date.now(),
-      speedKmh: Math.max(300, (flight.livePosition.spd || flight.speed || 450) * 1.852),
-    } : null,
-    blendStartMs: typeof performance !== 'undefined' ? performance.now() : Date.now(),
-    blendDurationMs: 1400, // 1.4s smooth ease to incoming GPS fix
-  });
+  // Monotonic forward progress tracking engine (strictly forward, 60FPS fluid gliding)
+  const progressRef = useRef(null);
+  const targetProgressRef = useRef(null);
+  const lastTickTimeRef = useRef(0);
 
   useEffect(() => {
     if (!flight?.isLive || !flight?.id) return;
@@ -170,28 +155,17 @@ export default function MapLibreFlightRadar({
         if (!res.ok) return;
         const data = await res.json();
         if (data && typeof data.lat === 'number' && active) {
-          const nowMs = performance.now();
-          const sm = smoothTelemetryRef.current;
-          const currentPos = sm.current || {
-            lat: data.lat,
-            lon: data.lng,
-            bearing: data.angle || 0,
-            speedKmh: Math.max(300, (data.speed || 450) * 1.852),
-          };
+          const est = estimateRef.current;
+          if (est?.origCoords && est?.destCoords) {
+            const origLon = est.origCoords.lon ?? est.origCoords.lng;
+            const destLon = est.destCoords.lon ?? est.destCoords.lng;
+            const totalDist = Math.max(1, getDistanceKm(est.origCoords.lat, origLon, est.destCoords.lat, destLon));
+            const distFromOrig = getDistanceKm(est.origCoords.lat, origLon, data.lat, data.lng);
+            const liveProg = Math.max(0, Math.min(0.999, distFromOrig / totalDist));
 
-          const newBearing = typeof data.angle === 'number' ? data.angle : currentPos.bearing;
-          const newSpeedKmh = Math.max(300, (data.speed || 450) * 1.852);
-
-          // Smoothly blend from current rendered position to incoming GPS fix
-          sm.prevAnchor = { ...currentPos, timeMs: nowMs };
-          sm.targetAnchor = {
-            lat: data.lat,
-            lon: data.lng,
-            bearing: newBearing,
-            timeMs: nowMs,
-            speedKmh: newSpeedKmh,
-          };
-          sm.blendStartMs = nowMs;
+            // Strictly forward: target can NEVER be lower than current rendered progress
+            targetProgressRef.current = Math.max(progressRef.current || 0, liveProg);
+          }
 
           liveTelemetryRef.current = data;
           setLiveTelemetry(data);
@@ -408,54 +382,47 @@ export default function MapLibreFlightRadar({
       const flight = est.flight;
       if (!flight || !est.origCoords || !est.destCoords) return;
 
-      let pos;
-      let heading;
+      const origLon = est.origCoords.lon ?? est.origCoords.lng;
+      const destLon = est.destCoords.lon ?? est.destCoords.lng;
+      const totalDist = Math.max(1, getDistanceKm(est.origCoords.lat, origLon, est.destCoords.lat, destLon));
 
-      const sm = smoothTelemetryRef.current;
+      const dt = lastTickTimeRef.current ? Math.min(0.1, (now - lastTickTimeRef.current) / 1000) : 0.016;
+      lastTickTimeRef.current = now;
 
-      if (flight?.isLive && sm.targetAnchor) {
-        const { prevAnchor, targetAnchor, blendStartMs, blendDurationMs } = sm;
-        const elapsedSinceBlend = now - blendStartMs;
-        const speedKmh = targetAnchor.speedKmh || 850;
+      // Real ground speed in km/h
+      const speedKmh = Math.max(400, (liveTelemetryRef.current?.speed || flight.speed || 450) * 1.852);
+      // Fractional progress increment this frame based on actual speed
+      const baseAdvance = (speedKmh / (totalDist * 3600)) * dt;
 
-        if (prevAnchor && elapsedSinceBlend < blendDurationMs) {
-          // 1. Smoothly ease from current rendered position to target fix (smoothstep cubic curve)
-          const t = Math.max(0, Math.min(1, elapsedSinceBlend / blendDurationMs));
-          const ease = t * t * (3 - 2 * t);
-
-          pos = {
-            lat: prevAnchor.lat + (targetAnchor.lat - prevAnchor.lat) * ease,
-            lon: prevAnchor.lon + (targetAnchor.lon - prevAnchor.lon) * ease,
-            lng: prevAnchor.lon + (targetAnchor.lon - prevAnchor.lon) * ease,
-          };
-          heading = lerpAngle(prevAnchor.bearing, targetAnchor.bearing, ease);
+      // Initialize progress if not set
+      if (progressRef.current === null) {
+        if (flight?.isLive && flight?.livePosition && typeof flight.livePosition.lat === 'number') {
+          const d = getDistanceKm(est.origCoords.lat, origLon, flight.livePosition.lat, flight.livePosition.lng);
+          progressRef.current = Math.max(0, Math.min(0.999, d / totalDist));
         } else {
-          // 2. Continuous dead-reckoning: glide forward at cruise speed along heading vector
-          const elapsedPostBlendSec = (now - (blendStartMs + blendDurationMs)) / 1000;
-          const distKm = Math.max(0, (speedKmh * Math.max(0, elapsedPostBlendSec)) / 3600);
-
-          const projected = projectPoint(targetAnchor.lat, targetAnchor.lon, targetAnchor.bearing, distKm);
-          pos = {
-            lat: projected.lat,
-            lon: projected.lon,
-            lng: projected.lon,
-          };
-          heading = targetAnchor.bearing;
+          const departure = flight.departure || flight.departureTime || (Date.now() / 1000 - 3600);
+          const arrival = flight.arrival || flight.estimatedArrival || (departure + 7200);
+          progressRef.current = Math.max(0, Math.min(0.999, (Date.now() / 1000 - departure) / Math.max(1, arrival - departure)));
         }
-
-        // Cache for next frame
-        sm.current = { lat: pos.lat, lon: pos.lon, bearing: heading, speedKmh };
-      } else {
-        // Offline / Simulation mode: continuous great circle progress
-        const departure = flight.departure || flight.departureTime;
-        const arrival = flight.arrival || flight.estimatedArrival;
-        if (!departure || !arrival) return;
-
-        const total = Math.max(1, arrival - departure);
-        const progress = Math.max(0, Math.min(1, (Date.now() / 1000 - departure) / total));
-        pos = getGreatCirclePoint(est.origCoords, est.destCoords, progress);
-        heading = getGreatCircleBearing(pos, est.destCoords);
+        targetProgressRef.current = progressRef.current;
       }
+
+      const currentProg = progressRef.current;
+      const targetProg = targetProgressRef.current ?? currentProg;
+
+      // Smoothly advance forward, catching up towards target if target fix is ahead
+      let nextProg = currentProg + baseAdvance;
+      if (targetProg > nextProg) {
+        nextProg += (targetProg - nextProg) * Math.min(1, dt * 2.0);
+      }
+
+      // STRICTLY MONOTONIC: Progress can NEVER be less than currentProg (never moves backwards!)
+      nextProg = Math.max(currentProg, Math.min(1, nextProg));
+      progressRef.current = nextProg;
+
+      // Calculate smooth point and bearing on the continuous flight path
+      const pos = getGreatCirclePoint(est.origCoords, est.destCoords, nextProg);
+      const heading = getGreatCircleBearing(pos, est.destCoords);
 
       try {
         map.jumpTo({ center: [pos.lon, pos.lat], bearing: heading });
