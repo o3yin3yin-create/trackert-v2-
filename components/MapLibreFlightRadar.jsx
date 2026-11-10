@@ -9,6 +9,37 @@ const OPENFREEMAP_TILEJSON = 'https://tiles.openfreemap.org/planet';
 const FALLBACK_TILE_URL = 'https://tiles.openfreemap.org/planet/20261101_080013_pt/{z}/{x}/{y}.pbf';
 const RADAR_ZOOM = 8;
 
+// Dead-reckoning: project point forward along a bearing by distance (in km)
+function projectPoint(lat, lon, bearingDeg, distKm) {
+  const R = 6371; // Earth radius in km
+  const d = distKm / R;
+  const brng = (bearingDeg * Math.PI) / 180;
+  const lat1 = (lat * Math.PI) / 180;
+  const lon1 = (lon * Math.PI) / 180;
+
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(d) +
+    Math.cos(lat1) * Math.sin(d) * Math.cos(brng)
+  );
+  const lon2 = lon1 + Math.atan2(
+    Math.sin(brng) * Math.sin(d) * Math.cos(lat1),
+    Math.cos(d) - Math.sin(lat1) * Math.sin(lat2)
+  );
+
+  return {
+    lat: (lat2 * 180) / Math.PI,
+    lon: (((lon2 * 180) / Math.PI + 540) % 360) - 180,
+  };
+}
+
+// Shortest-path angular interpolation to prevent 360-degree snap flips
+function lerpAngle(from, to, t) {
+  let diff = (to - from) % 360;
+  if (diff < -180) diff += 360;
+  if (diff > 180) diff -= 360;
+  return (from + diff * t + 360) % 360;
+}
+
 // Monochrome dark basemap from OpenFreeMap vector tiles (no API key, no labels).
 const getMapStyle = (tileUrl) => ({
   version: 8,
@@ -109,6 +140,26 @@ export default function MapLibreFlightRadar({
   const liveTelemetryRef = useRef(flight?.livePosition || null);
   const [liveTelemetry, setLiveTelemetry] = useState(flight?.livePosition || null);
 
+  // High-precision telemetry smoothing engine for 60fps buttery movement
+  const smoothTelemetryRef = useRef({
+    current: flight?.livePosition ? {
+      lat: flight.livePosition.lat,
+      lon: flight.livePosition.lng ?? flight.livePosition.lon,
+      bearing: flight.livePosition.hd ?? flight.livePosition.angle ?? 0,
+      speedKmh: Math.max(300, (flight.livePosition.spd || flight.speed || 450) * 1.852),
+    } : null,
+    prevAnchor: null,
+    targetAnchor: flight?.livePosition ? {
+      lat: flight.livePosition.lat,
+      lon: flight.livePosition.lng ?? flight.livePosition.lon,
+      bearing: flight.livePosition.hd ?? flight.livePosition.angle ?? 0,
+      timeMs: typeof performance !== 'undefined' ? performance.now() : Date.now(),
+      speedKmh: Math.max(300, (flight.livePosition.spd || flight.speed || 450) * 1.852),
+    } : null,
+    blendStartMs: typeof performance !== 'undefined' ? performance.now() : Date.now(),
+    blendDurationMs: 1400, // 1.4s smooth ease to incoming GPS fix
+  });
+
   useEffect(() => {
     if (!flight?.isLive || !flight?.id) return;
 
@@ -119,6 +170,29 @@ export default function MapLibreFlightRadar({
         if (!res.ok) return;
         const data = await res.json();
         if (data && typeof data.lat === 'number' && active) {
+          const nowMs = performance.now();
+          const sm = smoothTelemetryRef.current;
+          const currentPos = sm.current || {
+            lat: data.lat,
+            lon: data.lng,
+            bearing: data.angle || 0,
+            speedKmh: Math.max(300, (data.speed || 450) * 1.852),
+          };
+
+          const newBearing = typeof data.angle === 'number' ? data.angle : currentPos.bearing;
+          const newSpeedKmh = Math.max(300, (data.speed || 450) * 1.852);
+
+          // Smoothly blend from current rendered position to incoming GPS fix
+          sm.prevAnchor = { ...currentPos, timeMs: nowMs };
+          sm.targetAnchor = {
+            lat: data.lat,
+            lon: data.lng,
+            bearing: newBearing,
+            timeMs: nowMs,
+            speedKmh: newSpeedKmh,
+          };
+          sm.blendStartMs = nowMs;
+
           liveTelemetryRef.current = data;
           setLiveTelemetry(data);
         }
@@ -321,15 +395,12 @@ export default function MapLibreFlightRadar({
     };
   }, [buildRouteGeoJson]);
 
-  // Continuous Map Tracking Loop
+  // Continuous Map Tracking Loop (60FPS buttery smooth dead-reckoning)
   useEffect(() => {
     let rafId = null;
-    let last = 0;
 
     const tick = (now) => {
       rafId = requestAnimationFrame(tick);
-      if (now - last < 33) return; // ~30fps
-      last = now;
 
       const map = mapRef.current;
       const est = estimateRef.current;
@@ -340,16 +411,42 @@ export default function MapLibreFlightRadar({
       let pos;
       let heading;
 
-      if (liveTelemetryRef.current && typeof liveTelemetryRef.current.lat === 'number' && !isNaN(liveTelemetryRef.current.lat)) {
-        pos = {
-          lat: liveTelemetryRef.current.lat,
-          lon: liveTelemetryRef.current.lng ?? liveTelemetryRef.current.lon ?? est.origCoords.lon,
-          lng: liveTelemetryRef.current.lng ?? liveTelemetryRef.current.lon ?? est.origCoords.lon,
-        };
-        heading = typeof liveTelemetryRef.current.angle === 'number'
-          ? liveTelemetryRef.current.angle
-          : getGreatCircleBearing(pos, est.destCoords);
+      const sm = smoothTelemetryRef.current;
+
+      if (flight?.isLive && sm.targetAnchor) {
+        const { prevAnchor, targetAnchor, blendStartMs, blendDurationMs } = sm;
+        const elapsedSinceBlend = now - blendStartMs;
+        const speedKmh = targetAnchor.speedKmh || 850;
+
+        if (prevAnchor && elapsedSinceBlend < blendDurationMs) {
+          // 1. Smoothly ease from current rendered position to target fix (smoothstep cubic curve)
+          const t = Math.max(0, Math.min(1, elapsedSinceBlend / blendDurationMs));
+          const ease = t * t * (3 - 2 * t);
+
+          pos = {
+            lat: prevAnchor.lat + (targetAnchor.lat - prevAnchor.lat) * ease,
+            lon: prevAnchor.lon + (targetAnchor.lon - prevAnchor.lon) * ease,
+            lng: prevAnchor.lon + (targetAnchor.lon - prevAnchor.lon) * ease,
+          };
+          heading = lerpAngle(prevAnchor.bearing, targetAnchor.bearing, ease);
+        } else {
+          // 2. Continuous dead-reckoning: glide forward at cruise speed along heading vector
+          const elapsedPostBlendSec = (now - (blendStartMs + blendDurationMs)) / 1000;
+          const distKm = Math.max(0, (speedKmh * Math.max(0, elapsedPostBlendSec)) / 3600);
+
+          const projected = projectPoint(targetAnchor.lat, targetAnchor.lon, targetAnchor.bearing, distKm);
+          pos = {
+            lat: projected.lat,
+            lon: projected.lon,
+            lng: projected.lon,
+          };
+          heading = targetAnchor.bearing;
+        }
+
+        // Cache for next frame
+        sm.current = { lat: pos.lat, lon: pos.lon, bearing: heading, speedKmh };
       } else {
+        // Offline / Simulation mode: continuous great circle progress
         const departure = flight.departure || flight.departureTime;
         const arrival = flight.arrival || flight.estimatedArrival;
         if (!departure || !arrival) return;
@@ -367,7 +464,7 @@ export default function MapLibreFlightRadar({
 
     rafId = requestAnimationFrame(tick);
     return () => { if (rafId) cancelAnimationFrame(rafId); };
-  }, []);
+  }, [flight?.isLive]);
 
   // 60FPS Smoke Contrail Simulation & Render Loop (Thinner, Smaller, Slower & Continuous)
   useEffect(() => {
