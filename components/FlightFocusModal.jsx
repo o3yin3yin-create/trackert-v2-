@@ -127,12 +127,98 @@ export default function FlightFocusModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [animKey, setAnimKey] = useState(0);
 
+  // Live Flights & Offline fallback state
+  const [liveFlights, setLiveFlights] = useState([]);
+  const [isLiveLoading, setIsLiveLoading] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
+  const [searchLiveResult, setSearchLiveResult] = useState(null);
+  const [isSearchingLive, setIsSearchingLive] = useState(false);
+
   // 1Hz board clock — drives live remaining time and cycles flight instances.
   const [boardNowSec, setBoardNowSec] = useState(() => Math.floor(Date.now() / 1000));
   useEffect(() => {
     const id = setInterval(() => setBoardNowSec(Math.floor(Date.now() / 1000)), 1000);
     return () => clearInterval(id);
   }, []);
+
+  // Fetch real live airborne flights from FlightRadar24 API when online
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchLive = async () => {
+      if (typeof window !== 'undefined' && !navigator.onLine) {
+        setIsOffline(true);
+        return;
+      }
+      setIsLiveLoading(true);
+      try {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 8000);
+        const res = await fetch('/api/flight', { signal: ctrl.signal });
+        clearTimeout(tid);
+        if (!res.ok) throw new Error('Live API unreachable');
+        const data = await res.json();
+        if (data?.flights && Array.isArray(data.flights) && data.flights.length > 0) {
+          if (!cancelled) {
+            setLiveFlights(data.flights);
+            setIsOffline(false);
+          }
+        } else {
+          if (!cancelled) setIsOffline(true);
+        }
+      } catch (err) {
+        console.warn('[FlightFocusModal] Live flight radar fetch failed, fallback to offline:', err);
+        if (!cancelled) setIsOffline(true);
+      } finally {
+        if (!cancelled) setIsLiveLoading(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchLive();
+    }
+
+    const onOnline = () => fetchLive();
+    const onOffline = () => setIsOffline(true);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, [isOpen]);
+
+  // Live flight search debouncer (e.g. typing SWR16 finds the exact live flight)
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q || q.length < 2 || isOffline) {
+      setSearchLiveResult(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingLive(true);
+      try {
+        const res = await fetch(`/api/flight/search?q=${encodeURIComponent(q)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.flight) {
+            setSearchLiveResult(data.flight);
+          } else {
+            setSearchLiveResult(null);
+          }
+        }
+      } catch {
+        setSearchLiveResult(null);
+      } finally {
+        setIsSearchingLive(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, isOffline]);
 
   // Give-up confirmation overlay (inline, monochrome, matches ff- theme)
   const [showGiveUpConfirm, setShowGiveUpConfirm] = useState(false);
@@ -160,12 +246,26 @@ export default function FlightFocusModal({
     window.dispatchEvent(new Event('bokra-prefs-changed'));
   }, [theme]);
 
-  // Flights schedule list derived from the live board clock (no interval refresh).
-  const allFlights = useMemo(() => getFlights(boardNowSec), [boardNowSec]);
+  // Synthetic offline flights pool
+  const offlineFlights = useMemo(() => getFlights(boardNowSec), [boardNowSec]);
 
-  // Filtered flights for Board — live remaining computed from the board clock.
+  // Base pool: when online and live flights fetched, use live flights; otherwise fallback to offline simulation
+  const basePool = useMemo(() => {
+    if (!isOffline && liveFlights.length > 0) {
+      return liveFlights;
+    }
+    return offlineFlights;
+  }, [isOffline, liveFlights, offlineFlights]);
+
+  // Filtered flights for Board — live remaining computed from the board clock
   const displayedFlights = useMemo(() => {
-    let list = allFlights.map((f) => ({ ...f, remainingSeconds: Math.max(0, f.arrival - boardNowSec) }));
+    let list = basePool.map((f) => {
+      const arr = f.arrival || f.estimatedArrival || (boardNowSec + (f.remainingSeconds || 3600));
+      return {
+        ...f,
+        remainingSeconds: Math.max(0, arr - boardNowSec),
+      };
+    });
 
     // Duration filter
     if (durationFilter === 'under1h') {
@@ -176,20 +276,31 @@ export default function FlightFocusModal({
       list = list.filter((f) => f.remainingSeconds > 3 * 3600);
     }
 
-    // Search query (by flight number or route)
+    // Search query (by flight number, callsign, airline, or route)
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toUpperCase();
       list = list.filter(
         (f) =>
-          f.flightNumber.toUpperCase().includes(q) ||
+          (f.flightNumber || f.callsign || '').toUpperCase().includes(q) ||
           f.origin.toUpperCase().includes(q) ||
           f.destination.toUpperCase().includes(q) ||
-          `${f.origin}->${f.destination}`.toUpperCase().includes(q)
+          `${f.origin}->${f.destination}`.toUpperCase().includes(q) ||
+          (f.airline || '').toUpperCase().includes(q)
       );
+
+      // If exact live flight was found by live FlightRadar search, put it at the very top
+      if (searchLiveResult) {
+        const exists = list.some(
+          (x) => x.id === searchLiveResult.id || x.flightNumber === searchLiveResult.flightNumber || x.callsign === searchLiveResult.callsign
+        );
+        if (!exists) {
+          list = [searchLiveResult, ...list];
+        }
+      }
     }
 
     return list;
-  }, [allFlights, durationFilter, searchQuery, boardNowSec]);
+  }, [basePool, durationFilter, searchQuery, boardNowSec, searchLiveResult]);
 
   // Trigger split flap animation when filter changes
   useEffect(() => {
@@ -490,8 +601,20 @@ export default function FlightFocusModal({
                   <h1 className="text-[24px] font-normal tracking-tight text-[var(--fg)] leading-tight">
                     Choose your flight
                   </h1>
-                  <p className="ff-mono text-[10.5px] text-[var(--t)] uppercase tracking-wider mt-1">
-                    REAL ROUTES & AIRCRAFT · ESTIMATED TIMES
+                  <p className="ff-mono text-[10.5px] uppercase tracking-wider mt-1 flex items-center gap-1.5">
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        !isOffline && liveFlights.length > 0 ? 'bg-[#30d158] animate-pulse' : 'bg-[#ff9f0a]'
+                      } inline-block`}
+                    />
+                    <span className={!isOffline && liveFlights.length > 0 ? 'text-[#30d158]' : 'text-[#ff9f0a]'}>
+                      {!isOffline && liveFlights.length > 0 ? 'LIVE RADAR' : 'OFFLINE MODE'}
+                    </span>
+                    <span className="text-[var(--t)]">
+                      {!isOffline && liveFlights.length > 0
+                        ? `· FLIGHTRADAR24 (${displayedFlights.length} AIRBORNE)`
+                        : '· SIMULATED ROUTES'}
+                    </span>
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -514,15 +637,18 @@ export default function FlightFocusModal({
               </div>
 
               {/* Ultra-compact Search Bar */}
-              <div className="mb-2.5 max-w-[260px]">
+              <div className="mb-2.5 max-w-[280px]">
                 <div className="relative flex items-center">
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search flight or route..."
-                    className="w-full h-7 pl-3 pr-7 rounded-full border border-[var(--hair)] bg-transparent text-[10px] text-[var(--fg)] placeholder:text-[var(--m)] outline-none focus:border-[var(--fg)] font-mono transition-colors"
+                    placeholder="Search live flight (e.g. SWR16, MS985)..."
+                    className="w-full h-7 pl-3 pr-8 rounded-full border border-[var(--hair)] bg-transparent text-[10px] text-[var(--fg)] placeholder:text-[var(--m)] outline-none focus:border-[var(--fg)] font-mono transition-colors"
                   />
+                  {isSearchingLive && (
+                    <span className="absolute right-7 w-2 h-2 rounded-full border border-[#30d158] border-t-transparent animate-spin" />
+                  )}
                   {searchQuery && (
                     <button
                       type="button"
@@ -626,12 +752,15 @@ export default function FlightFocusModal({
                       <div className="col-span-5 flex flex-col justify-center min-w-0 pr-1">
                         <div className="flex items-center gap-1.5 text-[13px] font-normal text-[var(--fg)] truncate">
                           <SplitFlapText
-                            text={f.flightNumber}
+                            text={f.flightNumber || f.callsign}
                             rowIndex={i}
                             animKey={animKey}
                             className="font-normal text-[13px]"
                           />
                           <PlaneGlyph className="text-[var(--m)] shrink-0" />
+                          {f.isLive && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#30d158] animate-pulse shrink-0" title="Live Flight" />
+                          )}
                         </div>
                         <span className="text-[10.5px] text-[var(--m)] truncate mt-0.5">
                           {f.origin} → {f.destination} ({destAirport.city})
@@ -911,9 +1040,17 @@ export default function FlightFocusModal({
                 <>
                   {/* Top Line */}
                   <div className="flex items-center justify-between pb-3 border-b border-[var(--hair)]">
-                    <span className="text-[16px] font-medium text-[var(--fg)] tracking-tight">
-                      {flightToTrack.flightNumber || flightToTrack.callsign}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[16px] font-medium text-[var(--fg)] tracking-tight">
+                        {flightToTrack.flightNumber || flightToTrack.callsign}
+                      </span>
+                      {flightToTrack.isLive && (
+                        <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[#30d158]/10 text-[#30d158] font-mono text-[9px] font-bold">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#30d158] animate-pulse" />
+                          LIVE
+                        </span>
+                      )}
+                    </div>
                     <span className="ff-mono text-[11px] text-[var(--m)] uppercase tracking-wider">
                       {flightToTrack.aircraft || flightToTrack.model} · {selectedSeat || '14A'}
                     </span>

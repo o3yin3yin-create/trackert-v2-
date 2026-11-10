@@ -120,20 +120,35 @@ export async function GET(request) {
           const totalSeconds = Math.max(remainingSeconds + 900, Math.round((totalDist / speedKmh) * 3600));
           const estimatedArrival = now + remainingSeconds;
 
+          const depUnix = estimatedArrival - totalSeconds;
+
           validFlights.push({
             id: String(f.id),
             airline: resolveAirline(f.airlineIcao || f.airlineIata, 'Commercial Airline'),
+            flightNumber: f.callsign,
             callsign: f.callsign,
             origin: f.originAirportIata,
             destination: f.destinationAirportIata,
             originCoords: { lat: origCoords.lat, lng: origCoords.lng },
             destCoords: { lat: destCoords.lat, lng: destCoords.lng },
+            departure: depUnix,
+            departureTime: depUnix,
+            arrival: estimatedArrival,
+            estimatedArrival,
             remainingSeconds,
             totalSeconds,
-            estimatedArrival,
+            aircraft: resolveModel(f.aircraftCode),
             model: resolveModel(f.aircraftCode),
             altitude: f.altitude,
-            speed: f.groundSpeed
+            speed: f.groundSpeed,
+            isLive: true,
+            livePosition: {
+              lat: f.latitude,
+              lng: f.longitude,
+              alt: f.altitude,
+              spd: f.groundSpeed,
+              hd: f.heading || 0,
+            },
           });
 
           if (validFlights.length >= 300) break;

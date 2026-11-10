@@ -139,18 +139,44 @@ export async function GET(request) {
     const callsign = details?.identification?.callsign || detailObj.callsign || detailObj.flight || cleanQuery.toUpperCase();
     const modelText = details?.aircraft?.model?.text || resolveModel(detailObj.ac_type);
 
+    const latestTrail = details?.trail?.[0];
+    const livePosition = latestTrail ? {
+      lat: latestTrail.lat,
+      lng: latestTrail.lng,
+      alt: latestTrail.alt,
+      spd: latestTrail.spd,
+      hd: latestTrail.hd
+    } : {
+      lat: liveMatch.lat || originCoords.lat,
+      lng: liveMatch.lon || originCoords.lng,
+      alt: 0,
+      spd: 0,
+      hd: 0
+    };
+
+    const depUnix = departureTime || (estimatedArrival - totalSeconds);
+
     const formattedFlight = {
       id: String(liveMatch.id),
       airline: airlineName,
+      flightNumber: callsign,
       callsign,
       origin: originIata,
       destination: destIata,
       originCoords,
       destCoords,
+      departure: depUnix,
+      departureTime: depUnix,
+      arrival: estimatedArrival,
+      estimatedArrival,
       remainingSeconds,
       totalSeconds,
-      estimatedArrival,
-      model: modelText
+      model: modelText,
+      aircraft: modelText,
+      altitude: livePosition.alt,
+      speed: livePosition.spd,
+      isLive: true,
+      livePosition,
     };
 
     return NextResponse.json({ flight: formattedFlight }, { headers: cors });

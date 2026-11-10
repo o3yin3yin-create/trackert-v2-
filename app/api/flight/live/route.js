@@ -78,6 +78,42 @@ export async function GET(request) {
     }
 
     const frapi = new FlightRadar24API();
+
+    // 1. Direct fetch via FlightRadar24 details API
+    try {
+      const details = await frapi.getFlightDetails({ id: cleanId });
+      if (details) {
+        const latest = details?.trail?.[0];
+        const lat = latest?.lat ?? details?.airport?.origin?.position?.latitude;
+        const lng = latest?.lng ?? details?.airport?.origin?.position?.longitude;
+        const hd = latest?.hd ?? 0;
+        const alt = latest?.alt ?? 0;
+        const spd = latest?.spd ?? 0;
+        const dep = details?.time?.real?.departure || details?.time?.scheduled?.departure;
+        const arr = details?.time?.estimated?.arrival || details?.time?.scheduled?.arrival;
+
+        if (lat !== undefined && lng !== undefined) {
+          const payload = {
+            id: cleanId,
+            lat,
+            lng,
+            angle: hd,
+            altitude: alt,
+            speed: spd,
+            departure: dep,
+            arrival: arr,
+            status: details?.status?.text || 'EN ROUTE',
+            isLive: true,
+          };
+          liveCache.set(cleanId, { time: Date.now(), data: payload });
+          return NextResponse.json(payload);
+        }
+      }
+    } catch (detErr) {
+      console.warn('[Flight Live] direct getFlightDetails error, falling back to getFlights:', detErr?.message);
+    }
+
+    // 2. Fallback: search airborne pool if direct ID fetch failed
     let flights = [];
     try {
       flights = await frapi.getFlights();
@@ -91,20 +127,10 @@ export async function GET(request) {
       let lat = flight.latitude;
       let lng = flight.longitude;
       let hd = flight.heading || 0;
+      let alt = flight.altitude || 0;
+      let spd = flight.groundSpeed || 0;
 
-      // Only attempt getFlightDetails optionally, never fail if it 429s
-      try {
-        const details = await frapi.getFlightDetails(flight);
-        if (details?.trail && details.trail.length > 0) {
-          lat = details.trail[0].lat;
-          lng = details.trail[0].lng;
-          hd = details.trail[0].hd;
-        }
-      } catch (detErr) {
-        // Safe to ignore: flight already has real-time latitude & longitude
-      }
-
-      const payload = { lat, lng, angle: hd };
+      const payload = { lat, lng, angle: hd, altitude: alt, speed: spd, isLive: true };
       liveCache.set(cleanId, { time: Date.now(), data: payload });
       return NextResponse.json(payload);
     }

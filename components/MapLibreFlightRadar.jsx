@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { generateGreatCircleArc, getGreatCirclePoint, getGreatCircleBearing } from '@/lib/flightSchedule';
+import { generateGreatCircleArc, getGreatCirclePoint, getGreatCircleBearing, getDistanceKm } from '@/lib/flightSchedule';
 import { playFlightArrivalChime } from '@/lib/flightAudio';
 
 const OPENFREEMAP_TILEJSON = 'https://tiles.openfreemap.org/planet';
@@ -105,6 +105,35 @@ export default function MapLibreFlightRadar({
     }
     return false;
   });
+
+  const liveTelemetryRef = useRef(flight?.livePosition || null);
+  const [liveTelemetry, setLiveTelemetry] = useState(flight?.livePosition || null);
+
+  useEffect(() => {
+    if (!flight?.isLive || !flight?.id) return;
+
+    let active = true;
+    const pollLive = async () => {
+      try {
+        const res = await fetch(`/api/flight/live?id=${encodeURIComponent(flight.id)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data && typeof data.lat === 'number' && active) {
+          liveTelemetryRef.current = data;
+          setLiveTelemetry(data);
+        }
+      } catch {
+        // Safe to ignore, falls back to estimated progress
+      }
+    };
+
+    pollLive();
+    const interval = setInterval(pollLive, 6000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [flight?.id, flight?.isLive]);
 
   const buildRouteGeoJson = useCallback((est) => {
     if (!est?.origCoords || !est?.destCoords) {
@@ -235,8 +264,8 @@ export default function MapLibreFlightRadar({
               },
               paint: {
                 'line-color': '#ffffff',
-                'line-width': 1.0,
-                'line-opacity': 0.35,
+                'line-width': 0.85,
+                'line-opacity': 0.12,
               },
             });
 
@@ -308,14 +337,28 @@ export default function MapLibreFlightRadar({
       const flight = est.flight;
       if (!flight || !est.origCoords || !est.destCoords) return;
 
-      const departure = flight.departure || flight.departureTime;
-      const arrival = flight.arrival || flight.estimatedArrival;
-      if (!departure || !arrival) return;
+      let pos;
+      let heading;
 
-      const total = Math.max(1, arrival - departure);
-      const progress = Math.max(0, Math.min(1, (Date.now() / 1000 - departure) / total));
-      const pos = getGreatCirclePoint(est.origCoords, est.destCoords, progress);
-      const heading = getGreatCircleBearing(pos, est.destCoords);
+      if (liveTelemetryRef.current && typeof liveTelemetryRef.current.lat === 'number' && !isNaN(liveTelemetryRef.current.lat)) {
+        pos = {
+          lat: liveTelemetryRef.current.lat,
+          lon: liveTelemetryRef.current.lng ?? liveTelemetryRef.current.lon ?? est.origCoords.lon,
+          lng: liveTelemetryRef.current.lng ?? liveTelemetryRef.current.lon ?? est.origCoords.lon,
+        };
+        heading = typeof liveTelemetryRef.current.angle === 'number'
+          ? liveTelemetryRef.current.angle
+          : getGreatCircleBearing(pos, est.destCoords);
+      } else {
+        const departure = flight.departure || flight.departureTime;
+        const arrival = flight.arrival || flight.estimatedArrival;
+        if (!departure || !arrival) return;
+
+        const total = Math.max(1, arrival - departure);
+        const progress = Math.max(0, Math.min(1, (Date.now() / 1000 - departure) / total));
+        pos = getGreatCirclePoint(est.origCoords, est.destCoords, progress);
+        heading = getGreatCircleBearing(pos, est.destCoords);
+      }
 
       try {
         map.jumpTo({ center: [pos.lon, pos.lat], bearing: heading });
@@ -514,11 +557,24 @@ export default function MapLibreFlightRadar({
     }
   };
 
-  const totalSec = Math.max(0, estimate?.timeRemainingSec || 0);
+  const est = estimateRef.current;
+  const totalSec = Math.max(
+    0,
+    liveTelemetry?.arrival
+      ? liveTelemetry.arrival - Math.floor(Date.now() / 1000)
+      : (estimate?.timeRemainingSec || 0)
+  );
+
+  let currentDistKm = estimate?.distRemainingKm || 0;
+  if (liveTelemetry && typeof liveTelemetry.lat === 'number' && est?.destCoords) {
+    const destLon = est.destCoords.lon ?? est.destCoords.lng;
+    currentDistKm = Math.round(getDistanceKm(liveTelemetry.lat, liveTelemetry.lng, est.destCoords.lat, destLon));
+  }
+
   const minutesRemaining = Math.ceil(totalSec / 60).toLocaleString('en-US');
   const distValue = useMiles
-    ? (estimate?.distRemainingMi || 0).toLocaleString('en-US')
-    : (estimate?.distRemainingKm || 0).toLocaleString('en-US');
+    ? Math.round(currentDistKm * 0.621371).toLocaleString('en-US')
+    : currentDistKm.toLocaleString('en-US');
   const distUnit = useMiles ? 'mi' : 'km';
 
   return (
@@ -661,8 +717,18 @@ export default function MapLibreFlightRadar({
             <span>{flight?.destination}</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#ff9f0a] animate-pulse" />
-            <span className="font-mono text-[9px] tracking-[0.2em] text-white/50">EST</span>
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                flight?.isLive ? 'bg-[#30d158]' : 'bg-[#ff9f0a]'
+              } animate-pulse`}
+            />
+            <span
+              className={`font-mono text-[9px] tracking-[0.2em] ${
+                flight?.isLive ? 'text-[#30d158]' : 'text-white/50'
+              }`}
+            >
+              {flight?.isLive ? 'LIVE' : 'EST'}
+            </span>
           </span>
           <div className="flex-1" />
           <button
