@@ -35,6 +35,7 @@ export function proxy(req) {
   ].join('; ');
 
   response.headers.set('Content-Security-Policy', cspHeader);
+  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
   response.headers.set('X-Frame-Options', 'SAMEORIGIN');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');

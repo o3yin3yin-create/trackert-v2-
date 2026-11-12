@@ -321,7 +321,13 @@ export function UserButton({ afterSignOutUrl = '/', appearance = {} }) {
 }
 
 export function SignIn() {
-  const { signInWithGoogle, isSigningIn } = useContext(AuthContext);
+  const { signInWithGoogle, isSigningIn, isSignedIn } = useContext(AuthContext);
+
+  useEffect(() => {
+    if (isSignedIn && typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
+  }, [isSignedIn]);
 
   return (
     <div className="w-full max-w-sm mx-auto p-6 rounded-3xl bg-zinc-950/90 border border-white/10 backdrop-blur-xl shadow-2xl text-center select-none">
