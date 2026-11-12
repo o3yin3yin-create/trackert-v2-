@@ -66,8 +66,8 @@ const PROD_HOST = 'bokra101.vercel.app';
 const PROD_ORIGIN = `https://${PROD_HOST}`;
 
 async function handleClerkProxy(req, event) {
-  const currentHost = req.nextUrl.host;
-  const currentHostname = req.nextUrl.hostname;
+  const currentHost = req.headers.get('x-forwarded-host') || req.nextUrl.host;
+  const currentHostname = currentHost.split(':')[0];
 
   // If already on the production domain, pass through directly
   if (currentHostname === PROD_HOST) {
@@ -123,7 +123,8 @@ async function handleClerkProxy(req, event) {
   // Rewrite any redirect Location header pointing to bokra101.vercel.app
   const location = response.headers.get('location');
   if (location && location.includes(PROD_HOST)) {
-    const currentOrigin = `${req.nextUrl.protocol}//${currentHost}`;
+    const currentProto = req.headers.get('x-forwarded-proto') || req.nextUrl.protocol.replace(':', '') || 'https';
+    const currentOrigin = `${currentProto}://${currentHost}`;
     response.headers.set('location', location.replace(PROD_ORIGIN, currentOrigin));
   }
 
