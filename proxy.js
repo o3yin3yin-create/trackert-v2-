@@ -128,29 +128,33 @@ async function handleClerkProxy(req, event) {
     response.headers.set('location', location.replace(PROD_ORIGIN, currentOrigin));
   }
 
-  // Rewrite JSON body (e.g. Google OAuth redirect_uri inside external_verification_redirect_url)
-  const contentType = response.headers.get('content-type') || '';
-  if (contentType.includes('application/json') || contentType.includes('text/')) {
-    try {
-      const text = await response.text();
-      if (text.includes(PROD_HOST)) {
-        const encodedProd = encodeURIComponent(PROD_HOST);
-        const encodedCurr = encodeURIComponent(currentHost);
-        const rewrittenText = text
-          .replaceAll(encodedProd, encodedCurr)
-          .replaceAll(PROD_HOST, currentHost);
+  // Rewrite JSON body only for initiating OAuth (e.g. Google OAuth redirect_uri inside external_verification_redirect_url)
+  const isSignInOrUp = req.method === 'POST' && (req.nextUrl.pathname.includes('/sign_ins') || req.nextUrl.pathname.includes('/sign_ups'));
+  if (isSignInOrUp) {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      try {
+        const cloned = response.clone();
+        const text = await cloned.text();
+        if (text.includes(PROD_HOST)) {
+          const encodedProd = encodeURIComponent(PROD_HOST);
+          const encodedCurr = encodeURIComponent(currentHost);
+          const rewrittenText = text
+            .replaceAll(encodedProd, encodedCurr)
+            .replaceAll(PROD_HOST, currentHost);
 
-        const newHeaders = new Headers(response.headers);
-        newHeaders.delete('content-length');
+          const newHeaders = new Headers(response.headers);
+          newHeaders.delete('content-length');
 
-        return new NextResponse(rewrittenText, {
-          status: response.status,
-          statusText: response.statusText,
-          headers: newHeaders,
-        });
+          return new NextResponse(rewrittenText, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: newHeaders,
+          });
+        }
+      } catch {
+        // Fall back to original response if body cloning/reading fails
       }
-    } catch {
-      // Fall back to original response if body reading fails
     }
   }
 
@@ -159,7 +163,12 @@ async function handleClerkProxy(req, event) {
 
 export async function proxy(req, event) {
   if (req.nextUrl.pathname.startsWith('/__clerk')) {
-    return handleClerkProxy(req, event);
+    try {
+      return await handleClerkProxy(req, event);
+    } catch (err) {
+      console.error('[Clerk Proxy Error]:', err);
+      return handler(req, event);
+    }
   }
   return handler(req, event);
 }
