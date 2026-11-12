@@ -58,96 +58,7 @@ const handler = clerkMiddleware(async (auth, req) => {
   return response;
 });
 
-const CLERK_INSTANCE_HOST = 'bokra101.vercel.app';
-
-async function handleClerkProxy(req) {
-  const currentHost = req.headers.get('x-forwarded-host') || req.nextUrl.host;
-  const currentProto = req.headers.get('x-forwarded-proto') || req.nextUrl.protocol.replace(':', '') || 'https';
-  const currentOrigin = `${currentProto}://${currentHost}`;
-
-  const targetPath = req.nextUrl.pathname.replace(/^\/__clerk/, '') || '/';
-  const targetUrl = new URL(targetPath + req.nextUrl.search, 'https://frontend-api.clerk.dev');
-
-  const headers = new Headers();
-  headers.set('Host', 'frontend-api.clerk.dev');
-  headers.set('Clerk-Proxy-Url', `https://${CLERK_INSTANCE_HOST}/__clerk`);
-  headers.set('Clerk-Secret-Key', process.env.CLERK_SECRET_KEY);
-  headers.set('Accept-Encoding', 'identity');
-
-  const fwdHeaders = ['cookie', 'authorization', 'content-type', 'user-agent', 'x-forwarded-for', 'accept', 'accept-language'];
-  for (const h of fwdHeaders) {
-    const val = req.headers.get(h);
-    if (val) headers.set(h, val);
-  }
-
-  let reqBody = undefined;
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
-    reqBody = await req.arrayBuffer();
-  }
-
-  const clerkRes = await fetch(targetUrl.toString(), {
-    method: req.method,
-    headers,
-    body: reqBody,
-    redirect: 'manual',
-  });
-
-  const resHeaders = new Headers();
-  clerkRes.headers.forEach((val, key) => {
-    const l = key.toLowerCase();
-    if (!['connection', 'keep-alive', 'transfer-encoding', 'content-encoding'].includes(l)) {
-      resHeaders.set(key, val);
-    }
-  });
-
-  const reqOrigin = req.headers.get('origin') || currentOrigin;
-  resHeaders.set('access-control-allow-origin', reqOrigin);
-  resHeaders.set('access-control-allow-credentials', 'true');
-
-  const rawCookies = clerkRes.headers.getSetCookie();
-  if (rawCookies && rawCookies.length > 0) {
-    resHeaders.delete('set-cookie');
-    for (const c of rawCookies) {
-      resHeaders.append('set-cookie', c.replace(/Domain=[^;]+;?\s*/gi, ''));
-    }
-  }
-
-  let loc = clerkRes.headers.get('location');
-  if (loc) {
-    if (loc.includes(CLERK_INSTANCE_HOST)) {
-      loc = loc.replaceAll(CLERK_INSTANCE_HOST, currentHost);
-    }
-    resHeaders.set('location', loc);
-  }
-
-  if (clerkRes.status === 301 || clerkRes.status === 302 || clerkRes.status === 204) {
-    return new NextResponse(null, { status: clerkRes.status, headers: resHeaders });
-  }
-
-  const contentType = clerkRes.headers.get('content-type') || '';
-  if (contentType.includes('application/json') || contentType.includes('text/') || contentType.includes('javascript')) {
-    const text = await clerkRes.text();
-    const rewritten = text.replaceAll(CLERK_INSTANCE_HOST, currentHost);
-    resHeaders.delete('content-length');
-    return new NextResponse(rewritten, { status: clerkRes.status, headers: resHeaders });
-  }
-
-  const buffer = await clerkRes.arrayBuffer();
-  return new NextResponse(buffer, { status: clerkRes.status, headers: resHeaders });
-}
-
 export async function proxy(req, event) {
-  if (req.nextUrl.pathname.startsWith('/__clerk')) {
-    try {
-      return await handleClerkProxy(req);
-    } catch (err) {
-      console.error('[Clerk Proxy Error]:', err);
-      return new NextResponse(JSON.stringify({ error: err.message }), {
-        status: 500,
-        headers: { 'content-type': 'application/json' },
-      });
-    }
-  }
   return handler(req, event);
 }
 
@@ -160,7 +71,5 @@ export const config = {
     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|apk|dmg|deb|AppImage|rpm|webmanifest)).*)',
     // Always run for API routes
     '/(api|trpc)(.*)',
-    // Clerk proxy matcher
-    '/__clerk/:path*',
   ],
 };

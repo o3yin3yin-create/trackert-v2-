@@ -94,7 +94,6 @@ export default function RootLayout({ children }) {
       </head>
       <body className={`${spaceGrotesk.className} font-sans bg-black text-white antialiased selection:bg-white/20`}>
         <ClerkProvider 
-          proxyUrl="/__clerk"
           appearance={clerkAppearance}
           localization={clerkLocalization}
           signInUrl="/sign-in"
