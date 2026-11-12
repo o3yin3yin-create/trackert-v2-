@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { 
   onIdTokenChanged, 
+  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
   signOut as fbSignOut,
@@ -54,6 +55,9 @@ export function AuthProvider({ children }) {
           const token = await currentFbUser.getIdToken();
           // Write session cookie for Next.js server routes with 7 days max-age
           document.cookie = `__session=${token}; path=/; max-age=604800; SameSite=Lax; Secure`;
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('bokra_cached_clerk_token', token);
+          }
         } catch (e) {
           console.warn('[auth] Failed to retrieve token on token change:', e);
         }
@@ -62,6 +66,16 @@ export function AuthProvider({ children }) {
         const parts = fullName.trim().split(/\s+/);
         const firstName = parts[0] || (currentFbUser.email?.split('@')[0] || 'User');
         const lastName = parts.slice(1).join(' ') || '';
+
+        let existingUsername = null;
+        if (typeof window !== 'undefined') {
+          try {
+            const cached = localStorage.getItem('daybase_cached_user');
+            if (cached) existingUsername = JSON.parse(cached)?.username || null;
+            const desktop = localStorage.getItem('bokra_desktop_user');
+            if (!existingUsername && desktop) existingUsername = JSON.parse(desktop)?.username || null;
+          } catch (_) {}
+        }
 
         setUser({
           id: currentFbUser.uid,
@@ -72,8 +86,7 @@ export function AuthProvider({ children }) {
           imageUrl: currentFbUser.photoURL || '',
           primaryEmailAddress: { emailAddress: currentFbUser.email || '' },
           emailAddresses: [{ emailAddress: currentFbUser.email || '' }],
-          // Keep username null initially so that new users trigger the in-app ChooseUsername gate
-          username: null,
+          username: existingUsername || null,
         });
       } else {
         document.cookie = '__session=; path=/; max-age=0; SameSite=Lax; Secure';
@@ -90,19 +103,34 @@ export function AuthProvider({ children }) {
   const signInWithGoogle = useCallback(async () => {
     setIsSigningIn(true);
     try {
-      // Direct HTTP redirect: immune to Safari popup blocker and works 100% inside Instagram/TikTok in-app WebViews
-      await signInWithRedirect(auth, googleProvider);
+      // 1. Try popup first (fastest, keeps user in place, works in Safari & Chrome without ITP cookie loss)
+      await signInWithPopup(auth, googleProvider);
     } catch (err) {
-      console.error('[auth] Google sign-in redirect failed:', err);
-      setIsSigningIn(false);
       const code = err?.code || '';
+      console.warn('[auth] Popup sign-in caught code:', code, err?.message);
+
       if (code === 'auth/operation-not-allowed') {
+        setIsSigningIn(false);
         alert('تنبيه: يلزم الضغط على زر Save الأزرق في لوحة فايربيز لتفعيل جوجل.');
-      } else if (code === 'auth/unauthorized-domain') {
-        alert('تنبيه: يجب إضافة bokra.onrender.com في Authorized domains في فايربيز.');
-      } else {
-        alert('تعذر الاتصال بجوجل: ' + (err?.message || ''));
+        return;
       }
+      if (code === 'auth/unauthorized-domain') {
+        setIsSigningIn(false);
+        alert('تنبيه: يجب إضافة bokra.onrender.com في Authorized domains في فايربيز.');
+        return;
+      }
+
+      // 2. If popup was blocked by an in-app browser (e.g. Instagram / TikTok WebViews), fall back to redirect
+      if (code === 'auth/popup-blocked') {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (redirErr) {
+          console.error('[auth] Redirect fallback failed:', redirErr);
+        }
+      }
+
+      setIsSigningIn(false);
     }
   }, []);
 
@@ -110,6 +138,11 @@ export function AuthProvider({ children }) {
     try {
       await fbSignOut(auth);
       document.cookie = '__session=; path=/; max-age=0; SameSite=Lax; Secure';
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('bokra_cached_clerk_token');
+        localStorage.removeItem('daybase_cached_user');
+        localStorage.removeItem('daybase_owner_user_id');
+      }
       setUser(null);
       setFbUser(null);
       window.location.reload();
