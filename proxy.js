@@ -127,6 +127,32 @@ async function handleClerkProxy(req, event) {
     response.headers.set('location', location.replace(PROD_ORIGIN, currentOrigin));
   }
 
+  // Rewrite JSON body (e.g. Google OAuth redirect_uri inside external_verification_redirect_url)
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json') || contentType.includes('text/')) {
+    try {
+      const text = await response.text();
+      if (text.includes(PROD_HOST)) {
+        const encodedProd = encodeURIComponent(PROD_HOST);
+        const encodedCurr = encodeURIComponent(currentHost);
+        const rewrittenText = text
+          .replaceAll(encodedProd, encodedCurr)
+          .replaceAll(PROD_HOST, currentHost);
+
+        const newHeaders = new Headers(response.headers);
+        newHeaders.delete('content-length');
+
+        return new NextResponse(rewrittenText, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: newHeaders,
+        });
+      }
+    } catch {
+      // Fall back to original response if body reading fails
+    }
+  }
+
   return response;
 }
 
