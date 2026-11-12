@@ -4,17 +4,19 @@ import {
   onIdTokenChanged, 
   signInWithPopup, 
   signInWithRedirect, 
+  getRedirectResult,
   signOut as fbSignOut,
   GoogleAuthProvider 
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
-import { LogOut, User as UserIcon } from 'lucide-react';
+import { LogOut, User as UserIcon, Loader2 } from 'lucide-react';
 
 const AuthContext = createContext({
   isLoaded: false,
   isSignedIn: false,
   user: null,
   fbUser: null,
+  isSigningIn: false,
   signInWithGoogle: async () => {},
   signOut: async () => {},
 });
@@ -23,6 +25,16 @@ export function AuthProvider({ children }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [fbUser, setFbUser] = useState(null);
   const [user, setUser] = useState(null);
+  const [isSigningIn, setIsSigningIn] = useState(false);
+
+  // Check redirect result on load for Safari/iOS redirect fallback
+  useEffect(() => {
+    getRedirectResult(auth).catch((err) => {
+      if (err?.code && err.code !== 'auth/null-user') {
+        console.warn('[auth] getRedirectResult notice:', err);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onIdTokenChanged(auth, async (currentFbUser) => {
@@ -51,7 +63,8 @@ export function AuthProvider({ children }) {
           imageUrl: currentFbUser.photoURL || '',
           primaryEmailAddress: { emailAddress: currentFbUser.email || '' },
           emailAddresses: [{ emailAddress: currentFbUser.email || '' }],
-          username: currentFbUser.displayName ? currentFbUser.displayName.replace(/\s+/g, '').toLowerCase() : (currentFbUser.email?.split('@')[0] || null),
+          // Leave username null initially so that new users trigger the in-app ChooseUsername gate
+          username: null,
         });
       } else {
         document.cookie = '__session=; path=/; max-age=0; SameSite=Lax; Secure';
@@ -59,25 +72,47 @@ export function AuthProvider({ children }) {
       }
 
       setIsLoaded(true);
+      setIsSigningIn(false);
     });
 
     return () => unsubscribe();
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
+    setIsSigningIn(true);
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (popupErr) {
-      // If popup was blocked or failed on mobile Safari/Chrome, fall back to redirect
-      if (popupErr?.code === 'auth/popup-blocked' || popupErr?.code === 'auth/popup-closed-by-user') {
+      const code = popupErr?.code || '';
+      console.warn('[auth] Google sign-in caught code:', code, popupErr?.message);
+
+      if (code === 'auth/operation-not-allowed') {
+        setIsSigningIn(false);
+        alert('تنبيه: يلزم الضغط على زر Save الأزرق في لوحة فايربيز لتفعيل جوجل.');
+        return;
+      }
+
+      if (code === 'auth/unauthorized-domain') {
+        setIsSigningIn(false);
+        alert('تنبيه: يجب إضافة الدومين الحالي في Authorized domains داخل لوحة فايربيز (Authentication -> Settings -> Authorized domains).');
+        return;
+      }
+
+      // If popup was blocked by Safari or Chrome popup blocker, fall back to full redirect
+      if (
+        code === 'auth/popup-blocked' || 
+        code === 'auth/popup-closed-by-user' || 
+        code === 'auth/cancelled-popup-request'
+      ) {
         try {
           await signInWithRedirect(auth, googleProvider);
+          return;
         } catch (redirErr) {
-          console.error('[auth] Google sign-in redirect failed:', redirErr);
+          console.error('[auth] Google sign-in redirect fallback failed:', redirErr);
         }
-      } else {
-        console.error('[auth] Google sign-in failed:', popupErr);
       }
+
+      setIsSigningIn(false);
     }
   }, []);
 
@@ -99,6 +134,7 @@ export function AuthProvider({ children }) {
       isSignedIn: !!user,
       user,
       fbUser,
+      isSigningIn,
       signInWithGoogle,
       signOut,
     }}>
@@ -154,7 +190,7 @@ export function Show({ when, fallback = null, children }) {
 }
 
 export function SignInButton({ children, mode, ...props }) {
-  const { signInWithGoogle } = useContext(AuthContext);
+  const { signInWithGoogle, isSigningIn } = useContext(AuthContext);
 
   if (children) {
     return React.cloneElement(children, {
@@ -169,11 +205,12 @@ export function SignInButton({ children, mode, ...props }) {
     <button
       type="button"
       onClick={signInWithGoogle}
-      className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white text-black text-sm font-medium hover:bg-white/90 active:scale-95 transition-all shadow-sm"
+      disabled={isSigningIn}
+      className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white text-black text-sm font-medium hover:bg-white/90 active:scale-95 transition-all shadow-sm cursor-pointer disabled:opacity-50"
       {...props}
     >
-      <GoogleIcon className="w-4 h-4" />
-      <span>تسجيل الدخول</span>
+      {isSigningIn ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : <GoogleIcon className="w-4 h-4" />}
+      <span>{isSigningIn ? 'جاري التحميل...' : 'تسجيل الدخول'}</span>
     </button>
   );
 }
@@ -208,7 +245,7 @@ export function UserButton({ afterSignOutUrl = '/', appearance = {} }) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-8 h-8 rounded-full overflow-hidden border border-white/20 hover:border-white/50 transition-all flex items-center justify-center bg-zinc-800 text-white font-medium text-xs focus:outline-none focus:ring-2 focus:ring-white/30 cursor-pointer active:scale-95"
+        className="w-full h-full rounded-full overflow-hidden border border-white/20 hover:border-white/50 transition-all flex items-center justify-center bg-zinc-800 text-white font-medium text-xs focus:outline-none cursor-pointer active:scale-95"
         aria-label="User profile"
       >
         {user.imageUrl ? (
@@ -236,7 +273,7 @@ export function UserButton({ afterSignOutUrl = '/', appearance = {} }) {
                 initial
               )}
             </div>
-            <div className="overflow-hidden">
+            <div className="overflow-hidden text-right">
               <p className="text-sm font-semibold truncate text-white">{user.fullName}</p>
               <p className="text-xs text-white/50 truncate font-mono">{user.primaryEmailAddress?.emailAddress}</p>
             </div>
@@ -262,7 +299,7 @@ export function UserButton({ afterSignOutUrl = '/', appearance = {} }) {
 }
 
 export function SignIn() {
-  const { signInWithGoogle, isLoaded, isSignedIn, user } = useContext(AuthContext);
+  const { signInWithGoogle, isSigningIn } = useContext(AuthContext);
 
   return (
     <div className="w-full max-w-sm mx-auto p-6 rounded-3xl bg-zinc-950/90 border border-white/10 backdrop-blur-xl shadow-2xl text-center select-none">
@@ -277,10 +314,20 @@ export function SignIn() {
       <button
         type="button"
         onClick={signInWithGoogle}
-        className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-2xl bg-white text-black font-semibold text-sm hover:bg-white/90 active:scale-95 transition-all shadow-lg cursor-pointer"
+        disabled={isSigningIn}
+        className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-2xl bg-white text-black font-semibold text-sm hover:bg-white/90 active:scale-95 transition-all shadow-lg cursor-pointer disabled:opacity-50"
       >
-        <GoogleIcon className="w-5 h-5" />
-        <span>متابعة باستخدام Google</span>
+        {isSigningIn ? (
+          <>
+            <Loader2 className="w-5 h-5 animate-spin text-black" />
+            <span>جاري الاتصال بجوجل...</span>
+          </>
+        ) : (
+          <>
+            <GoogleIcon className="w-5 h-5" />
+            <span>متابعة باستخدام Google</span>
+          </>
+        )}
       </button>
 
       <p className="mt-6 text-[11px] text-white/40 leading-relaxed">

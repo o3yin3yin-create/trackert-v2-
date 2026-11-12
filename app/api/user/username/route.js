@@ -113,27 +113,7 @@ export async function POST(req) {
       return NextResponse.json({ success: true, username: clean }, { status: 200, headers: cors });
     }
 
-    // 3. Update via Clerk Backend API (uses CLERK_SECRET_KEY, bypasses client re-verification requirement)
-    try {
-      const client = await clerkClient();
-      let currentClerkUser = null;
-      try {
-        currentClerkUser = await client.users.getUser(userId);
-      } catch (e) {}
-
-      if (currentClerkUser?.username !== clean) {
-        await client.users.updateUser(userId, { username: clean });
-      }
-    } catch (clerkErr) {
-      console.warn('[Username API] Clerk updateUser error:', clerkErr);
-      const msg = clerkErr?.errors?.[0]?.longMessage ||
-                  clerkErr?.errors?.[0]?.message ||
-                  clerkErr?.message ||
-                  'Failed to update username in Clerk.';
-      return NextResponse.json({ error: msg }, { status: 400, headers: cors });
-    }
-
-    // 4. Update database record
+    // 3. Update database record
     await prisma.user.upsert({
       where: { clerkId: userId },
       update: { username: clean },
