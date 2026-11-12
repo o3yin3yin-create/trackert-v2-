@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
-import { signDesktopToken, getAuthUserData } from '@/lib/auth-server';
+import { signDesktopToken } from '@/lib/auth-server';
 import { rateLimit, getClientIp } from '@/lib/rateLimit';
 
 export async function POST(req) {
@@ -11,8 +12,7 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Too many token requests from this IP. Please wait.' }, { status: 429 });
     }
 
-    const authUser = await getAuthUserData(req);
-    const userId = authUser?.userId;
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -22,10 +22,11 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Too many token requests. Please wait a moment.' }, { status: 429 });
     }
 
-    const email = authUser?.email || '';
-    const name = authUser?.name || 'User';
-    const avatar = authUser?.avatar || '';
-    let username = authUser?.username || null;
+    const clerkUser = await currentUser();
+    const email = clerkUser?.emailAddresses?.[0]?.emailAddress || '';
+    const name = clerkUser?.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : 'User';
+    const avatar = clerkUser?.imageUrl || '';
+    let username = clerkUser?.username || null;
     let tokenVersion = 1;
 
     const dbUser = await prisma.user.findUnique({

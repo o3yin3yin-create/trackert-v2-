@@ -1157,10 +1157,9 @@ function AppContent({ isPreview = false }) {
 
     if (isDesktop && openSignIn) {
       openSignIn();
-      return;
-    }
-
-    if (typeof window !== 'undefined') {
+    } else if (openSignIn) {
+      openSignIn();
+    } else if (typeof window !== 'undefined') {
       window.location.href = '/sign-in';
     }
   }, [openSignIn]);
@@ -2533,26 +2532,17 @@ function AppContent({ isPreview = false }) {
              setThemeColor(authoritative.themeColor);
              if (typeof window !== 'undefined') localStorage.setItem('daybase_themeColor_v4', authoritative.themeColor);
           }
-          if (authoritative.username) {
-            setDbUsername(authoritative.username);
-            if (typeof window !== 'undefined') {
-              try {
-                const cachedUserStr = localStorage.getItem('daybase_cached_user');
-                if (cachedUserStr) {
-                  const parsed = JSON.parse(cachedUserStr);
+          if (authoritative.username && typeof window !== 'undefined') {
+            try {
+              const savedUser = localStorage.getItem('bokra_desktop_user');
+              if (savedUser) {
+                const parsed = JSON.parse(savedUser);
+                if (!parsed.username || parsed.username !== authoritative.username) {
                   parsed.username = authoritative.username;
-                  localStorage.setItem('daybase_cached_user', JSON.stringify(parsed));
+                  localStorage.setItem('bokra_desktop_user', JSON.stringify(parsed));
                 }
-                const savedUser = localStorage.getItem('bokra_desktop_user');
-                if (savedUser) {
-                  const parsed = JSON.parse(savedUser);
-                  if (!parsed.username || parsed.username !== authoritative.username) {
-                    parsed.username = authoritative.username;
-                    localStorage.setItem('bokra_desktop_user', JSON.stringify(parsed));
-                  }
-                }
-              } catch (_) {}
-            }
+              }
+            } catch (_) {}
           }
           if (authoritative.avatar) {
              setAvatar(authoritative.avatar);
@@ -10749,6 +10739,7 @@ function AppContent({ isPreview = false }) {
                                   <button
                                     type="button"
                                     onClick={() => {
+                                      setIsSettingsMenuOpen(false);
                                       handleAuthAction();
                                     }}
                                     className="px-4 py-2 rounded-xl bg-white text-black text-xs font-bold hover:bg-white/90 transition-all active:scale-95 shadow-sm cursor-pointer"

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
+import { clerkClient } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
-import { getAuthUserId, getAuthUserData } from '@/lib/auth-server';
+import { getAuthUserId } from '@/lib/auth-server';
 import { getCorsHeaders, handleCorsOptions } from '@/lib/cors';
 
 export async function OPTIONS(req) {
@@ -25,17 +26,18 @@ export async function GET(req) {
 
     if (!username) {
       try {
-        const authUser = await getAuthUserData(req);
-        if (authUser?.name) {
-          username = authUser.username || authUser.name.replace(/\s+/g, '').toLowerCase();
+        const client = await clerkClient();
+        const clerkUser = await client.users.getUser(userId);
+        if (clerkUser?.username) {
+          username = clerkUser.username;
           await prisma.user.upsert({
             where: { clerkId: userId },
             update: { username },
             create: {
               clerkId: userId,
-              email: authUser.email || `${userId}@bokra.app`,
+              email: clerkUser.emailAddresses?.[0]?.emailAddress || `${userId}@bokra.app`,
               username,
-              name: authUser.name,
+              name: clerkUser.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : username,
             }
           });
         }
@@ -113,7 +115,27 @@ export async function POST(req) {
       return NextResponse.json({ success: true, username: clean }, { status: 200, headers: cors });
     }
 
-    // 3. Update database record
+    // 3. Update via Clerk Backend API (uses CLERK_SECRET_KEY, bypasses client re-verification requirement)
+    try {
+      const client = await clerkClient();
+      let currentClerkUser = null;
+      try {
+        currentClerkUser = await client.users.getUser(userId);
+      } catch (e) {}
+
+      if (currentClerkUser?.username !== clean) {
+        await client.users.updateUser(userId, { username: clean });
+      }
+    } catch (clerkErr) {
+      console.warn('[Username API] Clerk updateUser error:', clerkErr);
+      const msg = clerkErr?.errors?.[0]?.longMessage ||
+                  clerkErr?.errors?.[0]?.message ||
+                  clerkErr?.message ||
+                  'Failed to update username in Clerk.';
+      return NextResponse.json({ error: msg }, { status: 400, headers: cors });
+    }
+
+    // 4. Update database record
     await prisma.user.upsert({
       where: { clerkId: userId },
       update: { username: clean },

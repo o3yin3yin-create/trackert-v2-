@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
+import { currentUser } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
-import { getAuthUserId, getAuthUserData } from '@/lib/auth-server';
+import { getAuthUserId } from '@/lib/auth-server';
 import { getCorsHeaders, handleCorsOptions } from '@/lib/cors';
 import { rateLimit, getClientIp } from '@/lib/rateLimit';
 import { reconcileLecturePushes, reconcileAthkarPushes } from '@/lib/pushSchedule';
@@ -86,10 +87,10 @@ export async function GET(req) {
 
     if (!user) {
       // First time user or returning user from dev with new production clerkId: link by email
-      const authUser = await getAuthUserData(req);
-      const email = authUser?.email || `${userId}@bokra.app`;
-      const name = authUser?.name || 'Unknown';
-      const username = authUser?.username || null;
+      const clerkUser = await currentUser();
+      const email = clerkUser?.emailAddresses?.[0]?.emailAddress || `${userId}@bokra.app`;
+      const name = clerkUser?.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : 'Unknown';
+      const username = clerkUser?.username || null;
 
       // Check if user already exists with this email in database (from dev mode)
       const existingUserByEmail = email && !email.endsWith('@bokra.app')
@@ -123,11 +124,11 @@ export async function GET(req) {
         });
       }
     } else {
-      const authUser = await getAuthUserData(req);
-      if (authUser) {
-        const name = authUser.name !== 'Unknown' ? authUser.name : user.name;
-        const email = authUser.email || user.email;
-        const username = authUser.username || null;
+      const clerkUser = await currentUser();
+      if (clerkUser) {
+        const name = clerkUser.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : user.name;
+        const email = clerkUser.emailAddresses?.[0]?.emailAddress || user.email;
+        const username = clerkUser.username || null;
 
         if ((username && user.username !== username) || (user.name === 'Zain' || user.email.startsWith('user_'))) {
           user = await prisma.user.update({
@@ -258,8 +259,8 @@ export async function POST(req) {
       include: { habits: true }
     });
     if (!user) {
-      const authUser = await getAuthUserData(req);
-      const email = authUser?.email;
+      const clerkUser = await currentUser();
+      const email = clerkUser?.emailAddresses?.[0]?.emailAddress;
       if (email) {
         const existingUserByEmail = await prisma.user.findUnique({
           where: { email },
