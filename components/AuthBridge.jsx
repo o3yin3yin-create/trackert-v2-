@@ -2,8 +2,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { 
   onIdTokenChanged, 
-  signInWithPopup, 
-  signInWithRedirect, 
+  signInWithRedirect,
   getRedirectResult,
   signOut as fbSignOut,
   GoogleAuthProvider 
@@ -27,13 +26,23 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
-  // Check redirect result on load for Safari/iOS redirect fallback
+  // Check and consume Google OAuth redirect result on load
   useEffect(() => {
-    getRedirectResult(auth).catch((err) => {
-      if (err?.code && err.code !== 'auth/null-user') {
-        console.warn('[auth] getRedirectResult notice:', err);
-      }
-    });
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          console.log('[auth] Google redirect sign-in completed:', result.user.email);
+        }
+      })
+      .catch((err) => {
+        const code = err?.code || '';
+        console.warn('[auth] getRedirectResult notice:', code, err?.message);
+        if (code === 'auth/operation-not-allowed') {
+          alert('تنبيه: يجب الضغط على زر Save الأزرق في لوحة فايربيز لتفعيل جوجل.');
+        } else if (code === 'auth/unauthorized-domain') {
+          alert('تنبيه: يجب إضافة bokra.onrender.com في Authorized domains داخل لوحة فايربيز.');
+        }
+      });
   }, []);
 
   useEffect(() => {
@@ -63,7 +72,7 @@ export function AuthProvider({ children }) {
           imageUrl: currentFbUser.photoURL || '',
           primaryEmailAddress: { emailAddress: currentFbUser.email || '' },
           emailAddresses: [{ emailAddress: currentFbUser.email || '' }],
-          // Leave username null initially so that new users trigger the in-app ChooseUsername gate
+          // Keep username null initially so that new users trigger the in-app ChooseUsername gate
           username: null,
         });
       } else {
@@ -81,38 +90,19 @@ export function AuthProvider({ children }) {
   const signInWithGoogle = useCallback(async () => {
     setIsSigningIn(true);
     try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (popupErr) {
-      const code = popupErr?.code || '';
-      console.warn('[auth] Google sign-in caught code:', code, popupErr?.message);
-
-      if (code === 'auth/operation-not-allowed') {
-        setIsSigningIn(false);
-        alert('تنبيه: يلزم الضغط على زر Save الأزرق في لوحة فايربيز لتفعيل جوجل.');
-        return;
-      }
-
-      if (code === 'auth/unauthorized-domain') {
-        setIsSigningIn(false);
-        alert('تنبيه: يجب إضافة الدومين الحالي في Authorized domains داخل لوحة فايربيز (Authentication -> Settings -> Authorized domains).');
-        return;
-      }
-
-      // If popup was blocked by Safari or Chrome popup blocker, fall back to full redirect
-      if (
-        code === 'auth/popup-blocked' || 
-        code === 'auth/popup-closed-by-user' || 
-        code === 'auth/cancelled-popup-request'
-      ) {
-        try {
-          await signInWithRedirect(auth, googleProvider);
-          return;
-        } catch (redirErr) {
-          console.error('[auth] Google sign-in redirect fallback failed:', redirErr);
-        }
-      }
-
+      // Direct HTTP redirect: immune to Safari popup blocker and works 100% inside Instagram/TikTok in-app WebViews
+      await signInWithRedirect(auth, googleProvider);
+    } catch (err) {
+      console.error('[auth] Google sign-in redirect failed:', err);
       setIsSigningIn(false);
+      const code = err?.code || '';
+      if (code === 'auth/operation-not-allowed') {
+        alert('تنبيه: يلزم الضغط على زر Save الأزرق في لوحة فايربيز لتفعيل جوجل.');
+      } else if (code === 'auth/unauthorized-domain') {
+        alert('تنبيه: يجب إضافة bokra.onrender.com في Authorized domains في فايربيز.');
+      } else {
+        alert('تعذر الاتصال بجوجل: ' + (err?.message || ''));
+      }
     }
   }, []);
 
@@ -210,7 +200,7 @@ export function SignInButton({ children, mode, ...props }) {
       {...props}
     >
       {isSigningIn ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : <GoogleIcon className="w-4 h-4" />}
-      <span>{isSigningIn ? 'جاري التحميل...' : 'تسجيل الدخول'}</span>
+      <span>{isSigningIn ? 'جاري التحويل...' : 'تسجيل الدخول'}</span>
     </button>
   );
 }
@@ -320,7 +310,7 @@ export function SignIn() {
         {isSigningIn ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin text-black" />
-            <span>جاري الاتصال بجوجل...</span>
+            <span>جاري التحويل إلى Google...</span>
           </>
         ) : (
           <>
