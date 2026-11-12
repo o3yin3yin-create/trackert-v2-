@@ -26,7 +26,7 @@ const amiri = Amiri({
 })
 
 export const metadata = {
-  metadataBase: new URL('https://bokra101.vercel.app'),
+  metadataBase: new URL('https://bokra.onrender.com'),
   title: {
     default: 'bokra - Habit Tracker & Focus Companion',
     template: '%s | bokra',
@@ -36,7 +36,7 @@ export const metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://bokra101.vercel.app',
+    url: 'https://bokra.onrender.com',
     siteName: 'bokra',
     title: 'bokra - Habit Tracker & Focus Companion',
     description: 'Master your daily habits, Pomodoro sessions, and flight focus in an Apple-grade dark dashboard.',
