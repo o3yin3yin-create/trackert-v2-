@@ -38,11 +38,11 @@ const handler = clerkMiddleware(async (auth, req) => {
     "font-src 'self' data: https://fonts.gstatic.com https://fonts.openmaptiles.org",
     "connect-src 'self' https://*.clerk.accounts.dev https://clerk.com https://*.clerk.com https://clerk.bokra101.vercel.app https://bokra101.vercel.app https://api.clerk.com https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://server.arcgisonline.com https://*.basemaps.cartocdn.com https://basemaps.cartocdn.com https://*.openfreemap.org https://tiles.openfreemap.org https://demotiles.maplibre.org https://fonts.openmaptiles.org https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com https://*.googleapis.com https://*.firebaseio.com https://api.spotify.com https://*.upstash.io wss://*.upstash.io https://accounts.google.com https://*.protect.clerk.com:* https://clerk-telemetry.com https://*.clerk-telemetry.com",
     "frame-src 'self' https://open.spotify.com https://*.clerk.accounts.dev https://clerk.com https://clerk.bokra101.vercel.app https://bokra101.vercel.app https://accounts.google.com",
-    "worker-src 'self' blob: https://bokra101.vercel.app",
+    "worker-src 'self' blob: https://bokra101.vercel.app https://*.onrender.com",
     "child-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
-    "form-action 'self' https://accounts.google.com https://*.clerk.accounts.dev https://clerk.com https://*.clerk.com https://clerk.bokra101.vercel.app",
+    "form-action 'self' https://accounts.google.com https://*.clerk.accounts.dev https://clerk.com https://*.clerk.com https://clerk.bokra101.vercel.app https://bokra101.vercel.app https://*.onrender.com",
     "frame-ancestors 'self'"
   ].join('; ');
 
@@ -62,23 +62,83 @@ const handler = clerkMiddleware(async (auth, req) => {
   },
 });
 
-export function proxy(req, event) {
-  // Clerk production instances reject localhost origins, so present the deployed origin when proxying locally
-  if (req.nextUrl.pathname.startsWith('/__clerk') && ['localhost', '127.0.0.1'].includes(req.nextUrl.hostname)) {
-    const headers = new Headers(req.headers);
-    headers.set('x-forwarded-host', 'bokra101.vercel.app');
-    headers.set('x-forwarded-proto', 'https');
-    const init = { method: req.method, headers };
-    if (req.body) {
-      init.body = req.body;
-      init.duplex = 'half';
+const PROD_HOST = 'bokra101.vercel.app';
+const PROD_ORIGIN = `https://${PROD_HOST}`;
+
+async function handleClerkProxy(req, event) {
+  const currentHost = req.nextUrl.host;
+  const currentHostname = req.nextUrl.hostname;
+
+  // If already on the production domain, pass through directly
+  if (currentHostname === PROD_HOST) {
+    return handler(req, event);
+  }
+
+  // Rewrite headers so Clerk accepts the proxy request
+  const headers = new Headers(req.headers);
+  headers.set('x-forwarded-host', PROD_HOST);
+  headers.set('x-forwarded-proto', 'https');
+  if (headers.has('origin')) {
+    headers.set('origin', PROD_ORIGIN);
+  }
+  if (headers.has('referer')) {
+    const referer = headers.get('referer');
+    try {
+      const refUrl = new URL(referer);
+      headers.set('referer', `${PROD_ORIGIN}${refUrl.pathname}${refUrl.search}`);
+    } catch {
+      headers.set('referer', `${PROD_ORIGIN}/`);
     }
-    return handler(new NextRequest(req.nextUrl, init), event);
+  }
+
+  const init = { method: req.method, headers };
+  if (req.body) {
+    init.body = req.body;
+    init.duplex = 'half';
+  }
+
+  const proxiedReq = new NextRequest(req.nextUrl, init);
+  const response = await handler(proxiedReq, event);
+
+  if (!response) return response;
+
+  // Rewrite access-control-allow-origin so the client browser doesn't trigger CORS error
+  const requestOrigin = req.headers.get('origin');
+  if (requestOrigin) {
+    response.headers.set('access-control-allow-origin', requestOrigin);
+    response.headers.set('access-control-allow-credentials', 'true');
+  }
+
+  // Rewrite Set-Cookie headers so the client browser accepts them on current host (e.g. bokra.onrender.com or localhost)
+  const rawCookies = response.headers.getSetCookie();
+  if (rawCookies && rawCookies.length > 0) {
+    response.headers.delete('set-cookie');
+    for (const cookieStr of rawCookies) {
+      // Remove explicit Domain=bokra101.vercel.app so it defaults to host-only cookie for current domain
+      const cleaned = cookieStr.replace(/Domain=[^;]+;?\s*/gi, '');
+      response.headers.append('set-cookie', cleaned);
+    }
+  }
+
+  // Rewrite any redirect Location header pointing to bokra101.vercel.app
+  const location = response.headers.get('location');
+  if (location && location.includes(PROD_HOST)) {
+    const currentOrigin = `${req.nextUrl.protocol}//${currentHost}`;
+    response.headers.set('location', location.replace(PROD_ORIGIN, currentOrigin));
+  }
+
+  return response;
+}
+
+export async function proxy(req, event) {
+  if (req.nextUrl.pathname.startsWith('/__clerk')) {
+    return handleClerkProxy(req, event);
   }
   return handler(req, event);
 }
 
-export default handler;
+export default proxy;
+
 
 export const config = {
   matcher: [

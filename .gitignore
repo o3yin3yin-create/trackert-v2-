@@ -65,6 +65,7 @@ src-tauri/target/
 .api_backup/
 .settings*backup*/
 db_backup_*.json
+backup*/
 tests/
 audit-screenshots/
 audit-results*.json
