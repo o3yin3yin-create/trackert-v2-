@@ -120,14 +120,13 @@ export function AuthProvider({ children }) {
         return;
       }
 
-      // 2. If popup was blocked by an in-app browser (e.g. Instagram / TikTok WebViews), fall back to redirect
-      if (code === 'auth/popup-blocked') {
-        try {
-          await signInWithRedirect(auth, googleProvider);
-          return;
-        } catch (redirErr) {
-          console.error('[auth] Redirect fallback failed:', redirErr);
-        }
+      // 2. If popup was blocked or intercepted by Safari/browser, fall back immediately to full redirect
+      try {
+        console.log('[auth] Popup unavailable or blocked, falling back to signInWithRedirect...');
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      } catch (redirErr) {
+        console.error('[auth] Redirect fallback failed:', redirErr);
       }
 
       setIsSigningIn(false);

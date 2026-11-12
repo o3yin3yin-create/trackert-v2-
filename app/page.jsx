@@ -1144,22 +1144,16 @@ function AppContent({ isPreview = false }) {
   const { getToken: getClerkToken } = useAuth();
   const { signOut, openSignIn } = useClerk();
 
-  const handleAuthAction = useCallback(() => {
-    const isDesktop = typeof window !== 'undefined' && (
-      window.__TAURI_INTERNALS__ !== undefined || 
-      window.__TAURI__ !== undefined ||
-      window.isTauri === true ||
-      window.location.protocol === 'tauri:' || 
-      window.location.protocol === 'asset:' ||
-      window.location.hostname === 'tauri.localhost' ||
-      process.env.NEXT_PUBLIC_IS_DESKTOP === 'true'
-    );
-
-    if (isDesktop && openSignIn) {
-      openSignIn();
-    } else if (openSignIn) {
-      openSignIn();
-    } else if (typeof window !== 'undefined') {
+  const handleAuthAction = useCallback(async () => {
+    if (openSignIn) {
+      try {
+        await openSignIn();
+        return;
+      } catch (err) {
+        console.warn('[auth] openSignIn failed, falling back to /sign-in page:', err);
+      }
+    }
+    if (typeof window !== 'undefined') {
       window.location.href = '/sign-in';
     }
   }, [openSignIn]);
@@ -10748,7 +10742,6 @@ function AppContent({ isPreview = false }) {
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      setIsSettingsMenuOpen(false);
                                       handleAuthAction();
                                     }}
                                     className="px-4 py-2 rounded-xl bg-white text-black text-xs font-bold hover:bg-white/90 transition-all active:scale-95 shadow-sm cursor-pointer"
