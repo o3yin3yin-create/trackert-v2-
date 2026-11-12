@@ -62,33 +62,17 @@ const handler = clerkMiddleware(async (auth, req) => {
   },
 });
 
-const PROD_HOST = 'bokra101.vercel.app';
-const PROD_ORIGIN = `https://${PROD_HOST}`;
-
 async function handleClerkProxy(req, event) {
   const currentHost = req.headers.get('x-forwarded-host') || req.nextUrl.host;
-  const currentHostname = currentHost.split(':')[0];
+  const currentProto = req.headers.get('x-forwarded-proto') || req.nextUrl.protocol.replace(':', '') || 'https';
+  const currentOrigin = `${currentProto}://${currentHost}`;
 
-  // If already on the production domain, pass through directly
-  if (currentHostname === PROD_HOST) {
-    return handler(req, event);
-  }
-
-  // Rewrite headers so Clerk accepts the proxy request
+  // Forward consistent host and origin headers so Clerk matches them natively
   const headers = new Headers(req.headers);
-  headers.set('x-forwarded-host', PROD_HOST);
-  headers.set('x-forwarded-proto', 'https');
+  headers.set('x-forwarded-host', currentHost);
+  headers.set('x-forwarded-proto', currentProto);
   if (headers.has('origin')) {
-    headers.set('origin', PROD_ORIGIN);
-  }
-  if (headers.has('referer')) {
-    const referer = headers.get('referer');
-    try {
-      const refUrl = new URL(referer);
-      headers.set('referer', `${PROD_ORIGIN}${refUrl.pathname}${refUrl.search}`);
-    } catch {
-      headers.set('referer', `${PROD_ORIGIN}/`);
-    }
+    headers.set('origin', currentOrigin);
   }
 
   const init = { method: req.method, headers };
@@ -114,48 +98,16 @@ async function handleClerkProxy(req, event) {
   if (rawCookies && rawCookies.length > 0) {
     response.headers.delete('set-cookie');
     for (const cookieStr of rawCookies) {
-      // Remove explicit Domain=bokra101.vercel.app so it defaults to host-only cookie for current domain
+      // Remove any explicit Domain= so cookies bind to the current host
       const cleaned = cookieStr.replace(/Domain=[^;]+;?\s*/gi, '');
       response.headers.append('set-cookie', cleaned);
     }
   }
 
-  // Rewrite any redirect Location header pointing to bokra101.vercel.app
+  // Rewrite any redirect Location header pointing to legacy domain
   const location = response.headers.get('location');
-  if (location && location.includes(PROD_HOST)) {
-    const currentProto = req.headers.get('x-forwarded-proto') || req.nextUrl.protocol.replace(':', '') || 'https';
-    const currentOrigin = `${currentProto}://${currentHost}`;
-    response.headers.set('location', location.replace(PROD_ORIGIN, currentOrigin));
-  }
-
-  // Rewrite JSON body only for initiating OAuth (e.g. Google OAuth redirect_uri inside external_verification_redirect_url)
-  const isSignInOrUp = req.method === 'POST' && (req.nextUrl.pathname.includes('/sign_ins') || req.nextUrl.pathname.includes('/sign_ups'));
-  if (isSignInOrUp) {
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      try {
-        const cloned = response.clone();
-        const text = await cloned.text();
-        if (text.includes(PROD_HOST)) {
-          const encodedProd = encodeURIComponent(PROD_HOST);
-          const encodedCurr = encodeURIComponent(currentHost);
-          const rewrittenText = text
-            .replaceAll(encodedProd, encodedCurr)
-            .replaceAll(PROD_HOST, currentHost);
-
-          const newHeaders = new Headers(response.headers);
-          newHeaders.delete('content-length');
-
-          return new NextResponse(rewrittenText, {
-            status: response.status,
-            statusText: response.statusText,
-            headers: newHeaders,
-          });
-        }
-      } catch {
-        // Fall back to original response if body cloning/reading fails
-      }
-    }
+  if (location && location.includes('bokra101.vercel.app')) {
+    response.headers.set('location', location.replace('https://bokra101.vercel.app', currentOrigin));
   }
 
   return response;
