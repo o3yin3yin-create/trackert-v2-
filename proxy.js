@@ -1,22 +1,10 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getCorsHeaders, handleCorsOptions } from './lib/cors';
 
-const isProtectedRoute = createRouteMatcher([
-  '/admin(.*)',
-  '/settings(.*)',
-  '/account(.*)',
-]);
-
-const handler = clerkMiddleware(async (auth, req) => {
+export function proxy(req) {
   // 1. Handle preflight OPTIONS requests for /api routes with strict whitelist CORS
   if (req.method === 'OPTIONS' && req.nextUrl.pathname.startsWith('/api')) {
     return handleCorsOptions(req);
-  }
-
-  // 2. Protect explicit protected routes: force sign-in for any unauthenticated user
-  if (isProtectedRoute(req)) {
-    await auth.protect();
   }
 
   const response = NextResponse.next();
@@ -32,17 +20,17 @@ const handler = clerkMiddleware(async (auth, req) => {
   // 3. Security Headers on all pages and routes
   const cspHeader = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://*.clerk.accounts.dev https://clerk.com https://*.clerk.com https://clerk.bokra101.vercel.app https://bokra101.vercel.app https://apis.google.com https://accounts.google.com https://www.gstatic.com https://*.gstatic.com https://*.onrender.com",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://apis.google.com https://accounts.google.com https://www.gstatic.com https://*.gstatic.com https://*.onrender.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://server.arcgisonline.com https://*.basemaps.cartocdn.com https://basemaps.cartocdn.com https://*.openfreemap.org https://tiles.openfreemap.org https://cdnjs.cloudflare.com https://img.clerk.com https://images.clerk.dev https://clerk.bokra101.vercel.app https://bokra101.vercel.app https://i.scdn.co https://*.scdn.co https://*.spotifycdn.com https://mosaic.scdn.co https://*.spotify.com https://lh3.googleusercontent.com https://demotiles.maplibre.org https://*.maplibre.org https://fonts.openmaptiles.org https://*.onrender.com",
+    "img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://server.arcgisonline.com https://*.basemaps.cartocdn.com https://basemaps.cartocdn.com https://*.openfreemap.org https://tiles.openfreemap.org https://cdnjs.cloudflare.com https://i.scdn.co https://*.scdn.co https://*.spotifycdn.com https://mosaic.scdn.co https://*.spotify.com https://lh3.googleusercontent.com https://*.googleusercontent.com https://demotiles.maplibre.org https://*.maplibre.org https://fonts.openmaptiles.org https://*.onrender.com",
     "font-src 'self' data: https://fonts.gstatic.com https://fonts.openmaptiles.org",
-    "connect-src 'self' https://*.clerk.accounts.dev https://clerk.com https://*.clerk.com https://clerk.bokra101.vercel.app https://bokra101.vercel.app https://api.clerk.com https://frontend-api.clerk.dev https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://server.arcgisonline.com https://*.basemaps.cartocdn.com https://basemaps.cartocdn.com https://*.openfreemap.org https://tiles.openfreemap.org https://demotiles.maplibre.org https://fonts.openmaptiles.org https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com https://*.googleapis.com https://*.firebaseio.com https://api.spotify.com https://*.upstash.io wss://*.upstash.io https://accounts.google.com https://*.protect.clerk.com:* https://clerk-telemetry.com https://*.clerk-telemetry.com https://*.onrender.com",
-    "frame-src 'self' https://open.spotify.com https://*.clerk.accounts.dev https://clerk.com https://clerk.bokra101.vercel.app https://bokra101.vercel.app https://accounts.google.com https://*.onrender.com",
-    "worker-src 'self' blob: https://bokra101.vercel.app https://*.onrender.com",
+    "connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.googleapis.com https://*.firebaseio.com https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://server.arcgisonline.com https://*.basemaps.cartocdn.com https://basemaps.cartocdn.com https://*.openfreemap.org https://tiles.openfreemap.org https://demotiles.maplibre.org https://fonts.openmaptiles.org https://api.spotify.com https://*.upstash.io wss://*.upstash.io https://accounts.google.com https://*.onrender.com",
+    "frame-src 'self' https://open.spotify.com https://accounts.google.com https://*.firebaseapp.com https://*.onrender.com",
+    "worker-src 'self' blob: https://*.onrender.com",
     "child-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
-    "form-action 'self' https://accounts.google.com https://*.clerk.accounts.dev https://clerk.com https://*.clerk.com https://clerk.bokra101.vercel.app https://bokra101.vercel.app https://*.onrender.com",
+    "form-action 'self' https://accounts.google.com https://*.onrender.com",
     "frame-ancestors 'self'"
   ].join('; ');
 
@@ -56,14 +44,9 @@ const handler = clerkMiddleware(async (auth, req) => {
   }
 
   return response;
-});
-
-export async function proxy(req, event) {
-  return handler(req, event);
 }
 
 export default proxy;
-
 
 export const config = {
   matcher: [

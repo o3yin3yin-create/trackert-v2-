@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { clerkClient } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
-import { getAuthUserId } from '@/lib/auth-server';
+import { getAuthUserId, getAuthUserData } from '@/lib/auth-server';
 import { getCorsHeaders, handleCorsOptions } from '@/lib/cors';
 
 export async function OPTIONS(req) {
@@ -26,18 +25,17 @@ export async function GET(req) {
 
     if (!username) {
       try {
-        const client = await clerkClient();
-        const clerkUser = await client.users.getUser(userId);
-        if (clerkUser?.username) {
-          username = clerkUser.username;
+        const authUser = await getAuthUserData(req);
+        if (authUser?.name) {
+          username = authUser.username || authUser.name.replace(/\s+/g, '').toLowerCase();
           await prisma.user.upsert({
             where: { clerkId: userId },
             update: { username },
             create: {
               clerkId: userId,
-              email: clerkUser.emailAddresses?.[0]?.emailAddress || `${userId}@bokra.app`,
+              email: authUser.email || `${userId}@bokra.app`,
               username,
-              name: clerkUser.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : username,
+              name: authUser.name,
             }
           });
         }

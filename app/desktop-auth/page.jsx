@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState, useCallback } from 'react';
 import { Check } from 'lucide-react';
-import { useUser, SignIn } from '@clerk/nextjs';
+import { useUser, SignIn } from '@/components/AuthBridge';
 import { clerkAppearance } from '@/lib/clerkTheme';
 
 export default function DesktopAuthPage() {
