@@ -644,7 +644,7 @@ const getPreviewData = () => {
     },
     { 
       id: 'p2', 
-      name: 'Daily Prayers (الصلوات الخمس)', 
+      name: 'Daily Prayers', 
       type: 'multi', 
       subItems: ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'],
       category: 'habit',
@@ -1764,9 +1764,10 @@ function AppContent({ isPreview = false }) {
   const touchStartXRef = useRef(null);
   const touchStartYRef = useRef(null);
 
-  // --- Language State ---
-  const [lang, setLang] = useState('en');
-  const isAr = lang === 'ar';
+  // --- Language State (Strictly 100% English) ---
+  const lang = 'en';
+  const setLang = () => {};
+  const isAr = false;
 
   // --- In-App Notifications & Friends Widget State ---
   const [friendsIncomingCount, setFriendsIncomingCount] = useState(0);

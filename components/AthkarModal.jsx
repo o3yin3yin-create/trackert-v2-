@@ -9,7 +9,7 @@ export default function AthkarModal({
   onClose,
   initialType = 'morning', // 'morning' | 'evening'
   onComplete,
-  lang = 'ar',
+  lang = 'en',
 }) {
   const [activeTab, setActiveTab] = useState(initialType);
   const [counts, setCounts] = useState({});

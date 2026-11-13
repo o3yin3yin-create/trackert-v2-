@@ -92,11 +92,11 @@ export function AuthProvider({ children }) {
           window.location.href = '/';
         }
       } else {
-        alert(data.error || 'فشل تسجيل الدخول باستخدام Google');
+        alert(data.error || 'Google sign-in failed');
       }
     } catch (err) {
       console.error('[auth] Google sign-in failed:', err);
-      alert('تعذر الاتصال بخدمة تسجيل الدخول، يرجى المحاولة مرة أخرى.');
+      alert('Unable to connect to sign-in service, please try again.');
     } finally {
       setIsSigningIn(false);
     }
@@ -174,19 +174,18 @@ export function AuthProvider({ children }) {
     } catch (_) {}
 
     try {
-      localStorage.removeItem('bokra_session_user');
-      localStorage.removeItem('bokra_desktop_token');
-      localStorage.removeItem('bokra_cached_clerk_token');
-      localStorage.removeItem('daybase_cached_user');
-      localStorage.removeItem('daybase_owner_user_id');
-      document.cookie = '__bokra_session=; path=/; max-age=0; SameSite=Lax';
-      document.cookie = '__session=; path=/; max-age=0; SameSite=Lax';
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+        document.cookie = '__bokra_session=; path=/; max-age=0; SameSite=Lax';
+        document.cookie = '__session=; path=/; max-age=0; SameSite=Lax';
+      }
     } catch (_) {}
 
     setUser(null);
     setToken(null);
     if (typeof window !== 'undefined') {
-      window.location.reload();
+      window.location.href = '/';
     }
   }, []);
 
@@ -269,7 +268,7 @@ export function SignInButton({ children, mode, ...props }) {
       {...props}
     >
       {isSigningIn ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : <GoogleIcon className="w-4 h-4" />}
-      <span>{isSigningIn ? 'جاري التحميل...' : 'تسجيل الدخول'}</span>
+      <span>{isSigningIn ? 'Loading...' : 'Sign In'}</span>
     </button>
   );
 }
@@ -322,7 +321,7 @@ export function UserButton({ afterSignOutUrl = '/', appearance = {} }) {
       {isOpen && (
         <div 
           className="absolute right-0 mt-2 w-64 rounded-2xl bg-zinc-950/95 border border-white/10 shadow-2xl backdrop-blur-xl py-2 z-50 text-white animate-in fade-in zoom-in-95 duration-150"
-          style={{ direction: 'rtl' }}
+          style={{ direction: 'ltr' }}
         >
           <div className="px-4 py-3 border-b border-white/10 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full overflow-hidden bg-zinc-800 border border-white/20 flex-shrink-0 flex items-center justify-center font-bold text-sm">
@@ -332,7 +331,7 @@ export function UserButton({ afterSignOutUrl = '/', appearance = {} }) {
                 initial
               )}
             </div>
-            <div className="overflow-hidden text-right">
+            <div className="overflow-hidden text-left">
               <p className="text-sm font-semibold truncate text-white">{user.fullName}</p>
               <p className="text-xs text-white/50 truncate font-mono">{user.primaryEmailAddress?.emailAddress || user.email}</p>
             </div>
@@ -348,7 +347,7 @@ export function UserButton({ afterSignOutUrl = '/', appearance = {} }) {
               className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
             >
               <LogOut size={16} />
-              <span>تسجيل الخروج</span>
+              <span>Sign Out</span>
             </button>
           </div>
         </div>
@@ -376,13 +375,13 @@ export function SignIn({ onClose }) {
       if (window.google?.accounts?.id && buttonContainerRef.current) {
         buttonContainerRef.current.innerHTML = '';
         window.google.accounts.id.renderButton(buttonContainerRef.current, {
-          theme: 'outline',
+          theme: 'filled_black',
           size: 'large',
           type: 'standard',
           shape: 'pill',
           text: 'continue_with',
           width: 320,
-          logo_alignment: 'center',
+          logo_alignment: 'left',
           locale: 'en',
         });
         if (active) setIsRendered(true);
@@ -445,9 +444,13 @@ export function SignIn({ onClose }) {
         </p>
       </div>
 
-      {/* Google Button Container - SINGLE OFFICIAL BUTTON */}
+      {/* Google Button Container - Sleek Pill, Zero White Box */}
       <div className="w-full flex justify-center my-4 min-h-[44px]">
-        <div ref={buttonContainerRef} className={`flex justify-center w-full ${!isRendered ? 'hidden' : ''}`} />
+        <div 
+          ref={buttonContainerRef} 
+          className={`flex justify-center items-center rounded-full overflow-hidden ${!isRendered ? 'hidden' : ''}`}
+          style={{ borderRadius: '9999px', overflow: 'hidden', minWidth: '320px', minHeight: '44px' }}
+        />
         {!isRendered && (
           <div className="w-[320px] h-[44px] rounded-full border border-white/10 bg-white/5 animate-pulse flex items-center justify-center gap-2.5 text-xs text-white/50 font-medium">
             <Loader2 className="w-4 h-4 animate-spin text-white/70" />
