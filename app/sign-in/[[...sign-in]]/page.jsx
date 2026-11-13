@@ -1,4 +1,4 @@
-import { SignIn } from '@clerk/nextjs';
+import { SignIn } from '@/components/AuthBridge';
 import Link from 'next/link';
 import { X } from 'lucide-react';
 

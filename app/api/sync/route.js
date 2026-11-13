@@ -1,11 +1,19 @@
 import { NextResponse } from 'next/server';
-import { currentUser } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
-import { getAuthUserId } from '@/lib/auth-server';
+import { getAuthUserId, getAuthUserData } from '@/lib/auth-server';
 import { getCorsHeaders, handleCorsOptions } from '@/lib/cors';
 import { rateLimit, getClientIp } from '@/lib/rateLimit';
 import { reconcileLecturePushes, reconcileAthkarPushes } from '@/lib/pushSchedule';
 import { mergeTaskLists } from '@/lib/taskMerge';
+
+async function getClerkUserSafe() {
+  try {
+    const { currentUser } = await import('@clerk/nextjs/server');
+    return await currentUser();
+  } catch {
+    return null;
+  }
+}
 
 function formatDateInTimeZone(date, timeZone) {
   try {
@@ -87,7 +95,7 @@ export async function GET(req) {
 
     if (!user) {
       // First time user or returning user from dev with new production clerkId: link by email
-      const clerkUser = await currentUser();
+      const clerkUser = await getClerkUserSafe();
       const email = clerkUser?.emailAddresses?.[0]?.emailAddress || `${userId}@bokra.app`;
       const name = clerkUser?.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : 'Unknown';
       const username = clerkUser?.username || null;
@@ -124,7 +132,7 @@ export async function GET(req) {
         });
       }
     } else {
-      const clerkUser = await currentUser();
+      const clerkUser = await getClerkUserSafe();
       if (clerkUser) {
         const name = clerkUser.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : user.name;
         const email = clerkUser.emailAddresses?.[0]?.emailAddress || user.email;
@@ -259,7 +267,7 @@ export async function POST(req) {
       include: { habits: true }
     });
     if (!user) {
-      const clerkUser = await currentUser();
+      const clerkUser = await getClerkUserSafe();
       const email = clerkUser?.emailAddresses?.[0]?.emailAddress;
       if (email) {
         const existingUserByEmail = await prisma.user.findUnique({

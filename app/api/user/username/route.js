@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { clerkClient } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { getAuthUserId } from '@/lib/auth-server';
 import { getCorsHeaders, handleCorsOptions } from '@/lib/cors';
@@ -26,6 +25,7 @@ export async function GET(req) {
 
     if (!username) {
       try {
+        const { clerkClient } = await import('@clerk/nextjs/server');
         const client = await clerkClient();
         const clerkUser = await client.users.getUser(userId);
         if (clerkUser?.username) {
@@ -117,6 +117,7 @@ export async function POST(req) {
 
     // 3. Update via Clerk Backend API (uses CLERK_SECRET_KEY, bypasses client re-verification requirement)
     try {
+      const { clerkClient } = await import('@clerk/nextjs/server');
       const client = await clerkClient();
       let currentClerkUser = null;
       try {
