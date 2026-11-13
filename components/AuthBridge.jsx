@@ -129,7 +129,7 @@ export function AuthProvider({ children }) {
       if (!existingScript) {
         const script = document.createElement('script');
         script.id = 'google-gsi-script';
-        script.src = 'https://accounts.google.com/gsi/client';
+        script.src = 'https://accounts.google.com/gsi/client?hl=en';
         script.async = true;
         script.defer = true;
         script.onload = initGsi;
@@ -383,6 +383,7 @@ export function SignIn({ onClose }) {
           text: 'continue_with',
           width: 320,
           logo_alignment: 'center',
+          locale: 'en',
         });
         if (active) setIsRendered(true);
       }
@@ -437,10 +438,10 @@ export function SignIn({ onClose }) {
       {/* Brand Header */}
       <div className="mb-6">
         <h2 className="text-xl font-bold text-white tracking-tight mb-1.5">
-          تسجيل الدخول إلى bokra
+          Sign In to bokra
         </h2>
-        <p className="text-xs text-white/50 leading-relaxed max-w-[280px] mx-auto">
-          تابع عاداتك، جلسات تركيزك، وتقدمك اليومي بدقة
+        <p className="text-xs text-white/50 leading-relaxed max-w-[280px] mx-auto font-medium">
+          Habit Tracker & Ambient Focus Companion
         </p>
       </div>
 
@@ -450,19 +451,19 @@ export function SignIn({ onClose }) {
         {!isRendered && (
           <div className="w-[320px] h-[44px] rounded-full border border-white/10 bg-white/5 animate-pulse flex items-center justify-center gap-2.5 text-xs text-white/50 font-medium">
             <Loader2 className="w-4 h-4 animate-spin text-white/70" />
-            <span>جاري الاتصال بـ Google...</span>
+            <span>Connecting to Google...</span>
           </div>
         )}
       </div>
 
-      {/* Security badge and privacy note */}
+      {/* Security badge and privacy note (Pure Monochrome) */}
       <div className="mt-6 pt-5 border-t border-white/5">
-        <div className="flex items-center justify-center gap-1.5 text-[11px] text-emerald-400/90 font-medium mb-2.5">
-          <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-          <span>تسجيل دخول فوري وآمن بحساب Google</span>
+        <div className="flex items-center justify-center gap-1.5 text-[11px] text-white/60 font-medium mb-2.5">
+          <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-white/70" />
+          <span>Instant, secure sign-in with Google</span>
         </div>
         <p className="text-[11px] text-white/40 leading-relaxed">
-          بتسجيل الدخول، أنت توافق على شروط الخدمة وسياسة الخصوصية الخاصة بـ bokra.
+          By continuing, you agree to our Terms of Service and Privacy Policy.
         </p>
       </div>
     </div>

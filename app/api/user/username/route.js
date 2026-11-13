@@ -127,18 +127,23 @@ export async function POST(req) {
     }
 
     // 4. Update database record
+    const avatar = typeof body?.avatar === 'string' && body.avatar.trim() ? body.avatar.trim() : undefined;
     await prisma.user.upsert({
       where: { clerkId: userId },
-      update: { username: clean },
+      update: {
+        username: clean,
+        ...(avatar ? { avatar } : {}),
+      },
       create: {
         clerkId: userId,
         email: `${userId}@bokra.app`,
         username: clean,
-        name: clean
+        name: clean,
+        ...(avatar ? { avatar } : {}),
       }
     });
 
-    return NextResponse.json({ success: true, username: clean }, { status: 200, headers: cors });
+    return NextResponse.json({ success: true, username: clean, avatar: avatar || null }, { status: 200, headers: cors });
   } catch (error) {
     console.error('[Username API] Internal error:', error);
     return NextResponse.json(
