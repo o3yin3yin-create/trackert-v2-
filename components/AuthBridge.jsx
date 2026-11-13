@@ -165,9 +165,12 @@ export function AuthProvider({ children }) {
   }, []);
 
   // 5. Sign out
-  const signOut = useCallback(async () => {
+  const signOut = useCallback(async (options) => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+      await fetch('/api/auth/logout', { 
+        method: 'POST',
+        credentials: 'include',
+      }).catch(() => {});
       if (window.google?.accounts?.id) {
         window.google.accounts.id.disableAutoSelect();
       }
@@ -177,15 +180,17 @@ export function AuthProvider({ children }) {
       if (typeof window !== 'undefined') {
         localStorage.clear();
         sessionStorage.clear();
-        document.cookie = '__bokra_session=; path=/; max-age=0; SameSite=Lax';
-        document.cookie = '__session=; path=/; max-age=0; SameSite=Lax';
+        document.cookie.split(";").forEach((c) => {
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/");
+        });
       }
     } catch (_) {}
 
     setUser(null);
     setToken(null);
     if (typeof window !== 'undefined') {
-      window.location.href = '/';
+      const target = options?.redirectUrl || '/sign-in';
+      window.location.replace(target);
     }
   }, []);
 

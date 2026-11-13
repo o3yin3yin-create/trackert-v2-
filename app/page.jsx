@@ -2932,12 +2932,14 @@ function AppContent({ isPreview = false }) {
         window.dispatchEvent(new CustomEvent('spotify-token-updated'));
       }
       if (signOut) {
-        await signOut({ redirectUrl: '/' });
+        await signOut({ redirectUrl: '/sign-in' });
+      } else if (typeof window !== 'undefined') {
+        window.location.replace('/sign-in');
       }
     } catch (err) {
       console.warn('[bokra Auth] Error during sign out:', err);
       if (typeof window !== 'undefined') {
-        window.location.href = '/';
+        window.location.replace('/sign-in');
       }
     }
   }, [clearUserLocalData, resetStateToCleanDefaults, signOut]);
