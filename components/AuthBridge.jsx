@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { LogOut, User as UserIcon, Loader2, ShieldCheck, X } from 'lucide-react';
+import AvatarIcon from './AvatarIcon';
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '114149572420-bdvcf3ocfbk9dqmk23pmhrm7ksk0asq2.apps.googleusercontent.com';
 
@@ -282,6 +283,42 @@ export function SignUpButton(props) {
   return <SignInButton {...props} />;
 }
 
+function UserAvatarDisplay({ user, size = 18 }) {
+  const [imgError, setImgError] = useState(false);
+  
+  const rawSrc = user?.imageUrl || user?.avatar || '';
+  const isUrl = typeof rawSrc === 'string' && !imgError && (
+    rawSrc.startsWith('http://') || 
+    rawSrc.startsWith('https://') || 
+    rawSrc.startsWith('data:') || 
+    rawSrc.startsWith('/')
+  );
+
+  if (isUrl) {
+    return (
+      <img 
+        src={rawSrc} 
+        alt={user?.fullName || 'User'} 
+        className="w-full h-full object-cover" 
+        referrerPolicy="no-referrer"
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+
+  let iconName = user?.avatar || user?.imageUrl || 'user';
+  if (typeof window !== 'undefined') {
+    const localAvatar = localStorage.getItem('daybase_avatar_v1');
+    if (localAvatar) iconName = localAvatar;
+  }
+
+  return (
+    <div className="w-full h-full flex items-center justify-center text-white">
+      <AvatarIcon name={iconName} size={size} className="text-white" />
+    </div>
+  );
+}
+
 export function UserButton({ afterSignOutUrl = '/', appearance = {} }) {
   const { user, signOut } = useContext(AuthContext);
   const [isOpen, setIsOpen] = useState(false);
@@ -301,8 +338,6 @@ export function UserButton({ afterSignOutUrl = '/', appearance = {} }) {
 
   if (!user) return null;
 
-  const initial = (user.firstName?.[0] || user.fullName?.[0] || 'U').toUpperCase();
-
   return (
     <div className="relative inline-block text-left" ref={dropdownRef}>
       <button
@@ -311,16 +346,7 @@ export function UserButton({ afterSignOutUrl = '/', appearance = {} }) {
         className="w-full h-full rounded-full overflow-hidden border border-white/20 hover:border-white/50 transition-all flex items-center justify-center bg-zinc-800 text-white font-medium text-xs focus:outline-none cursor-pointer active:scale-95"
         aria-label="User profile"
       >
-        {user.imageUrl ? (
-          <img 
-            src={user.imageUrl} 
-            alt={user.fullName || 'User'} 
-            className="w-full h-full object-cover" 
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <span>{initial}</span>
-        )}
+        <UserAvatarDisplay user={user} size={18} />
       </button>
 
       {isOpen && (
@@ -330,11 +356,7 @@ export function UserButton({ afterSignOutUrl = '/', appearance = {} }) {
         >
           <div className="px-4 py-3 border-b border-white/10 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full overflow-hidden bg-zinc-800 border border-white/20 flex-shrink-0 flex items-center justify-center font-bold text-sm">
-              {user.imageUrl ? (
-                <img src={user.imageUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-              ) : (
-                initial
-              )}
+              <UserAvatarDisplay user={user} size={22} />
             </div>
             <div className="overflow-hidden text-left">
               <p className="text-sm font-semibold truncate text-white">{user.fullName}</p>
