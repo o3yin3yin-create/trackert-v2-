@@ -154,26 +154,9 @@ export async function GET(req) {
       : [];
     const deletedHabitsSet = new Set(deletedHabitsList);
 
-    // Also: If _habitOrder is set, any habit in user.habits that was excluded from _habitOrder should be treated as deleted
     const habitOrder = (user.grantedCards && typeof user.grantedCards === 'object' && Array.isArray(user.grantedCards._habitOrder))
       ? user.grantedCards._habitOrder
       : null;
-
-    if (habitOrder && habitOrder.length > 0) {
-      const orderSet = new Set(habitOrder);
-      for (const h of user.habits || []) {
-        if (!orderSet.has(h.id)) {
-          deletedHabitsSet.add(h.id);
-        }
-      }
-    }
-
-    if (deletedHabitsSet.size > 0) {
-      // Clean up deleted habits from DB in background
-      prisma.habit.deleteMany({
-        where: { userId, id: { in: Array.from(deletedHabitsSet) } }
-      }).catch(() => {});
-    }
 
     // Filter out deleted habits and sort according to user's saved _habitOrder or fallback to createdAt
     let sortedHabits = (user.habits || []).filter(h => !deletedHabitsSet.has(h.id));
