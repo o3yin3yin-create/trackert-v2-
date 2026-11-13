@@ -6,13 +6,6 @@ import { apiFetch } from '../lib/api';
 import AvatarIcon, { AVATAR_OPTIONS } from './AvatarIcon';
 import { Loader2, ArrowRight, AlertCircle, Check, Sparkles } from 'lucide-react';
 
-const FEATURED_AVATARS = [
-  'crown', 'flame', 'zap', 'rocket',
-  'ghost', 'headphones', 'star', 'target',
-  'coffee', 'shield', 'terminal', 'cat',
-  'bot', 'heart', 'smile', 'user'
-];
-
 export default function ChooseUsername({ onComplete }) {
   const { user } = useUser();
   const { signOut, getToken } = useAuth();
@@ -197,10 +190,17 @@ export default function ChooseUsername({ onComplete }) {
             </div>
 
             {/* Selected Avatar Large Preview */}
-            <div className="w-16 h-16 rounded-2xl bg-white/[0.06] border border-white/20 flex items-center justify-center mb-4 transition-all duration-300">
-              {selectedAvatar ? (
+            <div className="w-16 h-16 rounded-2xl bg-white/[0.06] border border-white/20 flex items-center justify-center mb-4 transition-all duration-300 overflow-hidden">
+              {effectiveAvatar && (effectiveAvatar.startsWith('http://') || effectiveAvatar.startsWith('https://')) ? (
+                <img 
+                  src={effectiveAvatar} 
+                  alt="Google Avatar" 
+                  className="w-full h-full object-cover rounded-2xl" 
+                  referrerPolicy="no-referrer" 
+                />
+              ) : effectiveAvatar ? (
                 <div className="text-white scale-110 animate-in zoom-in-75 duration-200">
-                  <AvatarIcon name={selectedAvatar} size={32} />
+                  <AvatarIcon name={effectiveAvatar} size={32} />
                 </div>
               ) : (
                 <span className="text-[10px] font-mono text-white/30 text-center px-1">
@@ -209,10 +209,27 @@ export default function ChooseUsername({ onComplete }) {
               )}
             </div>
 
-            {/* Grid of Avatars */}
-            <div className="grid grid-cols-8 gap-2 w-full">
-              {FEATURED_AVATARS.map((av) => {
-                const isSelected = selectedAvatar === av;
+            {/* Grid of ALL Avatars */}
+            <div className="grid grid-cols-8 gap-2 w-full max-h-[180px] overflow-y-auto pr-1">
+              {hasGooglePhoto && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedAvatar(user.imageUrl);
+                    if (error) setError(null);
+                  }}
+                  className={`aspect-square rounded-xl flex items-center justify-center overflow-hidden transition-all duration-150 cursor-pointer active:scale-90 border ${
+                    effectiveAvatar === user.imageUrl
+                      ? 'border-white shadow-[0_0_15px_rgba(255,255,255,0.4)] scale-105'
+                      : 'border-white/10 hover:border-white/30 opacity-70 hover:opacity-100'
+                  }`}
+                  title="Google Profile Photo"
+                >
+                  <img src={user.imageUrl} alt="Google" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                </button>
+              )}
+              {AVATAR_OPTIONS.map((av) => {
+                const isSelected = effectiveAvatar === av;
                 return (
                   <button
                     key={av}
