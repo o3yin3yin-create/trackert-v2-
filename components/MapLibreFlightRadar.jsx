@@ -5,32 +5,14 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { generateGreatCircleArc, getGreatCirclePoint, getGreatCircleBearing, getDistanceKm } from '@/lib/flightSchedule';
 import { playFlightArrivalChime } from '@/lib/flightAudio';
 
-const ESRI_DARK_TILES_1 = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
-const ESRI_DARK_TILES_2 = 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+// High-performance CARTO Dark Matter Retina tiles without raster labels (clean vector aesthetics, 0 visible seams)
+const CARTO_DARK_MIRRORS = [
+  'https://a.basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}@2x.png',
+  'https://b.basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}@2x.png',
+  'https://c.basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}@2x.png',
+  'https://d.basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}@2x.png',
+];
 const RADAR_ZOOM = 7.0;
-
-// Dead-reckoning: project point forward along a bearing by distance (in km)
-function projectPoint(lat, lon, bearingDeg, distKm) {
-  const R = 6371; // Earth radius in km
-  const d = distKm / R;
-  const brng = (bearingDeg * Math.PI) / 180;
-  const lat1 = (lat * Math.PI) / 180;
-  const lon1 = (lon * Math.PI) / 180;
-
-  const lat2 = Math.asin(
-    Math.sin(lat1) * Math.cos(d) +
-    Math.cos(lat1) * Math.sin(d) * Math.cos(brng)
-  );
-  const lon2 = lon1 + Math.atan2(
-    Math.sin(brng) * Math.sin(d) * Math.cos(lat1),
-    Math.cos(d) - Math.sin(lat1) * Math.sin(lat2)
-  );
-
-  return {
-    lat: (lat2 * 180) / Math.PI,
-    lon: (((lon2 * 180) / Math.PI + 540) % 360) - 180,
-  };
-}
 
 // Shortest-path angular interpolation to prevent 360-degree snap flips
 function lerpAngle(from, to, t) {
@@ -40,24 +22,24 @@ function lerpAngle(from, to, t) {
   return (from + diff * t + 360) % 360;
 }
 
-// Ultra-fast dark aerospace radar basemap powered by ESRI Dark Gray Canvas (instant load, parallel CDN mirrors).
+// Ultra-fast dark aerospace radar basemap (pure OLED black, retina 512px tiles, zero label clutter)
 const getMapStyle = () => ({
   version: 8,
   name: 'bokra-radar-dark',
   sources: {
     basemap: {
       type: 'raster',
-      tiles: [ESRI_DARK_TILES_1, ESRI_DARK_TILES_2],
-      tileSize: 256,
-      maxzoom: 16,
-      attribution: '&copy; Esri, OpenStreetMap contributors',
+      tiles: CARTO_DARK_MIRRORS,
+      tileSize: 512,
+      maxzoom: 18,
+      attribution: '&copy; CARTO, OpenStreetMap contributors',
     },
   },
   layers: [
     {
       id: 'background',
       type: 'background',
-      paint: { 'background-color': '#111216' },
+      paint: { 'background-color': '#030407' },
     },
     {
       id: 'basemap-tiles',
@@ -66,7 +48,8 @@ const getMapStyle = () => ({
       minzoom: 0,
       maxzoom: 18,
       paint: {
-        'raster-opacity': 1,
+        'raster-opacity': 0.88,
+        'raster-contrast': 0.18,
         'raster-fade-duration': 0,
       },
     },
@@ -82,12 +65,13 @@ export default function MapLibreFlightRadar({
 }) {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
-  const planeRef = useRef(null);
-  const planePosRef = useRef(null);
   const mapRef = useRef(null);
   const isLoadedRef = useRef(false);
   const estimateRef = useRef(estimate);
   estimateRef.current = estimate;
+
+  // Track smoothed camera bearing for buttery smooth turns
+  const currentBearingRef = useRef(null);
 
   // Play loud and clear arrival announcement chime the second flight lands
   const hasAnnouncedArrivalRef = useRef(false);
@@ -142,7 +126,7 @@ export default function MapLibreFlightRadar({
           setLiveTelemetry(data);
         }
       } catch {
-        // Safe to ignore, falls back to estimated progress
+        // Safe fallback to dead-reckoning progress
       }
     };
 
@@ -159,7 +143,7 @@ export default function MapLibreFlightRadar({
       return { type: 'FeatureCollection', features: [] };
     }
 
-    const allPoints = generateGreatCircleArc(est.origCoords, est.destCoords, 180);
+    const allPoints = generateGreatCircleArc(est.origCoords, est.destCoords, 240);
 
     return {
       type: 'FeatureCollection',
@@ -192,7 +176,7 @@ export default function MapLibreFlightRadar({
     };
   }, []);
 
-  // Initialize MapLibre
+  // Initialize MapLibre in true Track-Up mode
   useEffect(() => {
     let mapInstance = null;
     let cancelled = false;
@@ -213,6 +197,8 @@ export default function MapLibreFlightRadar({
 
         const initialPosition = estimate?.position || { lat: 30, lon: 31 };
         const initialHeading = estimate?.heading || 0;
+        currentBearingRef.current = initialHeading;
+
         mapInstance = new Map({
           container: containerRef.current,
           style: getMapStyle(),
@@ -221,7 +207,7 @@ export default function MapLibreFlightRadar({
           pitch: 0,
           maxPitch: 0,
           minZoom: 4,
-          maxZoom: 11,
+          maxZoom: 12,
           zoom: RADAR_ZOOM,
           fadeDuration: 0,
           attributionControl: false,
@@ -230,23 +216,13 @@ export default function MapLibreFlightRadar({
 
         mapRef.current = mapInstance;
 
+        // Lock camera to cockpit Track-Up orientation (prevent accidental drag/rotation)
         mapInstance.dragPan.disable();
         mapInstance.boxZoom.disable();
         mapInstance.keyboard.disable();
         mapInstance.doubleClickZoom.disable();
-        mapInstance.scrollZoom.enable();
-        mapInstance.touchZoomRotate.enable();
-        mapInstance.touchZoomRotate.disableRotation();
-
-        // Anchor the aircraft at 2/3 of viewport height (lower third).
-        const applyTrackingPadding = () => {
-          if (!mapInstance) return;
-          const container = mapInstance.getContainer();
-          const h = container?.clientHeight || window.innerHeight || 0;
-          mapInstance.setPadding({ top: Math.round(h / 3), bottom: 0, left: 0, right: 0 });
-        };
-        applyTrackingPadding();
-        mapInstance.on('resize', applyTrackingPadding);
+        mapInstance.touchZoomRotate.disable();
+        mapInstance.scrollZoom.disable();
 
         const addRouteLayers = () => {
           if (!mapInstance || cancelled) return;
@@ -258,7 +234,24 @@ export default function MapLibreFlightRadar({
               data: routeData,
             });
 
-            // Thin transparent continuous great-circle flight path from start to end
+            // Glowing cyan flight corridor line
+            mapInstance.addLayer({
+              id: 'flight-route-glow',
+              type: 'line',
+              source: 'flight-route',
+              filter: ['==', 'role', 'route'],
+              layout: {
+                'line-cap': 'round',
+                'line-join': 'round',
+              },
+              paint: {
+                'line-color': '#38bdf8',
+                'line-width': 4.0,
+                'line-opacity': 0.22,
+                'line-blur': 3.0,
+              },
+            });
+
             mapInstance.addLayer({
               id: 'flight-route-line',
               type: 'line',
@@ -269,13 +262,13 @@ export default function MapLibreFlightRadar({
                 'line-join': 'round',
               },
               paint: {
-                'line-color': '#ffffff',
-                'line-width': 0.85,
-                'line-opacity': 0.12,
+                'line-color': '#7dd3fc',
+                'line-width': 1.6,
+                'line-opacity': 0.85,
               },
             });
 
-            // Origin / Destination airport dots
+            // Airport waypoint dots
             mapInstance.addLayer({
               id: 'flight-airports',
               type: 'circle',
@@ -283,10 +276,10 @@ export default function MapLibreFlightRadar({
               filter: ['all', ['==', '$type', 'Point'], ['has', 'iata']],
               paint: {
                 'circle-radius': 4.5,
-                'circle-color': '#ffffff',
-                'circle-stroke-color': '#222222',
-                'circle-stroke-width': 1.5,
-                'circle-opacity': 0.85,
+                'circle-color': '#38bdf8',
+                'circle-stroke-color': '#030407',
+                'circle-stroke-width': 2.0,
+                'circle-opacity': 0.9,
               },
             });
           }
@@ -300,16 +293,16 @@ export default function MapLibreFlightRadar({
           } catch {}
         };
 
-        let installRetry = null;
-        const stopRetry = () => { if (installRetry) { clearInterval(installRetry); installRetry = null; } };
-        const tryInstall = () => {
-          if (cancelled || isLoadedRef.current) { stopRetry(); return; }
+        mapInstance.on('load', installOverlays);
+        mapInstance.on('style.load', installOverlays);
+        const retryTimer = setInterval(() => {
+          if (cancelled || isLoadedRef.current) {
+            clearInterval(retryTimer);
+            return;
+          }
           installOverlays();
-          if (isLoadedRef.current) stopRetry();
-        };
-        mapInstance.on('style.load', tryInstall);
-        installRetry = setInterval(tryInstall, 400);
-        setTimeout(stopRetry, 20000);
+        }, 200);
+        setTimeout(() => clearInterval(retryTimer), 15000);
       } catch (err) {
         console.error('[MapLibreFlightRadar] init error:', err);
       }
@@ -339,7 +332,7 @@ export default function MapLibreFlightRadar({
     } catch {}
   }, [flight?.id, flight?.origin, flight?.destination, buildRouteGeoJson]);
 
-  // Continuous Map Tracking Loop (60FPS buttery smooth dead-reckoning)
+  // Continuous Map Tracking Loop (60FPS Pure Forward Track-Up Motion)
   useEffect(() => {
     let rafId = null;
 
@@ -348,7 +341,7 @@ export default function MapLibreFlightRadar({
 
       const map = mapRef.current;
       const est = estimateRef.current;
-      if (!map || !est || !isLoadedRef.current) return;
+      if (!map || !est) return;
       const flight = est.flight;
       if (!flight || !est.origCoords || !est.destCoords) return;
 
@@ -390,31 +383,24 @@ export default function MapLibreFlightRadar({
       nextProg = Math.max(currentProg, Math.min(1, nextProg));
       progressRef.current = nextProg;
 
-      // Calculate smooth point and bearing on the continuous flight path
+      // Calculate current coordinates along the continuous great-circle flight path
       const pos = getGreatCirclePoint(est.origCoords, est.destCoords, nextProg);
-      // Sample local forward tangent for exact heading
-      const posNext = getGreatCirclePoint(est.origCoords, est.destCoords, Math.min(1, nextProg + 0.0006));
-      const heading = getGreatCircleBearing(pos, posNext);
+
+      // True track bearing towards destination (smooth analytical azimuth)
+      const targetBearing = getGreatCircleBearing(pos, est.destCoords);
+
+      // Smooth camera bearing using spherical lerp to prevent any micro-jitter
+      const prevBearing = currentBearingRef.current ?? targetBearing;
+      const smoothBearing = lerpAngle(prevBearing, targetBearing, Math.min(1, dt * 8.0));
+      currentBearingRef.current = smoothBearing;
 
       try {
-        map.jumpTo({ center: [pos.lon, pos.lat], bearing: heading });
-
-        // Project the EXACT WebGL screen pixel coordinate of pos
-        const screenPt = map.project([pos.lon, pos.lat]);
-        const screenPtNext = map.project([posNext.lon, posNext.lat]);
-
-        const dx = screenPtNext.x - screenPt.x;
-        const dy = screenPtNext.y - screenPt.y;
-        let screenAngle = 0;
-        if (Math.hypot(dx, dy) > 0.001) {
-          screenAngle = Math.atan2(dx, -dy) * (180 / Math.PI);
-        }
-
-        planePosRef.current = { x: screenPt.x, y: screenPt.y, angle: screenAngle };
-
-        if (planeRef.current) {
-          planeRef.current.style.transform = `translate3d(${screenPt.x}px, ${screenPt.y}px, 0) translate(-50%, -50%) rotate(${screenAngle.toFixed(2)}deg)`;
-        }
+        // Center camera exactly on aircraft with bearing matching the flight track
+        // Result: The aircraft flies 100% STRAIGHT FORWARD (UP) and ground flows STRAIGHT DOWN
+        map.jumpTo({
+          center: [pos.lon, pos.lat],
+          bearing: smoothBearing,
+        });
       } catch {}
     };
 
@@ -422,7 +408,7 @@ export default function MapLibreFlightRadar({
     return () => { if (rafId) cancelAnimationFrame(rafId); };
   }, [flight?.isLive]);
 
-  // 60FPS Smoke Contrail Simulation & Render Loop (Thinner, Smaller, Slower & Continuous)
+  // 60FPS High-Precision Engine Contrail Simulation (Streaming strictly backward/downward)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -430,14 +416,13 @@ export default function MapLibreFlightRadar({
     if (!ctx) return;
 
     let animId = null;
-    const SPEED = 1.25; // Gentle, realistic slow backward drift matching map speed
-    const MAX_POINTS = 180; // Elegant long contrail streaming behind the aircraft
+    const SPEED = 1.35; // Gentle backward drift matching forward cruise speed
+    const MAX_POINTS = 160; // Sleek contrail ribbon streaming behind wings
     const leftTrail = [];
     const rightTrail = [];
     const microPuffs = [];
-    const MAX_PUFFS = 90;
+    const MAX_PUFFS = 80;
 
-    // Set high-DPI canvas resolution
     const resizeCanvas = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = window.innerWidth;
@@ -451,13 +436,18 @@ export default function MapLibreFlightRadar({
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // Pre-warm contrail so it's already gracefully formed when opening the screen
-    const cx = window.innerWidth / 2;
-    const cy = window.innerHeight * (2 / 3);
+    // Aircraft is centered at (50vw, 50vh) pointing 0° straight UP
+    const getAircraftCenter = () => ({
+      cx: window.innerWidth / 2,
+      cy: window.innerHeight / 2,
+    });
+
+    // Pre-warm contrail so it's already beautifully formed when opening radar
+    const { cx: initCx, cy: initCy } = getAircraftCenter();
     for (let i = 0; i < MAX_POINTS; i++) {
       const yOffset = i * SPEED;
-      leftTrail.unshift({ x: cx - 8.75, y: cy + 2.8 + yOffset, age: i });
-      rightTrail.unshift({ x: cx + 8.75, y: cy + 2.8 + yOffset, age: i });
+      leftTrail.unshift({ x: initCx - 8.75, y: initCy + 2.8 + yOffset, age: i });
+      rightTrail.unshift({ x: initCx + 8.75, y: initCy + 2.8 + yOffset, age: i });
     }
 
     let frame = 0;
@@ -466,28 +456,16 @@ export default function MapLibreFlightRadar({
       frame++;
       const w = window.innerWidth;
       const h = window.innerHeight;
-      const posInfo = planePosRef.current;
-      const curCx = posInfo ? posInfo.x : w / 2;
-      const curCy = posInfo ? posInfo.y : h * (2 / 3);
-      const curAngle = ((posInfo?.angle || 0) * Math.PI) / 180;
-      const cosA = Math.cos(curAngle);
-      const sinA = Math.sin(curAngle);
+      const { cx, cy } = getAircraftCenter();
 
-      // Local engine nozzle offsets relative to plane center
-      const leftEngine = {
-        x: curCx + (-8.75 * cosA - 2.8 * sinA),
-        y: curCy + (-8.75 * sinA + 2.8 * cosA),
-      };
-      const rightEngine = {
-        x: curCx + (8.75 * cosA - 2.8 * sinA),
-        y: curCy + (8.75 * sinA + 2.8 * cosA),
-      };
+      // Nozzles fixed relative to aircraft pointing straight UP
+      const leftEngine = { x: cx - 8.75, y: cy + 2.8 };
+      const rightEngine = { x: cx + 8.75, y: cy + 2.8 };
 
-      // Append new point at nozzle
       leftTrail.unshift({ x: leftEngine.x, y: leftEngine.y, age: 0 });
       rightTrail.unshift({ x: rightEngine.x, y: rightEngine.y, age: 0 });
 
-      // Update existing trail points
+      // Contrail particles stream strictly downward (+y)
       for (let i = leftTrail.length - 1; i >= 0; i--) {
         const pt = leftTrail[i];
         pt.age++;
@@ -505,7 +483,7 @@ export default function MapLibreFlightRadar({
         }
       }
 
-      // Add delicate micro-puffs along the trail for soft realistic atmospheric vapor texture
+      // Subtle atmospheric micro-puffs along the trail
       if (frame % 2 === 0 && microPuffs.length < MAX_PUFFS) {
         microPuffs.push({
           x: leftEngine.x,
@@ -533,80 +511,69 @@ export default function MapLibreFlightRadar({
 
       ctx.clearRect(0, 0, w, h);
 
-      // Helper to render smooth, continuous, completely straight twin streams
-      const drawStream = (trail) => {
-        if (trail.length < 2) return;
-        const total = trail.length;
-
-        // Pass 1: Soft outer condensation vapor haze (straight, subtle, thin)
+      // Draw twin contrail ribbons
+      const drawStream = (points) => {
+        if (points.length < 2) return;
         ctx.beginPath();
-        ctx.moveTo(trail[0].x, trail[0].y);
-        for (let i = 1; i < total; i++) {
-          ctx.lineTo(trail[i].x, trail[i].y);
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+          ctx.lineTo(points[i].x, points[i].y);
         }
-        const hazeGrad = ctx.createLinearGradient(0, curCy + 2.8, 0, curCy + 2.8 + MAX_POINTS * SPEED);
-        hazeGrad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
-        hazeGrad.addColorStop(0.3, 'rgba(240, 245, 255, 0.25)');
-        hazeGrad.addColorStop(0.8, 'rgba(220, 230, 255, 0.08)');
-        hazeGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        ctx.strokeStyle = hazeGrad;
-        ctx.lineWidth = 2.4;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
+
+        // Outer soft atmospheric glow
+        const glowGrad = ctx.createLinearGradient(
+          points[0].x, points[0].y,
+          points[points.length - 1].x, points[points.length - 1].y
+        );
+        glowGrad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+        glowGrad.addColorStop(0.35, 'rgba(235, 245, 255, 0.22)');
+        glowGrad.addColorStop(0.75, 'rgba(215, 230, 250, 0.08)');
+        glowGrad.addColorStop(1, 'rgba(200, 220, 245, 0)');
+        ctx.strokeStyle = glowGrad;
+        ctx.lineWidth = 2.4;
         ctx.stroke();
 
-        // Pass 2: Sharp, thin brilliant white core line (perfectly straight)
-        ctx.beginPath();
-        ctx.moveTo(trail[0].x, trail[0].y);
-        for (let i = 1; i < total; i++) {
-          ctx.lineTo(trail[i].x, trail[i].y);
-        }
-        const coreGrad = ctx.createLinearGradient(0, curCy + 2.8, 0, curCy + 2.8 + MAX_POINTS * SPEED);
+        // Inner crisp white core
+        const coreGrad = ctx.createLinearGradient(
+          points[0].x, points[0].y,
+          points[points.length - 1].x, points[points.length - 1].y
+        );
         coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-        coreGrad.addColorStop(0.2, 'rgba(255, 255, 255, 0.85)');
-        coreGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.35)');
-        coreGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        coreGrad.addColorStop(0.25, 'rgba(255, 255, 255, 0.75)');
+        coreGrad.addColorStop(0.6, 'rgba(240, 245, 255, 0.35)');
+        coreGrad.addColorStop(1, 'rgba(220, 230, 245, 0)');
         ctx.strokeStyle = coreGrad;
-        ctx.lineWidth = 1.0;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+        ctx.lineWidth = 1.1;
         ctx.stroke();
       };
 
       drawStream(leftTrail);
       drawStream(rightTrail);
 
-      // Render micro atmospheric condensation puffs for organic texture
+      // Render micro-puffs
       for (let i = microPuffs.length - 1; i >= 0; i--) {
         const p = microPuffs[i];
         p.life++;
-        if (p.life >= p.maxLife || p.y > h + 40) {
+        p.y += p.vy;
+        p.r += p.growth;
+        const progress = p.life / p.maxLife;
+        const currentAlpha = p.alpha * (1 - progress);
+
+        if (p.life >= p.maxLife || p.y > h + 50) {
           microPuffs.splice(i, 1);
           continue;
         }
 
-        p.x += p.vx;
-        p.y += p.vy;
-        p.r += p.growth;
-
-        const progress = p.life / p.maxLife;
-        const a = p.alpha * Math.pow(1 - progress, 1.35);
-        if (a < 0.01) continue;
-
-        const puff = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
-        puff.addColorStop(0, `rgba(255, 255, 255, ${a})`);
-        puff.addColorStop(0.4, `rgba(240, 245, 255, ${a * 0.5})`);
-        puff.addColorStop(1, 'rgba(255, 255, 255, 0)');
-
-        ctx.fillStyle = puff;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(245, 250, 255, ${currentAlpha.toFixed(3)})`;
         ctx.fill();
       }
     };
 
     animId = requestAnimationFrame(render);
-
     return () => {
       if (animId) cancelAnimationFrame(animId);
       window.removeEventListener('resize', resizeCanvas);
@@ -614,12 +581,13 @@ export default function MapLibreFlightRadar({
   }, []);
 
   const toggleUnits = () => {
-    const next = !useMiles;
-    setUseMiles(next);
-    if (typeof window !== 'undefined') {
-      try { localStorage.setItem('flight_focus_units', next ? 'mi' : 'km'); } catch {}
-      window.dispatchEvent(new Event('bokra-prefs-changed'));
-    }
+    setUseMiles((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('flight_focus_units', next ? 'mi' : 'km');
+      } catch {}
+      return next;
+    });
   };
 
   const est = estimateRef.current;
@@ -662,52 +630,56 @@ export default function MapLibreFlightRadar({
   const distUnit = useMiles ? 'mi' : 'km';
 
   return (
-    <div className="fixed inset-0 z-[10000] w-full h-full overflow-hidden bg-black select-none">
+    <div className="fixed inset-0 z-[10000] bg-[#030407] overflow-hidden select-none">
       <style jsx global>{`
-        @keyframes radarDrop {
-          from { transform: translateY(-12px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes radarRise {
-          from { transform: translateY(16px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes radarFade {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        .radar-strip { animation: radarDrop 420ms cubic-bezier(0.2, 0, 0, 1) both; }
-        .radar-panel { animation: radarRise 480ms cubic-bezier(0.2, 0, 0, 1) both; }
-        .radar-cluster { animation: radarFade 600ms 120ms both; }
-        .radar-hud { animation: radarFade 900ms 200ms both; }
-        @media (prefers-reduced-motion: reduce) {
-          .radar-strip, .radar-panel, .radar-cluster, .radar-hud { animation: none !important; }
+        .maplibregl-canvas {
+          outline: none;
         }
       `}</style>
 
       {/* MapLibre Basemap Container */}
       <div ref={containerRef} className="absolute inset-0 w-full h-full" />
 
+      {/* Aerospace Radar Range Rings & Crosshairs (Glass Cockpit HUD) */}
+      <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+        {/* Inner Range Ring (50 KM) */}
+        <div className="w-[180px] h-[180px] rounded-full border border-dashed border-white/[0.07] relative flex items-center justify-center">
+          <span className="absolute -top-3 px-1 bg-[#030407]/80 text-[8px] font-mono tracking-widest text-white/25">
+            50 KM
+          </span>
+        </div>
+
+        {/* Outer Range Ring (100 KM) */}
+        <div className="absolute w-[360px] h-[360px] rounded-full border border-dashed border-white/[0.05] flex items-center justify-center">
+          <span className="absolute -top-3 px-1 bg-[#030407]/80 text-[8px] font-mono tracking-widest text-white/20">
+            100 KM
+          </span>
+        </div>
+
+        {/* Subtle Horizontal & Vertical Flight Axis Crosshairs */}
+        <div className="absolute w-4 h-px bg-white/20" />
+        <div className="absolute h-4 w-px bg-white/20" />
+      </div>
+
       {/* Animated Smoke Contrail Canvas Overlay */}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-20 pointer-events-none" />
 
-      {/* Realistic Commercial Twinjet Aircraft Silhouette (matching reference image) */}
+      {/* Aircraft Silhouette - Fixed in center (50vw, 50vh), pointing 0° straight forward into flight track */}
       <div
-        ref={planeRef}
         className="absolute z-20 pointer-events-none"
         style={{
-          left: 0,
-          top: 0,
-          transform: 'translate3d(50vw, 66.666vh, 0) translate(-50%, -50%)',
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
           willChange: 'transform',
         }}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 64 72"
-          width="56"
-          height="63"
-          className="drop-shadow-[0_8px_18px_rgba(0,0,0,0.7)]"
+          width="54"
+          height="61"
+          className="drop-shadow-[0_8px_20px_rgba(0,0,0,0.8)]"
         >
           <defs>
             <linearGradient id="fuselage-gradient" x1="0" y1="0" x2="1" y2="0">
@@ -731,67 +703,48 @@ export default function MapLibreFlightRadar({
           </defs>
 
           {/* Left Wing & Winglet */}
-          <path
-            d="M27.8 21 L3 36.2 L3 38.8 L27.8 38 Z"
-            fill="url(#wing-left-grad)"
-          />
+          <path d="M27.8 21 L3 36.2 L3 38.8 L27.8 38 Z" fill="url(#wing-left-grad)" />
           <path d="M3 36.2 L1.8 33.2 L3.6 33.5 L3.2 36.2 Z" fill="#ffffff" />
 
           {/* Right Wing & Winglet */}
+          <path d="M36.2 21 L61 36.2 L61 38.8 L36.2 38 Z" fill="url(#wing-right-grad)" />
+          <path d="M61 36.2 L62.2 33.2 L60.4 33.5 L60.8 36.2 Z" fill="#d2d4d8" />
+
+          {/* Left Engine Pod */}
+          <ellipse cx="23.25" cy="34.8" rx="2.1" ry="5.2" fill="url(#engine-gradient)" />
+          <ellipse cx="23.25" cy="39.5" rx="1.5" ry="0.8" fill="#44474e" />
+
+          {/* Right Engine Pod */}
+          <ellipse cx="40.75" cy="34.8" rx="2.1" ry="5.2" fill="url(#engine-gradient)" />
+          <ellipse cx="40.75" cy="39.5" rx="1.5" ry="0.8" fill="#44474e" />
+
+          {/* Fuselage Nose to Tail */}
           <path
-            d="M36.2 21 L61 36.2 L61 38.8 L36.2 38 Z"
-            fill="url(#wing-right-grad)"
-          />
-          <path d="M61 36.2 L62.2 33.2 L60.4 33.5 L60.8 36.2 Z" fill="#ffffff" />
-
-          {/* Horizontal Tail Stabilizers */}
-          <path d="M29.5 57 L14 65.5 L14 67.5 L29.5 64 Z" fill="#dedfe2" />
-          <path d="M34.5 57 L50 65.5 L50 67.5 L34.5 64 Z" fill="#c8cbd0" />
-
-          {/* Left Jet Engine & Pylon */}
-          <rect x="21.4" y="27" width="1.2" height="9" fill="#888c94" opacity="0.8" />
-          <path d="M20.5 26.5 Q22 25.5 23.5 26.5 L23.5 39 Q22 40 20.5 39 Z" fill="url(#engine-gradient)" />
-          <ellipse cx="22" cy="26.3" rx="1.5" ry="0.8" fill="#1f2329" />
-          <ellipse cx="22" cy="39.2" rx="1.3" ry="0.6" fill="#14171a" />
-
-          {/* Right Jet Engine & Pylon */}
-          <rect x="41.4" y="27" width="1.2" height="9" fill="#888c94" opacity="0.8" />
-          <path d="M40.5 26.5 Q42 25.5 43.5 26.5 L43.5 39 Q42 40 40.5 39 Z" fill="url(#engine-gradient)" />
-          <ellipse cx="42" cy="26.3" rx="1.5" ry="0.8" fill="#1f2329" />
-          <ellipse cx="42" cy="39.2" rx="1.3" ry="0.6" fill="#14171a" />
-
-          {/* Fuselage Main Body */}
-          <path
-            d="M32 2 C34.6 2 36.2 6.5 36.2 12.5 L36.2 55.5 C36.2 61.8 33.6 68.2 32 70 C30.4 68.2 27.8 61.8 27.8 55.5 L27.8 12.5 C27.8 6.5 29.4 2 32 2 Z"
+            d="M32 3 C30.6 3 29.3 5.4 29 9 L29 48 C29 55 30.5 61 32 64 C33.5 61 35 55 35 48 L35 9 C34.7 5.4 33.4 3 32 3 Z"
             fill="url(#fuselage-gradient)"
           />
 
-          {/* Cockpit Window Visor */}
-          <path d="M29.8 10.2 Q32 9.2 34.2 10.2 L34.7 12.2 Q32 11.3 29.3 12.2 Z" fill="#1b2028" />
+          {/* Cockpit Windshield */}
+          <path
+            d="M30.6 8.5 C31.2 7.8 32.8 7.8 33.4 8.5 L34.2 10.6 C33.4 10.3 30.6 10.3 29.8 10.6 Z"
+            fill="#1a1c22"
+          />
 
-          {/* Vertical Stabilizer Dorsal Spine */}
-          <path d="M31.6 48 L32.4 48 L32.2 67 L31.8 67 Z" fill="#ffffff" opacity="0.95" />
+          {/* Horizontal Stabilizers (Tail Wings) */}
+          <path d="M29 55.5 L17.5 63.5 L17.5 65 L29.5 62 Z" fill="#e8e9ec" />
+          <path d="M35 55.5 L46.5 63.5 L46.5 65 L34.5 62 Z" fill="#d0d3d8" />
 
-          {/* Wing Root Aerodynamic Fairings */}
-          <path d="M27.8 34 Q29.8 38 27.8 42 Z" fill="#d2d5da" />
-          <path d="M36.2 34 Q34.2 38 36.2 42 Z" fill="#bec2c8" />
+          {/* Vertical Stabilizer (Fin) */}
+          <path d="M31.4 47 L32.6 47 L32.6 63.5 L31.4 63.5 Z" fill="#ffffff" />
         </svg>
       </div>
 
-      {/* Viewfinder HUD Corner Brackets */}
-      <div className="radar-hud absolute inset-x-4 top-28 bottom-40 z-10 pointer-events-none">
-        <span className="absolute left-0 top-0 w-4 h-4 border-l border-t border-white/20" />
-        <span className="absolute right-0 top-0 w-4 h-4 border-r border-t border-white/20" />
-        <span className="absolute left-0 bottom-0 w-4 h-4 border-l border-b border-white/20" />
-        <span className="absolute right-0 bottom-0 w-4 h-4 border-r border-b border-white/20" />
-      </div>
-
-      {/* Flight Strip Header - lowered past Apple Dynamic Island / Status Bar blur */}
+      {/* Top Header Card */}
       <header
-        className="radar-strip absolute inset-x-0 top-0 z-30 pointer-events-none"
+        className="radar-panel absolute inset-x-0 top-0 z-30 pointer-events-none"
         style={{
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 65%, rgba(0,0,0,0) 100%)',
-          paddingTop: 'calc(max(env(safe-area-inset-top, 0px), 32px) + 26px)',
+          background: 'linear-gradient(to bottom, rgba(3,4,7,0.92) 0%, rgba(3,4,7,0.55) 60%, transparent 100%)',
+          paddingTop: 'calc(max(env(safe-area-inset-top, 0px), 16px) + 8px)',
         }}
       >
         <div className="flex items-center gap-2.5 sm:gap-3 px-5 sm:px-6 pb-6">
@@ -831,7 +784,7 @@ export default function MapLibreFlightRadar({
         </div>
       </header>
 
-      {/* Instrument Switch Cluster - Borderless floating circular icons */}
+      {/* Floating Action Cluster */}
       <div
         className="radar-cluster absolute right-4 z-30 flex flex-col gap-3 pointer-events-auto"
         style={{ top: 'calc(max(env(safe-area-inset-top, 0px), 32px) + 82px)' }}
@@ -840,7 +793,7 @@ export default function MapLibreFlightRadar({
           onClick={onOpenSoundLibrary}
           aria-label="Sound Library"
           title="Sound Library"
-          className="w-11 h-11 rounded-full bg-black/45 hover:bg-black/70 backdrop-blur-xl text-white/85 hover:text-white active:scale-95 transition-all cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.5)] flex items-center justify-center group"
+          className="w-11 h-11 rounded-full bg-black/55 hover:bg-black/75 backdrop-blur-xl text-white/85 hover:text-white active:scale-95 transition-all cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.6)] flex items-center justify-center group"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:scale-110">
             <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" />
@@ -850,7 +803,7 @@ export default function MapLibreFlightRadar({
           onClick={onOpenWindowSeat}
           aria-label="Window seat"
           title="Window seat"
-          className="w-11 h-11 rounded-full bg-black/45 hover:bg-black/70 backdrop-blur-xl text-white/85 hover:text-white active:scale-95 transition-all cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.5)] flex items-center justify-center group"
+          className="w-11 h-11 rounded-full bg-black/55 hover:bg-black/75 backdrop-blur-xl text-white/85 hover:text-white active:scale-95 transition-all cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.6)] flex items-center justify-center group"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-hover:scale-110">
             <rect x="5" y="3" width="14" height="18" rx="7" />
@@ -858,11 +811,11 @@ export default function MapLibreFlightRadar({
         </button>
       </div>
 
-      {/* Footer Readout - Time and Distance aligned on the exact same row/baseline and pushed lower */}
+      {/* Footer Readout - Time and Distance aligned on baseline */}
       <footer
         className="radar-panel absolute inset-x-0 bottom-0 z-30 pointer-events-none font-sans"
         style={{
-          background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.55) 40%, rgba(0,0,0,0.92) 100%)',
+          background: 'linear-gradient(to bottom, transparent 0%, rgba(3,4,7,0.65) 40%, rgba(3,4,7,0.96) 100%)',
           paddingBottom: 'calc(max(env(safe-area-inset-bottom, 0px), 14px) + 8px)',
         }}
       >
@@ -912,12 +865,12 @@ export default function MapLibreFlightRadar({
           {/* Map Attribution */}
           <div className="flex justify-end gap-3 pt-3 text-[9px] text-white/35">
             <a
-              href="https://www.esri.com"
+              href="https://carto.com"
               target="_blank"
               rel="noopener noreferrer"
               className="pointer-events-auto hover:text-white/70 hover:underline"
             >
-              © Esri
+              © CARTO
             </a>
             <a
               href="https://www.openstreetmap.org/copyright"
