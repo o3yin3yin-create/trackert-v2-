@@ -3041,7 +3041,7 @@ function AppContent({ isPreview = false }) {
           if (typeof navigator !== 'undefined' && !navigator.onLine) return;
           if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
           fetchCloudState(true);
-        }, 5000);
+        }, 15000);
       }
     };
 
