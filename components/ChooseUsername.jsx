@@ -214,12 +214,12 @@ export default function ChooseUsername({ onComplete }) {
             </div>
 
             {/* Selected Avatar Large Preview */}
-            <div className="w-20 h-20 rounded-full bg-white/[0.06] border-2 border-white/20 flex items-center justify-center mb-4 transition-all duration-300 overflow-hidden shadow-xl">
+            <div className="w-20 h-20 rounded-full bg-white/[0.06] border-2 border-white/20 flex items-center justify-center mb-4 transition-all duration-300 overflow-hidden shadow-xl p-0">
               {isCompressing ? (
                 <Loader2 size={24} className="animate-spin text-white/60" />
               ) : effectiveAvatar ? (
                 <div className="w-full h-full flex items-center justify-center animate-in zoom-in-75 duration-200">
-                  <AvatarIcon name={effectiveAvatar} size={44} className="w-full h-full" />
+                  <AvatarIcon name={effectiveAvatar} size={44} className="w-full h-full object-cover" />
                 </div>
               ) : (
                 <span className="text-[10px] font-mono text-white/30 text-center px-1">

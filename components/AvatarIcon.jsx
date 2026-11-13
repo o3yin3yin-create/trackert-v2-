@@ -22,8 +22,7 @@ function ImageAvatar({ src, size, className = "" }) {
     <img 
       src={src} 
       alt="Avatar" 
-      className={`object-cover rounded-full select-none pointer-events-none ${className}`}
-      style={{ width: size, height: size, minWidth: size, minHeight: size }}
+      className={`w-full h-full object-cover rounded-full select-none pointer-events-none ${className}`}
       referrerPolicy="no-referrer"
       {...(isHttp ? { crossOrigin: "anonymous" } : {})}
       onError={() => setHasError(true)}

@@ -328,9 +328,20 @@ function UserAvatarDisplay({ user, size = 18 }) {
     ? localAvatar
     : (user?.avatar || user?.imageUrl || localAvatar || 'user');
 
+  const isImage = typeof effectiveAvatar === 'string' && (
+    effectiveAvatar.startsWith('data:image/') ||
+    effectiveAvatar.startsWith('http://') ||
+    effectiveAvatar.startsWith('https://') ||
+    effectiveAvatar.startsWith('/')
+  );
+
   return (
     <div className="w-full h-full flex items-center justify-center text-white overflow-hidden rounded-full">
-      <AvatarIcon name={effectiveAvatar} size={size} className="text-white" />
+      <AvatarIcon 
+        name={effectiveAvatar} 
+        size={isImage ? undefined : size} 
+        className={isImage ? "w-full h-full object-cover" : "text-white"} 
+      />
     </div>
   );
 }
@@ -359,7 +370,7 @@ export function UserButton({ afterSignOutUrl = '/', appearance = {} }) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-9 h-9 rounded-full overflow-hidden border border-white/15 hover:border-white/40 transition-all flex items-center justify-center bg-white/[0.06] hover:bg-white/15 text-white font-medium text-xs focus:outline-none cursor-pointer active:scale-95 shadow-sm"
+        className="w-9 h-9 rounded-full overflow-hidden border border-white/15 hover:border-white/40 transition-all flex items-center justify-center bg-white/[0.06] hover:bg-white/15 text-white font-medium text-xs focus:outline-none cursor-pointer active:scale-95 shadow-sm p-0"
         aria-label="User profile"
       >
         <UserAvatarDisplay user={user} size={18} />
@@ -371,7 +382,7 @@ export function UserButton({ afterSignOutUrl = '/', appearance = {} }) {
           style={{ direction: 'ltr' }}
         >
           <div className="px-4 py-3 border-b border-white/10 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full overflow-hidden bg-zinc-800 border border-white/20 flex-shrink-0 flex items-center justify-center font-bold text-sm">
+            <div className="w-10 h-10 rounded-full overflow-hidden bg-zinc-800 border border-white/20 flex-shrink-0 flex items-center justify-center font-bold text-sm p-0">
               <UserAvatarDisplay user={user} size={22} />
             </div>
             <div className="overflow-hidden text-left">

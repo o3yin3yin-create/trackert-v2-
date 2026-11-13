@@ -8907,11 +8907,15 @@ function AppContent({ isPreview = false }) {
                 </button>
                 {isPreview ? (
                   <div 
-                    className="w-9 h-9 rounded-full flex items-center justify-center border border-white/25 shadow-sm bg-white/10 text-white select-none cursor-pointer hover:border-white/50 transition-all active:scale-95 overflow-hidden"
+                    className="w-9 h-9 rounded-full flex items-center justify-center border border-white/25 shadow-sm bg-white/10 text-white select-none cursor-pointer hover:border-white/50 transition-all active:scale-95 overflow-hidden p-0"
                     title="Omar Helbawy"
                     onClick={() => openNav('settings')}
                   >
-                    <AvatarIcon name={avatar || 'sparkles'} size={18} className="text-white" />
+                    <AvatarIcon 
+                      name={avatar || 'sparkles'} 
+                      size={avatar && (avatar.startsWith('data:') || avatar.startsWith('http')) ? undefined : 18} 
+                      className="w-full h-full object-cover" 
+                    />
                   </div>
                 ) : (
                   <>
@@ -10761,8 +10765,12 @@ function AppContent({ isPreview = false }) {
                               <>
                                 <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
                                   <div className="flex items-center gap-3.5 min-w-0">
-                                    <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
-                                      <AvatarIcon name={isMounted ? avatar : 'user'} size={24} />
+                                    <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden p-0">
+                                      <AvatarIcon 
+                                        name={isMounted ? avatar : 'user'} 
+                                        size={avatar && (avatar.startsWith('data:') || avatar.startsWith('http')) ? undefined : 24} 
+                                        className="w-full h-full object-cover" 
+                                      />
                                     </div>
                                     <div className="flex flex-col min-w-0">
                                       <div className="flex items-center gap-2 min-w-0">
@@ -11117,8 +11125,12 @@ function AppContent({ isPreview = false }) {
                       </div>
                       
                       <div className="flex flex-col items-center gap-2 mb-8">
-                        <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center mb-2 shadow-2xl border-2 border-white/20 text-white overflow-hidden">
-                          <AvatarIcon name={isMounted ? avatar : 'user'} size={44} />
+                        <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center mb-2 shadow-2xl border-2 border-white/20 text-white overflow-hidden p-0">
+                          <AvatarIcon 
+                            name={isMounted ? avatar : 'user'} 
+                            size={avatar && (avatar.startsWith('data:') || avatar.startsWith('http')) ? undefined : 44} 
+                            className="w-full h-full object-cover" 
+                          />
                         </div>
                         <h3 className="text-lg font-black text-white text-center">Current Avatar</h3>
                         <p className="text-xs font-semibold text-white/50 text-center">Select your profile icon or upload a custom photo.</p>
