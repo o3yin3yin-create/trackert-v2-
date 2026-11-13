@@ -1,6 +1,6 @@
 "use client";
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { LogOut, User as UserIcon, Loader2 } from 'lucide-react';
+import { LogOut, User as UserIcon, Loader2, ShieldCheck, X } from 'lucide-react';
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '114149572420-bdvcf3ocfbk9dqmk23pmhrm7ksk0asq2.apps.googleusercontent.com';
 
@@ -357,9 +357,10 @@ export function UserButton({ afterSignOutUrl = '/', appearance = {} }) {
   );
 }
 
-export function SignIn() {
-  const { isSignedIn, isSigningIn, signInWithGoogle, handleGoogleCredential } = useContext(AuthContext);
+export function SignIn({ onClose }) {
+  const { isSignedIn, isSigningIn, signInWithGoogle } = useContext(AuthContext);
   const buttonContainerRef = useRef(null);
+  const [isRendered, setIsRendered] = useState(false);
 
   useEffect(() => {
     if (isSignedIn && typeof window !== 'undefined') {
@@ -369,6 +370,8 @@ export function SignIn() {
 
   // Render official Google button into container
   useEffect(() => {
+    let active = true;
+
     const renderBtn = () => {
       if (window.google?.accounts?.id && buttonContainerRef.current) {
         buttonContainerRef.current.innerHTML = '';
@@ -381,6 +384,7 @@ export function SignIn() {
           width: 320,
           logo_alignment: 'center',
         });
+        if (active) setIsRendered(true);
       }
     };
 
@@ -392,49 +396,75 @@ export function SignIn() {
           clearInterval(interval);
           renderBtn();
         }
-      }, 200);
-      return () => clearInterval(interval);
+      }, 120);
+      return () => {
+        active = false;
+        clearInterval(interval);
+      };
     }
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   return (
-    <div className="w-full max-w-sm mx-auto p-6 rounded-3xl bg-zinc-950/90 border border-white/10 backdrop-blur-xl shadow-2xl text-center select-none">
+    <div className="w-full max-w-[390px] mx-auto p-8 rounded-3xl bg-[#121215]/95 border border-white/10 backdrop-blur-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9)] text-center select-none relative overflow-hidden">
+      {/* Subtle top card glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-20 bg-white/[0.04] blur-2xl pointer-events-none rounded-full" />
+
+      {/* Optional Close Button */}
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-5 right-5 text-white/40 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer active:scale-90 z-10"
+          aria-label="Close"
+        >
+          <X size={18} strokeWidth={2.2} />
+        </button>
+      )}
+
+      {/* Official App Logo */}
+      <div className="mb-4 flex justify-center">
+        <img 
+          src="/logo-transparent.png" 
+          alt="bokra" 
+          className="h-12 w-auto object-contain select-none drop-shadow-xl" 
+        />
+      </div>
+
+      {/* Brand Header */}
       <div className="mb-6">
-        <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-          <UserIcon className="w-6 h-6 text-white/80" />
-        </div>
-        <h2 className="text-xl font-bold text-white mb-1">تسجيل الدخول إلى bokra</h2>
-        <p className="text-xs text-white/50">تابع عاداتك وأهدافك اليومية بدقة</p>
+        <h2 className="text-xl font-bold text-white tracking-tight mb-1.5">
+          تسجيل الدخول إلى bokra
+        </h2>
+        <p className="text-xs text-white/50 leading-relaxed max-w-[280px] mx-auto">
+          تابع عاداتك، جلسات تركيزك، وتقدمك اليومي بدقة
+        </p>
       </div>
 
-      {/* Official Google Button Container */}
-      <div className="flex justify-center my-4 min-h-[44px]">
-        <div ref={buttonContainerRef} className="flex justify-center w-full" />
-      </div>
-
-      {/* Fallback button if GSI container is still loading */}
-      <button
-        type="button"
-        onClick={signInWithGoogle}
-        disabled={isSigningIn}
-        className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-2xl bg-white text-black font-semibold text-sm hover:bg-white/90 active:scale-95 transition-all shadow-lg cursor-pointer disabled:opacity-50 mt-2"
-      >
-        {isSigningIn ? (
-          <>
-            <Loader2 className="w-5 h-5 animate-spin text-black" />
+      {/* Google Button Container - SINGLE OFFICIAL BUTTON */}
+      <div className="w-full flex justify-center my-4 min-h-[44px]">
+        <div ref={buttonContainerRef} className={`flex justify-center w-full ${!isRendered ? 'hidden' : ''}`} />
+        {!isRendered && (
+          <div className="w-[320px] h-[44px] rounded-full border border-white/10 bg-white/5 animate-pulse flex items-center justify-center gap-2.5 text-xs text-white/50 font-medium">
+            <Loader2 className="w-4 h-4 animate-spin text-white/70" />
             <span>جاري الاتصال بـ Google...</span>
-          </>
-        ) : (
-          <>
-            <GoogleIcon className="w-5 h-5" />
-            <span>متابعة باستخدام Google</span>
-          </>
+          </div>
         )}
-      </button>
+      </div>
 
-      <p className="mt-6 text-[11px] text-white/40 leading-relaxed">
-        بتسجيل الدخول، أنت توافق على شروط الخدمة وسياسة الخصوصية الخاصة بـ bokra.
-      </p>
+      {/* Security badge and privacy note */}
+      <div className="mt-6 pt-5 border-t border-white/5">
+        <div className="flex items-center justify-center gap-1.5 text-[11px] text-emerald-400/90 font-medium mb-2.5">
+          <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+          <span>تسجيل دخول فوري وآمن بحساب Google</span>
+        </div>
+        <p className="text-[11px] text-white/40 leading-relaxed">
+          بتسجيل الدخول، أنت توافق على شروط الخدمة وسياسة الخصوصية الخاصة بـ bokra.
+        </p>
+      </div>
     </div>
   );
 }

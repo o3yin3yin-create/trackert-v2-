@@ -96,7 +96,7 @@ export default function ChooseUsername({ onComplete }) {
 
       const confirmedUsername = data?.username || clean;
 
-      // Update desktop storage immediately
+      // Update desktop and session storage immediately
       if (typeof window !== 'undefined') {
         try {
           const savedUser = localStorage.getItem('bokra_desktop_user');
@@ -104,6 +104,12 @@ export default function ChooseUsername({ onComplete }) {
             const parsed = JSON.parse(savedUser);
             parsed.username = confirmedUsername;
             localStorage.setItem('bokra_desktop_user', JSON.stringify(parsed));
+          }
+          const sessionUser = localStorage.getItem('bokra_session_user');
+          if (sessionUser) {
+            const parsed = JSON.parse(sessionUser);
+            parsed.username = confirmedUsername;
+            localStorage.setItem('bokra_session_user', JSON.stringify(parsed));
           }
         } catch (_) {}
       }
