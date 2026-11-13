@@ -45,8 +45,8 @@ export async function POST(req) {
 
     // Verify audience matches our Google OAuth Client ID
     const validAudiences = [
+      '114149572420-bdvcf3ocfbk9dqmk23pmhrm7ksk0asq2.apps.googleusercontent.com',
       '114149572420-hvnsmkla4r421v3mcuOq6tl1874apme7.apps.googleusercontent.com',
-      '114149572420-bdvcett8e7gugm1737f06t8i91h8u67d.apps.googleusercontent.com',
       process.env.GOOGLE_CLIENT_ID,
       process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
     ].filter(Boolean);

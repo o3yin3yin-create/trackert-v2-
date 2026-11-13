@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { LogOut, User as UserIcon, Loader2 } from 'lucide-react';
 
-const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '114149572420-hvnsmkla4r421v3mcuOq6tl1874apme7.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '114149572420-bdvcf3ocfbk9dqmk23pmhrm7ksk0asq2.apps.googleusercontent.com';
 
 const AuthContext = createContext({
   isLoaded: false,
