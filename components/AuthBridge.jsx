@@ -187,6 +187,16 @@ export function AuthProvider({ children }) {
         document.cookie.split(";").forEach((c) => {
           document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/");
         });
+        if (window.indexedDB) {
+          try {
+            window.indexedDB.deleteDatabase('bokra_offline_db');
+          } catch (_) {}
+        }
+        if ('caches' in window) {
+          try {
+            caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+          } catch (_) {}
+        }
       }
     } catch (_) {}
 
@@ -302,17 +312,23 @@ function UserAvatarDisplay({ user, size = 18 }) {
       <img 
         src={rawSrc} 
         alt={user?.fullName || 'User'} 
-        className="w-full h-full object-cover" 
+        className="w-full h-full object-cover rounded-full" 
         referrerPolicy="no-referrer"
+        crossOrigin="anonymous"
         onError={() => setImgError(true)}
       />
     );
   }
 
-  let iconName = user?.avatar || user?.imageUrl || 'user';
+  let iconName = 'user';
+  if (typeof user?.avatar === 'string' && !user.avatar.startsWith('http') && !user.avatar.startsWith('/')) {
+    iconName = user.avatar;
+  }
   if (typeof window !== 'undefined') {
     const localAvatar = localStorage.getItem('daybase_avatar_v1');
-    if (localAvatar) iconName = localAvatar;
+    if (localAvatar && !localAvatar.startsWith('http') && !localAvatar.startsWith('/')) {
+      iconName = localAvatar;
+    }
   }
 
   return (

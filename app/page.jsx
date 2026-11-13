@@ -2241,6 +2241,8 @@ function AppContent({ isPreview = false }) {
     if (isPreview) return;
     async function initFromLocalDb() {
       try {
+        const storedOwner = typeof window !== 'undefined' ? localStorage.getItem('daybase_owner_user_id') : null;
+        if (clerkAuth.isLoaded && !clerkAuth.isSignedIn && !storedOwner) return;
         const localState = await loadLocalOfflineState();
         if (localState) {
           if (localState.habits && localState.habits.length > 0) setHabits(localState.habits);
@@ -2888,6 +2890,15 @@ function AppContent({ isPreview = false }) {
     try {
       await clearPendingSyncQueue();
       await clearLocalOfflineState();
+      if (typeof window !== 'undefined' && window.indexedDB) {
+        try { window.indexedDB.deleteDatabase('bokra_offline_db'); } catch (_) {}
+      }
+      if (typeof window !== 'undefined' && 'caches' in window) {
+        try {
+          const cacheKeys = await caches.keys();
+          await Promise.all(cacheKeys.map(k => caches.delete(k)));
+        } catch (_) {}
+      }
     } catch (_) {}
   }, []);
 
@@ -2970,13 +2981,11 @@ function AppContent({ isPreview = false }) {
         localStorage.setItem('daybase_owner_user_id', clerkAuth.user.id);
       }
     } else if (clerkAuth.isLoaded && !clerkAuth.isSignedIn) {
-      // Confirmed signed out on Clerk while online
-      if (storedOwner || cachedToken || desktopUser) {
-        clearUserLocalData().then(() => {
-          setCachedUser(null);
-          resetStateToCleanDefaults();
-        });
-      }
+      // Confirmed signed out on Clerk while online: ensure complete data wipe and clean state
+      clearUserLocalData().then(() => {
+        setCachedUser(null);
+        resetStateToCleanDefaults();
+      });
     }
   }, [clerkAuth.user?.id, clerkAuth.isLoaded, clerkAuth.isSignedIn, isMounted, clearUserLocalData, resetStateToCleanDefaults, fetchCloudState, isPreview]);
 

@@ -1,6 +1,6 @@
 import { SignUp } from '@/components/AuthBridge';
 import Link from 'next/link';
-import { X, ArrowLeft } from 'lucide-react';
+import { X, ArrowLeft, ArrowRight } from 'lucide-react';
 
 export const metadata = {
   title: 'Create Account | bokra',
@@ -38,6 +38,15 @@ export default function SignUpPage() {
 
         {/* Card Component */}
         <SignUp />
+
+        {/* Feature Tour Link */}
+        <Link 
+          href="/tour" 
+          className="mt-6 inline-flex items-center gap-1.5 text-xs text-white/40 hover:text-white transition-colors cursor-pointer py-1.5 px-4 rounded-full bg-white/[0.03] border border-white/5 hover:border-white/15"
+        >
+          <span>New to bokra? Take a 30s tour</span>
+          <ArrowRight size={13} />
+        </Link>
       </div>
     </div>
   );
