@@ -42,7 +42,7 @@ export default function TermsPage() {
             <section className="p-6 rounded-3xl bg-white/[0.03] border border-white/10 space-y-2">
               <h2 className="text-base font-bold text-white">2. User Accounts & Integrity</h2>
               <p>
-                Authentication is handled securely via Clerk. You are responsible for maintaining the confidentiality of your credentials. Accounts engaged in automated spam, abusive username claiming, or harassment through friend requests or nudges may be suspended without prior notice.
+                Authentication is handled securely via Google Identity Services and encrypted sessions. You are responsible for maintaining the confidentiality of your credentials. Accounts engaged in automated spam, abusive username claiming, or harassment through friend requests or nudges may be suspended without prior notice.
               </p>
             </section>
 
