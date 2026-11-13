@@ -1,4 +1,6 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import { 
   Smile, User, Ghost, Zap, Star, Heart, 
   Flame, Sparkles, Crown, Rocket, Compass, 
@@ -10,7 +12,38 @@ import {
   Glasses, Infinity as InfinityIcon, Cpu
 } from 'lucide-react';
 
+function ImageAvatar({ src, size, className = "" }) {
+  const [hasError, setHasError] = useState(false);
+  if (hasError) {
+    return <User size={size} className={className} />;
+  }
+  const isHttp = src.startsWith('http://') || src.startsWith('https://');
+  return (
+    <img 
+      src={src} 
+      alt="Avatar" 
+      className={`object-cover rounded-full select-none pointer-events-none ${className}`}
+      style={{ width: size, height: size, minWidth: size, minHeight: size }}
+      referrerPolicy="no-referrer"
+      {...(isHttp ? { crossOrigin: "anonymous" } : {})}
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
 export default function AvatarIcon({ name, size = 24, className = "" }) {
+  if (typeof name === 'string') {
+    const trimmed = name.trim();
+    if (
+      trimmed.startsWith('data:image/') ||
+      trimmed.startsWith('http://') ||
+      trimmed.startsWith('https://') ||
+      trimmed.startsWith('/')
+    ) {
+      return <ImageAvatar src={trimmed} size={size} className={className} />;
+    }
+  }
+
   switch (name) {
     case 'smile': return <Smile size={size} className={className} />;
     case 'ghost': return <Ghost size={size} className={className} />;

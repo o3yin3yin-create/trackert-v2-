@@ -710,7 +710,7 @@ export default function FriendsModal({
         {/* Friend Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 rounded-full bg-[#0a0a0a] text-white flex items-center justify-center font-bold text-[20px] uppercase shrink-0">
+            <div className="w-12 h-12 rounded-full bg-[#0a0a0a] text-white flex items-center justify-center font-bold text-[20px] uppercase shrink-0 overflow-hidden">
               <AvatarIcon name={selectedFriend.user?.avatar || 'user'} size={24} className="text-white" />
             </div>
             <div className="flex flex-col min-w-0">
@@ -1305,7 +1305,7 @@ export default function FriendsModal({
                         className="relative w-[50px] h-[50px] rounded-full flex items-center justify-center shrink-0"
                         style={ring}
                       >
-                        <div className="w-full h-full rounded-full bg-[#1a1a1a] flex items-center justify-center text-white font-bold text-base">
+                        <div className="w-full h-full rounded-full bg-[#1a1a1a] flex items-center justify-center text-white font-bold text-base overflow-hidden">
                           <AvatarIcon name={f.user?.avatar || 'user'} size={22} className="text-white" />
                         </div>
                         {f.presence.hasMusicBadge && (
@@ -1451,7 +1451,7 @@ export default function FriendsModal({
                         className="bg-white text-black rounded-3xl p-3.5 flex items-center justify-between shadow-2xl animate-in fade-in duration-150"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-11 h-11 rounded-full bg-black text-white flex items-center justify-center shrink-0">
+                          <div className="w-11 h-11 rounded-full bg-black text-white flex items-center justify-center shrink-0 overflow-hidden">
                             <AvatarIcon name={item.user?.avatar || 'user'} size={22} className="text-white" />
                           </div>
                           <div className="flex flex-col min-w-0">
@@ -1514,7 +1514,7 @@ export default function FriendsModal({
                               className="relative w-[48px] h-[48px] rounded-full flex items-center justify-center shrink-0"
                               style={ring}
                             >
-                              <div className="w-full h-full rounded-full bg-[#1a1a1a] text-white flex items-center justify-center font-bold text-base uppercase">
+                              <div className="w-full h-full rounded-full bg-[#1a1a1a] text-white flex items-center justify-center font-bold text-base uppercase overflow-hidden">
                                 <AvatarIcon name={f.user?.avatar || 'user'} size={22} className="text-white" />
                               </div>
                               {f.presence.hasMusicBadge && (
@@ -1584,7 +1584,7 @@ export default function FriendsModal({
                   : 'bg-[#0c0c0e] border border-white/10'
               }`}>
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-base uppercase shrink-0 ${
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-base uppercase shrink-0 overflow-hidden ${
                     isAdmin 
                       ? 'bg-[#1c1810] text-amber-300 border border-amber-500/40' 
                       : 'bg-black text-white border border-white/15'
@@ -1706,7 +1706,7 @@ export default function FriendsModal({
                       </span>
                       <div className="bg-white text-black rounded-3xl p-4 flex items-center justify-between shadow-2xl">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-11 h-11 rounded-full bg-black text-white flex items-center justify-center shrink-0">
+                          <div className="w-11 h-11 rounded-full bg-black text-white flex items-center justify-center shrink-0 overflow-hidden">
                             <AvatarIcon name={searchResult.user.avatar || 'user'} size={22} className="text-white" />
                           </div>
                           <div className="flex flex-col min-w-0">
@@ -1920,7 +1920,7 @@ export default function FriendsModal({
                       className="bg-[#0c0c0e] border border-white/10 rounded-2xl p-3.5 flex items-center justify-between"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center shrink-0 overflow-hidden">
                           <AvatarIcon name={item.user?.avatar || 'user'} size={20} className="text-white" />
                         </div>
                         <div className="flex flex-col min-w-0">

@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Focus, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Download, RotateCcw, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map as MapIcon, Plane, Maximize, Minimize, Dices, Users, User, Calendar, CalendarDays, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut, Mail, Info, Headphones, Lock } from 'lucide-react';
+import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Focus, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Download, RotateCcw, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map as MapIcon, Plane, Maximize, Minimize, Dices, Users, User, Calendar, CalendarDays, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut, Mail, Info, Headphones, Lock, Camera, Upload } from 'lucide-react';
 import React, { useState, useEffect, useRef, useCallback, useMemo, Component } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -25,6 +25,7 @@ import FlightFocusModal from '../components/FlightFocusModal';
 import SeatSelection from '../components/SeatSelection';
 import AdminPanel from '../components/AdminPanel';
 import AvatarIcon, { AVATAR_OPTIONS } from '../components/AvatarIcon';
+import { compressAvatarImage } from '../lib/compressImage';
 import SpotifyWidget from '../components/SpotifyWidget';
 import ChooseUsername from '../components/ChooseUsername';
 import FriendsModal from '../components/FriendsModal';
@@ -1299,10 +1300,34 @@ function AppContent({ isPreview = false }) {
 
   const [avatar, setAvatar] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('daybase_avatar_v1') || 'user';
+      const stored = localStorage.getItem('daybase_avatar_v1');
+      if (stored && stored !== 'user') return stored;
     }
     return 'user';
   });
+
+  const settingsPhotoInputRef = useRef(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  useEffect(() => {
+    function handleGlobalAvatar(e) {
+      if (e?.detail?.avatar) {
+        setAvatar(e.detail.avatar);
+      }
+    }
+    window.addEventListener('bokra-avatar-updated', handleGlobalAvatar);
+    return () => window.removeEventListener('bokra-avatar-updated', handleGlobalAvatar);
+  }, []);
+
+  useEffect(() => {
+    const userAvatar = user?.avatar || user?.imageUrl;
+    if (userAvatar && userAvatar !== 'user') {
+      setAvatar(prev => (prev === 'user' || !prev) ? userAvatar : prev);
+      if (typeof window !== 'undefined' && (!localStorage.getItem('daybase_avatar_v1') || localStorage.getItem('daybase_avatar_v1') === 'user')) {
+        localStorage.setItem('daybase_avatar_v1', userAvatar);
+      }
+    }
+  }, [user]);
 
 
 
@@ -3798,6 +3823,59 @@ function AppContent({ isPreview = false }) {
     if (!skipManage) {
       setIsManageVisible(false);
       setTimeout(() => setIsManageMounted(false), 300);
+    }
+  };
+
+  const handleSelectAvatar = (av) => {
+    setAvatar(av);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('daybase_avatar_v1', av);
+        const dUser = localStorage.getItem('bokra_desktop_user');
+        if (dUser) {
+          const parsed = JSON.parse(dUser);
+          parsed.avatar = av;
+          localStorage.setItem('bokra_desktop_user', JSON.stringify(parsed));
+        }
+        const sUser = localStorage.getItem('bokra_session_user');
+        if (sUser) {
+          const parsed = JSON.parse(sUser);
+          parsed.avatar = av;
+          parsed.imageUrl = av;
+          localStorage.setItem('bokra_session_user', JSON.stringify(parsed));
+        }
+        window.dispatchEvent(new CustomEvent('bokra-avatar-updated', { detail: { avatar: av } }));
+      } catch (_) {}
+    }
+    markLocalMutation();
+    if (!isPreview) {
+      apiFetch('/api/sync', {
+        method: 'POST',
+        body: JSON.stringify({ avatar: av, updatedAt: Date.now() })
+      }).catch(() => {});
+      apiFetch('/api/user/username', {
+        method: 'POST',
+        body: JSON.stringify({ username: user?.username || '', avatar: av })
+      }).catch(() => {});
+    }
+    popNav();
+  };
+
+  const handleSettingsPhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsUploadingAvatar(true);
+      const compressed = await compressAvatarImage(file, { maxSize: 256, quality: 0.82 });
+      handleSelectAvatar(compressed);
+    } catch (err) {
+      console.error('[Avatar] Settings photo compression failed:', err);
+      alert('Failed to compress image. Please choose another.');
+    } finally {
+      setIsUploadingAvatar(false);
+      if (settingsPhotoInputRef.current) {
+        settingsPhotoInputRef.current.value = '';
+      }
     }
   };
 
@@ -6422,7 +6500,7 @@ function AppContent({ isPreview = false }) {
           >
             {/* Left: Avatar + Friend First Name (Always visible) */}
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <div className={`relative w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center shrink-0 border ${
+              <div className={`relative w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center shrink-0 overflow-hidden border ${
                 isDistinguished ? 'border-amber-400/60 shadow-[0_0_8px_rgba(251,191,36,0.3)]' : 'border-white/10'
               }`}>
                 <AvatarIcon name={friendAvatar} size={15} className="text-white" />
@@ -6481,7 +6559,7 @@ function AppContent({ isPreview = false }) {
         >
           {/* Left: Avatar + Friend First Name */}
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-            <div className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 text-white flex items-center justify-center font-bold text-base uppercase shrink-0 border ${
+            <div className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 text-white flex items-center justify-center font-bold text-base uppercase shrink-0 overflow-hidden border ${
               isDistinguished ? 'border-amber-400/60 shadow-[0_0_8px_rgba(251,191,36,0.3)]' : 'border-white/10'
             }`}>
               <AvatarIcon name={friendAvatar} size={18} className="text-white" />
@@ -8829,7 +8907,7 @@ function AppContent({ isPreview = false }) {
                 </button>
                 {isPreview ? (
                   <div 
-                    className="w-9 h-9 rounded-full flex items-center justify-center border border-white/25 shadow-sm bg-white/10 text-white select-none cursor-pointer hover:border-white/50 transition-all active:scale-95"
+                    className="w-9 h-9 rounded-full flex items-center justify-center border border-white/25 shadow-sm bg-white/10 text-white select-none cursor-pointer hover:border-white/50 transition-all active:scale-95 overflow-hidden"
                     title="Omar Helbawy"
                     onClick={() => openNav('settings')}
                   >
@@ -10683,7 +10761,7 @@ function AppContent({ isPreview = false }) {
                               <>
                                 <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
                                   <div className="flex items-center gap-3.5 min-w-0">
-                                    <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
+                                    <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden">
                                       <AvatarIcon name={isMounted ? avatar : 'user'} size={24} />
                                     </div>
                                     <div className="flex flex-col min-w-0">
@@ -11039,29 +11117,54 @@ function AppContent({ isPreview = false }) {
                       </div>
                       
                       <div className="flex flex-col items-center gap-2 mb-8">
-                        <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center mb-2 shadow-2xl border-2 border-white/20 text-white">
-                          <AvatarIcon name={isMounted ? avatar : 'user'} size={40} />
+                        <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center mb-2 shadow-2xl border-2 border-white/20 text-white overflow-hidden">
+                          <AvatarIcon name={isMounted ? avatar : 'user'} size={44} />
                         </div>
                         <h3 className="text-lg font-black text-white text-center">Current Avatar</h3>
-                        <p className="text-xs font-semibold text-white/50 text-center">Select your profile icon.</p>
+                        <p className="text-xs font-semibold text-white/50 text-center">Select your profile icon or upload a custom photo.</p>
+
+                        {/* Hidden input for photo upload */}
+                        <input
+                          type="file"
+                          ref={settingsPhotoInputRef}
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleSettingsPhotoUpload}
+                        />
+
+                        {/* Upload Photo Button */}
+                        <button
+                          type="button"
+                          onClick={() => settingsPhotoInputRef.current?.click()}
+                          disabled={isUploadingAvatar}
+                          className="mt-2 px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold transition-all active:scale-95 flex items-center gap-2 cursor-pointer shadow-md"
+                        >
+                          {isUploadingAvatar ? (
+                            <Loader2 size={15} className="animate-spin text-white" />
+                          ) : (
+                            <Camera size={15} className="text-white" />
+                          )}
+                          <span>{isUploadingAvatar ? 'Compressing Photo...' : 'Upload Profile Photo'}</span>
+                        </button>
                       </div>
 
                       <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 mb-6 pb-8">
+                        {/* Custom Photo Upload Tile */}
+                        <button
+                          type="button"
+                          onClick={() => settingsPhotoInputRef.current?.click()}
+                          disabled={isUploadingAvatar}
+                          className="relative aspect-square rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-white/25 hover:border-white/50 transition-all duration-200 active:scale-95 bg-white/5 hover:bg-white/10 text-white group cursor-pointer"
+                          title="Upload Custom Photo"
+                        >
+                          <Camera size={26} className="text-white/70 group-hover:text-white group-hover:scale-110 transition-transform mb-1" />
+                          <span className="text-[10px] font-bold text-white/60 group-hover:text-white">Upload</span>
+                        </button>
+
                         {AVATAR_OPTIONS.map(av => (
                           <button
                             key={av}
-                            onClick={() => {
-                              setAvatar(av);
-                              if (typeof window !== 'undefined') localStorage.setItem('daybase_avatar_v1', av);
-                              markLocalMutation();
-                              if (!isPreview) {
-                                apiFetch('/api/sync', {
-                                  method: 'POST',
-                                  body: JSON.stringify({ avatar: av, updatedAt: Date.now() })
-                                }).catch(() => {});
-                              }
-                              popNav();
-                            }}
+                            onClick={() => handleSelectAvatar(av)}
                             className={`relative aspect-square rounded-2xl flex items-center justify-center border-2 transition-all duration-200 active:scale-95 bg-white/5 text-white ${avatar === av ? 'border-[#FF9F0A] shadow-[0_0_20px_rgba(255,159,10,0.3)] text-[#FF9F0A]' : 'border-white/10 hover:border-white/30'}`}
                           >
                             <AvatarIcon name={av} size={32} />

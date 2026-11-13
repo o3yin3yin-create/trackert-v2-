@@ -111,23 +111,17 @@ export async function POST(req) {
       select: { username: true }
     });
 
-    if (currentUserInDb?.username === clean) {
-      return NextResponse.json({ success: true, username: clean }, { status: 200, headers: cors });
-    }
-
-    // 3. Update via Clerk Backend API if this is a legacy Clerk user
-    if (userId.startsWith('user_')) {
-      try {
-        const { clerkClient } = await import('@clerk/nextjs/server');
-        const client = await clerkClient();
-        await client.users.updateUser(userId, { username: clean }).catch(() => {});
-      } catch (clerkErr) {
-        console.warn('[Username API] Clerk updateUser error ignored:', clerkErr);
-      }
-    }
-
-    // 4. Update database record
     const avatar = typeof body?.avatar === 'string' && body.avatar.trim() ? body.avatar.trim() : undefined;
+
+    if (currentUserInDb?.username === clean) {
+      if (avatar) {
+        await prisma.user.update({
+          where: { clerkId: userId },
+          data: { avatar },
+        });
+      }
+      return NextResponse.json({ success: true, username: clean, avatar: avatar || null }, { status: 200, headers: cors });
+    }
     await prisma.user.upsert({
       where: { clerkId: userId },
       update: {

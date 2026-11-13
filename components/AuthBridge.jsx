@@ -46,6 +46,9 @@ export function AuthProvider({ children }) {
           setUser(data.user);
           try {
             localStorage.setItem('bokra_session_user', JSON.stringify(data.user));
+            if (data.user.avatar && !localStorage.getItem('daybase_avatar_v1')) {
+              localStorage.setItem('daybase_avatar_v1', data.user.avatar);
+            }
           } catch (_) {}
         } else if (localUser) {
           // Server says unauthenticated
@@ -82,8 +85,9 @@ export function AuthProvider({ children }) {
 
         try {
           localStorage.setItem('bokra_session_user', JSON.stringify(data.user));
-          if (data.user.imageUrl) {
-            localStorage.setItem('daybase_avatar_v1', data.user.imageUrl);
+          const avatarVal = data.user.avatar || data.user.imageUrl;
+          if (avatarVal) {
+            localStorage.setItem('daybase_avatar_v1', avatarVal);
           }
           if (data.token) {
             localStorage.setItem('bokra_desktop_token', data.token);
@@ -297,43 +301,36 @@ export function SignUpButton(props) {
 }
 
 function UserAvatarDisplay({ user, size = 18 }) {
-  const [imgError, setImgError] = useState(false);
-  
-  const rawSrc = user?.imageUrl || user?.avatar || '';
-  const isUrl = typeof rawSrc === 'string' && !imgError && (
-    rawSrc.startsWith('http://') || 
-    rawSrc.startsWith('https://') || 
-    rawSrc.startsWith('data:') || 
-    rawSrc.startsWith('/')
-  );
-
-  if (isUrl) {
-    return (
-      <img 
-        src={rawSrc} 
-        alt={user?.fullName || 'User'} 
-        className="w-full h-full object-cover rounded-full" 
-        referrerPolicy="no-referrer"
-        crossOrigin="anonymous"
-        onError={() => setImgError(true)}
-      />
-    );
-  }
-
-  let iconName = 'user';
-  if (typeof user?.avatar === 'string' && !user.avatar.startsWith('http') && !user.avatar.startsWith('/')) {
-    iconName = user.avatar;
-  }
-  if (typeof window !== 'undefined') {
-    const localAvatar = localStorage.getItem('daybase_avatar_v1');
-    if (localAvatar && !localAvatar.startsWith('http') && !localAvatar.startsWith('/')) {
-      iconName = localAvatar;
+  const [localAvatar, setLocalAvatar] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('daybase_avatar_v1');
+      return (stored && stored !== 'user') ? stored : null;
     }
-  }
+    return null;
+  });
+
+  useEffect(() => {
+    function handleAvatarUpdate(e) {
+      const updated = e?.detail?.avatar || (typeof window !== 'undefined' ? localStorage.getItem('daybase_avatar_v1') : null);
+      if (updated) {
+        setLocalAvatar(updated);
+      }
+    }
+    window.addEventListener('bokra-avatar-updated', handleAvatarUpdate);
+    window.addEventListener('storage', handleAvatarUpdate);
+    return () => {
+      window.removeEventListener('bokra-avatar-updated', handleAvatarUpdate);
+      window.removeEventListener('storage', handleAvatarUpdate);
+    };
+  }, []);
+
+  const effectiveAvatar = (localAvatar && localAvatar !== 'user')
+    ? localAvatar
+    : (user?.avatar || user?.imageUrl || localAvatar || 'user');
 
   return (
-    <div className="w-full h-full flex items-center justify-center text-white">
-      <AvatarIcon name={iconName} size={size} className="text-white" />
+    <div className="w-full h-full flex items-center justify-center text-white overflow-hidden rounded-full">
+      <AvatarIcon name={effectiveAvatar} size={size} className="text-white" />
     </div>
   );
 }

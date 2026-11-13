@@ -45,6 +45,7 @@ export async function GET(req) {
         lastName,
         username: user.username || null,
         imageUrl: user.avatar || '',
+        avatar: user.avatar || 'user',
         primaryEmailAddress: { emailAddress: user.email },
         emailAddresses: [{ emailAddress: user.email }],
         publicMetadata: user.isAdmin ? { role: 'admin' } : {},

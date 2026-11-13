@@ -77,12 +77,12 @@ export async function POST(req) {
     });
 
     if (dbUser) {
-      // Returning user: Always sync latest Google profile photo and sub/email
+      // Returning user: update sub/email, but do NOT wipe user's custom chosen avatar unless they have none
       const updateData = {
         clerkId: sub,
         email: email.toLowerCase(),
       };
-      if (picture) {
+      if (picture && (!dbUser.avatar || dbUser.avatar === 'user' || dbUser.avatar === 'boy1')) {
         updateData.avatar = picture;
       }
       dbUser = await prisma.user.update({
@@ -97,7 +97,7 @@ export async function POST(req) {
           clerkId: sub,
           email: email.toLowerCase(),
           name: name || 'User',
-          avatar: picture || '',
+          avatar: picture || 'user',
           username: null,
         },
         include: { habits: { select: { id: true } } },
@@ -129,6 +129,7 @@ export async function POST(req) {
     const firstName = nameParts[0] || 'User';
     const lastName = nameParts.slice(1).join(' ') || '';
 
+    const activeAvatar = dbUser.avatar || picture || 'user';
     const clientUser = {
       id: dbUser.clerkId,
       uid: dbUser.clerkId,
@@ -136,8 +137,8 @@ export async function POST(req) {
       firstName,
       lastName,
       username: dbUser.username || null,
-      imageUrl: picture || dbUser.avatar || '',
-      avatar: picture || dbUser.avatar || '',
+      imageUrl: activeAvatar,
+      avatar: activeAvatar,
       primaryEmailAddress: { emailAddress: dbUser.email },
       emailAddresses: [{ emailAddress: dbUser.email }],
       publicMetadata: dbUser.isAdmin ? { role: 'admin' } : {},

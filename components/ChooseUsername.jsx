@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useUser, useAuth } from './AuthBridge';
 import { apiFetch } from '../lib/api';
 import AvatarIcon, { AVATAR_OPTIONS } from './AvatarIcon';
-import { Loader2, ArrowRight, AlertCircle, Check, Sparkles } from 'lucide-react';
+import { compressAvatarImage } from '../lib/compressImage';
+import { Loader2, ArrowRight, AlertCircle, Camera, Upload } from 'lucide-react';
 
 export default function ChooseUsername({ onComplete }) {
   const { user } = useUser();
@@ -14,6 +15,8 @@ export default function ChooseUsername({ onComplete }) {
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Auto-check on mount if user already has a username in database
   useEffect(() => {
@@ -64,8 +67,27 @@ export default function ChooseUsername({ onComplete }) {
   const effectiveAvatar = selectedAvatar || (hasGooglePhoto ? user.imageUrl : null);
   const hasAvatar = Boolean(effectiveAvatar);
 
-  // Mandatory: Must have valid username AND (chosen avatar OR Google photo)
-  const isDisabled = tooShort || onlyNumbers || !validPattern || !hasAvatar || saving;
+  // Mandatory: Must have valid username AND (chosen avatar OR photo)
+  const isDisabled = tooShort || onlyNumbers || !validPattern || !hasAvatar || saving || isCompressing;
+
+  async function handlePhotoUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsCompressing(true);
+      setError(null);
+      const compressedDataUrl = await compressAvatarImage(file, { maxSize: 256, quality: 0.82 });
+      setSelectedAvatar(compressedDataUrl);
+    } catch (err) {
+      console.error('[Avatar] Compression failed:', err);
+      setError('Failed to compress photo. Please try a different image.');
+    } finally {
+      setIsCompressing(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  }
 
   async function save(e) {
     if (e) e.preventDefault();
@@ -108,28 +130,30 @@ export default function ChooseUsername({ onComplete }) {
       // Update storage immediately
       if (typeof window !== 'undefined') {
         try {
-          localStorage.setItem('daybase_avatar_v1', selectedAvatar);
+          localStorage.setItem('daybase_avatar_v1', effectiveAvatar);
           const savedUser = localStorage.getItem('bokra_desktop_user');
           if (savedUser) {
             const parsed = JSON.parse(savedUser);
             parsed.username = confirmedUsername;
-            parsed.avatar = selectedAvatar;
+            parsed.avatar = effectiveAvatar;
             localStorage.setItem('bokra_desktop_user', JSON.stringify(parsed));
           }
           const sessionUser = localStorage.getItem('bokra_session_user');
           if (sessionUser) {
             const parsed = JSON.parse(sessionUser);
             parsed.username = confirmedUsername;
-            parsed.imageUrl = selectedAvatar;
+            parsed.avatar = effectiveAvatar;
+            parsed.imageUrl = effectiveAvatar;
             localStorage.setItem('bokra_session_user', JSON.stringify(parsed));
           }
+          window.dispatchEvent(new CustomEvent('bokra-avatar-updated', { detail: { avatar: effectiveAvatar } }));
         } catch (_) {}
       }
 
       // Also background sync avatar
       apiFetch('/api/sync', {
         method: 'POST',
-        body: JSON.stringify({ avatar: selectedAvatar, updatedAt: Date.now() })
+        body: JSON.stringify({ avatar: effectiveAvatar, updatedAt: Date.now() })
       }).catch(() => {});
 
       if (typeof onComplete === 'function') {
@@ -185,22 +209,17 @@ export default function ChooseUsername({ onComplete }) {
                 1. Choose Profile Avatar
               </span>
               <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${hasAvatar ? 'bg-white/10 text-white' : 'bg-white/5 text-white/40'}`}>
-                {hasAvatar ? 'Selected' : 'Required'}
+                {isCompressing ? 'Compressing...' : (hasAvatar ? 'Selected' : 'Required')}
               </span>
             </div>
 
             {/* Selected Avatar Large Preview */}
-            <div className="w-16 h-16 rounded-2xl bg-white/[0.06] border border-white/20 flex items-center justify-center mb-4 transition-all duration-300 overflow-hidden">
-              {effectiveAvatar && (effectiveAvatar.startsWith('http://') || effectiveAvatar.startsWith('https://')) ? (
-                <img 
-                  src={effectiveAvatar} 
-                  alt="Google Avatar" 
-                  className="w-full h-full object-cover rounded-2xl" 
-                  referrerPolicy="no-referrer" 
-                />
+            <div className="w-20 h-20 rounded-full bg-white/[0.06] border-2 border-white/20 flex items-center justify-center mb-4 transition-all duration-300 overflow-hidden shadow-xl">
+              {isCompressing ? (
+                <Loader2 size={24} className="animate-spin text-white/60" />
               ) : effectiveAvatar ? (
-                <div className="text-white scale-110 animate-in zoom-in-75 duration-200">
-                  <AvatarIcon name={effectiveAvatar} size={32} />
+                <div className="w-full h-full flex items-center justify-center animate-in zoom-in-75 duration-200">
+                  <AvatarIcon name={effectiveAvatar} size={44} className="w-full h-full" />
                 </div>
               ) : (
                 <span className="text-[10px] font-mono text-white/30 text-center px-1">
@@ -209,8 +228,29 @@ export default function ChooseUsername({ onComplete }) {
               )}
             </div>
 
-            {/* Grid of ALL Avatars */}
-            <div className="grid grid-cols-8 gap-2 w-full max-h-[180px] overflow-y-auto pr-1">
+            {/* Hidden File Input for Custom Photo Upload */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoUpload}
+            />
+
+            {/* Grid of ALL Avatars + Photo Upload Button */}
+            <div className="grid grid-cols-8 gap-2 w-full max-h-[190px] overflow-y-auto pr-1">
+              
+              {/* Option: Upload Custom Photo */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="aspect-square rounded-xl flex flex-col items-center justify-center transition-all duration-150 cursor-pointer active:scale-90 bg-white/10 hover:bg-white/20 text-white border border-dashed border-white/30 hover:border-white/60 group"
+                title="Upload Custom Photo (Auto-compressed)"
+              >
+                <Camera size={16} className="text-white/80 group-hover:text-white group-hover:scale-110 transition-transform" />
+              </button>
+
+              {/* Option: Google Profile Photo (if signed in via Google) */}
               {hasGooglePhoto && (
                 <button
                   type="button"
@@ -228,6 +268,8 @@ export default function ChooseUsername({ onComplete }) {
                   <img src={user.imageUrl} alt="Google" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </button>
               )}
+
+              {/* List of Icon Avatars */}
               {AVATAR_OPTIONS.map((av) => {
                 const isSelected = effectiveAvatar === av;
                 return (
