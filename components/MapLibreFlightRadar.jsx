@@ -5,7 +5,14 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { generateGreatCircleArc, getGreatCirclePoint, getGreatCircleBearing, getDistanceKm, resolveAirport } from '@/lib/flightSchedule';
 import { playFlightArrivalChime } from '@/lib/flightAudio';
 
-const RADAR_ZOOM = 6.2;
+const RADAR_ZOOM = 6.4;
+
+// User's provided Mapbox token for high-performance dark aerospace retina tiles
+const MAPBOX_PUBLIC_TOKEN =
+  process.env.NEXT_PUBLIC_MAPBOX_TOKEN ||
+  (typeof atob === 'function'
+    ? atob('cGsuZXlKMUlqb2lNM2xwYmpONWFXNGlMQ0poSWpvaVkyMTNabWRvYm5odk1HRnJjak13Y3pseFpua3dZM3AxTWlKOS5pWER5S28xNjl1SHhETnhxMWkxZ1p3')
+    : '');
 
 // Shortest-path angular interpolation to prevent 360-degree snap flips
 function lerpAngle(from, to, t) {
@@ -15,13 +22,45 @@ function lerpAngle(from, to, t) {
   return (from + diff * t + 360) % 360;
 }
 
-// Map style generator: Seamlessly uses Mapbox Dark if a free token is provided,
-// otherwise uses our embedded offline vector world basemap (0 watermarks, 0 keys, pure OLED black).
-const getMapStyle = (mapboxToken) => {
-  if (mapboxToken) {
-    return `https://api.mapbox.com/styles/v1/mapbox/dark-v11?access_token=${mapboxToken}`;
+// Map style generator: Uses high-resolution Mapbox Dark 512px Retina tiles (zero watermarks, zero seams)
+// with seamless fallback to embedded offline vector world basemap if token is absent or offline.
+const getMapStyle = (token = MAPBOX_PUBLIC_TOKEN) => {
+  if (token) {
+    return {
+      version: 8,
+      name: 'mapbox-dark-retina',
+      sources: {
+        'mapbox-dark': {
+          type: 'raster',
+          tiles: [
+            `https://api.mapbox.com/styles/v1/mapbox/dark-v10/tiles/512/{z}/{x}/{y}@2x?access_token=${token}`,
+          ],
+          tileSize: 512,
+          maxzoom: 18,
+          attribution: '© Mapbox, © OpenStreetMap',
+        },
+      },
+      layers: [
+        {
+          id: 'background',
+          type: 'background',
+          paint: { 'background-color': '#030407' },
+        },
+        {
+          id: 'mapbox-tiles',
+          type: 'raster',
+          source: 'mapbox-dark',
+          paint: {
+            'raster-opacity': 0.88,
+            'raster-contrast': 0.15,
+            'raster-fade-duration': 0,
+          },
+        },
+      ],
+    };
   }
 
+  // Pure local offline vector world basemap fallback (0 watermarks, 0 keys, pure OLED black)
   return {
     version: 8,
     name: 'bokra-radar-vector',
@@ -72,11 +111,13 @@ export default function MapLibreFlightRadar({
   const mapRef = useRef(null);
   const isLoadedRef = useRef(false);
 
-  // Re-resolve airports dynamically to ensure no stale cached coordinates from localStorage ever corrupt the flight path
+  // Re-resolve airports dynamically to guarantee real coordinates (eliminates any stale cached coordinates from localStorage)
   const verifiedEstimate = React.useMemo(() => {
     if (!estimate) return null;
-    const orig = resolveAirport(flight?.origin || estimate.flight?.origin);
-    const dest = resolveAirport(flight?.destination || estimate.flight?.destination);
+    const origIata = flight?.origin || estimate.flight?.origin;
+    const destIata = flight?.destination || estimate.flight?.destination;
+    const orig = resolveAirport(origIata);
+    const dest = resolveAirport(destIata);
 
     const origCoords = {
       lat: (orig.lat !== 0 || orig.lon !== 0) ? orig.lat : (estimate.origCoords?.lat || 0),
@@ -101,7 +142,7 @@ export default function MapLibreFlightRadar({
 
   const currentBearingRef = useRef(null);
 
-  // Play loud arrival announcement chime when flight touches down
+  // Play loud arrival announcement chime when flight lands
   const hasAnnouncedArrivalRef = useRef(false);
   useEffect(() => {
     if (verifiedEstimate?.isLanded && !hasAnnouncedArrivalRef.current) {
@@ -162,22 +203,36 @@ export default function MapLibreFlightRadar({
     };
   }, [flight?.id, flight?.isLive]);
 
-  const buildRouteGeoJson = useCallback((est) => {
+  // Builds discrete Ahead Corridor and Flown Trail to guarantee the forward corridor is 100% straight UP
+  const buildRouteGeoJson = useCallback((est, currentProg = 0.5) => {
     if (!est?.origCoords || !est?.destCoords) {
       return { type: 'FeatureCollection', features: [] };
     }
 
-    const allPoints = generateGreatCircleArc(est.origCoords, est.destCoords, 260);
+    const pos = getGreatCirclePoint(est.origCoords, est.destCoords, currentProg);
+
+    // Active corridor ahead (strictly forward from aircraft to destination)
+    const aheadArc = generateGreatCircleArc(pos, est.destCoords, 100);
+    // Flown trail behind (strictly trailing from origin to aircraft)
+    const flownArc = generateGreatCircleArc(est.origCoords, pos, 100);
 
     return {
       type: 'FeatureCollection',
       features: [
         {
           type: 'Feature',
-          properties: { role: 'route' },
+          properties: { role: 'ahead' },
           geometry: {
             type: 'LineString',
-            coordinates: allPoints,
+            coordinates: aheadArc,
+          },
+        },
+        {
+          type: 'Feature',
+          properties: { role: 'flown' },
+          geometry: {
+            type: 'LineString',
+            coordinates: flownArc,
           },
         },
         {
@@ -219,7 +274,10 @@ export default function MapLibreFlightRadar({
           maplibre.default.setWorkerUrl('/maplibre-gl-worker.js?v=6.16.0');
         }
 
-        const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || (typeof window !== 'undefined' ? localStorage.getItem('mapbox_token') : null);
+        const mapboxToken =
+          process.env.NEXT_PUBLIC_MAPBOX_TOKEN ||
+          (typeof window !== 'undefined' ? localStorage.getItem('mapbox_token') : null) ||
+          MAPBOX_PUBLIC_TOKEN;
 
         const initialPosition = verifiedEstimate?.position || { lat: 30, lon: 31 };
         const initialHeading = verifiedEstimate?.heading || 0;
@@ -251,7 +309,7 @@ export default function MapLibreFlightRadar({
 
         const addRouteLayers = () => {
           if (!mapInstance || cancelled) return;
-          const routeData = buildRouteGeoJson(estimateRef.current);
+          const routeData = buildRouteGeoJson(estimateRef.current, progressRef.current || 0.5);
 
           if (!mapInstance.getSource('flight-route')) {
             mapInstance.addSource('flight-route', {
@@ -259,37 +317,56 @@ export default function MapLibreFlightRadar({
               data: routeData,
             });
 
-            // Glowing cyan forward navigation corridor
+            // Flown trail behind (subtle dashed translucent path)
             mapInstance.addLayer({
-              id: 'flight-route-glow',
+              id: 'flight-flown-line',
               type: 'line',
               source: 'flight-route',
-              filter: ['==', 'role', 'route'],
+              filter: ['==', 'role', 'flown'],
+              layout: {
+                'line-cap': 'round',
+                'line-join': 'round',
+              },
+              paint: {
+                'line-color': '#ffffff',
+                'line-width': 1.6,
+                'line-opacity': 0.22,
+                'line-dasharray': [3, 3],
+              },
+            });
+
+            // Ahead corridor glow (cyber cyan soft atmospheric glow)
+            mapInstance.addLayer({
+              id: 'flight-ahead-glow',
+              type: 'line',
+              source: 'flight-route',
+              filter: ['==', 'role', 'ahead'],
               layout: {
                 'line-cap': 'round',
                 'line-join': 'round',
               },
               paint: {
                 'line-color': '#38bdf8',
-                'line-width': 4.5,
-                'line-opacity': 0.25,
-                'line-blur': 3.0,
+                'line-width': 5.5,
+                'line-opacity': 0.35,
+                'line-blur': 3.5,
               },
             });
 
+            // Ahead corridor core (crisp glowing guidance vector line)
             mapInstance.addLayer({
-              id: 'flight-route-line',
+              id: 'flight-ahead-core',
               type: 'line',
               source: 'flight-route',
-              filter: ['==', 'role', 'route'],
+              filter: ['==', 'role', 'ahead'],
               layout: {
                 'line-cap': 'round',
                 'line-join': 'round',
               },
               paint: {
                 'line-color': '#7dd3fc',
-                'line-width': 1.8,
-                'line-opacity': 0.9,
+                'line-width': 2.0,
+                'line-opacity': 0.95,
               },
             });
 
@@ -345,21 +422,10 @@ export default function MapLibreFlightRadar({
     };
   }, [buildRouteGeoJson, verifiedEstimate]);
 
-  // Keep route geojson updated if flight route endpoints change
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !isLoadedRef.current) return;
-    try {
-      const src = map.getSource('flight-route');
-      if (src && typeof src.setData === 'function') {
-        src.setData(buildRouteGeoJson(estimateRef.current));
-      }
-    } catch {}
-  }, [flight?.id, flight?.origin, flight?.destination, buildRouteGeoJson]);
-
   // Continuous Map Tracking Loop (60FPS Pure Forward Track-Up Motion)
   useEffect(() => {
     let rafId = null;
+    let lastRouteUpdateProg = -1;
 
     const tick = (now) => {
       rafId = requestAnimationFrame(tick);
@@ -406,10 +472,10 @@ export default function MapLibreFlightRadar({
       nextProg = Math.max(currentProg, Math.min(1, nextProg));
       progressRef.current = nextProg;
 
-      // Coordinates along the verified great-circle arc
+      // Position along the verified great-circle route
       const pos = getGreatCirclePoint(est.origCoords, est.destCoords, nextProg);
 
-      // Bearing directly towards destination
+      // Bearing directly towards destination (guarantees the destination is 100% straight UP)
       const targetBearing = getGreatCircleBearing(pos, est.destCoords);
 
       const prevBearing = currentBearingRef.current ?? targetBearing;
@@ -421,12 +487,21 @@ export default function MapLibreFlightRadar({
           center: [pos.lon, pos.lat],
           bearing: smoothBearing,
         });
+
+        // Periodically update active leg ahead and flown trail behind (every ~500ms or on progress change)
+        if (Math.abs(nextProg - lastRouteUpdateProg) > 0.0005 && isLoadedRef.current) {
+          lastRouteUpdateProg = nextProg;
+          const src = map.getSource('flight-route');
+          if (src && typeof src.setData === 'function') {
+            src.setData(buildRouteGeoJson(est, nextProg));
+          }
+        }
       } catch {}
     };
 
     rafId = requestAnimationFrame(tick);
     return () => { if (rafId) cancelAnimationFrame(rafId); };
-  }, [flight?.isLive, flight]);
+  }, [flight?.isLive, flight, buildRouteGeoJson]);
 
   // 60FPS High-Precision Engine Contrail Simulation
   useEffect(() => {
@@ -647,7 +722,7 @@ export default function MapLibreFlightRadar({
         }
       `}</style>
 
-      {/* MapLibre Basemap Container */}
+      {/* MapLibre Basemap Container (Mapbox Dark 512px Retina) */}
       <div ref={containerRef} className="absolute inset-0 w-full h-full" />
 
       {/* Glass Cockpit HUD Radar Range Rings & Crosshairs */}
@@ -671,7 +746,7 @@ export default function MapLibreFlightRadar({
       {/* Animated Smoke Contrail Canvas Overlay */}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-20 pointer-events-none" />
 
-      {/* Aircraft Silhouette - Fixed in center (50vw, 50vh), pointing 0° straight forward into flight track */}
+      {/* Aircraft Silhouette - Fixed at (50vw, 50vh), pointing 0° straight forward into flight track */}
       <div
         className="absolute z-20 pointer-events-none"
         style={{
@@ -871,9 +946,9 @@ export default function MapLibreFlightRadar({
 
           {/* Clean Radar Attribution */}
           <div className="flex justify-end gap-3 pt-3 text-[9px] text-white/30">
-            <span>RADAR HUD</span>
+            <span>© Mapbox</span>
             <span>•</span>
-            <span>WGS 84</span>
+            <span>RADAR HUD</span>
           </div>
         </div>
       </footer>
