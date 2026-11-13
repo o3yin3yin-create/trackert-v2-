@@ -67,9 +67,11 @@ export default function ChooseUsername({ onComplete }) {
   const tooShort = clean.length < 4;
   const onlyNumbers = /^\d+$/.test(clean);
   const validPattern = /^[a-z0-9_.]+$/.test(clean);
-  const hasAvatar = Boolean(selectedAvatar);
+  const hasGooglePhoto = typeof user?.imageUrl === 'string' && (user.imageUrl.startsWith('http://') || user.imageUrl.startsWith('https://'));
+  const effectiveAvatar = selectedAvatar || (hasGooglePhoto ? user.imageUrl : null);
+  const hasAvatar = Boolean(effectiveAvatar);
 
-  // Mandatory: Must have valid username AND chosen avatar
+  // Mandatory: Must have valid username AND (chosen avatar OR Google photo)
   const isDisabled = tooShort || onlyNumbers || !validPattern || !hasAvatar || saving;
 
   async function save(e) {
@@ -96,7 +98,7 @@ export default function ChooseUsername({ onComplete }) {
         headers,
         body: JSON.stringify({ 
           username: clean,
-          avatar: selectedAvatar 
+          avatar: effectiveAvatar 
         })
       });
 

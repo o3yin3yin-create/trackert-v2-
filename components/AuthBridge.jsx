@@ -82,6 +82,9 @@ export function AuthProvider({ children }) {
 
         try {
           localStorage.setItem('bokra_session_user', JSON.stringify(data.user));
+          if (data.user.imageUrl) {
+            localStorage.setItem('daybase_avatar_v1', data.user.imageUrl);
+          }
           if (data.token) {
             localStorage.setItem('bokra_desktop_token', data.token);
             localStorage.setItem('bokra_cached_clerk_token', data.token);

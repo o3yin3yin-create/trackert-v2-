@@ -77,20 +77,21 @@ export async function POST(req) {
     });
 
     if (dbUser) {
-      // Returning user: update clerkId to Google sub if it changed, and keep existing name, habits, username
-      if (dbUser.clerkId !== sub || !dbUser.avatar) {
-        dbUser = await prisma.user.update({
-          where: { id: dbUser.id },
-          data: {
-            clerkId: sub,
-            avatar: dbUser.avatar || picture || '',
-            email: email.toLowerCase(),
-          },
-          include: { habits: { select: { id: true } } },
-        });
+      // Returning user: Always sync latest Google profile photo and sub/email
+      const updateData = {
+        clerkId: sub,
+        email: email.toLowerCase(),
+      };
+      if (picture) {
+        updateData.avatar = picture;
       }
+      dbUser = await prisma.user.update({
+        where: { id: dbUser.id },
+        data: updateData,
+        include: { habits: { select: { id: true } } },
+      });
     } else {
-      // Brand new user from social ads: create new account with username: null so they choose a username for friends
+      // Brand new user: save Google photo as default avatar
       dbUser = await prisma.user.create({
         data: {
           clerkId: sub,
@@ -135,7 +136,8 @@ export async function POST(req) {
       firstName,
       lastName,
       username: dbUser.username || null,
-      imageUrl: dbUser.avatar || picture || '',
+      imageUrl: picture || dbUser.avatar || '',
+      avatar: picture || dbUser.avatar || '',
       primaryEmailAddress: { emailAddress: dbUser.email },
       emailAddresses: [{ emailAddress: dbUser.email }],
       publicMetadata: dbUser.isAdmin ? { role: 'admin' } : {},
