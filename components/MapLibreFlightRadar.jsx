@@ -5,9 +5,9 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { generateGreatCircleArc, getGreatCirclePoint, getGreatCircleBearing, getDistanceKm } from '@/lib/flightSchedule';
 import { playFlightArrivalChime } from '@/lib/flightAudio';
 
-const OPENFREEMAP_TILEJSON = 'https://tiles.openfreemap.org/planet';
-const FALLBACK_TILE_URL = 'https://tiles.openfreemap.org/planet/20261101_080013_pt/{z}/{x}/{y}.pbf';
-const RADAR_ZOOM = 10;
+const ESRI_DARK_TILES_1 = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+const ESRI_DARK_TILES_2 = 'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+const RADAR_ZOOM = 7.0;
 
 // Dead-reckoning: project point forward along a bearing by distance (in km)
 function projectPoint(lat, lon, bearingDeg, distKm) {
@@ -40,65 +40,34 @@ function lerpAngle(from, to, t) {
   return (from + diff * t + 360) % 360;
 }
 
-// Monochrome dark basemap from OpenFreeMap vector tiles (no API key, no labels).
-const getMapStyle = (tileUrl) => ({
+// Ultra-fast dark aerospace radar basemap powered by ESRI Dark Gray Canvas (instant load, parallel CDN mirrors).
+const getMapStyle = () => ({
   version: 8,
   name: 'bokra-radar-dark',
   sources: {
     basemap: {
-      type: 'vector',
-      tiles: [tileUrl],
-      minzoom: 0,
-      maxzoom: 14,
-      attribution: '\u00a9 OpenFreeMap \u00a9 OpenStreetMap contributors',
+      type: 'raster',
+      tiles: [ESRI_DARK_TILES_1, ESRI_DARK_TILES_2],
+      tileSize: 256,
+      maxzoom: 16,
+      attribution: '&copy; Esri, OpenStreetMap contributors',
     },
   },
   layers: [
-    { id: 'background', type: 'background', paint: { 'background-color': '#15151a' } },
     {
-      id: 'landcover', type: 'fill', source: 'basemap', 'source-layer': 'landcover',
-      paint: { 'fill-color': '#1c1c22', 'fill-opacity': 0.7 },
+      id: 'background',
+      type: 'background',
+      paint: { 'background-color': '#111216' },
     },
     {
-      id: 'landuse', type: 'fill', source: 'basemap', 'source-layer': 'landuse',
-      paint: { 'fill-color': '#212128', 'fill-opacity': 0.6 },
-    },
-    {
-      id: 'park', type: 'fill', source: 'basemap', 'source-layer': 'park',
-      paint: { 'fill-color': '#1b221b', 'fill-opacity': 0.6 },
-    },
-    {
-      id: 'water', type: 'fill', source: 'basemap', 'source-layer': 'water',
-      paint: { 'fill-color': '#0f151e' },
-    },
-    {
-      id: 'waterway', type: 'line', source: 'basemap', 'source-layer': 'waterway',
-      paint: { 'line-color': '#141d29', 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.5, 10, 2] },
-    },
-    {
-      id: 'building', type: 'fill', source: 'basemap', 'source-layer': 'building',
-      paint: { 'fill-color': '#27272e', 'fill-opacity': 0.6 },
-    },
-    {
-      id: 'aeroway', type: 'line', source: 'basemap', 'source-layer': 'aeroway',
-      paint: { 'line-color': '#33333b', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.5, 14, 3] },
-    },
-    {
-      id: 'boundary', type: 'line', source: 'basemap', 'source-layer': 'boundary',
+      id: 'basemap-tiles',
+      type: 'raster',
+      source: 'basemap',
+      minzoom: 0,
+      maxzoom: 18,
       paint: {
-        'line-color': '#43434d', 'line-opacity': 0.7, 'line-dasharray': [3, 2],
-        'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.6, 8, 1.6],
-      },
-    },
-    {
-      id: 'roads', type: 'line', source: 'basemap', 'source-layer': 'transportation',
-      paint: {
-        'line-color': ['match', ['get', 'class'], 'motorway', '#4b4b57', 'trunk', '#43434f', 'primary', '#3b3b47', '#31313a'],
-        'line-width': ['interpolate', ['linear'], ['zoom'],
-          5, ['match', ['get', 'class'], 'motorway', 1.1, 'trunk', 0.7, 'primary', 0.4, 0.25],
-          10, ['match', ['get', 'class'], 'motorway', 4, 'trunk', 2.8, 'primary', 1.8, 0.9],
-        ],
-        'line-opacity': 0.9,
+        'raster-opacity': 1,
+        'raster-fade-duration': 0,
       },
     },
   ],
@@ -236,40 +205,24 @@ export default function MapLibreFlightRadar({
         if (cancelled || !containerRef.current || mapRef.current) return;
         const Map = maplibre.Map || maplibre.default?.Map;
 
-        let tileUrl = FALLBACK_TILE_URL;
-        try {
-          const ctrl = new AbortController();
-          const to = setTimeout(() => ctrl.abort(), 4000);
-          const res = await fetch(OPENFREEMAP_TILEJSON, { signal: ctrl.signal });
-          clearTimeout(to);
-          if (res.ok) {
-            const tj = await res.json();
-            if (Array.isArray(tj.tiles) && tj.tiles[0]) tileUrl = tj.tiles[0];
-          }
-        } catch {}
-        if (cancelled || !containerRef.current || mapRef.current) return;
-
         if (typeof maplibre.setWorkerUrl === 'function') {
           maplibre.setWorkerUrl('/maplibre-gl-worker.js?v=6.16.0');
         } else if (typeof maplibre.default?.setWorkerUrl === 'function') {
           maplibre.default.setWorkerUrl('/maplibre-gl-worker.js?v=6.16.0');
         }
 
-        if (!containerRef.current) return;
-
         const initialPosition = estimate?.position || { lat: 30, lon: 31 };
         const initialHeading = estimate?.heading || 0;
-        const fixedZoom = RADAR_ZOOM;
         mapInstance = new Map({
           container: containerRef.current,
-          style: getMapStyle(tileUrl),
+          style: getMapStyle(),
           center: [initialPosition.lon || initialPosition.lng, initialPosition.lat],
           bearing: initialHeading,
           pitch: 0,
           maxPitch: 0,
-          minZoom: fixedZoom,
-          maxZoom: fixedZoom,
-          zoom: fixedZoom,
+          minZoom: 4,
+          maxZoom: 11,
+          zoom: RADAR_ZOOM,
           fadeDuration: 0,
           attributionControl: false,
           navigationControl: false,
@@ -277,12 +230,13 @@ export default function MapLibreFlightRadar({
 
         mapRef.current = mapInstance;
 
-        mapInstance.scrollZoom.disable();
         mapInstance.dragPan.disable();
         mapInstance.boxZoom.disable();
         mapInstance.keyboard.disable();
         mapInstance.doubleClickZoom.disable();
-        mapInstance.touchZoomRotate.disable();
+        mapInstance.scrollZoom.enable();
+        mapInstance.touchZoomRotate.enable();
+        mapInstance.touchZoomRotate.disableRotation();
 
         // Anchor the aircraft at 2/3 of viewport height (lower third).
         const applyTrackingPadding = () => {
@@ -669,27 +623,39 @@ export default function MapLibreFlightRadar({
   };
 
   const est = estimateRef.current;
-  let currentDistKm = estimate?.distRemainingKm || 0;
-  if (liveTelemetry && typeof liveTelemetry.lat === 'number' && est?.destCoords) {
-    const destLon = est.destCoords.lon ?? est.destCoords.lng;
-    currentDistKm = Math.round(getDistanceKm(liveTelemetry.lat, liveTelemetry.lng, est.destCoords.lat, destLon));
-  }
-
   const nowSec = Math.floor(Date.now() / 1000);
-  let totalSec = 0;
 
-  if (liveTelemetry?.arrival && liveTelemetry.arrival > nowSec) {
-    totalSec = liveTelemetry.arrival - nowSec;
-  } else if (currentDistKm > 0) {
-    // Robust dynamic estimate for delayed flights or when FR24 scheduled arrival is in the past
-    const rawSpeed = liveTelemetry?.speed || estimate?.speed || 450;
-    const speedKmh = Math.max(450, rawSpeed * (liveTelemetry?.speed ? 1.852 : 1));
-    totalSec = Math.round((currentDistKm / speedKmh) * 3600);
-  } else {
-    totalSec = Math.max(0, estimate?.timeRemainingSec || 0);
+  // Single source of truth: flight focus session's remaining seconds
+  let totalSec = estimate?.timeRemainingSec;
+
+  if (typeof totalSec !== 'number' || isNaN(totalSec)) {
+    if (liveTelemetry?.arrival && liveTelemetry.arrival > nowSec) {
+      totalSec = liveTelemetry.arrival - nowSec;
+    } else if (flight?.arrival && flight.arrival > nowSec) {
+      totalSec = flight.arrival - nowSec;
+    } else if (estimate?.distRemainingKm > 0) {
+      const rawSpeed = (typeof liveTelemetry?.speed === 'number' && !isNaN(liveTelemetry.speed))
+        ? liveTelemetry.speed * 1.852
+        : 850;
+      totalSec = Math.round((estimate.distRemainingKm / Math.max(400, rawSpeed)) * 3600);
+    } else {
+      totalSec = 0;
+    }
   }
 
-  const minutesRemaining = Math.ceil(totalSec / 60).toLocaleString('en-US');
+  totalSec = Math.max(0, Math.floor(Number(totalSec) || 0));
+  const minutesRemaining = Math.max(0, Math.ceil(totalSec / 60)).toLocaleString('en-US');
+
+  let currentDistKm = estimate?.distRemainingKm;
+  if (typeof currentDistKm !== 'number' || isNaN(currentDistKm)) {
+    if (liveTelemetry && typeof liveTelemetry.lat === 'number' && est?.destCoords) {
+      const destLon = est.destCoords.lon ?? est.destCoords.lng;
+      currentDistKm = Math.round(getDistanceKm(liveTelemetry.lat, liveTelemetry.lng, est.destCoords.lat, destLon));
+    } else {
+      currentDistKm = 0;
+    }
+  }
+
   const distValue = useMiles
     ? Math.round(currentDistKm * 0.621371).toLocaleString('en-US')
     : currentDistKm.toLocaleString('en-US');
@@ -946,12 +912,12 @@ export default function MapLibreFlightRadar({
           {/* Map Attribution */}
           <div className="flex justify-end gap-3 pt-3 text-[9px] text-white/35">
             <a
-              href="https://openfreemap.org"
+              href="https://www.esri.com"
               target="_blank"
               rel="noopener noreferrer"
               className="pointer-events-auto hover:text-white/70 hover:underline"
             >
-              © OpenFreeMap
+              © Esri
             </a>
             <a
               href="https://www.openstreetmap.org/copyright"
