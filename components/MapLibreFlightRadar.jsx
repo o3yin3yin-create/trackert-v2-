@@ -2,17 +2,10 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { generateGreatCircleArc, getGreatCirclePoint, getGreatCircleBearing, getDistanceKm } from '@/lib/flightSchedule';
+import { generateGreatCircleArc, getGreatCirclePoint, getGreatCircleBearing, getDistanceKm, resolveAirport } from '@/lib/flightSchedule';
 import { playFlightArrivalChime } from '@/lib/flightAudio';
 
-// High-performance CARTO Dark Matter Retina tiles without raster labels (clean vector aesthetics, 0 visible seams)
-const CARTO_DARK_MIRRORS = [
-  'https://a.basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}@2x.png',
-  'https://b.basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}@2x.png',
-  'https://c.basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}@2x.png',
-  'https://d.basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}@2x.png',
-];
-const RADAR_ZOOM = 7.0;
+const RADAR_ZOOM = 6.2;
 
 // Shortest-path angular interpolation to prevent 360-degree snap flips
 function lerpAngle(from, to, t) {
@@ -22,39 +15,50 @@ function lerpAngle(from, to, t) {
   return (from + diff * t + 360) % 360;
 }
 
-// Ultra-fast dark aerospace radar basemap (pure OLED black, retina 512px tiles, zero label clutter)
-const getMapStyle = () => ({
-  version: 8,
-  name: 'bokra-radar-dark',
-  sources: {
-    basemap: {
-      type: 'raster',
-      tiles: CARTO_DARK_MIRRORS,
-      tileSize: 512,
-      maxzoom: 18,
-      attribution: '&copy; CARTO, OpenStreetMap contributors',
-    },
-  },
-  layers: [
-    {
-      id: 'background',
-      type: 'background',
-      paint: { 'background-color': '#030407' },
-    },
-    {
-      id: 'basemap-tiles',
-      type: 'raster',
-      source: 'basemap',
-      minzoom: 0,
-      maxzoom: 18,
-      paint: {
-        'raster-opacity': 0.88,
-        'raster-contrast': 0.18,
-        'raster-fade-duration': 0,
+// Map style generator: Seamlessly uses Mapbox Dark if a free token is provided,
+// otherwise uses our embedded offline vector world basemap (0 watermarks, 0 keys, pure OLED black).
+const getMapStyle = (mapboxToken) => {
+  if (mapboxToken) {
+    return `https://api.mapbox.com/styles/v1/mapbox/dark-v11?access_token=${mapboxToken}`;
+  }
+
+  return {
+    version: 8,
+    name: 'bokra-radar-vector',
+    sources: {
+      world: {
+        type: 'geojson',
+        data: '/world-land.json',
       },
     },
-  ],
-});
+    layers: [
+      {
+        id: 'background',
+        type: 'background',
+        paint: { 'background-color': '#030407' },
+      },
+      {
+        id: 'world-land-fill',
+        type: 'fill',
+        source: 'world',
+        paint: {
+          'fill-color': '#0d111a',
+          'fill-opacity': 1.0,
+        },
+      },
+      {
+        id: 'world-land-border',
+        type: 'line',
+        source: 'world',
+        paint: {
+          'line-color': '#1a2233',
+          'line-width': 1.0,
+          'line-opacity': 0.8,
+        },
+      },
+    ],
+  };
+};
 
 export default function MapLibreFlightRadar({
   flight,
@@ -67,20 +71,44 @@ export default function MapLibreFlightRadar({
   const canvasRef = useRef(null);
   const mapRef = useRef(null);
   const isLoadedRef = useRef(false);
-  const estimateRef = useRef(estimate);
-  estimateRef.current = estimate;
 
-  // Track smoothed camera bearing for buttery smooth turns
+  // Re-resolve airports dynamically to ensure no stale cached coordinates from localStorage ever corrupt the flight path
+  const verifiedEstimate = React.useMemo(() => {
+    if (!estimate) return null;
+    const orig = resolveAirport(flight?.origin || estimate.flight?.origin);
+    const dest = resolveAirport(flight?.destination || estimate.flight?.destination);
+
+    const origCoords = {
+      lat: (orig.lat !== 0 || orig.lon !== 0) ? orig.lat : (estimate.origCoords?.lat || 0),
+      lon: (orig.lat !== 0 || orig.lon !== 0) ? orig.lon : (estimate.origCoords?.lon || estimate.origCoords?.lng || 0),
+      lng: (orig.lat !== 0 || orig.lon !== 0) ? orig.lon : (estimate.origCoords?.lon || estimate.origCoords?.lng || 0),
+    };
+    const destCoords = {
+      lat: (dest.lat !== 0 || dest.lon !== 0) ? dest.lat : (estimate.destCoords?.lat || 0),
+      lon: (dest.lat !== 0 || dest.lon !== 0) ? dest.lon : (estimate.destCoords?.lon || estimate.destCoords?.lng || 0),
+      lng: (dest.lat !== 0 || dest.lon !== 0) ? dest.lon : (estimate.destCoords?.lon || estimate.destCoords?.lng || 0),
+    };
+
+    return {
+      ...estimate,
+      origCoords,
+      destCoords,
+    };
+  }, [estimate, flight?.origin, flight?.destination]);
+
+  const estimateRef = useRef(verifiedEstimate);
+  estimateRef.current = verifiedEstimate;
+
   const currentBearingRef = useRef(null);
 
-  // Play loud and clear arrival announcement chime the second flight lands
+  // Play loud arrival announcement chime when flight touches down
   const hasAnnouncedArrivalRef = useRef(false);
   useEffect(() => {
-    if (estimate?.isLanded && !hasAnnouncedArrivalRef.current) {
+    if (verifiedEstimate?.isLanded && !hasAnnouncedArrivalRef.current) {
       hasAnnouncedArrivalRef.current = true;
       playFlightArrivalChime();
     }
-  }, [estimate?.isLanded]);
+  }, [verifiedEstimate?.isLanded]);
 
   const [useMiles, setUseMiles] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -95,7 +123,6 @@ export default function MapLibreFlightRadar({
   const liveTelemetryRef = useRef(flight?.livePosition || null);
   const [liveTelemetry, setLiveTelemetry] = useState(flight?.livePosition || null);
 
-  // Monotonic forward progress tracking engine (strictly forward, 60FPS fluid gliding)
   const progressRef = useRef(null);
   const targetProgressRef = useRef(null);
   const lastTickTimeRef = useRef(0);
@@ -118,16 +145,13 @@ export default function MapLibreFlightRadar({
             const distFromOrig = getDistanceKm(est.origCoords.lat, origLon, data.lat, data.lng);
             const liveProg = Math.max(0, Math.min(0.999, distFromOrig / totalDist));
 
-            // Strictly forward: target can NEVER be lower than current rendered progress
             targetProgressRef.current = Math.max(progressRef.current || 0, liveProg);
           }
 
           liveTelemetryRef.current = data;
           setLiveTelemetry(data);
         }
-      } catch {
-        // Safe fallback to dead-reckoning progress
-      }
+      } catch {}
     };
 
     pollLive();
@@ -143,7 +167,7 @@ export default function MapLibreFlightRadar({
       return { type: 'FeatureCollection', features: [] };
     }
 
-    const allPoints = generateGreatCircleArc(est.origCoords, est.destCoords, 240);
+    const allPoints = generateGreatCircleArc(est.origCoords, est.destCoords, 260);
 
     return {
       type: 'FeatureCollection',
@@ -158,7 +182,7 @@ export default function MapLibreFlightRadar({
         },
         {
           type: 'Feature',
-          properties: { iata: est.flight?.origin, role: 'origin' },
+          properties: { iata: est.flight?.origin || flight?.origin, role: 'origin' },
           geometry: {
             type: 'Point',
             coordinates: [est.origCoords.lon ?? est.origCoords.lng, est.origCoords.lat],
@@ -166,7 +190,7 @@ export default function MapLibreFlightRadar({
         },
         {
           type: 'Feature',
-          properties: { iata: est.flight?.destination, role: 'dest' },
+          properties: { iata: est.flight?.destination || flight?.destination, role: 'dest' },
           geometry: {
             type: 'Point',
             coordinates: [est.destCoords.lon ?? est.destCoords.lng, est.destCoords.lat],
@@ -174,7 +198,7 @@ export default function MapLibreFlightRadar({
         },
       ],
     };
-  }, []);
+  }, [flight?.origin, flight?.destination]);
 
   // Initialize MapLibre in true Track-Up mode
   useEffect(() => {
@@ -195,19 +219,21 @@ export default function MapLibreFlightRadar({
           maplibre.default.setWorkerUrl('/maplibre-gl-worker.js?v=6.16.0');
         }
 
-        const initialPosition = estimate?.position || { lat: 30, lon: 31 };
-        const initialHeading = estimate?.heading || 0;
+        const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || (typeof window !== 'undefined' ? localStorage.getItem('mapbox_token') : null);
+
+        const initialPosition = verifiedEstimate?.position || { lat: 30, lon: 31 };
+        const initialHeading = verifiedEstimate?.heading || 0;
         currentBearingRef.current = initialHeading;
 
         mapInstance = new Map({
           container: containerRef.current,
-          style: getMapStyle(),
+          style: getMapStyle(mapboxToken),
           center: [initialPosition.lon || initialPosition.lng, initialPosition.lat],
           bearing: initialHeading,
           pitch: 0,
           maxPitch: 0,
-          minZoom: 4,
-          maxZoom: 12,
+          minZoom: 3,
+          maxZoom: 14,
           zoom: RADAR_ZOOM,
           fadeDuration: 0,
           attributionControl: false,
@@ -216,7 +242,6 @@ export default function MapLibreFlightRadar({
 
         mapRef.current = mapInstance;
 
-        // Lock camera to cockpit Track-Up orientation (prevent accidental drag/rotation)
         mapInstance.dragPan.disable();
         mapInstance.boxZoom.disable();
         mapInstance.keyboard.disable();
@@ -234,7 +259,7 @@ export default function MapLibreFlightRadar({
               data: routeData,
             });
 
-            // Glowing cyan flight corridor line
+            // Glowing cyan forward navigation corridor
             mapInstance.addLayer({
               id: 'flight-route-glow',
               type: 'line',
@@ -246,8 +271,8 @@ export default function MapLibreFlightRadar({
               },
               paint: {
                 'line-color': '#38bdf8',
-                'line-width': 4.0,
-                'line-opacity': 0.22,
+                'line-width': 4.5,
+                'line-opacity': 0.25,
                 'line-blur': 3.0,
               },
             });
@@ -263,8 +288,8 @@ export default function MapLibreFlightRadar({
               },
               paint: {
                 'line-color': '#7dd3fc',
-                'line-width': 1.6,
-                'line-opacity': 0.85,
+                'line-width': 1.8,
+                'line-opacity': 0.9,
               },
             });
 
@@ -279,7 +304,7 @@ export default function MapLibreFlightRadar({
                 'circle-color': '#38bdf8',
                 'circle-stroke-color': '#030407',
                 'circle-stroke-width': 2.0,
-                'circle-opacity': 0.9,
+                'circle-opacity': 0.95,
               },
             });
           }
@@ -301,8 +326,8 @@ export default function MapLibreFlightRadar({
             return;
           }
           installOverlays();
-        }, 200);
-        setTimeout(() => clearInterval(retryTimer), 15000);
+        }, 150);
+        setTimeout(() => clearInterval(retryTimer), 12000);
       } catch (err) {
         console.error('[MapLibreFlightRadar] init error:', err);
       }
@@ -318,7 +343,7 @@ export default function MapLibreFlightRadar({
         isLoadedRef.current = false;
       }
     };
-  }, [buildRouteGeoJson]);
+  }, [buildRouteGeoJson, verifiedEstimate]);
 
   // Keep route geojson updated if flight route endpoints change
   useEffect(() => {
@@ -342,8 +367,8 @@ export default function MapLibreFlightRadar({
       const map = mapRef.current;
       const est = estimateRef.current;
       if (!map || !est) return;
-      const flight = est.flight;
-      if (!flight || !est.origCoords || !est.destCoords) return;
+      const flightData = est.flight || flight;
+      if (!flightData || !est.origCoords || !est.destCoords) return;
 
       const origLon = est.origCoords.lon ?? est.origCoords.lng;
       const destLon = est.destCoords.lon ?? est.destCoords.lng;
@@ -352,19 +377,18 @@ export default function MapLibreFlightRadar({
       const dt = lastTickTimeRef.current ? Math.min(0.1, (now - lastTickTimeRef.current) / 1000) : 0.016;
       lastTickTimeRef.current = now;
 
-      // Real ground speed in km/h
-      const speedKmh = Math.max(400, (liveTelemetryRef.current?.speed || flight.speed || 450) * 1.852);
-      // Fractional progress increment this frame based on actual speed
+      // Ground speed in km/h
+      const speedKmh = Math.max(400, (liveTelemetryRef.current?.speed || flightData.speed || 450) * 1.852);
       const baseAdvance = (speedKmh / (totalDist * 3600)) * dt;
 
       // Initialize progress if not set
       if (progressRef.current === null) {
-        if (flight?.isLive && flight?.livePosition && typeof flight.livePosition.lat === 'number') {
-          const d = getDistanceKm(est.origCoords.lat, origLon, flight.livePosition.lat, flight.livePosition.lng);
+        if (flightData?.isLive && flightData?.livePosition && typeof flightData.livePosition.lat === 'number') {
+          const d = getDistanceKm(est.origCoords.lat, origLon, flightData.livePosition.lat, flightData.livePosition.lng);
           progressRef.current = Math.max(0, Math.min(0.999, d / totalDist));
         } else {
-          const departure = flight.departure || flight.departureTime || (Date.now() / 1000 - 3600);
-          const arrival = flight.arrival || flight.estimatedArrival || (departure + 7200);
+          const departure = flightData.departure || flightData.departureTime || (Date.now() / 1000 - 3600);
+          const arrival = flightData.arrival || flightData.estimatedArrival || (departure + 7200);
           progressRef.current = Math.max(0, Math.min(0.999, (Date.now() / 1000 - departure) / Math.max(1, arrival - departure)));
         }
         targetProgressRef.current = progressRef.current;
@@ -373,30 +397,26 @@ export default function MapLibreFlightRadar({
       const currentProg = progressRef.current;
       const targetProg = targetProgressRef.current ?? currentProg;
 
-      // Smoothly advance forward, catching up towards target if target fix is ahead
       let nextProg = currentProg + baseAdvance;
       if (targetProg > nextProg) {
         nextProg += (targetProg - nextProg) * Math.min(1, dt * 2.0);
       }
 
-      // STRICTLY MONOTONIC: Progress can NEVER be less than currentProg (never moves backwards!)
+      // Strictly forward: progress never decreases
       nextProg = Math.max(currentProg, Math.min(1, nextProg));
       progressRef.current = nextProg;
 
-      // Calculate current coordinates along the continuous great-circle flight path
+      // Coordinates along the verified great-circle arc
       const pos = getGreatCirclePoint(est.origCoords, est.destCoords, nextProg);
 
-      // True track bearing towards destination (smooth analytical azimuth)
+      // Bearing directly towards destination
       const targetBearing = getGreatCircleBearing(pos, est.destCoords);
 
-      // Smooth camera bearing using spherical lerp to prevent any micro-jitter
       const prevBearing = currentBearingRef.current ?? targetBearing;
       const smoothBearing = lerpAngle(prevBearing, targetBearing, Math.min(1, dt * 8.0));
       currentBearingRef.current = smoothBearing;
 
       try {
-        // Center camera exactly on aircraft with bearing matching the flight track
-        // Result: The aircraft flies 100% STRAIGHT FORWARD (UP) and ground flows STRAIGHT DOWN
         map.jumpTo({
           center: [pos.lon, pos.lat],
           bearing: smoothBearing,
@@ -406,9 +426,9 @@ export default function MapLibreFlightRadar({
 
     rafId = requestAnimationFrame(tick);
     return () => { if (rafId) cancelAnimationFrame(rafId); };
-  }, [flight?.isLive]);
+  }, [flight?.isLive, flight]);
 
-  // 60FPS High-Precision Engine Contrail Simulation (Streaming strictly backward/downward)
+  // 60FPS High-Precision Engine Contrail Simulation
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -416,8 +436,8 @@ export default function MapLibreFlightRadar({
     if (!ctx) return;
 
     let animId = null;
-    const SPEED = 1.35; // Gentle backward drift matching forward cruise speed
-    const MAX_POINTS = 160; // Sleek contrail ribbon streaming behind wings
+    const SPEED = 1.35;
+    const MAX_POINTS = 160;
     const leftTrail = [];
     const rightTrail = [];
     const microPuffs = [];
@@ -436,13 +456,11 @@ export default function MapLibreFlightRadar({
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // Aircraft is centered at (50vw, 50vh) pointing 0° straight UP
     const getAircraftCenter = () => ({
       cx: window.innerWidth / 2,
       cy: window.innerHeight / 2,
     });
 
-    // Pre-warm contrail so it's already beautifully formed when opening radar
     const { cx: initCx, cy: initCy } = getAircraftCenter();
     for (let i = 0; i < MAX_POINTS; i++) {
       const yOffset = i * SPEED;
@@ -458,14 +476,12 @@ export default function MapLibreFlightRadar({
       const h = window.innerHeight;
       const { cx, cy } = getAircraftCenter();
 
-      // Nozzles fixed relative to aircraft pointing straight UP
       const leftEngine = { x: cx - 8.75, y: cy + 2.8 };
       const rightEngine = { x: cx + 8.75, y: cy + 2.8 };
 
       leftTrail.unshift({ x: leftEngine.x, y: leftEngine.y, age: 0 });
       rightTrail.unshift({ x: rightEngine.x, y: rightEngine.y, age: 0 });
 
-      // Contrail particles stream strictly downward (+y)
       for (let i = leftTrail.length - 1; i >= 0; i--) {
         const pt = leftTrail[i];
         pt.age++;
@@ -483,7 +499,6 @@ export default function MapLibreFlightRadar({
         }
       }
 
-      // Subtle atmospheric micro-puffs along the trail
       if (frame % 2 === 0 && microPuffs.length < MAX_PUFFS) {
         microPuffs.push({
           x: leftEngine.x,
@@ -511,7 +526,6 @@ export default function MapLibreFlightRadar({
 
       ctx.clearRect(0, 0, w, h);
 
-      // Draw twin contrail ribbons
       const drawStream = (points) => {
         if (points.length < 2) return;
         ctx.beginPath();
@@ -522,7 +536,6 @@ export default function MapLibreFlightRadar({
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
-        // Outer soft atmospheric glow
         const glowGrad = ctx.createLinearGradient(
           points[0].x, points[0].y,
           points[points.length - 1].x, points[points.length - 1].y
@@ -535,7 +548,6 @@ export default function MapLibreFlightRadar({
         ctx.lineWidth = 2.4;
         ctx.stroke();
 
-        // Inner crisp white core
         const coreGrad = ctx.createLinearGradient(
           points[0].x, points[0].y,
           points[points.length - 1].x, points[points.length - 1].y
@@ -552,7 +564,6 @@ export default function MapLibreFlightRadar({
       drawStream(leftTrail);
       drawStream(rightTrail);
 
-      // Render micro-puffs
       for (let i = microPuffs.length - 1; i >= 0; i--) {
         const p = microPuffs[i];
         p.life++;
@@ -593,19 +604,18 @@ export default function MapLibreFlightRadar({
   const est = estimateRef.current;
   const nowSec = Math.floor(Date.now() / 1000);
 
-  // Single source of truth: flight focus session's remaining seconds
-  let totalSec = estimate?.timeRemainingSec;
+  let totalSec = verifiedEstimate?.timeRemainingSec;
 
   if (typeof totalSec !== 'number' || isNaN(totalSec)) {
     if (liveTelemetry?.arrival && liveTelemetry.arrival > nowSec) {
       totalSec = liveTelemetry.arrival - nowSec;
     } else if (flight?.arrival && flight.arrival > nowSec) {
       totalSec = flight.arrival - nowSec;
-    } else if (estimate?.distRemainingKm > 0) {
+    } else if (verifiedEstimate?.distRemainingKm > 0) {
       const rawSpeed = (typeof liveTelemetry?.speed === 'number' && !isNaN(liveTelemetry.speed))
         ? liveTelemetry.speed * 1.852
         : 850;
-      totalSec = Math.round((estimate.distRemainingKm / Math.max(400, rawSpeed)) * 3600);
+      totalSec = Math.round((verifiedEstimate.distRemainingKm / Math.max(400, rawSpeed)) * 3600);
     } else {
       totalSec = 0;
     }
@@ -614,7 +624,7 @@ export default function MapLibreFlightRadar({
   totalSec = Math.max(0, Math.floor(Number(totalSec) || 0));
   const minutesRemaining = Math.max(0, Math.ceil(totalSec / 60)).toLocaleString('en-US');
 
-  let currentDistKm = estimate?.distRemainingKm;
+  let currentDistKm = verifiedEstimate?.distRemainingKm;
   if (typeof currentDistKm !== 'number' || isNaN(currentDistKm)) {
     if (liveTelemetry && typeof liveTelemetry.lat === 'number' && est?.destCoords) {
       const destLon = est.destCoords.lon ?? est.destCoords.lng;
@@ -640,23 +650,20 @@ export default function MapLibreFlightRadar({
       {/* MapLibre Basemap Container */}
       <div ref={containerRef} className="absolute inset-0 w-full h-full" />
 
-      {/* Aerospace Radar Range Rings & Crosshairs (Glass Cockpit HUD) */}
+      {/* Glass Cockpit HUD Radar Range Rings & Crosshairs */}
       <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
-        {/* Inner Range Ring (50 KM) */}
         <div className="w-[180px] h-[180px] rounded-full border border-dashed border-white/[0.07] relative flex items-center justify-center">
-          <span className="absolute -top-3 px-1 bg-[#030407]/80 text-[8px] font-mono tracking-widest text-white/25">
+          <span className="absolute -top-3 px-1 bg-[#030407]/90 text-[8px] font-mono tracking-widest text-white/30">
             50 KM
           </span>
         </div>
 
-        {/* Outer Range Ring (100 KM) */}
         <div className="absolute w-[360px] h-[360px] rounded-full border border-dashed border-white/[0.05] flex items-center justify-center">
-          <span className="absolute -top-3 px-1 bg-[#030407]/80 text-[8px] font-mono tracking-widest text-white/20">
+          <span className="absolute -top-3 px-1 bg-[#030407]/90 text-[8px] font-mono tracking-widest text-white/25">
             100 KM
           </span>
         </div>
 
-        {/* Subtle Horizontal & Vertical Flight Axis Crosshairs */}
         <div className="absolute w-4 h-px bg-white/20" />
         <div className="absolute h-4 w-px bg-white/20" />
       </div>
@@ -679,7 +686,7 @@ export default function MapLibreFlightRadar({
           viewBox="0 0 64 72"
           width="54"
           height="61"
-          className="drop-shadow-[0_8px_20px_rgba(0,0,0,0.8)]"
+          className="drop-shadow-[0_8px_20px_rgba(0,0,0,0.85)]"
         >
           <defs>
             <linearGradient id="fuselage-gradient" x1="0" y1="0" x2="1" y2="0">
@@ -730,11 +737,11 @@ export default function MapLibreFlightRadar({
             fill="#1a1c22"
           />
 
-          {/* Horizontal Stabilizers (Tail Wings) */}
+          {/* Horizontal Stabilizers */}
           <path d="M29 55.5 L17.5 63.5 L17.5 65 L29.5 62 Z" fill="#e8e9ec" />
           <path d="M35 55.5 L46.5 63.5 L46.5 65 L34.5 62 Z" fill="#d0d3d8" />
 
-          {/* Vertical Stabilizer (Fin) */}
+          {/* Vertical Stabilizer */}
           <path d="M31.4 47 L32.6 47 L32.6 63.5 L31.4 63.5 Z" fill="#ffffff" />
         </svg>
       </div>
@@ -811,7 +818,7 @@ export default function MapLibreFlightRadar({
         </button>
       </div>
 
-      {/* Footer Readout - Time and Distance aligned on baseline */}
+      {/* Footer Readout */}
       <footer
         className="radar-panel absolute inset-x-0 bottom-0 z-30 pointer-events-none font-sans"
         style={{
@@ -821,7 +828,7 @@ export default function MapLibreFlightRadar({
       >
         <div className="max-w-xl mx-auto px-6 sm:px-8">
           <div className="flex items-end justify-between">
-            {/* Time Remaining Column */}
+            {/* Time Remaining */}
             <div className="flex flex-col">
               <span className="text-[13px] sm:text-[14px] font-semibold text-white/60 tracking-normal mb-1.5">
                 Time Remaining
@@ -836,7 +843,7 @@ export default function MapLibreFlightRadar({
               </div>
             </div>
 
-            {/* Distance Remaining Column */}
+            {/* Distance Remaining */}
             <div className="flex flex-col items-end text-right">
               <div className="flex items-center gap-1.5 mb-1.5">
                 <span className="text-[13px] sm:text-[14px] font-semibold text-white/60 tracking-normal">
@@ -862,24 +869,11 @@ export default function MapLibreFlightRadar({
             </div>
           </div>
 
-          {/* Map Attribution */}
-          <div className="flex justify-end gap-3 pt-3 text-[9px] text-white/35">
-            <a
-              href="https://carto.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="pointer-events-auto hover:text-white/70 hover:underline"
-            >
-              © CARTO
-            </a>
-            <a
-              href="https://www.openstreetmap.org/copyright"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="pointer-events-auto hover:text-white/70 hover:underline"
-            >
-              © OSM
-            </a>
+          {/* Clean Radar Attribution */}
+          <div className="flex justify-end gap-3 pt-3 text-[9px] text-white/30">
+            <span>RADAR HUD</span>
+            <span>•</span>
+            <span>WGS 84</span>
           </div>
         </div>
       </footer>
