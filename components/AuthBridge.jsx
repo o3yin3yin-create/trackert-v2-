@@ -342,11 +342,11 @@ export function UserButton({ afterSignOutUrl = '/', appearance = {} }) {
   if (!user) return null;
 
   return (
-    <div className="relative inline-block text-left" ref={dropdownRef}>
+    <div className="relative inline-flex items-center justify-center" ref={dropdownRef}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full h-full rounded-full overflow-hidden border border-white/20 hover:border-white/50 transition-all flex items-center justify-center bg-zinc-800 text-white font-medium text-xs focus:outline-none cursor-pointer active:scale-95"
+        className="w-9 h-9 rounded-full overflow-hidden border border-white/15 hover:border-white/40 transition-all flex items-center justify-center bg-white/[0.06] hover:bg-white/15 text-white font-medium text-xs focus:outline-none cursor-pointer active:scale-95 shadow-sm"
         aria-label="User profile"
       >
         <UserAvatarDisplay user={user} size={18} />

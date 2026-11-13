@@ -8841,32 +8841,7 @@ function AppContent({ isPreview = false }) {
                     </Show>
                     
                     <Show when="signed-in">
-                      <div 
-                        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 border ${
-                          isAdmin 
-                            ? 'border-amber-400/60 shadow-[0_0_12px_rgba(245,158,11,0.35)]'
-                            : !isOnline 
-                            ? 'border-white/10 opacity-70' 
-                            : isSyncing 
-                            ? 'border-white/60 shadow-[0_0_10px_rgba(255,255,255,0.4)]' 
-                            : 'border-white/25 hover:border-white/50 shadow-sm'
-                        }`}
-                        title={!isOnline ? 'Offline' : isSyncing ? 'Syncing...' : 'Online & Synced'}
-                      >
-                        <UserButton 
-                          appearance={{ 
-                            elements: { 
-                              rootBox: "w-9 h-9 flex items-center justify-center",
-                              userButtonTrigger: "w-9 h-9 rounded-full p-0 border-0 outline-none focus:outline-none flex items-center justify-center overflow-hidden",
-                              avatarBox: "w-full h-full rounded-full overflow-hidden",
-                              userButtonAvatarImage: "w-full h-full object-cover rounded-full",
-                              userButtonPopoverCard: "!bg-[#18181B] !border !border-white/10 !shadow-2xl !bg-none",
-                              userButtonPopoverFooter: "!bg-transparent !bg-none !border-t !border-white/10 !border-b-0",
-                              developmentModeBadge: "!hidden",
-                            } 
-                          }} 
-                        />
-                      </div>
+                      <UserButton />
                     </Show>
                   </>
                 )}
