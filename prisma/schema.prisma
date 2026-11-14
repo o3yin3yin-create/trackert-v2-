@@ -42,6 +42,8 @@ model User {
   receivedRequests Friendship[] @relation("FriendAddressee")
   pushTokens       PushToken[]
   scheduledPushes  ScheduledPush[]
+  hostedRooms      StudyRoom[]       @relation("HostedRooms")
+  studyRoomMemberships StudyRoomMember[]
 }
 
 // 2. جدول العادات ببيانات المواعيد المجدولة والتفاصيل الإضافية (الوقت والمكان)
@@ -146,4 +148,40 @@ model SpotifyInviteCode {
   usedBy    String?   // clerkId أو userId
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+}
+
+// 8. غرف المذاكرة الجماعية (Study Group Rooms)
+model StudyRoom {
+  id         String    @id @default(cuid())
+  code       String    @unique
+  name       String
+  visibility String    @default("private") // "private" | "public"
+  hostId     String
+  host       User      @relation("HostedRooms", fields: [hostId], references: [id], onDelete: Cascade)
+  isActive   Boolean   @default(true)
+  startedAt  DateTime  @default(now())
+  endedAt    DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  members    StudyRoomMember[]
+
+  @@index([visibility, isActive])
+  @@index([hostId, isActive])
+}
+
+model StudyRoomMember {
+  id        String   @id @default(cuid())
+  roomId    String
+  userId    String
+  topic     String?
+  joinedAt  DateTime @default(now())
+  lastSeen  DateTime @default(now())
+  isActive  Boolean  @default(true)
+
+  room      StudyRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@index([roomId, isActive])
 }

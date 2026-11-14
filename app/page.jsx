@@ -1,5 +1,5 @@
 "use client";
-import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Focus, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Download, RotateCcw, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map as MapIcon, Plane, Maximize, Minimize, Dices, Users, User, Calendar, CalendarDays, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut, Mail, Info, Headphones, Lock, Camera, Upload } from 'lucide-react';
+import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Focus, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Download, RotateCcw, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map as MapIcon, Plane, Maximize, Minimize, Dices, Users, User, Calendar, CalendarDays, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut, Mail, Info, Headphones, Lock, Camera, Upload, Zap } from 'lucide-react';
 import React, { useState, useEffect, useRef, useCallback, useMemo, Component } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -22,6 +22,8 @@ import BoardingPass from '../components/BoardingPass';
 import BoardingPassCard from '../components/BoardingPassCard';
 import WindowSeat from '../components/WindowSeat';
 import FlightFocusModal from '../components/FlightFocusModal';
+import DeepFlowModal from '../components/DeepFlowModal';
+import StudyGroupModal from '../components/StudyGroupModal';
 import SeatSelection from '../components/SeatSelection';
 import AdminPanel from '../components/AdminPanel';
 import AvatarIcon, { AVATAR_OPTIONS } from '../components/AvatarIcon';
@@ -1051,6 +1053,7 @@ const getPreviewData = () => {
   ];
 
   const widgets = [
+    { id: 'flow', mode: 'auto', size: 'full' },
     { id: 'flight', mode: 'always', size: 'full' },
     { id: 'friends', mode: 'always', size: 'full' },
     { id: 'pomodoro', mode: 'auto', size: 'full' },
@@ -1362,6 +1365,15 @@ function AppContent({ isPreview = false }) {
 
 
   
+  // --- Deep Flow (Open Time Focus) States ---
+  const [isDeepFlowOpen, setIsDeepFlowOpen] = useState(false);
+  const [isStudyGroupOpen, setIsStudyGroupOpen] = useState(false);
+  const [quietFlowJoinNotice, setQuietFlowJoinNotice] = useState(null);
+  const [flowSeconds, setFlowSeconds] = useState(0);
+  const [isFlowRunning, setIsFlowRunning] = useState(false);
+  const [flowTaskName, setFlowTaskName] = useState('');
+  const flowLastTickRef = useRef(Date.now());
+
   // --- Flight Focus States ---
   const [isFlightFocusOpen, setIsFlightFocusOpen] = useState(false);
   const [isFlightUnlocked, setIsFlightUnlocked] = useState(false);
@@ -1848,7 +1860,18 @@ function AppContent({ isPreview = false }) {
         
         // Filter out already dismissed notifications
         const notifs = rawNotifs.filter(n => !dismissedNotifIdsRef.current.has(n.id));
-        const totalCount = incomingReqs.length + notifs.length;
+        const flowJoinNotif = notifs.find(n => n.type === 'flow_join' && (Date.now() - (n.createdAt || 0)) < 180_000);
+        if (flowJoinNotif) {
+          dismissedNotifIdsRef.current.add(flowJoinNotif.id);
+          setQuietFlowJoinNotice({ id: flowJoinNotif.id, name: flowJoinNotif.fromName || flowJoinNotif.fromUsername || 'A friend' });
+          apiFetch('/api/friends/notifications/dismiss', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: flowJoinNotif.id }),
+          }).catch(() => {});
+        }
+        const visibleNotifs = notifs.filter(n => n.type !== 'flow_join');
+        const totalCount = incomingReqs.length + visibleNotifs.length;
         setFriendsIncomingCount(totalCount);
 
         const list = Array.isArray(data.friends) ? data.friends : [];
@@ -1930,7 +1953,18 @@ function AppContent({ isPreview = false }) {
         const incomingReqs = Array.isArray(data.incoming) ? data.incoming : [];
         const rawNotifs = Array.isArray(data.notifications) ? data.notifications : [];
         const notifs = rawNotifs.filter(n => !dismissedNotifIdsRef.current.has(n.id));
-        const totalCount = incomingReqs.length + notifs.length;
+        const flowJoinNotif = notifs.find(n => n.type === 'flow_join' && (Date.now() - (n.createdAt || 0)) < 180_000);
+        if (flowJoinNotif) {
+          dismissedNotifIdsRef.current.add(flowJoinNotif.id);
+          setQuietFlowJoinNotice({ id: flowJoinNotif.id, name: flowJoinNotif.fromName || flowJoinNotif.fromUsername || 'A friend' });
+          apiFetch('/api/friends/notifications/dismiss', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: flowJoinNotif.id }),
+          }).catch(() => {});
+        }
+        const visibleNotifs = notifs.filter(n => n.type !== 'flow_join');
+        const totalCount = incomingReqs.length + visibleNotifs.length;
         setFriendsIncomingCount(totalCount);
         const list = Array.isArray(data.friends) ? data.friends : [];
         setFriendsList(list);
@@ -2154,6 +2188,7 @@ function AppContent({ isPreview = false }) {
   const [widgetsConfig, setWidgetsConfig] = useState(() => {
     if (isPreview) return getPreviewData().widgets;
     const DEFAULT_WIDGETS = [
+      { id: 'flow', mode: 'auto', size: 'full' },
       { id: 'pomodoro', mode: 'auto', size: 'full' },
       { id: 'flight', mode: 'auto', size: 'full' },
       { id: 'spotify', mode: 'auto', size: 'full' },
@@ -3712,6 +3747,12 @@ function AppContent({ isPreview = false }) {
       case 'flightFocus':
         setIsFlightFocusOpen(visible);
         break;
+      case 'flow':
+        setIsDeepFlowOpen(visible);
+        break;
+      case 'studyGroup':
+        setIsStudyGroupOpen(visible);
+        break;
       case 'windowSeat':
         setIsWindowSeatOpen(visible);
         break;
@@ -3798,6 +3839,8 @@ function AppContent({ isPreview = false }) {
     setIsPomodoroOpen(false);
     setIsAmbientModalOpen(false);
     setIsFlightFocusOpen(false);
+    setIsDeepFlowOpen(false);
+    setIsStudyGroupOpen(false);
     setIsHowToUseOpen(false);
     setIsCardsModalOpen(false);
     setIsAvatarModalOpen(false);
@@ -3909,6 +3952,8 @@ function AppContent({ isPreview = false }) {
       ambient: 'ambient',
       flight: 'flightFocus',
       friends: 'friends',
+      flow: 'flow',
+      studyGroup: 'studyGroup',
     };
     if (mapping[target]) {
       openNav(mapping[target]);
@@ -4535,6 +4580,156 @@ function AppContent({ isPreview = false }) {
     };
   }, [isTimerRunning, activePomodoroTask, t]);
 
+  // --- Deep Flow (Open Time) Timer & Session Synchronization ---
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('daybase_active_flow_v1');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && typeof parsed === 'object') {
+            if (parsed.taskName) setFlowTaskName(parsed.taskName);
+            let accumulated = Number(parsed.accumulatedSec) || 0;
+            if (parsed.isRunning && parsed.lastActive) {
+              const delta = Math.max(0, Math.floor((Date.now() - parsed.lastActive) / 1000));
+              accumulated += delta;
+              setIsFlowRunning(true);
+            }
+            setFlowSeconds(accumulated);
+          }
+        }
+      } catch (_) {}
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isFlowRunning) {
+      flowLastTickRef.current = Date.now();
+      return;
+    }
+
+    flowLastTickRef.current = Date.now();
+    const tick = () => {
+      const now = Date.now();
+      const deltaMs = now - flowLastTickRef.current;
+      const deltaSecs = Math.floor(deltaMs / 1000);
+      if (deltaSecs >= 1) {
+        flowLastTickRef.current = now;
+        setFlowSeconds(prev => {
+          const next = prev + deltaSecs;
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('daybase_active_flow_v1', JSON.stringify({
+              accumulatedSec: next,
+              isRunning: true,
+              lastActive: now,
+              taskName: flowTaskName
+            }));
+          }
+          return next;
+        });
+
+        const todayStr = getFormatDateStr(new Date());
+        setFocusTimeData(prev => {
+          const updated = { ...prev, [todayStr]: (prev[todayStr] || 0) + deltaSecs };
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('daybase_focusTime_v4', JSON.stringify(updated));
+          }
+          return updated;
+        });
+
+        if (flowTaskName) {
+          setPomodoroTasksData(prev => {
+            const updated = { ...prev };
+            if (!updated[todayStr]) updated[todayStr] = [];
+            const existingIdx = updated[todayStr].findIndex(tk => tk.name === flowTaskName);
+            if (existingIdx > -1) {
+              updated[todayStr][existingIdx].timeSpent += deltaSecs;
+            } else {
+              updated[todayStr].push({ name: flowTaskName, color: '#30d158', timeSpent: deltaSecs });
+            }
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(updated));
+            }
+            return updated;
+          });
+        }
+      }
+    };
+
+    const interval = setInterval(tick, 1000);
+    window.addEventListener('visibilitychange', tick);
+    window.addEventListener('focus', tick);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('visibilitychange', tick);
+      window.removeEventListener('focus', tick);
+    };
+  }, [isFlowRunning, flowTaskName]);
+
+  // Sync Deep Flow session to backend for friends
+  useEffect(() => {
+    if (!isMounted) return;
+    if (isFlowRunning) {
+      const startTime = Math.floor(Date.now() / 1000) - flowSeconds;
+      const data = {
+        startTime,
+        elapsedSec: flowSeconds,
+        taskName: flowTaskName || 'Deep Flow'
+      };
+      syncSessionRef.current.lastSyncedType = 'flow';
+      apiFetch('/api/session', {
+        method: 'POST',
+        body: JSON.stringify({ type: 'flow', data })
+      }).catch(() => {});
+    } else {
+      if (syncSessionRef.current.lastSyncedType === 'flow') {
+        syncSessionRef.current.lastSyncedType = null;
+        apiFetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
+      }
+    }
+  }, [isFlowRunning, isMounted]);
+
+  const handleToggleFlow = () => {
+    haptic('medium');
+    setIsFlowRunning(prev => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('daybase_active_flow_v1', JSON.stringify({
+          accumulatedSec: flowSeconds,
+          isRunning: next,
+          lastActive: Date.now(),
+          taskName: flowTaskName
+        }));
+      }
+      return next;
+    });
+  };
+
+  const handleResetFlow = () => {
+    haptic('light');
+    setIsFlowRunning(false);
+    setFlowSeconds(0);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('daybase_active_flow_v1');
+    }
+    if (syncSessionRef.current.lastSyncedType === 'flow') {
+      syncSessionRef.current.lastSyncedType = null;
+      apiFetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
+    }
+  };
+
+  const handleFinishFlowSession = (totalSecs, taskName) => {
+    haptic('success');
+    setIsFlowRunning(false);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('daybase_active_flow_v1');
+    }
+    if (syncSessionRef.current.lastSyncedType === 'flow') {
+      syncSessionRef.current.lastSyncedType = null;
+      apiFetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
+    }
+  };
+
   // ─── Sync Engine ───
   useEffect(() => {
     const updateOnlineStatus = () => setIsOnline(navigator.onLine);
@@ -4614,8 +4809,9 @@ function AppContent({ isPreview = false }) {
 
   const handleJoinFriendSession = (info) => {
     if (!info) return;
-    const { friendName, presence, sessionData } = info;
+    const { friendName, friendUsername, presence, sessionData } = info;
     const isFlight = sessionData?.type === 'flight' || presence?.status === 'flight';
+    const isFlow = sessionData?.type === 'flow' || presence?.kind === 'flow';
 
     if (isFlight) {
       if (sessionData?.flight) {
@@ -4628,6 +4824,22 @@ function AppContent({ isPreview = false }) {
       recordFlightActivity();
       closeAllModals();
       setIsFlightFocusOpen(true);
+    } else if (isFlow) {
+      // Join quietly with own topic (never overwrite with friend's topic)
+      setFlowTaskName('');
+      if (!isFlowRunning) {
+        setFlowSeconds(0);
+      }
+      setIsFlowRunning(true);
+      closeAllModals();
+      navTo('flow');
+      if (!isPreview && friendUsername) {
+        apiFetch('/api/friends/nudge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: friendUsername, type: 'flow_join' }),
+        }).catch(() => {});
+      }
     } else {
       const initTime = sessionData?.initialTime || 25 * 60;
       const remSec = sessionData?.remainingSec != null ? sessionData.remainingSec : initTime;
@@ -6415,6 +6627,116 @@ function AppContent({ isPreview = false }) {
             <div 
               className="h-[2px] bg-white/20 rounded-full transition-all duration-700 ease-out ml-auto"
               style={{ width: `calc(${100 - clampedPct}% - 16px)` }}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    if (widgetId === 'flow') {
+      const hasFlowActivity = isFlowRunning || flowSeconds > 0;
+      if (mode === 'auto' && !hasFlowActivity) {
+        return null;
+      }
+
+      const fHours = Math.floor(flowSeconds / 3600);
+      const fMins = Math.floor((flowSeconds % 3600) / 60);
+      const fSecs = flowSeconds % 60;
+      const sweepPct = isFlowRunning || flowSeconds > 0 ? Math.max(2, ((flowSeconds % 60) / 60) * 100) : 0;
+
+      if (size === 'compact') {
+        return (
+          <div
+            key="flow-widget"
+            onClick={() => navTo('flow')}
+            data-no-day-swipe="true"
+            className="col-span-1 w-full px-3.5 py-2.5 rounded-[20px] liquid-panel flex flex-col justify-between gap-1.5 cursor-pointer border border-white/15 shadow-md hover:border-white/25 active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
+          >
+            <div className="flex items-center justify-between gap-1.5 min-w-0">
+              <div className="flex flex-col min-w-0">
+                <span className="text-[12px] font-black text-white tracking-tight truncate leading-none font-sans">
+                  {flowTaskName?.trim() || 'Deep Flow'}
+                </span>
+                <span className="text-[10px] text-white/45 truncate leading-none mt-1 font-medium">
+                  {isFlowRunning ? 'Live' : flowSeconds > 0 ? 'Paused' : 'Ready'}
+                </span>
+              </div>
+              {hasFlowActivity ? (
+                <div className="flex items-baseline font-mono font-black text-[11px] text-white shrink-0 tabular-nums leading-none pt-0.5">
+                  <span>{fHours > 0 ? `${fHours}h ` : ''}{String(fMins).padStart(2, '0')}</span>
+                  <span className="text-[9px] text-white/40 font-bold">:{String(fSecs).padStart(2, '0')}</span>
+                </div>
+              ) : (
+                <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center text-black shrink-0">
+                  <Zap size={10} strokeWidth={2.8} />
+                </div>
+              )}
+            </div>
+            <div className="w-full h-[1.5px] bg-white/15 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-white transition-all duration-700 ease-out"
+                style={{ width: `${sweepPct}%` }}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div
+          key="flow-widget"
+          onClick={() => navTo('flow')}
+          data-no-day-swipe="true"
+          className="col-span-2 w-full px-4 py-2.5 sm:px-4.5 sm:py-3 rounded-[20px] liquid-panel flex flex-col justify-between gap-2 cursor-pointer border border-white/15 shadow-lg hover:border-white/25 active:scale-[0.99] transition-all duration-200 select-none min-h-[62px]"
+        >
+          <div className="flex items-center justify-between gap-3 min-w-0 pt-0.5">
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[17px] sm:text-[18px] font-black tracking-tight text-white leading-none font-sans truncate">
+                  {flowTaskName?.trim() || 'Deep Flow'}
+                </span>
+                {isFlowRunning && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0" />
+                )}
+              </div>
+              <span className="text-[11px] sm:text-[12px] text-white/45 tracking-tight leading-none font-medium truncate mt-1">
+                {isFlowRunning ? 'Deep Flow · Counting up' : flowSeconds > 0 ? 'Deep Flow · Paused' : 'Open-ended study stopwatch'}
+              </span>
+            </div>
+
+            {hasFlowActivity ? (
+              <div className="flex items-center gap-2.5 shrink-0">
+                <div className="flex items-baseline font-black tracking-tight select-none tabular-nums font-mono leading-none pt-1">
+                  <span className="text-[22px] sm:text-[24px] text-white leading-none">
+                    {fHours > 0 ? `${String(fHours).padStart(2, '0')}:${String(fMins).padStart(2, '0')}` : `00:${String(fMins).padStart(2, '0')}`}
+                  </span>
+                  <span className="text-[13px] sm:text-[14px] text-white/40 ml-0.5 font-bold leading-none">
+                    :{String(fSecs).padStart(2, '0')}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleFlow();
+                  }}
+                  aria-label={isFlowRunning ? 'Pause Deep Flow' : 'Resume Deep Flow'}
+                  className="w-7 h-7 rounded-full bg-white text-black flex items-center justify-center hover:bg-white/90 active:scale-95 transition-all shrink-0"
+                >
+                  {isFlowRunning ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" className="ml-0.5" />}
+                </button>
+              </div>
+            ) : (
+              <span className="text-xs font-bold px-3.5 py-1 rounded-full bg-white text-black hover:bg-white/90 active:scale-95 transition-all shadow-md font-sans shrink-0 leading-none">
+                {'Start'}
+              </span>
+            )}
+          </div>
+
+          <div className="w-full h-[1.5px] bg-white/15 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-white transition-all duration-700 ease-out"
+              style={{ width: `${sweepPct}%` }}
             />
           </div>
         </div>
@@ -8350,6 +8672,40 @@ function AppContent({ isPreview = false }) {
           document.body
         )}
 
+        {/* ---------------- DEEP FLOW MODAL (OPEN TIME FOCUS) ---------------- */}
+        {isDeepFlowOpen && isMounted && createPortal(
+          <DeepFlowModal
+            isOpen={isDeepFlowOpen}
+            onClose={popNav}
+            flowSeconds={flowSeconds}
+            isFlowRunning={isFlowRunning}
+            flowTaskName={flowTaskName}
+            setFlowTaskName={setFlowTaskName}
+            todayFocusSeconds={focusTimeData[getFormatDateStr(new Date())] || 0}
+            quietJoinNotice={quietFlowJoinNotice}
+            onDismissJoinNotice={() => setQuietFlowJoinNotice(null)}
+            onToggleTimer={handleToggleFlow}
+            onResetTimer={handleResetFlow}
+            onFinishSession={handleFinishFlowSession}
+            onOpenSoundLibrary={() => pushNav('ambient')}
+            themeColor={themeColor}
+          />,
+          document.body
+        )}
+
+        {/* ---------------- STUDY GROUP MODAL (QUIET ROOMS) ---------------- */}
+        {isStudyGroupOpen && isMounted && createPortal(
+          <StudyGroupModal
+            isOpen={isStudyGroupOpen}
+            onClose={popNav}
+            isPreview={isPreview}
+            apiFetch={apiFetch}
+            onOpenDeepFlow={() => navTo('flow')}
+            onOpenSoundLibrary={() => pushNav('ambient')}
+          />,
+          document.body
+        )}
+
         {isPomodoroOpen && createPortal(
           (() => {
             const PRESETS = [10, 20, 25, 30];
@@ -9575,6 +9931,11 @@ function AppContent({ isPreview = false }) {
                   <div className="flex flex-col gap-3 pb-8">
                     {widgetsConfig.filter(w => !isPreview || w.id !== 'spotify').map((widget, index) => {
                       const meta = {
+                        flow: {
+                          icon: <Zap size={18} strokeWidth={2.4} />,
+                          name: 'Deep Flow',
+                          desc: 'Open-ended study stopwatch'
+                        },
                         pomodoro: {
                           icon: <Timer size={18} strokeWidth={2.4} />,
                           name: 'Pomodoro Focus',
@@ -10614,6 +10975,41 @@ function AppContent({ isPreview = false }) {
 
         </motion.div>
 
+        {/* --- DEEP FLOW ACTIVE FLOATING MINI PILL (APPLE DYNAMIC ISLAND STYLE) --- */}
+        {(isFlowRunning || flowSeconds > 0) && !isDeepFlowOpen && (
+          <div 
+            onClick={() => navTo('flow')}
+            className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.4rem)] sm:bottom-[5.5rem] left-1/2 -translate-x-1/2 z-[9999] bg-[#0c0c0e]/95 border border-white/20 backdrop-blur-2xl px-4 py-2.5 rounded-full flex items-center gap-3 shadow-2xl shadow-black cursor-pointer hover:border-white/40 transition-all active:scale-95 select-none animate-in fade-in slide-in-from-bottom-2"
+          >
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${isFlowRunning ? 'bg-white animate-pulse' : 'bg-white/30'}`} />
+              <span className="font-mono text-[10px] uppercase font-bold tracking-widest text-white/50">FLOW</span>
+            </div>
+            <div className="h-3.5 w-px bg-white/10" />
+            <div className="font-mono text-xs font-black text-white tabular-nums tracking-wide">
+              {Math.floor(flowSeconds / 3600) > 0 
+                ? `${Math.floor(flowSeconds / 3600)}:${String(Math.floor((flowSeconds % 3600) / 60)).padStart(2, '0')}:${String(flowSeconds % 60).padStart(2, '0')}`
+                : `${String(Math.floor(flowSeconds / 60)).padStart(2, '0')}:${String(flowSeconds % 60).padStart(2, '0')}`}
+            </div>
+            {flowTaskName && (
+              <>
+                <div className="h-3.5 w-px bg-white/10" />
+                <span className="text-xs text-white/70 max-w-[110px] truncate font-medium">{flowTaskName}</span>
+              </>
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleFlow();
+              }}
+              className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all ml-0.5 cursor-pointer"
+              title={isFlowRunning ? 'Pause' : 'Resume'}
+            >
+              {isFlowRunning ? <Pause size={10} fill="currentColor" /> : <Play size={10} fill="currentColor" className="ml-0.5" />}
+            </button>
+          </div>
+        )}
+
         {/* --- FLOATING NAV --- */}
         <div className="fixed bottom-0 left-0 w-full flex justify-center pt-3 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none z-[10000] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] sm:pb-6">
           <div className="w-full max-w-[428px] md:max-w-2xl lg:max-w-3xl px-6 flex justify-between items-center pointer-events-auto">
@@ -10650,7 +11046,7 @@ function AppContent({ isPreview = false }) {
                     setIsSettingsMenuOpen(false);
                   }} 
                   className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${
-                    isFocusMenuOpen || isPomodoroOpen || isFlightFocusOpen || isAmbientModalOpen
+                    isFocusMenuOpen || isPomodoroOpen || isFlightFocusOpen || isDeepFlowOpen || isAmbientModalOpen
                       ? 'bg-white/20 text-white shadow-sm' 
                       : 'hover:bg-white/10 text-white/50 hover:text-white'
                   }`}
@@ -10710,6 +11106,27 @@ function AppContent({ isPreview = false }) {
                           </span>
                           <span className="text-[11px] text-white/50 truncate">
                             {'Live radar & boarding pass'}
+                          </span>
+                        </div>
+                      </button>
+
+                      {/* Deep Flow (Open Time Focus) Option */}
+                      <button 
+                        onClick={() => {
+                          setIsFocusMenuOpen(false);
+                          navTo('flow');
+                        }} 
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-white/10 transition-all flex items-center gap-3 group active:scale-[0.98]"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white group-hover:scale-105 transition-transform shrink-0">
+                          <Zap size={18} />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-bold text-white group-hover:text-white transition-colors truncate">
+                            {'Deep Flow'}
+                          </span>
+                          <span className="text-[11px] text-white/50 truncate">
+                            {'Count-up study session'}
                           </span>
                         </div>
                       </button>
@@ -11242,6 +11659,7 @@ function AppContent({ isPreview = false }) {
               onOpenFriendSchedule={(friendData) => {
                 pushNav('schedule', { friendSchedule: friendData });
               }}
+              onOpenStudyGroup={() => pushNav('studyGroup')}
               initialSelectedFriend={selectedFriendForModal}
               myUsername={user?.username || ''}
               myName={user?.fullName || user?.firstName || 'Explorer'}

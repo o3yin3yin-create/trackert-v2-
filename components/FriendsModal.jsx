@@ -5,7 +5,7 @@ import {
   Users, Plus, X, Search, Check, Copy, Share2, 
   Shield, AlertCircle, Loader2, ChevronLeft, ChevronRight,
   Music, Plane, Clock, MoreHorizontal, ShieldAlert, Trash2, Lock,
-  Pin, CalendarDays, Eye, Timer, BookOpen
+  Pin, CalendarDays, Eye, Timer, BookOpen, Zap
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { translations } from '@/lib/translations';
@@ -25,6 +25,7 @@ export default function FriendsModal({
   onTogglePinFriend,
   onJoinSession,
   onOpenFriendSchedule,
+  onOpenStudyGroup,
   isAdmin = false,
   onOpenSignIn,
 }) {
@@ -482,7 +483,7 @@ export default function FriendsModal({
 
   // Count active friends
   const activeFriendsCount = useMemo(() => {
-    return friendsWithPresence.filter((f) => f.presence.kind === 'focus' || f.presence.kind === 'flight' || f.presence.kind === 'music' || f.presence.kind === 'lecture').length;
+    return friendsWithPresence.filter((f) => f.presence.kind === 'focus' || f.presence.kind === 'flow' || f.presence.kind === 'flight' || f.presence.kind === 'music' || f.presence.kind === 'lecture').length;
   }, [friendsWithPresence]);
 
   // Close handler for presence bottom sheet
@@ -928,6 +929,7 @@ export default function FriendsModal({
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-[11px] font-bold tracking-[2px] text-[#525252] uppercase flex items-center gap-1.5">
                       {actKind === 'focus' && <Timer size={13} className="text-[#0a0a0a]" />}
+                      {actKind === 'flow' && <Zap size={13} className="text-[#0a0a0a]" />}
                       {(actKind === 'lecture' || actKind === 'scheduled') && <BookOpen size={13} className="text-[#0a0a0a]" />}
                       {actKind === 'flight' && <Plane size={13} className="text-[#0a0a0a]" />}
                       {actKind === 'music' && <Music size={13} className="text-[#0a0a0a]" />}
@@ -1032,7 +1034,7 @@ export default function FriendsModal({
               <div className="flex flex-col min-w-0">
                 <span 
                   className="font-extrabold tracking-tight text-[#0a0a0a] leading-tight select-text truncate"
-                  style={{ fontSize: `${presence.kind === 'focus' ? Math.min(presence.bigSize || 56, 34) : Math.min(presence.bigSize || 36, 22)}px` }}
+                  style={{ fontSize: `${(presence.kind === 'focus' || presence.kind === 'flow') ? Math.min(presence.bigSize || 56, 34) : Math.min(presence.bigSize || 36, 22)}px` }}
                 >
                   {presence.big}
                 </span>
@@ -1150,6 +1152,7 @@ export default function FriendsModal({
               if (onJoinSession) {
                 onJoinSession({
                   friendName: friendName,
+                  friendUsername: selectedFriend.user?.username,
                   presence: presence,
                   sessionData: presence?.sessionData
                 });
@@ -1241,38 +1244,49 @@ export default function FriendsModal({
         {view === 'main' && (
           <div className="flex-1 flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between gap-2 mb-4">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all active:scale-95 cursor-pointer shrink-0"
+                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all active:scale-95 cursor-pointer shrink-0"
                   aria-label="Back"
                 >
-                  <ChevronLeft size={20} className={isRtl ? 'rotate-180' : ''} />
+                  <ChevronLeft size={19} className={isRtl ? 'rotate-180' : ''} />
                 </button>
-                <div className="flex items-center gap-2.5">
-                  <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h1 className="text-[26px] sm:text-3xl font-black tracking-tight text-white truncate">
                     {t('friendsTitle')}
                   </h1>
                   {!isEmpty && (
-                    <span className="text-[10px] font-bold tracking-widest text-[#b3b3b3] bg-[#171717] rounded-full px-2.5 py-1 uppercase shrink-0">
+                    <span className="text-[9px] font-bold tracking-wider text-[#b3b3b3] bg-[#171717] rounded-full px-2 py-0.5 uppercase shrink-0">
                       {activeFriendsCount} ACTIVE
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 shrink-0">
+                {onOpenStudyGroup && (
+                  <button
+                    type="button"
+                    onClick={onOpenStudyGroup}
+                    className="h-9 px-3 rounded-full border border-white/[0.16] text-white/85 hover:bg-white hover:text-black text-[11.5px] font-medium flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0"
+                    aria-label="Study Rooms"
+                  >
+                    <Users size={13} />
+                    <span>Rooms</span>
+                  </button>
+                )}
                 {/* Add Friend Button */}
                 <button
                   type="button"
                   onClick={() => setView('add')}
-                  className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center font-bold hover:bg-white/90 shadow-lg active:scale-95 transition-all cursor-pointer"
+                  className="w-9 h-9 rounded-full bg-white text-black flex items-center justify-center font-bold hover:bg-white/90 shadow-lg active:scale-95 transition-all cursor-pointer shrink-0"
                   title={t('addFriendTitle')}
                   aria-label={t('addFriendTitle')}
                 >
-                  <Plus size={22} strokeWidth={2.8} />
+                  <Plus size={20} strokeWidth={2.8} />
                 </button>
               </div>
             </div>

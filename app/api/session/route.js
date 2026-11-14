@@ -3,6 +3,7 @@ import { getAuthUserId } from '@/lib/auth-server';
 import prisma from '@/lib/prisma';
 import { rateLimit, getClientIp } from '@/lib/rateLimit';
 import { schedulePomodoroEnd, cancelPomodoroPush } from '@/lib/pushSchedule';
+import { publishRoomUpdate, formatRoomSummary } from '@/lib/roomBus';
 import { getCorsHeaders, handleCorsOptions } from '@/lib/cors';
 
 export const dynamic = 'force-dynamic';
@@ -78,7 +79,7 @@ export async function POST(req) {
     const { type, data } = body;
 
     // Validate type enum
-    const validTypes = ['pomodoro', 'flight', null, ''];
+    const validTypes = ['pomodoro', 'flight', 'flow', null, ''];
     if (type !== undefined && !validTypes.includes(type)) {
       return NextResponse.json({ error: 'Invalid session type' }, { status: 400, headers: cors });
     }
@@ -117,6 +118,28 @@ export async function POST(req) {
       data: { activeSessionType: type || null, activeSessionData: data || null },
       exp: Date.now() + 2500
     });
+
+    // If user is currently in an active Study Room, broadcast their updated mode/phase to roommates in RAM
+    prisma.studyRoomMember.findFirst({
+      where: { userId: updatedUser.id, isActive: true, room: { isActive: true } },
+      select: { roomId: true },
+    }).then(async (membership) => {
+      if (!membership) return;
+      const activeRoom = await prisma.studyRoom.findFirst({
+        where: { id: membership.roomId, isActive: true },
+        include: {
+          host: { select: { id: true, name: true, username: true } },
+          members: {
+            where: { isActive: true },
+            orderBy: { joinedAt: 'asc' },
+            include: { user: { select: { id: true, name: true, username: true, avatar: true, activeSessionType: true, activeSessionData: true } } },
+          },
+        },
+      });
+      if (activeRoom) {
+        publishRoomUpdate(activeRoom.id, formatRoomSummary(activeRoom, updatedUser.id));
+      }
+    }).catch(() => {});
 
     return NextResponse.json({ success: true }, { headers: cors });
   } catch (error) {

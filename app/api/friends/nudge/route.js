@@ -5,7 +5,7 @@ import { sendPush } from '@/lib/push'
 
 export { OPTIONS }
 
-const ALLOWED_NUDGE_TYPES = ['nudge', 'poke', 'cheer', 'study']
+const ALLOWED_NUDGE_TYPES = ['nudge', 'poke', 'cheer', 'study', 'flow_join']
 
 export async function POST(req) {
   const ip = getClientIp(req)
@@ -80,19 +80,21 @@ export async function POST(req) {
       data: { notifications: updatedNotifs }
     })
 
-    const senderDisplay = me.name || me.username || 'A friend'
-    const pushBody = type === 'study' 
-      ? `${senderDisplay} asks to study together.` 
-      : type === 'cheer'
-      ? `${senderDisplay} cheered you on!`
-      : `${senderDisplay} nudged you.`
+    if (type !== 'flow_join') {
+      const senderDisplay = me.name || me.username || 'A friend'
+      const pushBody = type === 'study' 
+        ? `${senderDisplay} asks to study together.` 
+        : type === 'cheer'
+        ? `${senderDisplay} cheered you on!`
+        : `${senderDisplay} nudged you.`
 
-    await sendPush(targetUser.id, {
-      title: 'bokra',
-      body: pushBody,
-      url: '/',
-      tag: `nudge:${me.id}`,
-    }).catch(() => {})
+      await sendPush(targetUser.id, {
+        title: 'bokra',
+        body: pushBody,
+        url: '/',
+        tag: `nudge:${me.id}`,
+      }).catch(() => {})
+    }
 
     return json({ success: true, notification: notifItem }, 200, req)
   } catch (err) {
