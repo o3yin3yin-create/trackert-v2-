@@ -10938,8 +10938,8 @@ function AppContent({ isPreview = false }) {
           >
             <div className="flex items-center gap-1.5 shrink-0">
               <span className={`w-2 h-2 rounded-full shrink-0 ${isFlowRunning ? 'bg-white animate-pulse' : 'bg-white/30'}`} />
-              <span className="font-mono text-[10px] uppercase font-bold tracking-wider text-white/55 whitespace-nowrap">
-                FLOW · P{flowSeconds >= 90 * 60 ? 4 : flowSeconds >= 45 * 60 ? 3 : flowSeconds >= 15 * 60 ? 2 : 1}
+              <span className="font-mono text-[10px] uppercase font-bold tracking-wider text-white/60 whitespace-nowrap">
+                {flowSeconds >= 90 * 60 ? 'DEEP WORK' : flowSeconds >= 45 * 60 ? 'HYPERFLOW' : flowSeconds >= 15 * 60 ? 'FOCUS' : 'ONSET'}
               </span>
             </div>
             <div className="h-3.5 w-px bg-white/10" />
