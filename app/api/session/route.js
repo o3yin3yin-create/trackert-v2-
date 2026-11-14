@@ -95,11 +95,31 @@ export async function POST(req) {
       }
     }
 
+    const existingUser = await prisma.user.findUnique({
+      where: { clerkId: userId },
+      select: { activeSessionData: true }
+    });
+    const existingAmbient =
+      existingUser?.activeSessionData && typeof existingUser.activeSessionData === 'object'
+        ? existingUser.activeSessionData.ambientSession
+        : undefined;
+
+    let nextSessionData = data || null;
+    if (existingAmbient) {
+      if (nextSessionData && typeof nextSessionData === 'object') {
+        if (!nextSessionData.ambientSession) {
+          nextSessionData = { ...nextSessionData, ambientSession: existingAmbient };
+        }
+      } else if (!nextSessionData) {
+        nextSessionData = { ambientSession: existingAmbient };
+      }
+    }
+
     const updatedUser = await prisma.user.update({
       where: { clerkId: userId },
       data: {
         activeSessionType: type || null,
-        activeSessionData: data || null,
+        activeSessionData: nextSessionData,
       },
       select: { id: true }
     });

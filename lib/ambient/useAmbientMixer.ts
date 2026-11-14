@@ -14,6 +14,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { SoundEngine } from './SoundEngine';
 import { SOUND_CATALOG, BUILT_IN_PRESETS, SoundMixPreset, SoundItem } from './soundCatalog';
+import { apiFetch } from '@/lib/api';
 
 export interface ActiveTrackInfo {
   soundId: string;
@@ -76,6 +77,7 @@ export function useAmbientMixer() {
   const [remoteSession, setRemoteSession] = useState<RemoteAmbientSession | null>(null);
   const lastSyncTimestampRef = useRef<number>(0);
   const isUpdatingFromRemoteRef = useRef<boolean>(false);
+  const wasEmittingToServerRef = useRef<boolean>(false);
 
   // Sleep timer state: minutes remaining, total target minutes, active status
   const [timerRemainingSeconds, setTimerRemainingSeconds] = useState<number | null>(null);
@@ -353,9 +355,10 @@ export function useAmbientMixer() {
     if (typeof window === 'undefined') return;
     try {
       const isPlaying = tracks.length > 0;
-      await fetch('/api/ambient/session', {
+      wasEmittingToServerRef.current = isPlaying;
+      lastSyncTimestampRef.current = Date.now();
+      await apiFetch('/api/ambient/session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           deviceId: deviceIdRef.current,
           deviceName: deviceNameRef.current,
@@ -377,7 +380,7 @@ export function useAmbientMixer() {
     let isMounted = true;
     const pollRemoteSession = async () => {
       try {
-        const res = await fetch('/api/ambient/session', { cache: 'no-store' });
+        const res = await apiFetch('/api/ambient/session', { cache: 'no-store' });
         if (!res.ok) return;
         const data = await res.json();
         if (!isMounted) return;
@@ -385,6 +388,22 @@ export function useAmbientMixer() {
         const serverSession: RemoteAmbientSession | null = data.session;
         if (!serverSession || !serverSession.isPlaying) {
           setRemoteSession(null);
+          // If this device was actively emitting and a remote device stopped playback, stop local audio
+          if (
+            wasEmittingToServerRef.current &&
+            Date.now() - lastSyncTimestampRef.current > 2000 &&
+            !isUpdatingFromRemoteRef.current
+          ) {
+            const engine = engineRef.current || SoundEngine.getInstance();
+            if (engine.getActiveTracks().length > 0) {
+              isUpdatingFromRemoteRef.current = true;
+              wasEmittingToServerRef.current = false;
+              engine.stopAll();
+              setTimeout(() => {
+                isUpdatingFromRemoteRef.current = false;
+              }, 400);
+            }
+          }
           return;
         }
 
@@ -457,9 +476,25 @@ export function useAmbientMixer() {
     const interval = setInterval(pollRemoteSession, 3200);
     pollRemoteSession();
 
+    // Keep server ambient session alive during long playback (server TTL is 4 min)
+    const heartbeat = setInterval(() => {
+      const engine = engineRef.current || SoundEngine.getInstance();
+      const rawActive = engine.getActiveTracks();
+      if (rawActive.length > 0 && wasEmittingToServerRef.current) {
+        const detailed: ActiveTrackInfo[] = rawActive
+          .map((t) => {
+            const item = SOUND_CATALOG.find((s) => s.id === t.soundId);
+            return item ? { soundId: t.soundId, volume: t.volume, item } : null;
+          })
+          .filter(Boolean) as ActiveTrackInfo[];
+        pushStateToServer(detailed, engine.getMasterVolume(), engine.getIsMuted());
+      }
+    }, 90000);
+
     return () => {
       isMounted = false;
       clearInterval(interval);
+      clearInterval(heartbeat);
     };
   }, [pushStateToServer]);
 
@@ -494,9 +529,8 @@ export function useAmbientMixer() {
       setRemoteSession({ ...remoteSession, activeTracks: updatedTracks, updatedAt: Date.now() });
 
       try {
-        await fetch('/api/ambient/session', {
+        await apiFetch('/api/ambient/session', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             deviceId: remoteSession.deviceId,
             deviceName: remoteSession.deviceName,
@@ -533,9 +567,8 @@ export function useAmbientMixer() {
       });
 
       try {
-        await fetch('/api/ambient/session', {
+        await apiFetch('/api/ambient/session', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             deviceId: remoteSession.deviceId,
             deviceName: remoteSession.deviceName,
@@ -555,9 +588,8 @@ export function useAmbientMixer() {
     if (!remoteSession) return;
     setRemoteSession(null);
     try {
-      await fetch('/api/ambient/session', {
+      await apiFetch('/api/ambient/session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           deviceId: remoteSession.deviceId,
           deviceName: remoteSession.deviceName,

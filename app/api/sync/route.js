@@ -324,7 +324,21 @@ export async function POST(req) {
           finishedTickets: state.finishedTickets || [],
           updatedAt: new Date(),
           ...(state.activeSessionType !== undefined && { activeSessionType: state.activeSessionType }),
-          ...(state.activeSessionData !== undefined && { activeSessionData: state.activeSessionData }),
+          ...(state.activeSessionData !== undefined && {
+            activeSessionData: (() => {
+              const existingAmbient =
+                user.activeSessionData && typeof user.activeSessionData === 'object'
+                  ? user.activeSessionData.ambientSession
+                  : undefined;
+              if (!existingAmbient) return state.activeSessionData;
+              if (state.activeSessionData && typeof state.activeSessionData === 'object') {
+                return state.activeSessionData.ambientSession
+                  ? state.activeSessionData
+                  : { ...state.activeSessionData, ambientSession: existingAmbient };
+              }
+              return { ambientSession: existingAmbient };
+            })(),
+          }),
           ...(state.spotifyRefreshToken ? { spotifyRefreshToken: state.spotifyRefreshToken } : {}),
           ...(state.privacySettings !== undefined && { privacySettings: state.privacySettings }),
           ...(state.timezone ? { timezone: state.timezone } : {}),

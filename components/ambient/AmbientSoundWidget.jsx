@@ -6,6 +6,7 @@ import {
   Coffee, Waves, Wind, Sparkles, Sliders
 } from 'lucide-react';
 import { useAmbientMixer } from '@/lib/ambient/useAmbientMixer';
+import { SOUND_CATALOG } from '@/lib/ambient/soundCatalog';
 
 const SOUND_ICON_MAP = {
   rain: CloudRain,
@@ -31,7 +32,12 @@ export default function AmbientSoundWidget({
   const mixer = useAmbientMixer();
   const isAr = lang === 'ar';
 
-  const isPlaying = mixer.activeTracksCount > 0;
+  const isLocalPlaying = mixer.activeTracksCount > 0;
+  const isRemotePlaying = !isLocalPlaying && Boolean(mixer.isRemoteActive && mixer.remoteSession?.activeTracks?.length);
+  const isPlaying = isLocalPlaying || isRemotePlaying;
+  const displayTrackCount = isLocalPlaying
+    ? mixer.activeTracksCount
+    : (mixer.remoteSession?.activeTracks?.length || 0);
 
   // Visibility logic
   if (mode === 'hidden') return null;
@@ -44,20 +50,26 @@ export default function AmbientSoundWidget({
     if (!isPlaying) {
       return isAr ? 'أصوات التركيز والمذاكرة' : 'Focus & Study Ambience';
     }
-    const names = mixer.activeTracks
-      .map((t) => (isAr ? t.item.nameAr : t.item.nameEn))
-      .slice(0, 2)
-      .join(' + ');
+    const trackList = isLocalPlaying
+      ? mixer.activeTracks.map((t) => (isAr ? t.item.nameAr : t.item.nameEn))
+      : (mixer.remoteSession?.activeTracks || []).map((t) => {
+          const item = SOUND_CATALOG.find((s) => s.id === t.soundId);
+          return item ? (isAr ? item.nameAr : item.nameEn) : t.soundId;
+        });
 
-    if (mixer.activeTracksCount > 2) {
-      return `${names} +${mixer.activeTracksCount - 2}`;
+    const names = trackList.slice(0, 2).join(' + ');
+
+    if (displayTrackCount > 2) {
+      return `${names} +${displayTrackCount - 2}`;
     }
     return names;
   };
 
   const getPrimaryIcon = () => {
     if (!isPlaying) return Headphones;
-    const firstSoundId = mixer.activeTracks[0]?.soundId;
+    const firstSoundId = isLocalPlaying
+      ? mixer.activeTracks[0]?.soundId
+      : mixer.remoteSession?.activeTracks?.[0]?.soundId;
     return SOUND_ICON_MAP[firstSoundId] || Volume2;
   };
 
@@ -65,7 +77,9 @@ export default function AmbientSoundWidget({
 
   const handleTogglePlay = (e) => {
     e.stopPropagation();
-    if (isPlaying) {
+    if (isRemotePlaying) {
+      mixer.remoteStopAll();
+    } else if (isLocalPlaying) {
       mixer.stopAll();
     } else {
       mixer.resumeLastMix().then((resumed) => {
@@ -91,7 +105,11 @@ export default function AmbientSoundWidget({
             {isPlaying ? getActiveSummary() : (isAr ? 'الأصوات المحيطية' : 'Ambient')}
           </span>
           <span className="text-[10px] text-white/40 truncate leading-tight">
-            {isPlaying ? `${mixer.activeTracksCount} ${isAr ? 'نشط' : 'active'}` : (isAr ? 'مكتبة الأصوات' : 'Sound library')}
+            {isRemotePlaying
+              ? (isAr ? `على ${mixer.remoteSession.deviceName}` : `On ${mixer.remoteSession.deviceName}`)
+              : isPlaying
+                ? `${displayTrackCount} ${isAr ? 'نشط' : 'active'}`
+                : (isAr ? 'مكتبة الأصوات' : 'Sound library')}
           </span>
         </div>
         <button
@@ -128,7 +146,11 @@ export default function AmbientSoundWidget({
               {isPlaying ? getActiveSummary() : (isAr ? 'أصوات التركيز' : 'Ambient Sounds')}
             </span>
             <span className="text-[10px] text-white/50 truncate leading-tight mt-0.5">
-              {isPlaying ? `${mixer.activeTracksCount} ${isAr ? 'أصوات قيد التشغيل' : 'sounds active'}` : (isAr ? 'اضغط للتشغيل' : 'Tap to listen')}
+              {isRemotePlaying
+                ? (isAr ? `على ${mixer.remoteSession.deviceName}` : `On ${mixer.remoteSession.deviceName}`)
+                : isPlaying
+                  ? `${displayTrackCount} ${isAr ? 'أصوات قيد التشغيل' : 'sounds active'}`
+                  : (isAr ? 'اضغط للتشغيل' : 'Tap to listen')}
             </span>
           </div>
         </div>
@@ -175,9 +197,11 @@ export default function AmbientSoundWidget({
 
           <div className="flex items-center gap-2 text-[10px] text-white/50 font-medium truncate mt-0.5">
             <span>
-              {isPlaying 
-                ? (isAr ? `${mixer.activeTracksCount} أصوات هادئة قيد التشغيل` : `${mixer.activeTracksCount} ambient tracks playing`)
-                : (isAr ? 'مكتبة أصوات نقية للمذاكرة والتركيز العميق' : 'Curated soundscapes for deep focus')}
+              {isRemotePlaying
+                ? (isAr ? `شغال الآن على ${mixer.remoteSession.deviceName} · اضغط للتحكم` : `Playing on ${mixer.remoteSession.deviceName} · Tap to control`)
+                : isPlaying
+                  ? (isAr ? `${displayTrackCount} أصوات هادئة قيد التشغيل` : `${displayTrackCount} ambient tracks playing`)
+                  : (isAr ? 'مكتبة أصوات نقية للمذاكرة والتركيز العميق' : 'Curated soundscapes for deep focus')}
             </span>
           </div>
         </div>
