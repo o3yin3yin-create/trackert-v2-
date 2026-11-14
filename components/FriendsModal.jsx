@@ -735,7 +735,6 @@ export default function FriendsModal({
                           habits: selectedFriend.user?.weeklySchedule || []
                         });
                         handleCloseSelectedSheet();
-                        if (onClose) onClose();
                       }
                     }}
                     className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 border border-emerald-600/20 shrink-0 cursor-pointer transition-all active:scale-95"
@@ -820,7 +819,6 @@ export default function FriendsModal({
                         habits: selectedFriend.user?.weeklySchedule || []
                       });
                       handleCloseSelectedSheet();
-                      if (onClose) onClose();
                     }
                   }}
                   className="py-2.5 text-start flex items-center justify-between text-black hover:text-black/70 cursor-pointer"
@@ -1562,7 +1560,6 @@ export default function FriendsModal({
                                           avatar: f.user?.avatar,
                                           habits: f.user?.weeklySchedule || []
                                         });
-                                        if (onClose) onClose();
                                       }
                                     }}
                                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/[0.12] hover:bg-emerald-500/[0.22] text-emerald-300 border border-emerald-500/25 text-[10px] font-medium tracking-normal shrink-0 transition-all cursor-pointer active:scale-95"

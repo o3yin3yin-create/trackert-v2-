@@ -313,7 +313,7 @@ export default function WeeklyScheduleCalendar({
   const currentDayHabits = habitsByDay[selectedDay] || [];
 
   return (
-    <div className="fixed inset-0 z-[10001] bg-black/90 backdrop-blur-2xl overflow-y-auto animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[10035] bg-black/90 backdrop-blur-2xl overflow-y-auto animate-in fade-in duration-200">
       {/* Toast Alert */}
       {shareToast && (
         <div className="fixed top-5 z-[10020] left-1/2 -translate-x-1/2 bg-white text-black px-4 py-2 rounded-full font-bold text-xs shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-4">

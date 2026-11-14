@@ -6783,8 +6783,7 @@ function AppContent({ isPreview = false }) {
           <div 
             key="friends-widget"
             onClick={() => {
-              setSelectedFriendForModal(friend);
-              setIsFriendsModalOpen(true);
+              pushNav('friends', { selectedFriend: friend });
             }}
             data-no-day-swipe="true"
             className="col-span-1 w-full px-2.5 sm:px-3 py-2.5 rounded-[20px] liquid-panel flex items-center justify-between gap-2 border border-white/15 shadow-lg cursor-pointer active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
@@ -6842,8 +6841,7 @@ function AppContent({ isPreview = false }) {
         <div 
           key="friends-widget"
           onClick={() => {
-            setSelectedFriendForModal(friend);
-            setIsFriendsModalOpen(true);
+            pushNav('friends', { selectedFriend: friend });
           }}
           data-no-day-swipe="true"
           className="col-span-2 w-full px-3.5 sm:px-4 py-2.5 rounded-[24px] liquid-panel flex items-center justify-between gap-3 border border-white/15 shadow-lg cursor-pointer active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
