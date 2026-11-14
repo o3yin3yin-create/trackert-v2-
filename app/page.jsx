@@ -11058,78 +11058,86 @@ function AppContent({ isPreview = false }) {
 
                 {isFocusMenuOpen && (
                   <>
-                    <div 
-                      className="fixed inset-0 z-[10000] bg-transparent" 
-                      onClick={() => setIsFocusMenuOpen(false)} 
-                    />
-                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-64 bg-[#18181b]/95 backdrop-blur-2xl rounded-2xl p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.7)] z-[10001] border border-white/10 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-150">
-                      <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-white/40 flex items-center justify-between">
-                        <span>{t('focus')}</span>
-                        <Focus size={13} className="text-white/30" />
+                    {createPortal(
+                      <div 
+                        className="fixed inset-0 z-[9999] bg-black/55 backdrop-blur-[2px]" 
+                        onClick={() => setIsFocusMenuOpen(false)} 
+                      />,
+                      document.body
+                    )}
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-[276px] bg-[#09090b] rounded-[24px] p-2 shadow-[0_24px_60px_rgba(0,0,0,0.95)] z-[10001] border border-white/[0.14] animate-in fade-in zoom-in-95 duration-150">
+                      <div className="px-3 pt-1.5 pb-2 border-b border-white/[0.08] flex items-center justify-between">
+                        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
+                          {t('focus')}
+                        </span>
+                        <span className="font-mono text-[9px] uppercase tracking-widest text-white/25">
+                          SELECT MODE
+                        </span>
                       </div>
 
-                      {/* Pomodoro Option */}
-                      <button 
-                        onClick={() => {
-                          setIsFocusMenuOpen(false);
-                          navTo('pomodoro');
-                        }} 
-                        className="w-full text-left p-2.5 rounded-xl hover:bg-white/10 transition-all flex items-center gap-3 group active:scale-[0.98]"
-                      >
-                        <div className="w-9 h-9 rounded-xl bg-orange-500/15 border border-orange-500/25 flex items-center justify-center text-orange-400 group-hover:scale-105 transition-transform shrink-0">
-                          <Timer size={18} />
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-sm font-bold text-white group-hover:text-white transition-colors truncate">
-                            {'Pomodoro'}
-                          </span>
-                          <span className="text-[11px] text-white/50 truncate">
-                            {'Classic interval focus timer'}
-                          </span>
-                        </div>
-                      </button>
+                      <div className="divide-y divide-white/[0.08] mt-1">
+                        {[
+                          {
+                            id: 'pomodoro',
+                            title: 'Pomodoro',
+                            desc: 'Classic interval focus timer',
+                            icon: Timer,
+                            active: isTimerRunning,
+                          },
+                          {
+                            id: 'flight',
+                            title: 'Flight Focus',
+                            desc: 'Live radar & boarding pass',
+                            icon: PlaneTakeoff,
+                            active: isFlightTimerRunning,
+                          },
+                          {
+                            id: 'flow',
+                            title: 'Deep Flow',
+                            desc: 'Count-up study session',
+                            icon: Zap,
+                            active: isFlowRunning,
+                          },
+                        ].map((item) => {
+                          const IconComp = item.icon;
+                          return (
+                            <button
+                              key={item.id}
+                              onClick={() => {
+                                setIsFocusMenuOpen(false);
+                                navTo(item.id);
+                              }}
+                              className="w-full text-left px-2.5 py-3 hover:bg-white/[0.06] first:rounded-t-xl last:rounded-b-xl transition-all flex items-center justify-between gap-3 group active:scale-[0.98] cursor-pointer"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div
+                                  className={`w-9 h-9 rounded-full border flex items-center justify-center transition-all shrink-0 ${
+                                    item.active
+                                      ? 'bg-white text-black border-white'
+                                      : 'bg-transparent text-white/85 border-white/[0.14] group-hover:border-white/40 group-hover:text-white'
+                                  }`}
+                                >
+                                  <IconComp size={16} />
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-[14px] font-medium text-white leading-tight truncate">
+                                    {item.title}
+                                  </span>
+                                  <span className="text-[11px] text-white/45 truncate mt-0.5">
+                                    {item.desc}
+                                  </span>
+                                </div>
+                              </div>
 
-                      {/* Flight Focus Option */}
-                      <button 
-                        onClick={() => {
-                          setIsFocusMenuOpen(false);
-                          navTo('flight');
-                        }} 
-                        className="w-full text-left p-2.5 rounded-xl hover:bg-white/10 transition-all flex items-center gap-3 group active:scale-[0.98]"
-                      >
-                        <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white group-hover:scale-105 transition-transform shrink-0">
-                          <PlaneTakeoff size={18} />
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-sm font-bold text-white group-hover:text-white transition-colors truncate">
-                            {'Flight Focus'}
-                          </span>
-                          <span className="text-[11px] text-white/50 truncate">
-                            {'Live radar & boarding pass'}
-                          </span>
-                        </div>
-                      </button>
-
-                      {/* Deep Flow (Open Time Focus) Option */}
-                      <button 
-                        onClick={() => {
-                          setIsFocusMenuOpen(false);
-                          navTo('flow');
-                        }} 
-                        className="w-full text-left p-2.5 rounded-xl hover:bg-white/10 transition-all flex items-center gap-3 group active:scale-[0.98]"
-                      >
-                        <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white group-hover:scale-105 transition-transform shrink-0">
-                          <Zap size={18} />
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-sm font-bold text-white group-hover:text-white transition-colors truncate">
-                            {'Deep Flow'}
-                          </span>
-                          <span className="text-[11px] text-white/50 truncate">
-                            {'Count-up study session'}
-                          </span>
-                        </div>
-                      </button>
+                              {item.active ? (
+                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0 mr-1" />
+                              ) : (
+                                <ChevronRight size={14} className="text-white/25 group-hover:text-white/70 transition-colors shrink-0" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </>
                 )}
