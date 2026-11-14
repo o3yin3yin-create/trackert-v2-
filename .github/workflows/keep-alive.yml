@@ -2,8 +2,8 @@ name: Render Keep-Alive Pinger
 
 on:
   schedule:
-    # Run every 10 minutes (Render sleeps after 15 min of inactivity)
-    - cron: '*/10 * * * *'
+    # Run every 5 minutes (Render sleeps after 15 min of inactivity)
+    - cron: '*/5 * * * *'
   workflow_dispatch: # Allows manual trigger from GitHub UI
 
 jobs:
@@ -11,13 +11,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Ping bokra on Render
+      - name: Ping bokra on Render & Neon DB
         run: |
           echo "Pinging https://bokra.onrender.com/api/ping..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://bokra.onrender.com/api/ping)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 45 https://bokra.onrender.com/api/ping)
           echo "HTTP response status: $STATUS"
           if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
-            echo "Render service is awake and healthy!"
+            echo "Render service and Neon DB are awake and healthy!"
           else
-            echo "Warning: Response code $STATUS"
+            echo "Warning: Response code $STATUS - retrying in 5s..."
+            sleep 5
+            curl -s --max-time 45 https://bokra.onrender.com/api/ping || true
           fi
