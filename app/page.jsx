@@ -2422,6 +2422,8 @@ function AppContent({ isPreview = false }) {
     const overlay = readPendingOverlay();
     return overlay.dailyData && typeof overlay.dailyData === 'object' ? { ...overlay.dailyData } : {};
   })());
+  const syncSessionRef = useRef({ lastSyncedType: null });
+  const lastLocalSessionActionAtRef = useRef(0);
   const pushBackoffMsRef = useRef(50);
   const restoredPendingRef = useRef(false);
   if (!restoredPendingRef.current && typeof window !== 'undefined' && !isPreview) {
@@ -2838,52 +2840,96 @@ function AppContent({ isPreview = false }) {
 
           // Sync Active Focus Session across devices
           const now = Math.floor(Date.now() / 1000);
-          if (authoritative.activeSessionType === 'pomodoro' && authoritative.activeSessionData) {
-             const remaining = authoritative.activeSessionData.endTime - now;
-             if (remaining > 0) {
+          const recentlyMutatedSessionLocally = (Date.now() - (lastLocalSessionActionAtRef.current || 0)) < 4000;
+          if (!recentlyMutatedSessionLocally) {
+            const clearLocalPomodoro = () => {
+              if (typeof window !== 'undefined') localStorage.removeItem('daybase_active_pomodoro');
+              setIsTimerRunning(false);
+            };
+            const clearLocalFlight = () => {
+              if (typeof window !== 'undefined') localStorage.removeItem('daybase_active_flight');
+              setIsFlightTimerRunning(false);
+              setSelectedFlight(null);
+            };
+            const clearLocalFlow = () => {
+              if (typeof window !== 'undefined') localStorage.removeItem('daybase_active_flow_v1');
+              setIsFlowRunning(false);
+              setFlowSeconds(0);
+            };
+
+            if (authoritative.activeSessionType === 'pomodoro' && authoritative.activeSessionData) {
+              const remaining = authoritative.activeSessionData.endTime - now;
+              clearLocalFlight();
+              clearLocalFlow();
+              if (remaining > 0) {
                 setPomodoroInitialTime(authoritative.activeSessionData.initialTime || 25 * 60);
                 setPomodoroTime(remaining);
                 if (authoritative.activeSessionData.taskName) {
                   setActivePomodoroTask(prev => ({ ...prev, name: authoritative.activeSessionData.taskName }));
                 }
+                const wasPomodoroSynced = syncSessionRef.current.lastSyncedType === 'pomodoro';
+                syncSessionRef.current.lastSyncedType = 'pomodoro';
                 setIsTimerRunning(true);
                 if (typeof window !== 'undefined') {
                   localStorage.setItem('daybase_active_pomodoro', JSON.stringify(authoritative.activeSessionData));
                 }
-                if (!isSilent && !isTimerRunning) {
+                if (!isSilent && !wasPomodoroSynced) {
                   setIsPomodoroOpen(true);
                 }
-             } else {
-                if (typeof window !== 'undefined') localStorage.removeItem('daybase_active_pomodoro');
-                setIsTimerRunning(false);
-             }
-          } else if (authoritative.activeSessionType === 'flight' && authoritative.activeSessionData) {
-             const remaining = authoritative.activeSessionData.flight.estimatedArrival - now;
-             if (remaining > 0) {
+              } else {
+                syncSessionRef.current.lastSyncedType = null;
+                clearLocalPomodoro();
+              }
+            } else if (authoritative.activeSessionType === 'flight' && authoritative.activeSessionData?.flight) {
+              const remaining = authoritative.activeSessionData.flight.estimatedArrival - now;
+              clearLocalPomodoro();
+              clearLocalFlow();
+              if (remaining > 0) {
+                const wasFlightSynced = syncSessionRef.current.lastSyncedType === 'flight';
+                syncSessionRef.current.lastSyncedType = 'flight';
                 setSelectedFlight(authoritative.activeSessionData.flight);
                 setFlightTimer(remaining);
                 setIsFlightTimerRunning(true);
                 if (typeof window !== 'undefined') {
                   localStorage.setItem('daybase_active_flight', JSON.stringify(authoritative.activeSessionData));
                 }
-                if (!isSilent && !isFlightTimerRunning) {
+                if (!isSilent && !wasFlightSynced) {
                   setIsFlightFocusOpen(true);
                 }
-             } else {
-                if (typeof window !== 'undefined') localStorage.removeItem('daybase_active_flight');
-                setIsFlightTimerRunning(false);
-                setSelectedFlight(null);
-             }
-          } else if (authoritative.activeSessionType === null) {
-             if (typeof window !== 'undefined') {
-               if (!localStorage.getItem('daybase_active_pomodoro') && isTimerRunning) {
-                 setIsTimerRunning(false);
-               }
-               if (!localStorage.getItem('daybase_active_flight') && isFlightTimerRunning) {
-                 setIsFlightTimerRunning(false);
-                 setSelectedFlight(null);
-               }
-             }
+              } else {
+                syncSessionRef.current.lastSyncedType = null;
+                clearLocalFlight();
+              }
+            } else if (authoritative.activeSessionType === 'flow' && authoritative.activeSessionData) {
+              clearLocalPomodoro();
+              clearLocalFlight();
+              const startTime = Number(authoritative.activeSessionData.startTime || now);
+              const elapsed = Math.max(0, now - startTime);
+              const taskName = authoritative.activeSessionData.taskName || 'Deep Flow';
+              const wasFlowSynced = syncSessionRef.current.lastSyncedType === 'flow';
+              syncSessionRef.current.lastSyncedType = 'flow';
+              setFlowSeconds(elapsed);
+              if (authoritative.activeSessionData.taskName) {
+                setFlowTaskName(authoritative.activeSessionData.taskName);
+              }
+              setIsFlowRunning(true);
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('daybase_active_flow_v1', JSON.stringify({
+                  accumulatedSec: elapsed,
+                  isRunning: true,
+                  lastActive: Date.now(),
+                  taskName,
+                }));
+              }
+              if (!isSilent && !wasFlowSynced) {
+                setIsDeepFlowOpen(true);
+              }
+            } else {
+              syncSessionRef.current.lastSyncedType = null;
+              clearLocalPomodoro();
+              clearLocalFlight();
+              clearLocalFlow();
+            }
           }
           
           // Re-apply theme class (permanent dark mode)
@@ -2923,6 +2969,7 @@ function AppContent({ isPreview = false }) {
       'daybase_focusTime_v4',
       'daybase_active_pomodoro',
       'daybase_active_flight',
+      'daybase_active_flow_v1',
       'daybase_pomodoro_last_active',
       'daybase_flight_last_active',
       'daybase_pomodoro_session_step',
@@ -4666,31 +4713,36 @@ function AppContent({ isPreview = false }) {
     };
   }, [isFlowRunning, flowTaskName]);
 
-  // Sync Deep Flow session to backend for friends
+  // Sync Deep Flow session to backend for friends & cross-device
   useEffect(() => {
-    if (!isMounted) return;
+    if (!isMounted || !isCloudLoaded || !user || isPreview) return;
     if (isFlowRunning) {
-      const startTime = Math.floor(Date.now() / 1000) - flowSeconds;
-      const data = {
-        startTime,
-        elapsedSec: flowSeconds,
-        taskName: flowTaskName || 'Deep Flow'
-      };
-      syncSessionRef.current.lastSyncedType = 'flow';
-      apiFetch('/api/session', {
-        method: 'POST',
-        body: JSON.stringify({ type: 'flow', data })
-      }).catch(() => {});
+      if (syncSessionRef.current.lastSyncedType !== 'flow') {
+        const startTime = Math.floor(Date.now() / 1000) - flowSeconds;
+        const data = {
+          startTime,
+          elapsedSec: flowSeconds,
+          taskName: flowTaskName || 'Deep Flow'
+        };
+        lastLocalSessionActionAtRef.current = Date.now();
+        syncSessionRef.current.lastSyncedType = 'flow';
+        apiFetch('/api/session', {
+          method: 'POST',
+          body: JSON.stringify({ type: 'flow', data })
+        }).catch(() => {});
+      }
     } else {
       if (syncSessionRef.current.lastSyncedType === 'flow') {
+        lastLocalSessionActionAtRef.current = Date.now();
         syncSessionRef.current.lastSyncedType = null;
         apiFetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
       }
     }
-  }, [isFlowRunning, isMounted]);
+  }, [isFlowRunning, isMounted, isCloudLoaded, user, isPreview]);
 
   const handleToggleFlow = () => {
     haptic('medium');
+    lastLocalSessionActionAtRef.current = Date.now();
     setIsFlowRunning(prev => {
       const next = !prev;
       if (typeof window !== 'undefined') {
@@ -4707,6 +4759,7 @@ function AppContent({ isPreview = false }) {
 
   const handleResetFlow = () => {
     haptic('light');
+    lastLocalSessionActionAtRef.current = Date.now();
     setIsFlowRunning(false);
     setFlowSeconds(0);
     if (typeof window !== 'undefined') {
@@ -4720,6 +4773,7 @@ function AppContent({ isPreview = false }) {
 
   const handleFinishFlowSession = (totalSecs, taskName) => {
     haptic('success');
+    lastLocalSessionActionAtRef.current = Date.now();
     setIsFlowRunning(false);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('daybase_active_flow_v1');
@@ -4744,8 +4798,6 @@ function AppContent({ isPreview = false }) {
 
 
   // --- Sync Active Focus Sessions Across Devices (Safe & Persistent) ---
-  const syncSessionRef = useRef({ lastSyncedType: null });
-
   useEffect(() => {
     if (!isMounted) return;
     if (isTimerRunning) {
@@ -4760,21 +4812,25 @@ function AppContent({ isPreview = false }) {
       if (typeof window !== 'undefined') {
         localStorage.setItem('daybase_active_pomodoro', JSON.stringify(data));
       }
-      syncSessionRef.current.lastSyncedType = 'pomodoro';
-      apiFetch('/api/session', { 
-        method: 'POST', 
-        body: JSON.stringify({ type: 'pomodoro', data }) 
-      }).catch(() => {});
+      if (isCloudLoaded && user && !isPreview && syncSessionRef.current.lastSyncedType !== 'pomodoro') {
+        lastLocalSessionActionAtRef.current = Date.now();
+        syncSessionRef.current.lastSyncedType = 'pomodoro';
+        apiFetch('/api/session', { 
+          method: 'POST', 
+          body: JSON.stringify({ type: 'pomodoro', data }) 
+        }).catch(() => {});
+      }
     } else {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('daybase_active_pomodoro');
       }
-      if (syncSessionRef.current.lastSyncedType === 'pomodoro') {
+      if (isCloudLoaded && user && !isPreview && syncSessionRef.current.lastSyncedType === 'pomodoro') {
+        lastLocalSessionActionAtRef.current = Date.now();
         syncSessionRef.current.lastSyncedType = null;
         apiFetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
       }
     }
-  }, [isTimerRunning, isMounted]);
+  }, [isTimerRunning, isMounted, isCloudLoaded, user, isPreview]);
 
   useEffect(() => {
     if (!isMounted) return;
@@ -4791,21 +4847,25 @@ function AppContent({ isPreview = false }) {
   }, [isFlightTimerRunning, selectedFlight, isMounted, flightFocusedSeconds]);
 
   useEffect(() => {
-    if (!isMounted) return;
+    if (!isMounted || !isCloudLoaded || !user || isPreview) return;
     if (isFlightTimerRunning && selectedFlight) {
-      const data = { flight: selectedFlight };
-      syncSessionRef.current.lastSyncedType = 'flight';
-      apiFetch('/api/session', { 
-        method: 'POST', 
-        body: JSON.stringify({ type: 'flight', data }) 
-      }).catch(() => {});
+      if (syncSessionRef.current.lastSyncedType !== 'flight') {
+        const data = { flight: selectedFlight };
+        lastLocalSessionActionAtRef.current = Date.now();
+        syncSessionRef.current.lastSyncedType = 'flight';
+        apiFetch('/api/session', { 
+          method: 'POST', 
+          body: JSON.stringify({ type: 'flight', data }) 
+        }).catch(() => {});
+      }
     } else {
       if (syncSessionRef.current.lastSyncedType === 'flight') {
+        lastLocalSessionActionAtRef.current = Date.now();
         syncSessionRef.current.lastSyncedType = null;
         apiFetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
       }
     }
-  }, [isFlightTimerRunning, selectedFlight, isMounted]);
+  }, [isFlightTimerRunning, selectedFlight, isMounted, isCloudLoaded, user, isPreview]);
 
   const handleJoinFriendSession = (info) => {
     if (!info) return;
@@ -6634,113 +6694,7 @@ function AppContent({ isPreview = false }) {
     }
 
     if (widgetId === 'flow') {
-      const hasFlowActivity = isFlowRunning || flowSeconds > 0;
-      if (mode === 'auto' && !hasFlowActivity) {
-        return null;
-      }
-
-      const fHours = Math.floor(flowSeconds / 3600);
-      const fMins = Math.floor((flowSeconds % 3600) / 60);
-      const fSecs = flowSeconds % 60;
-      const sweepPct = isFlowRunning || flowSeconds > 0 ? Math.max(2, ((flowSeconds % 60) / 60) * 100) : 0;
-
-      if (size === 'compact') {
-        return (
-          <div
-            key="flow-widget"
-            onClick={() => navTo('flow')}
-            data-no-day-swipe="true"
-            className="col-span-1 w-full px-3.5 py-2.5 rounded-[20px] liquid-panel flex flex-col justify-between gap-1.5 cursor-pointer border border-white/15 shadow-md hover:border-white/25 active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
-          >
-            <div className="flex items-center justify-between gap-1.5 min-w-0">
-              <div className="flex flex-col min-w-0">
-                <span className="text-[12px] font-black text-white tracking-tight truncate leading-none font-sans">
-                  {flowTaskName?.trim() || 'Deep Flow'}
-                </span>
-                <span className="text-[10px] text-white/45 truncate leading-none mt-1 font-medium">
-                  {isFlowRunning ? 'Live' : flowSeconds > 0 ? 'Paused' : 'Ready'}
-                </span>
-              </div>
-              {hasFlowActivity ? (
-                <div className="flex items-baseline font-mono font-black text-[11px] text-white shrink-0 tabular-nums leading-none pt-0.5">
-                  <span>{fHours > 0 ? `${fHours}h ` : ''}{String(fMins).padStart(2, '0')}</span>
-                  <span className="text-[9px] text-white/40 font-bold">:{String(fSecs).padStart(2, '0')}</span>
-                </div>
-              ) : (
-                <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center text-black shrink-0">
-                  <Zap size={10} strokeWidth={2.8} />
-                </div>
-              )}
-            </div>
-            <div className="w-full h-[1.5px] bg-white/15 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-white transition-all duration-700 ease-out"
-                style={{ width: `${sweepPct}%` }}
-              />
-            </div>
-          </div>
-        );
-      }
-
-      return (
-        <div
-          key="flow-widget"
-          onClick={() => navTo('flow')}
-          data-no-day-swipe="true"
-          className="col-span-2 w-full px-4 py-2.5 sm:px-4.5 sm:py-3 rounded-[20px] liquid-panel flex flex-col justify-between gap-2 cursor-pointer border border-white/15 shadow-lg hover:border-white/25 active:scale-[0.99] transition-all duration-200 select-none min-h-[62px]"
-        >
-          <div className="flex items-center justify-between gap-3 min-w-0 pt-0.5">
-            <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-[17px] sm:text-[18px] font-black tracking-tight text-white leading-none font-sans truncate">
-                  {flowTaskName?.trim() || 'Deep Flow'}
-                </span>
-                {isFlowRunning && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0" />
-                )}
-              </div>
-              <span className="text-[11px] sm:text-[12px] text-white/45 tracking-tight leading-none font-medium truncate mt-1">
-                {isFlowRunning ? 'Deep Flow · Counting up' : flowSeconds > 0 ? 'Deep Flow · Paused' : 'Open-ended study stopwatch'}
-              </span>
-            </div>
-
-            {hasFlowActivity ? (
-              <div className="flex items-center gap-2.5 shrink-0">
-                <div className="flex items-baseline font-black tracking-tight select-none tabular-nums font-mono leading-none pt-1">
-                  <span className="text-[22px] sm:text-[24px] text-white leading-none">
-                    {fHours > 0 ? `${String(fHours).padStart(2, '0')}:${String(fMins).padStart(2, '0')}` : `00:${String(fMins).padStart(2, '0')}`}
-                  </span>
-                  <span className="text-[13px] sm:text-[14px] text-white/40 ml-0.5 font-bold leading-none">
-                    :{String(fSecs).padStart(2, '0')}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleToggleFlow();
-                  }}
-                  aria-label={isFlowRunning ? 'Pause Deep Flow' : 'Resume Deep Flow'}
-                  className="w-7 h-7 rounded-full bg-white text-black flex items-center justify-center hover:bg-white/90 active:scale-95 transition-all shrink-0"
-                >
-                  {isFlowRunning ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" className="ml-0.5" />}
-                </button>
-              </div>
-            ) : (
-              <span className="text-xs font-bold px-3.5 py-1 rounded-full bg-white text-black hover:bg-white/90 active:scale-95 transition-all shadow-md font-sans shrink-0 leading-none">
-                {'Start'}
-              </span>
-            )}
-          </div>
-
-          <div className="w-full h-[1.5px] bg-white/15 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-white transition-all duration-700 ease-out"
-              style={{ width: `${sweepPct}%` }}
-            />
-          </div>
-        </div>
-      );
+      return null;
     }
 
     if (widgetId === 'spotify') {
@@ -10975,15 +10929,22 @@ function AppContent({ isPreview = false }) {
 
         </motion.div>
 
+        {/* --- DEEP FLOW SUBTLE SCREEN DIM --- */}
+        {isFlowRunning && !isDeepFlowOpen && (
+          <div className="fixed inset-0 z-[9998] bg-black/45 pointer-events-none transition-opacity duration-300" />
+        )}
+
         {/* --- DEEP FLOW ACTIVE FLOATING MINI PILL (APPLE DYNAMIC ISLAND STYLE) --- */}
         {(isFlowRunning || flowSeconds > 0) && !isDeepFlowOpen && (
           <div 
             onClick={() => navTo('flow')}
-            className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.4rem)] sm:bottom-[5.5rem] left-1/2 -translate-x-1/2 z-[9999] bg-[#0c0c0e]/95 border border-white/20 backdrop-blur-2xl px-4 py-2.5 rounded-full flex items-center gap-3 shadow-2xl shadow-black cursor-pointer hover:border-white/40 transition-all active:scale-95 select-none animate-in fade-in slide-in-from-bottom-2"
+            className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.4rem)] sm:bottom-[5.5rem] left-1/2 -translate-x-1/2 z-[9999] bg-[#0c0c0e]/95 border border-white/20 backdrop-blur-2xl px-3.5 py-2.5 rounded-full flex items-center gap-2.5 shadow-2xl shadow-black cursor-pointer hover:border-white/40 transition-all active:scale-95 select-none animate-in fade-in slide-in-from-bottom-2 max-w-[calc(100vw-2rem)]"
           >
-            <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${isFlowRunning ? 'bg-white animate-pulse' : 'bg-white/30'}`} />
-              <span className="font-mono text-[10px] uppercase font-bold tracking-widest text-white/50">FLOW</span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${isFlowRunning ? 'bg-white animate-pulse' : 'bg-white/30'}`} />
+              <span className="font-mono text-[10px] uppercase font-bold tracking-wider text-white/55 whitespace-nowrap">
+                FLOW · P{flowSeconds >= 90 * 60 ? 4 : flowSeconds >= 45 * 60 ? 3 : flowSeconds >= 15 * 60 ? 2 : 1}
+              </span>
             </div>
             <div className="h-3.5 w-px bg-white/10" />
             <div className="font-mono text-xs font-black text-white tabular-nums tracking-wide">
