@@ -559,7 +559,9 @@ export async function POST(req) {
     return NextResponse.json({ success: true, updatedAt: finalUpdatedAt }, { headers: getCorsHeaders(req) });
 
   } catch (error) {
-    console.error('Sync POST Error:', error);
+    if (error?.code !== 'ECONNRESET' && error?.message !== 'aborted' && error?.name !== 'AbortError') {
+      console.error('Sync POST Error:', error);
+    }
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500, headers: getCorsHeaders(req) });
   }
 }
