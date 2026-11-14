@@ -1,5 +1,4 @@
-import { ClerkProvider } from '@/components/AuthBridge'
-import { clerkAppearance, clerkLocalization } from '@/lib/clerkTheme'
+import { AuthProvider } from '@/components/AuthBridge'
 import PwaRegister from '@/components/PwaRegister'
 import { Space_Grotesk, JetBrains_Mono, Amiri } from 'next/font/google'
 import './globals.css'
@@ -93,19 +92,10 @@ export default function RootLayout({ children }) {
         <meta name="theme-color" content="#000000" />
       </head>
       <body className={`${spaceGrotesk.className} font-sans bg-black text-white antialiased selection:bg-white/20`}>
-        <ClerkProvider 
-          appearance={clerkAppearance}
-          localization={clerkLocalization}
-          signInUrl="/sign-in"
-          signUpUrl="/sign-up"
-          signInFallbackRedirectUrl="/"
-          signUpFallbackRedirectUrl="/"
-          signInForceRedirectUrl="/"
-          signUpForceRedirectUrl="/"
-        >
+        <AuthProvider>
           <PwaRegister />
           {children}
-        </ClerkProvider>
+        </AuthProvider>
       </body>
     </html>
   )

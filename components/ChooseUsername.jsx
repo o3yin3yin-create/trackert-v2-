@@ -186,7 +186,7 @@ export default function ChooseUsername({ onComplete }) {
       <div className="w-full max-w-[420px] flex flex-col items-center text-center relative z-10">
         {/* Official bokra Logo */}
         <img
-          src="/logo-transparent.png"
+          src="/logo-transparent.webp"
           alt="bokra"
           className="h-12 w-auto object-contain mb-4 select-none drop-shadow-xl"
         />

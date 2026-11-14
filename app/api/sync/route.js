@@ -6,15 +6,6 @@ import { rateLimit, getClientIp } from '@/lib/rateLimit';
 import { reconcileLecturePushes, reconcileAthkarPushes } from '@/lib/pushSchedule';
 import { mergeTaskLists } from '@/lib/taskMerge';
 
-async function getClerkUserSafe() {
-  try {
-    const { currentUser } = await import('@clerk/nextjs/server');
-    return await currentUser();
-  } catch {
-    return null;
-  }
-}
-
 function formatDateInTimeZone(date, timeZone) {
   try {
     return new Intl.DateTimeFormat('en-CA', {
@@ -94,13 +85,13 @@ export async function GET(req) {
     }
 
     if (!user) {
-      // First time user or returning user from dev with new production clerkId: link by email
-      const clerkUser = await getClerkUserSafe();
-      const email = clerkUser?.emailAddresses?.[0]?.emailAddress || `${userId}@bokra.app`;
-      const name = clerkUser?.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : 'Unknown';
-      const username = clerkUser?.username || null;
+      // First time user: link by email if available from auth token
+      const authData = await getAuthUserData(req);
+      const email = authData?.email || `${userId}@bokra.app`;
+      const name = authData?.name && authData.name !== 'User' ? authData.name : 'Unknown';
+      const username = authData?.username || null;
 
-      // Check if user already exists with this email in database (from dev mode)
+      // Check if user already exists with this email in database
       const existingUserByEmail = email && !email.endsWith('@bokra.app')
         ? await prisma.user.findUnique({
             where: { email },
@@ -112,7 +103,6 @@ export async function GET(req) {
         : null;
 
       if (existingUserByEmail) {
-        // Seamlessly link existing dev user (and all their habits, daily logs, history) to new production clerkId
         user = await prisma.user.update({
           where: { id: existingUserByEmail.id },
           data: {
@@ -130,21 +120,6 @@ export async function GET(req) {
           data: { clerkId: userId, email, name, ...(username ? { username } : {}) },
           include: { habits: { orderBy: { createdAt: 'asc' } }, dailyLogs: true }
         });
-      }
-    } else {
-      const clerkUser = await getClerkUserSafe();
-      if (clerkUser) {
-        const name = clerkUser.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : user.name;
-        const email = clerkUser.emailAddresses?.[0]?.emailAddress || user.email;
-        const username = clerkUser.username || null;
-
-        if ((username && user.username !== username) || (user.name === 'Zain' || user.email.startsWith('user_'))) {
-          user = await prisma.user.update({
-            where: { id: user.id },
-            data: { name, email, ...(username ? { username } : {}) },
-            include: { habits: { orderBy: { createdAt: 'asc' } }, dailyLogs: true }
-          });
-        }
       }
     }
 
@@ -250,9 +225,9 @@ export async function POST(req) {
       include: { habits: true }
     });
     if (!user) {
-      const clerkUser = await getClerkUserSafe();
-      const email = clerkUser?.emailAddresses?.[0]?.emailAddress;
-      if (email) {
+      const authData = await getAuthUserData(req);
+      const email = authData?.email;
+      if (email && !email.endsWith('@bokra.app')) {
         const existingUserByEmail = await prisma.user.findUnique({
           where: { email },
           include: { habits: true }

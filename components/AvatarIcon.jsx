@@ -22,6 +22,8 @@ function ImageAvatar({ src, size, className = "" }) {
     <img 
       src={src} 
       alt="Avatar" 
+      loading="lazy"
+      decoding="async"
       className={`w-full h-full object-cover rounded-full select-none pointer-events-none ${className}`}
       referrerPolicy="no-referrer"
       {...(isHttp ? { crossOrigin: "anonymous" } : {})}

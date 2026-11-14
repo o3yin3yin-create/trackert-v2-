@@ -22,6 +22,10 @@ export async function GET(req) {
   if (!me) return json({ error: 'unauthorized' }, 401, req);
 
   try {
+    const url = new URL(req.url);
+    const rawLimit = parseInt(url.searchParams.get('limit') || '25', 10);
+    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 10), 100) : 25;
+
     // Throttled stale room sweep (at most once every 5 minutes, zero write overhead on normal GETs)
     const nowMs = Date.now();
     if (nowMs - lastStaleSweepAt > 5 * 60 * 1000) {
@@ -33,64 +37,45 @@ export async function GET(req) {
       }).catch(() => {});
     }
 
-    // Check if I'm currently active in a room
-    const myMembership = await prisma.studyRoomMember.findFirst({
-      where: { userId: me.id, isActive: true, room: { isActive: true } },
-      include: {
-        room: {
-          include: {
-            host: { select: { id: true, name: true, username: true } },
-            members: {
-              where: { isActive: true },
-              orderBy: { joinedAt: 'asc' },
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    username: true,
-                    avatar: true,
-                    activeSessionType: true,
-                    activeSessionData: true,
+    // Run independent room/friendship queries in parallel
+    const [myMembership, friendships, publicRoomsRaw] = await Promise.all([
+      prisma.studyRoomMember.findFirst({
+        where: { userId: me.id, isActive: true, room: { isActive: true } },
+        include: {
+          room: {
+            include: {
+              host: { select: { id: true, name: true, username: true } },
+              members: {
+                where: { isActive: true },
+                orderBy: [{ joinedAt: 'asc' }, { id: 'asc' }],
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                      name: true,
+                      username: true,
+                      avatar: true,
+                      activeSessionType: true,
+                      activeSessionData: true,
+                    },
                   },
                 },
               },
             },
           },
         },
-      },
-    });
-
-    // Accepted friends (for "friends" visibility rooms)
-    const friendships = await prisma.friendship.findMany({
-      where: {
-        status: 'accepted',
-        OR: [{ requesterId: me.id }, { addresseeId: me.id }],
-      },
-      select: { requesterId: true, addresseeId: true },
-    });
-    const friendIds = friendships.map((f) => (f.requesterId === me.id ? f.addresseeId : f.requesterId));
-
-    // Friends-only rooms + Public rooms (private rooms are NEVER listed — invite code only)
-    const [friendRoomsRaw, publicRoomsRaw] = await Promise.all([
-      friendIds.length > 0
-        ? prisma.studyRoom.findMany({
-            where: { isActive: true, visibility: 'friends', hostId: { in: friendIds } },
-            orderBy: { startedAt: 'desc' },
-            take: 20,
-            include: {
-              host: { select: { id: true, name: true, username: true } },
-              members: {
-                where: { isActive: true },
-                include: { user: { select: { id: true, name: true, username: true, avatar: true, activeSessionType: true, activeSessionData: true } } },
-              },
-            },
-          })
-        : Promise.resolve([]),
+      }),
+      prisma.friendship.findMany({
+        where: {
+          status: 'accepted',
+          OR: [{ requesterId: me.id }, { addresseeId: me.id }],
+        },
+        select: { requesterId: true, addresseeId: true },
+      }),
       prisma.studyRoom.findMany({
         where: { isActive: true, visibility: 'public', hostId: { not: me.id } },
-        orderBy: { startedAt: 'desc' },
-        take: 25,
+        orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+        take: limit + 1,
         include: {
           host: { select: { id: true, name: true, username: true } },
           members: {
@@ -101,17 +86,37 @@ export async function GET(req) {
       }),
     ]);
 
+    const friendIds = friendships.map((f) => (f.requesterId === me.id ? f.addresseeId : f.requesterId));
+    const friendRoomsRaw = friendIds.length > 0
+      ? await prisma.studyRoom.findMany({
+          where: { isActive: true, visibility: 'friends', hostId: { in: friendIds } },
+          orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+          take: limit + 1,
+          include: {
+            host: { select: { id: true, name: true, username: true } },
+            members: {
+              where: { isActive: true },
+              include: { user: { select: { id: true, name: true, username: true, avatar: true, activeSessionType: true, activeSessionData: true } } },
+            },
+          },
+        })
+      : [];
+
+    const hasMoreRooms = friendRoomsRaw.length > limit || publicRoomsRaw.length > limit;
+    const friendRoomsPage = friendRoomsRaw.slice(0, limit);
+    const publicRoomsPage = publicRoomsRaw.slice(0, limit);
     const myRoomId = myMembership?.room?.id;
 
     return json(
       {
         myRoom: myMembership?.room ? formatRoomSummary(myMembership.room, me.id) : null,
-        friendRooms: friendRoomsRaw
+        friendRooms: friendRoomsPage
           .filter((r) => r.id !== myRoomId && r.members.some((m) => m.isActive))
           .map((r) => formatRoomSummary(r, me.id)),
-        publicRooms: publicRoomsRaw
+        publicRooms: publicRoomsPage
           .filter((r) => r.id !== myRoomId && r.members.some((m) => m.isActive))
           .map((r) => formatRoomSummary(r, me.id)),
+        hasMoreRooms,
       },
       200,
       req

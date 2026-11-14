@@ -816,7 +816,7 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                       </p>
                       <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs font-mono text-white/60">
                         <span>{isArabic ? 'طريق المصادقة:' : 'Auth Gateway:'}</span>
-                        <span className="font-bold text-white">Clerk Edge Proxy</span>
+                        <span className="font-bold text-white">Google Identity + HMAC JWT</span>
                       </div>
                     </div>
 
@@ -851,7 +851,7 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                         {isArabic ? 'سياسة الأمان' : 'Security Policy'}
                       </span>
                       <p className="text-xs text-white/40 font-mono leading-relaxed">
-                        Strict origin whitelisting: clerk.accounts.dev, openstreetmap, spotify.com, googleapis. Zero wildcard scripts.
+                        Strict origin whitelisting: accounts.google.com, openstreetmap, spotify.com, googleapis. Zero wildcard scripts.
                       </p>
                       <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs font-mono text-white/60">
                         <span>{isArabic ? 'حالة التشفير:' : 'Transport:'}</span>

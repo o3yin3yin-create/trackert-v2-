@@ -184,4 +184,5 @@ model StudyRoomMember {
 
   @@unique([roomId, userId])
   @@index([roomId, isActive])
+  @@index([userId, isActive])
 }

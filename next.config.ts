@@ -35,7 +35,25 @@ const nextConfig: NextConfig = {
         {
           source: "/:all*(svg|jpg|png|webp|ico|woff|woff2)",
           headers: [
-            { key: "Cache-Control", value: "public, max-age=31536000, immutable" }
+            { key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }
+          ]
+        },
+        {
+          source: "/sounds/:path*",
+          headers: [
+            { key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }
+          ]
+        },
+        {
+          source: "/fonts/:path*",
+          headers: [
+            { key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }
+          ]
+        },
+        {
+          source: "/world-land.json",
+          headers: [
+            { key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" }
           ]
         },
         {

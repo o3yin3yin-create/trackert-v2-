@@ -175,7 +175,7 @@ const SLIDES = [
     preview: (
       <div className="w-full max-w-sm mx-auto p-8 rounded-3xl bg-[#121215] border border-white/10 shadow-2xl flex flex-col items-center text-center gap-4">
         <img 
-          src="/logo-transparent.png" 
+          src="/logo-transparent.webp" 
           alt="bokra" 
           className="h-14 w-auto object-contain select-none drop-shadow-2xl" 
         />

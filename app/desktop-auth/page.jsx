@@ -2,7 +2,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Check } from 'lucide-react';
 import { useUser, SignIn } from '@/components/AuthBridge';
-import { clerkAppearance } from '@/lib/clerkTheme';
 
 export default function DesktopAuthPage() {
   const { isSignedIn, isLoaded, user } = useUser();
@@ -391,7 +390,7 @@ export default function DesktopAuthPage() {
         
         {/* Official App Logo */}
         <img 
-          src="/logo-transparent.png" 
+          src="/logo-transparent.webp" 
           alt="bokra" 
           className="h-12 w-auto object-contain mb-4 select-none drop-shadow-xl" 
         />
@@ -412,7 +411,6 @@ export default function DesktopAuthPage() {
             <SignIn
               routing="hash"
               signUpUrl="/sign-up"
-              appearance={clerkAppearance}
             />
           </div>
         )}

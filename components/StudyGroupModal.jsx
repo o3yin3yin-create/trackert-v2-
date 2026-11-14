@@ -58,6 +58,8 @@ export default function StudyGroupModal({
   const [myRoom, setMyRoom] = useState(null);
   const [friendRooms, setFriendRooms] = useState([]);
   const [publicRooms, setPublicRooms] = useState([]);
+  const [roomLimit, setRoomLimit] = useState(25);
+  const [hasMoreRooms, setHasMoreRooms] = useState(false);
   const [error, setError] = useState('');
   const [tab, setTab] = useState('rooms'); // 'rooms' | 'host'
 
@@ -81,18 +83,19 @@ export default function StudyGroupModal({
 
   const fetcher = apiFetch || fetch;
 
-  const loadRooms = async (silent = false) => {
+  const loadRooms = async (silent = false, nextLimit = roomLimit) => {
     if (isPreview) {
       setLoading(false);
       if (!myRoom) {
         setFriendRooms([DEMO_ROOMS_LIST[0]]);
         setPublicRooms([DEMO_ROOMS_LIST[1]]);
+        setHasMoreRooms(false);
       }
       return;
     }
     if (!silent) setLoading(true);
     try {
-      const res = await fetcher('/api/rooms');
+      const res = await fetcher(`/api/rooms?limit=${nextLimit}`);
       if (!res.ok) {
         if (res.status === 401) setError('Sign in to host or join live rooms.');
         setLoading(false);
@@ -116,6 +119,7 @@ export default function StudyGroupModal({
       setMyRoom(incomingRoom);
       setFriendRooms(Array.isArray(data.friendRooms) ? data.friendRooms : []);
       setPublicRooms(Array.isArray(data.publicRooms) ? data.publicRooms : []);
+      setHasMoreRooms(Boolean(data.hasMoreRooms));
       setError('');
     } catch {
       setError('Could not load rooms.');
@@ -681,6 +685,19 @@ export default function StudyGroupModal({
                       </div>
                     ))}
                   </div>
+                )}
+                {hasMoreRooms && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = Math.min(roomLimit + 25, 100);
+                      setRoomLimit(next);
+                      loadRooms(false, next);
+                    }}
+                    className="w-full py-2.5 rounded-full border border-white/[0.14] text-[12px] font-mono uppercase tracking-wider text-white/70 hover:text-white hover:border-white/35 transition-all cursor-pointer"
+                  >
+                    Load more rooms
+                  </button>
                 )}
               </div>
             )}

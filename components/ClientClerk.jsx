@@ -273,7 +273,7 @@ export const ClerkProvider = ({ children }) => {
             
             {/* App Logo */}
             <img 
-              src="/logo-transparent.png" 
+              src="/logo-transparent.webp" 
               alt="bokra" 
               className="h-12 w-auto object-contain mb-4 select-none drop-shadow-xl" 
             />

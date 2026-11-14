@@ -2,14 +2,11 @@
 import { Bell, SlidersHorizontal, Palette, Sparkles, Target, Focus, Check, Plus, Trash2, Edit2, X, Home, BarChart2, ChevronDown, ChevronUp, ListChecks, ChevronLeft, ChevronRight, BookOpen, Download, RotateCcw, Timer, ShieldAlert, Shield, Settings, Play, Pause, Moon, Sun, Clock, Flame, PlaneTakeoff, Loader2, Globe, Volume2, VolumeX, Compass, Navigation, Map as MapIcon, Plane, Maximize, Minimize, Dices, Users, User, Calendar, CalendarDays, MapPin, Radio, Music, LayoutGrid, Share2, ExternalLink, Hourglass, GraduationCap, Briefcase, FileText, Dumbbell, Pin, LogOut, Mail, Info, Headphones, Lock, Camera, Upload, Zap } from 'lucide-react';
 import React, { useState, useEffect, useRef, useCallback, useMemo, Component } from 'react';
 import { createPortal } from 'react-dom';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useUser, useAuth, useClerk, Show, SignInButton, SignUpButton, UserButton, SignIn, SignUp } from '../components/AuthBridge';
-import { clerkAppearance } from '../lib/clerkTheme';
 import { apiFetch, setApiTokenGetter } from '../lib/api';
 import { loadLocalOfflineState, saveLocalOfflineState, queueSyncMutation, resolveConflict, mergePomodoroTasksData, mergeTaskLists, generateSubtaskId, recomputeTaskCompletion, getPendingSyncQueue, clearPendingSyncQueue, clearLocalOfflineState } from '../lib/db';
 import { readPendingOverlay, writePendingOverlay, replacePendingOverlay, clearPendingOverlay, overlayHasPending, persistTaskKeysSync, pruneAcknowledgedOverlay, buildDeltaPayload, syncDebug, PENDING_PAYLOAD_KEY, PENDING_FLAG_KEY } from '../lib/syncPersist';
 import { motion } from 'framer-motion';
-import MinimalTimer from '../components/MinimalTimer';
 import { translations } from '../lib/translations';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -18,28 +15,30 @@ const MapComponent = dynamic(() => import('../components/MapComponent'), {
   ssr: false,
   loading: () => <div className="w-full h-full bg-[#05070e] flex items-center justify-center text-white/50 text-xs font-bold tracking-widest uppercase animate-pulse">Initializing Global Radar...</div>
 });
-import BoardingPass from '../components/BoardingPass';
-import BoardingPassCard from '../components/BoardingPassCard';
-import WindowSeat from '../components/WindowSeat';
-import FlightFocusModal from '../components/FlightFocusModal';
-import DeepFlowModal from '../components/DeepFlowModal';
-import StudyGroupModal from '../components/StudyGroupModal';
-import SeatSelection from '../components/SeatSelection';
-import AdminPanel from '../components/AdminPanel';
+const SleepBarChart = dynamic(() => import('../components/SleepBarChart'), { ssr: false });
+const MinimalTimer = dynamic(() => import('../components/MinimalTimer'), { ssr: false });
+const BoardingPass = dynamic(() => import('../components/BoardingPass'), { ssr: false });
+const BoardingPassCard = dynamic(() => import('../components/BoardingPassCard'), { ssr: false });
+const WindowSeat = dynamic(() => import('../components/WindowSeat'), { ssr: false });
+const FlightFocusModal = dynamic(() => import('../components/FlightFocusModal'), { ssr: false });
+const DeepFlowModal = dynamic(() => import('../components/DeepFlowModal'), { ssr: false });
+const StudyGroupModal = dynamic(() => import('../components/StudyGroupModal'), { ssr: false });
+const SeatSelection = dynamic(() => import('../components/SeatSelection'), { ssr: false });
+const AdminPanel = dynamic(() => import('../components/AdminPanel'), { ssr: false });
 import AvatarIcon, { AVATAR_OPTIONS } from '../components/AvatarIcon';
 import { compressAvatarImage } from '../lib/compressImage';
 import SpotifyWidget from '../components/SpotifyWidget';
-import ChooseUsername from '../components/ChooseUsername';
-import FriendsModal from '../components/FriendsModal';
-import WeeklyScheduleCalendar from '../components/WeeklyScheduleCalendar';
-import PrivacyModal from '../components/PrivacyModal';
-import SpotifyInviteModal from '../components/SpotifyInviteModal';
-import UpdateModal from '../components/UpdateModal';
-import HabitPresetsModal from '../components/HabitPresetsModal';
-import AthkarModal from '../components/AthkarModal';
-import AmbientSoundModal from '../components/ambient/AmbientSoundModal';
+const ChooseUsername = dynamic(() => import('../components/ChooseUsername'), { ssr: false });
+const FriendsModal = dynamic(() => import('../components/FriendsModal'), { ssr: false });
+const WeeklyScheduleCalendar = dynamic(() => import('../components/WeeklyScheduleCalendar'), { ssr: false });
+const PrivacyModal = dynamic(() => import('../components/PrivacyModal'), { ssr: false });
+const SpotifyInviteModal = dynamic(() => import('../components/SpotifyInviteModal'), { ssr: false });
+const UpdateModal = dynamic(() => import('../components/UpdateModal'), { ssr: false });
+const HabitPresetsModal = dynamic(() => import('../components/HabitPresetsModal'), { ssr: false });
+const AthkarModal = dynamic(() => import('../components/AthkarModal'), { ssr: false });
+const AmbientSoundModal = dynamic(() => import('../components/ambient/AmbientSoundModal'), { ssr: false });
 import AmbientSoundWidget from '../components/ambient/AmbientSoundWidget';
-import PushNotificationsCard from '../components/PushNotificationsCard';
+const PushNotificationsCard = dynamic(() => import('../components/PushNotificationsCard'), { ssr: false });
 import { showLocalNotification } from '../lib/localNotifications';
 import { HABIT_PRESETS, getLocalizedPreset } from '../lib/habitPresets';
 import { guideSections } from '../lib/guideContent';
@@ -564,7 +563,7 @@ class GlobalErrorBoundary extends Component {
 
       return (
         <div className="min-h-screen bg-[#000000] text-white flex flex-col items-center justify-center p-6 text-center select-none font-sans">
-          <img src="/logo-transparent.png" alt="bokra" className="h-12 w-auto object-contain mb-6 opacity-80" />
+          <img src="/logo-transparent.webp" alt="bokra" className="h-12 w-auto object-contain mb-6 opacity-80" />
           <h2 className="text-xl font-bold mb-2">Failed to load session</h2>
           <p className="text-xs text-white/50 mb-6 max-w-sm leading-relaxed">
             A temporary cache issue occurred. Tap Reload below, or Reset App to wipe corrupted local cache and launch cleanly.
@@ -5994,12 +5993,28 @@ function AppContent({ isPreview = false }) {
 
   if (!isMounted || !authReady) {
     return (
-      <div className="min-h-screen bg-[#000000] text-white flex flex-col items-center justify-center p-6 select-none font-sans">
-        <img
-          src="/logo-transparent.png"
-          alt="bokra"
-          className="h-12 w-auto object-contain animate-pulse select-none drop-shadow-2xl opacity-80"
-        />
+      <div className="min-h-screen bg-[#000000] text-white flex flex-col items-center p-6 pt-16 select-none font-sans">
+        <div className="w-full max-w-[428px] md:max-w-2xl lg:max-w-3xl space-y-5">
+          <div className="flex items-center justify-between">
+            <img
+              src="/logo-transparent.webp"
+              alt="bokra"
+              loading="eager"
+              fetchPriority="high"
+              className="h-9 w-auto object-contain select-none opacity-85"
+            />
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-full bg-white/[0.06] animate-pulse" />
+              <div className="w-9 h-9 rounded-full bg-white/[0.06] animate-pulse" />
+            </div>
+          </div>
+          <div className="h-32 rounded-[26px] bg-white/[0.06] border border-white/[0.06] animate-pulse" />
+          <div className="space-y-3">
+            <div className="h-20 rounded-[24px] bg-white/[0.05] border border-white/[0.05] animate-pulse" />
+            <div className="h-20 rounded-[24px] bg-white/[0.04] border border-white/[0.05] animate-pulse" />
+            <div className="h-20 rounded-[24px] bg-white/[0.03] border border-white/[0.04] animate-pulse" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -9653,26 +9668,7 @@ function AppContent({ isPreview = false }) {
                                 </defs>
                               </svg>
 
-                              <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={sleepChartData} barGap={4} barCategoryGap={8}>
-                                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8E8E93', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em' }} dy={10} />
-                                  <YAxis yAxisId="score" orientation="right" hide domain={[0, 100]} />
-                                  <YAxis yAxisId="focus" orientation="right" hide domain={[0, 180]} />
-                                  
-                                  <Tooltip 
-                                    cursor={<CustomCursor />} 
-                                    contentStyle={{ backgroundColor: '#1C1C1E', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', color: '#FFFFFF', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
-                                    itemStyle={{ color: '#FFFFFF', fontWeight: 600, fontSize: '12px' }} 
-                                    formatter={(value, name) => { 
-                                      if (name === "Focus") return [`${value} min`, "Focus"];
-                                      return [`${value.toFixed(0)}%`, "Score"]; 
-                                    }} 
-                                  />
-                                  
-                                  <Bar yAxisId="score" dataKey="score" fill={themeColor} radius={[3, 3, 3, 3]} barSize={6} name="Score" />
-                                  <Bar yAxisId="focus" dataKey="focus" fill="#22d3ee" radius={[3, 3, 3, 3]} barSize={6} name="Focus" />
-                                </BarChart>
-                              </ResponsiveContainer>
+                              <SleepBarChart data={sleepChartData} themeColor={themeColor} />
                             </div>
                             
                             <div className="flex items-center justify-center gap-6 select-none pt-2 border-t border-white/5">

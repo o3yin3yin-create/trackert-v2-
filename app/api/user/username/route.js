@@ -21,28 +21,7 @@ export async function GET(req) {
       select: { username: true, name: true, avatar: true, email: true }
     });
 
-    let username = dbUser?.username || null;
-
-    if (!username) {
-      try {
-        const { clerkClient } = await import('@clerk/nextjs/server');
-        const client = await clerkClient();
-        const clerkUser = await client.users.getUser(userId);
-        if (clerkUser?.username) {
-          username = clerkUser.username;
-          await prisma.user.upsert({
-            where: { clerkId: userId },
-            update: { username },
-            create: {
-              clerkId: userId,
-              email: clerkUser.emailAddresses?.[0]?.emailAddress || `${userId}@bokra.app`,
-              username,
-              name: clerkUser.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : username,
-            }
-          });
-        }
-      } catch (e) {}
-    }
+    const username = dbUser?.username || null;
 
     return NextResponse.json({
       success: true,

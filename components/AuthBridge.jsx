@@ -482,7 +482,7 @@ export function SignIn({ onClose }) {
       {/* Official App Logo */}
       <div className="mb-4 flex justify-center">
         <img 
-          src="/logo-transparent.png" 
+          src="/logo-transparent.webp" 
           alt="bokra" 
           className="h-12 w-auto object-contain select-none drop-shadow-xl" 
         />
