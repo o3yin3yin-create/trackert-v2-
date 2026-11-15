@@ -330,6 +330,9 @@ export default function AmbientSoundModal({
                         }
                       }}
                       onToggleFavorite={() => mixer.toggleFavorite(sound.id)}
+                      isOfflineReady={mixer.isSoundOfflineReady(sound.id)}
+                      isDownloading={mixer.isSoundDownloading(sound.id)}
+                      onDownloadOffline={() => mixer.downloadSoundForOffline(sound.id)}
                       lang={lang}
                       themeColor={themeColor}
                     />

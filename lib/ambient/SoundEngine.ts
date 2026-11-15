@@ -16,6 +16,9 @@ import { SOUND_CATALOG, SoundItem } from './soundCatalog';
 interface ActiveTrack {
   soundId: string;
   sourceNode: AudioBufferSourceNode | null;
+  mediaEl?: HTMLAudioElement;
+  mediaSourceNode?: MediaElementAudioSourceNode;
+  blobUrl?: string;
   gainNode: GainNode;
   filterNode?: BiquadFilterNode;
   targetVolume: number;
@@ -148,7 +151,16 @@ export class SoundEngine {
 
     try {
       const cache = await caches.open('bokra-ambient-v1');
-      const fileSounds = SOUND_CATALOG.filter((s) => s.type === 'file' && s.src);
+      const fileSounds = SOUND_CATALOG.filter((s) => s.type === 'file' && s.src && !s.stream);
+      const streamSounds = SOUND_CATALOG.filter((s) => s.type === 'file' && s.src && s.stream);
+
+      // Mark any manually-downloaded stream tracks as offline-ready
+      for (const sound of streamSounds) {
+        if (!sound.src) continue;
+        if (await cache.match(sound.src)) {
+          this.offlineReadySounds.add(sound.id);
+        }
+      }
 
       // Pre-cache silence.wav too
       try {
@@ -181,6 +193,35 @@ export class SoundEngine {
     const s = SOUND_CATALOG.find((item) => item.id === soundId);
     if (s?.type === 'generated') return true; // Generated sounds are 100% offline by code
     return this.offlineReadySounds.has(soundId) || this.bufferCache.has(soundId);
+  }
+
+  public isSoundDownloading(soundId: string): boolean {
+    return this.loadingSounds.has(soundId);
+  }
+
+  /**
+   * Explicitly download and cache a streaming sound for offline playback.
+   */
+  public async downloadSoundForOffline(soundId: string): Promise<boolean> {
+    if (typeof window === 'undefined' || !('caches' in window)) return false;
+    const sound = SOUND_CATALOG.find((item) => item.id === soundId);
+    if (!sound?.src || this.loadingSounds.has(soundId)) return false;
+
+    this.loadingSounds.add(soundId);
+    this.notify();
+
+    try {
+      const cache = await caches.open('bokra-ambient-v1');
+      await cache.add(sound.src);
+      this.offlineReadySounds.add(soundId);
+      return true;
+    } catch (err) {
+      console.warn(`[SoundEngine] Manual offline download failed for ${soundId}:`, err);
+      return false;
+    } finally {
+      this.loadingSounds.delete(soundId);
+      this.notify();
+    }
   }
 
   /**
@@ -482,6 +523,24 @@ export class SoundEngine {
   }
 
   /**
+   * Resolve cached offline blob (if user downloaded it) or online streaming URL.
+   */
+  private async resolveStreamSrc(sound: SoundItem): Promise<{ url: string; isBlob: boolean }> {
+    const src = sound.src || '';
+    if (typeof window !== 'undefined' && 'caches' in window && src) {
+      try {
+        const cache = await caches.open('bokra-ambient-v1');
+        const cached = await cache.match(src);
+        if (cached) {
+          this.offlineReadySounds.add(sound.id);
+          return { url: URL.createObjectURL(await cached.blob()), isBlob: true };
+        }
+      } catch (_) {}
+    }
+    return { url: src, isBlob: false };
+  }
+
+  /**
    * Start playing a sound with smooth 1s fade-in.
    */
   public async playSound(soundId: string, initialVolume?: number): Promise<boolean> {
@@ -496,9 +555,6 @@ export class SoundEngine {
     if (activeCount >= 6 && !this.tracks.get(soundId)?.isPlaying) {
       return false; // Caller handles display of limit warning
     }
-
-    const buffer = await this.loadAudioBuffer(sound);
-    if (!buffer) return false;
 
     const now = ctx.currentTime;
     const targetVol = initialVolume !== undefined ? initialVolume : sound.defaultVolume;
@@ -536,6 +592,13 @@ export class SoundEngine {
       track.targetVolume = targetVol;
     }
 
+    if (sound.stream && sound.src) {
+      return await this.playStreamTrack(ctx, sound, track, now);
+    }
+
+    const buffer = await this.loadAudioBuffer(sound);
+    if (!buffer) return false;
+
     // Stop existing source if re-triggering
     if (track.sourceNode) {
       try {
@@ -572,6 +635,55 @@ export class SoundEngine {
   }
 
   /**
+   * Stream a long audio track via HTMLAudioElement (near-zero RAM), falling back to offlineSrc on failure.
+   */
+  private async playStreamTrack(
+    ctx: AudioContext,
+    sound: SoundItem,
+    track: ActiveTrack,
+    now: number
+  ): Promise<boolean> {
+    if (!track.mediaEl) {
+      const mediaEl = new Audio();
+      mediaEl.loop = true;
+      mediaEl.preload = 'auto';
+      mediaEl.crossOrigin = 'anonymous';
+      const mediaSourceNode = ctx.createMediaElementSource(mediaEl);
+      mediaSourceNode.connect(track.filterNode || track.gainNode);
+      track.mediaEl = mediaEl;
+      track.mediaSourceNode = mediaSourceNode;
+    }
+
+    const { url, isBlob } = await this.resolveStreamSrc(sound);
+    if (track.blobUrl && track.blobUrl !== url) {
+      URL.revokeObjectURL(track.blobUrl);
+      track.blobUrl = undefined;
+    }
+    if (isBlob) track.blobUrl = url;
+
+    if (track.mediaEl.src !== url && !track.mediaEl.src.endsWith(url)) {
+      track.mediaEl.src = url;
+    }
+
+    try {
+      await track.mediaEl.play();
+    } catch (err) {
+      console.error(`[SoundEngine] Stream failed for ${sound.id}:`, err);
+      return false;
+    }
+
+    track.isPlaying = true;
+    track.gainNode.gain.cancelScheduledValues(now);
+    track.gainNode.gain.setValueAtTime(0.0001, now);
+    track.gainNode.gain.linearRampToValueAtTime(track.targetVolume, now + 1.0);
+
+    this.syncBackgroundAudioState();
+    this.updateMediaSession();
+    this.notify();
+    return true;
+  }
+
+  /**
    * Stop a sound with smooth 1s fade-out.
    */
   public stopSound(soundId: string, instant: boolean = false): void {
@@ -592,6 +704,11 @@ export class SoundEngine {
           track.sourceNode.stop();
           track.sourceNode.disconnect();
           track.sourceNode = null;
+        } catch (_) {}
+      }
+      if (!track.isPlaying && track.mediaEl) {
+        try {
+          track.mediaEl.pause();
         } catch (_) {}
       }
       this.syncBackgroundAudioState();

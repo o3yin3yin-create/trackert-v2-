@@ -63,6 +63,7 @@ function detectDeviceName(): string {
 export function useAmbientMixer() {
   const engineRef = useRef<SoundEngine | null>(null);
   const deviceIdRef = useRef<string>('init');
+  const [, setEngineVersion] = useState(0);
   const deviceNameRef = useRef<string>('Web Player');
 
   const [activeTracks, setActiveTracks] = useState<ActiveTrackInfo[]>([]);
@@ -149,6 +150,7 @@ export function useAmbientMixer() {
       setActiveTracks(detailed);
       setMasterVolumeState(engine.getMasterVolume());
       setIsMutedState(engine.getIsMuted());
+      setEngineVersion((v) => v + 1);
 
       // Save active mix snapshot for seamless session restore
       if (detailed.length > 0) {
@@ -637,5 +639,8 @@ export function useAmbientMixer() {
     toggleAutoStartWithPomodoro,
     resumeLastMix,
     isSoundPlaying: (id: string) => activeTracks.some((t) => t.soundId === id),
+    downloadSoundForOffline: (id: string) => SoundEngine.getInstance().downloadSoundForOffline(id),
+    isSoundOfflineReady: (id: string) => SoundEngine.getInstance().isSoundOfflineReady(id),
+    isSoundDownloading: (id: string) => SoundEngine.getInstance().isSoundDownloading(id),
   };
 }

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { 
-  Play, Pause, Star, Volume2, 
+  Play, Pause, Star, Volume2, Download, Check, Loader2,
   Radio, Activity, Waves, Leaf, CloudRain, CloudDrizzle, CloudLightning, 
   Compass, Wind, Sun, Moon, Coffee, BookOpen, Navigation, Plane, Flame, 
   RotateCw, Laptop, Clock, Music, Airplay, Sparkles, Building2
@@ -22,6 +22,9 @@ export default function SoundCard({
   onTogglePlay,
   onVolumeChange,
   onToggleFavorite,
+  isOfflineReady = false,
+  isDownloading = false,
+  onDownloadOffline,
   lang = 'ar',
   themeColor = '#ffffff'
 }) {
@@ -63,8 +66,37 @@ export default function SoundCard({
           </div>
         </div>
 
-        {/* Right Action: Star & Play/Pause */}
+        {/* Right Action: Offline Download (for stream tracks), Star & Play/Pause */}
         <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+          {sound.stream && onDownloadOffline && (
+            <button
+              type="button"
+              onClick={onDownloadOffline}
+              disabled={isDownloading || isOfflineReady}
+              title={
+                isOfflineReady
+                  ? (isAr ? 'محفوظ للأوفلاين' : 'Saved for offline')
+                  : (isAr ? 'تحميل للأوفلاين' : 'Download for offline')
+              }
+              className={`p-1.5 rounded-lg transition-all ${
+                isOfflineReady
+                  ? 'text-emerald-400 opacity-100 cursor-default'
+                  : isDownloading
+                  ? 'text-white/60 opacity-100 cursor-wait'
+                  : 'text-white/30 hover:text-white/75 cursor-pointer'
+              }`}
+              aria-label={isOfflineReady ? 'Saved for offline' : 'Download for offline'}
+            >
+              {isDownloading ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : isOfflineReady ? (
+                <Check size={14} strokeWidth={2.5} />
+              ) : (
+                <Download size={14} />
+              )}
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onToggleFavorite}

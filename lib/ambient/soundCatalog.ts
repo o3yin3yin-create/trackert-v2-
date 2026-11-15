@@ -16,6 +16,7 @@ export interface SoundItem {
   type: SoundType;
   noiseType?: NoiseType;
   src?: string;
+  stream?: boolean;
   icon: string;
   descriptionEn: string;
   descriptionAr: string;
@@ -357,7 +358,8 @@ export const SOUND_CATALOG: SoundItem[] = [
     nameAr: 'Jazz Noir',
     category: 'other',
     type: 'file',
-    src: '/sounds/jazz-noir.mp3',
+    src: '/sounds/jazz-noir.m4a',
+    stream: true,
     icon: 'Music',
     descriptionEn: 'Late-night smoky jazz noir ambience for deep, relaxed focus.',
     descriptionAr: 'Late-night smoky jazz noir ambience for deep, relaxed focus.',
