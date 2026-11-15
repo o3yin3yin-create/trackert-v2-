@@ -724,26 +724,6 @@ export default function FriendsModal({
                     <Check size={10} strokeWidth={3.5} />
                   </span>
                 )}
-                {selectedFriend.user?.hasSharedScheduleWithMe && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (onOpenFriendSchedule) {
-                        onOpenFriendSchedule({
-                          name: friendName,
-                          avatar: selectedFriend.user?.avatar,
-                          habits: selectedFriend.user?.weeklySchedule || []
-                        });
-                        handleCloseSelectedSheet();
-                      }
-                    }}
-                    className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 border border-emerald-600/20 shrink-0 cursor-pointer transition-all active:scale-95"
-                    title={isRtl ? 'عرض جدول الأسبوع' : 'View Weekly Schedule'}
-                  >
-                    <CalendarDays size={11} className="text-emerald-600" />
-                    <span>{isRtl ? 'الجدول' : 'Schedule'}</span>
-                  </button>
-                )}
               </div>
               <span className="text-[13px] text-[#525252] truncate leading-tight mt-0.5">
                 {presence.status}
@@ -824,14 +804,9 @@ export default function FriendsModal({
                   className="py-2.5 text-start flex items-center justify-between text-black hover:text-black/70 cursor-pointer"
                 >
                   <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-black">
-                        {isRtl ? 'عرض جدول أسبوعه بالكامل' : 'View Full Weekly Schedule'}
-                      </span>
-                      <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                        {isRtl ? 'متاح' : 'SHARED'}
-                      </span>
-                    </div>
+                    <span className="text-sm font-bold text-black">
+                      {isRtl ? 'عرض جدول أسبوعه بالكامل' : 'View Full Weekly Schedule'}
+                    </span>
                     <span className="text-[11px] text-[#71717a]">
                       {Array.isArray(selectedFriend.user?.weeklySchedule) && selectedFriend.user.weeklySchedule.length > 0
                         ? (isRtl ? `${selectedFriend.user.weeklySchedule.length} حصص وعادات مسجلة` : `${selectedFriend.user.weeklySchedule.length} entries registered`)
@@ -1085,6 +1060,37 @@ export default function FriendsModal({
               </div>
             )}
           </div>
+        )}
+
+        {/* Shared Weekly Schedule Link (Flat borderless row, zero capsule/box) */}
+        {selectedFriend.user?.hasSharedScheduleWithMe && (
+          <button
+            type="button"
+            onClick={() => {
+              if (onOpenFriendSchedule) {
+                onOpenFriendSchedule({
+                  name: friendName,
+                  avatar: selectedFriend.user?.avatar,
+                  habits: selectedFriend.user?.weeklySchedule || []
+                });
+                handleCloseSelectedSheet();
+              }
+            }}
+            className="w-full px-1 py-1 flex items-center justify-between text-start text-[#404040] hover:text-[#0a0a0a] transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <CalendarDays size={15} className="text-[#0a0a0a] shrink-0" />
+              <span className="text-[13px] font-semibold leading-tight">
+                {isRtl ? 'الجدول الأسبوعي' : 'Weekly Schedule'}
+              </span>
+              {Array.isArray(selectedFriend.user?.weeklySchedule) && selectedFriend.user.weeklySchedule.length > 0 && (
+                <span className="text-[12px] text-[#71717a]">
+                  · {selectedFriend.user.weeklySchedule.length}
+                </span>
+              )}
+            </div>
+            <ChevronRight size={15} className={`text-[#71717a] shrink-0 ${isRtl ? 'rotate-180' : ''}`} />
+          </button>
         )}
 
         {/* Secondary Section (e.g. Spotify Track card) */}
@@ -1549,26 +1555,6 @@ export default function FriendsModal({
                                 {pinnedFriendUsername && (pinnedFriendUsername.toLowerCase() === (f.user?.username || f.displayName || '').toLowerCase()) && (
                                   <Pin size={12} className="text-white/50 fill-white/20 shrink-0" title="Pinned to Home" />
                                 )}
-                                {f.user?.hasSharedScheduleWithMe && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (onOpenFriendSchedule) {
-                                        onOpenFriendSchedule({
-                                          name: f.displayName,
-                                          avatar: f.user?.avatar,
-                                          habits: f.user?.weeklySchedule || []
-                                        });
-                                      }
-                                    }}
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/[0.12] hover:bg-emerald-500/[0.22] text-emerald-300 border border-emerald-500/25 text-[10px] font-medium tracking-normal shrink-0 transition-all cursor-pointer active:scale-95"
-                                    title={isRtl ? 'عرض جدول الأسبوع' : 'View Weekly Schedule'}
-                                  >
-                                    <CalendarDays size={10} className="text-emerald-400 shrink-0" />
-                                    <span>{isRtl ? 'الجدول' : 'Schedule'}</span>
-                                  </button>
-                                )}
                               </div>
                               <span className="text-[#b3b3b3] text-[13px] truncate leading-tight mt-0.5">
                                 {f.presence.line}
@@ -1576,9 +1562,30 @@ export default function FriendsModal({
                             </div>
                           </div>
 
-                          <span className="font-mono text-[14px] font-bold text-white shrink-0 pl-1">
-                            {f.presence.right}
-                          </span>
+                          <div className="flex items-center gap-2.5 shrink-0 pl-1">
+                            {f.user?.hasSharedScheduleWithMe && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onOpenFriendSchedule) {
+                                    onOpenFriendSchedule({
+                                      name: f.displayName,
+                                      avatar: f.user?.avatar,
+                                      habits: f.user?.weeklySchedule || []
+                                    });
+                                  }
+                                }}
+                                className="p-1 text-white/45 hover:text-white transition-colors cursor-pointer active:scale-90"
+                                title={isRtl ? 'عرض جدول الأسبوع' : 'View Weekly Schedule'}
+                              >
+                                <CalendarDays size={15} />
+                              </button>
+                            )}
+                            <span className="font-mono text-[14px] font-bold text-white">
+                              {f.presence.right}
+                            </span>
+                          </div>
                         </div>
                       );
                     })

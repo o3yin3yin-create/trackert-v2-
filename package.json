@@ -14,6 +14,7 @@
     "dmg:build": "./scripts/build_dmg.sh",
     "start": "next start",
     "lint": "eslint .",
+    "db:backup": "node scripts/backup-db.mjs",
     "postinstall": "prisma generate"
   },
   "dependencies": {
