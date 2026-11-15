@@ -642,5 +642,6 @@ export function useAmbientMixer() {
     downloadSoundForOffline: (id: string) => SoundEngine.getInstance().downloadSoundForOffline(id),
     isSoundOfflineReady: (id: string) => SoundEngine.getInstance().isSoundOfflineReady(id),
     isSoundDownloading: (id: string) => SoundEngine.getInstance().isSoundDownloading(id),
+    getDownloadProgress: (id: string) => SoundEngine.getInstance().getDownloadProgress(id),
   };
 }

@@ -24,6 +24,7 @@ export default function SoundCard({
   onToggleFavorite,
   isOfflineReady = false,
   isDownloading = false,
+  downloadProgress = null,
   onDownloadOffline,
   lang = 'ar',
   themeColor = '#ffffff'
@@ -88,7 +89,10 @@ export default function SoundCard({
               aria-label={isOfflineReady ? 'Saved for offline' : 'Download for offline'}
             >
               {isDownloading ? (
-                <Loader2 size={14} className="animate-spin" />
+                <span className="inline-flex items-center gap-1 text-[10px] font-mono tabular-nums">
+                  <Loader2 size={13} className="animate-spin" />
+                  {downloadProgress !== null && <span>{downloadProgress}%</span>}
+                </span>
               ) : isOfflineReady ? (
                 <Check size={14} strokeWidth={2.5} />
               ) : (

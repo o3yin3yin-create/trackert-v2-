@@ -98,8 +98,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 1.5. Ambient Audio Files (/sounds/...) -> Cache-First for instant offline playback
+  // 1.5. Ambient Audio Files (/sounds/...) -> Cache-First; let Range requests stream natively if not cached
   if (url.pathname.startsWith('/sounds/')) {
+    if (request.headers.has('range')) {
+      return;
+    }
     event.respondWith(
       caches.open('bokra-ambient-v1').then((audioCache) => {
         return audioCache.match(request).then((cachedResponse) => {

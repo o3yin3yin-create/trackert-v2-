@@ -45,6 +45,7 @@ export class SoundEngine {
 
   // Loading state tracking
   private loadingSounds: Set<string> = new Set();
+  private downloadProgress: Map<string, number> = new Map();
 
   private masterVolume: number = 0.8;
   private isMuted: boolean = false;
@@ -199,8 +200,12 @@ export class SoundEngine {
     return this.loadingSounds.has(soundId);
   }
 
+  public getDownloadProgress(soundId: string): number | null {
+    return this.downloadProgress.get(soundId) ?? null;
+  }
+
   /**
-   * Explicitly download and cache a streaming sound for offline playback.
+   * Explicitly download and cache a streaming sound for offline playback with live progress.
    */
   public async downloadSoundForOffline(soundId: string): Promise<boolean> {
     if (typeof window === 'undefined' || !('caches' in window)) return false;
@@ -208,11 +213,54 @@ export class SoundEngine {
     if (!sound?.src || this.loadingSounds.has(soundId)) return false;
 
     this.loadingSounds.add(soundId);
+    this.downloadProgress.set(soundId, 0);
     this.notify();
 
     try {
+      const res = await fetch(sound.src);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const contentLength = Number(res.headers.get('content-length') || 0);
+      const contentType = res.headers.get('content-type') || 'audio/mp4';
+
+      let blob: Blob;
+      if (res.body && contentLength > 0) {
+        const reader = res.body.getReader();
+        const chunks: BlobPart[] = [];
+        let received = 0;
+        let lastPct = 0;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) {
+            chunks.push(value);
+            received += value.byteLength;
+            const pct = Math.min(99, Math.round((received / contentLength) * 100));
+            if (pct !== lastPct) {
+              lastPct = pct;
+              this.downloadProgress.set(soundId, pct);
+              this.notify();
+            }
+          }
+        }
+        blob = new Blob(chunks, { type: contentType });
+      } else {
+        blob = await res.blob();
+      }
+
       const cache = await caches.open('bokra-ambient-v1');
-      await cache.add(sound.src);
+      await cache.put(
+        sound.src,
+        new Response(blob, {
+          status: 200,
+          headers: {
+            'Content-Type': contentType,
+            'Content-Length': String(blob.size),
+          },
+        })
+      );
+      this.downloadProgress.set(soundId, 100);
       this.offlineReadySounds.add(soundId);
       return true;
     } catch (err) {
@@ -220,6 +268,7 @@ export class SoundEngine {
       return false;
     } finally {
       this.loadingSounds.delete(soundId);
+      this.downloadProgress.delete(soundId);
       this.notify();
     }
   }
@@ -646,7 +695,7 @@ export class SoundEngine {
     if (!track.mediaEl) {
       const mediaEl = new Audio();
       mediaEl.loop = true;
-      mediaEl.preload = 'auto';
+      mediaEl.preload = 'metadata';
       mediaEl.crossOrigin = 'anonymous';
       const mediaSourceNode = ctx.createMediaElementSource(mediaEl);
       mediaSourceNode.connect(track.filterNode || track.gainNode);
