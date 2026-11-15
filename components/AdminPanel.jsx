@@ -131,29 +131,29 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
         initial={{ scale: 0.96, opacity: 0, y: 12 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.96, opacity: 0, y: 12 }}
-        transition={{ type: "spring", damping: 28, stiffness: 300 }}
-        className="w-full max-w-5xl h-[92vh] max-h-[880px] bg-[#0A0A0C] border border-white/10 rounded-[28px] sm:rounded-[32px] relative z-10 flex flex-col shadow-2xl overflow-hidden font-sans text-white select-none"
+        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+        className="w-full max-w-5xl h-[92vh] max-h-[880px] bg-[#141415] border border-white/[0.08] rounded-2xl relative z-10 flex flex-col overflow-hidden font-sans text-[#ededed] select-none"
       >
         {/* Top Control Bar */}
-        <div className="px-6 py-4.5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-5 border-b border-white/10 flex items-center justify-between shrink-0 bg-[#0E0F14]/70 backdrop-blur-lg">
+        <div className="px-6 py-4 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] sm:pt-4 border-b border-white/[0.08] flex items-center justify-between shrink-0 bg-[#141415]">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white shadow-inner shrink-0">
-              <Shield size={20} className="text-white" />
+            <div className="w-10 h-10 rounded-xl bg-[#19191b] border border-white/[0.08] flex items-center justify-center text-[#ededed] shrink-0">
+              <Shield size={18} strokeWidth={1.5} className="text-[#ededed]" />
             </div>
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-black tracking-tight text-white whitespace-nowrap truncate">
+                <h2 className="text-base sm:text-lg font-medium tracking-tight text-[#ededed] whitespace-nowrap truncate">
                   {isArabic ? 'مركز القيادة' : 'Command Center'}
                 </h2>
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono font-bold text-emerald-400 shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>{isArabic ? 'حي' : 'LIVE'}</span>
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-mono font-medium text-emerald-400 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span>{isArabic ? 'حي' : 'Live'}</span>
                 </span>
               </div>
-              <p className="text-[11px] text-white/40 font-mono mt-0.5 whitespace-nowrap truncate">
+              <p className="text-[11px] text-white/40 font-mono tabular-nums mt-0.5 whitespace-nowrap truncate">
                 {isArabic 
                   ? `${users.length} حساب · متصل`
-                  : `${users.length} Accounts · Live DB`}
+                  : `${users.length} accounts · Live DB`}
               </p>
             </div>
           </div>
@@ -162,10 +162,10 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
             <button
               onClick={fetchData}
               disabled={loading}
-              className="h-9 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white flex items-center gap-1.5 text-xs font-mono transition-all active:scale-95 disabled:opacity-40"
+              className="h-9 px-3 rounded-lg bg-[#19191b] hover:bg-white/[0.08] border border-white/[0.08] text-white/70 hover:text-[#ededed] flex items-center gap-1.5 text-xs font-mono tabular-nums transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] disabled:opacity-40"
               title={isArabic ? 'تحديث البيانات الحية' : 'Refresh Telemetry'}
             >
-              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+              <RefreshCw size={13} strokeWidth={1.5} className={loading ? 'animate-spin' : ''} />
               <span className="hidden sm:inline">
                 {lastRefreshed 
                   ? lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) 
@@ -175,92 +175,92 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
 
             <button 
               onClick={onClose}
-              className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/60 hover:text-white transition-all active:scale-95"
+              className="w-9 h-9 rounded-lg bg-[#19191b] hover:bg-white/[0.08] border border-white/[0.08] flex items-center justify-center text-white/60 hover:text-[#ededed] transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]"
               title={isArabic ? 'إغلاق (Esc)' : 'Close (Esc)'}
             >
-              <X size={16} />
+              <X size={16} strokeWidth={1.5} />
             </button>
           </div>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex px-6 pt-2 shrink-0 border-b border-white/10 bg-[#0A0A0C] gap-1 sm:gap-2 overflow-x-auto scrollbar-hide">
+        <div className="flex px-6 pt-2 shrink-0 border-b border-white/[0.08] bg-[#141415] gap-1 sm:gap-2 overflow-x-auto scrollbar-hide">
           <button 
             onClick={() => setActiveTab('overview')}
-            className={`pb-3 pt-2 px-3 text-xs sm:text-sm font-bold tracking-tight transition-all relative flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
+            className={`pb-3 pt-2 px-3 text-xs sm:text-sm font-medium transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] relative flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === 'overview' 
-                ? 'text-white' 
+                ? 'text-[#ededed]' 
                 : 'text-white/40 hover:text-white/70'
             }`}
           >
-            <BarChart3 size={15} className="shrink-0" />
+            <BarChart3 size={15} strokeWidth={1.5} className="shrink-0" />
             <span className="whitespace-nowrap">{isArabic ? 'نظرة عامة' : 'Overview'}</span>
             {activeTab === 'overview' && (
               <motion.div 
                 layoutId="admin_active_tab" 
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full" 
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#ededed] rounded-full" 
               />
             )}
           </button>
 
           <button 
             onClick={() => setActiveTab('sessions')}
-            className={`pb-3 pt-2 px-3 text-xs sm:text-sm font-bold tracking-tight transition-all relative flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
+            className={`pb-3 pt-2 px-3 text-xs sm:text-sm font-medium transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] relative flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === 'sessions' 
-                ? 'text-white' 
+                ? 'text-[#ededed]' 
                 : 'text-white/40 hover:text-white/70'
             }`}
           >
-            <Radio size={15} className={`shrink-0 ${overview?.activeNowCount > 0 ? "text-emerald-400" : ""}`} />
+            <Radio size={15} strokeWidth={1.5} className={`shrink-0 ${overview?.activeNowCount > 0 ? "text-emerald-400" : ""}`} />
             <span className="whitespace-nowrap">{isArabic ? 'مباشر' : 'Live'}</span>
             {overview?.activeNowCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold">
+              <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 font-mono tabular-nums text-[10px] font-medium">
                 {overview.activeNowCount}
               </span>
             )}
             {activeTab === 'sessions' && (
               <motion.div 
                 layoutId="admin_active_tab" 
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full" 
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#ededed] rounded-full" 
               />
             )}
           </button>
 
           <button 
             onClick={() => setActiveTab('users')}
-            className={`pb-3 pt-2 px-3 text-xs sm:text-sm font-bold tracking-tight transition-all relative flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
+            className={`pb-3 pt-2 px-3 text-xs sm:text-sm font-medium transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] relative flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === 'users' 
-                ? 'text-white' 
+                ? 'text-[#ededed]' 
                 : 'text-white/40 hover:text-white/70'
             }`}
           >
-            <Users size={15} className="shrink-0" />
+            <Users size={15} strokeWidth={1.5} className="shrink-0" />
             <span className="whitespace-nowrap">{isArabic ? 'المستخدمين' : 'Users'}</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-white/10 text-white/70 font-mono text-[10px] font-bold">
+            <span className="px-1.5 py-0.5 rounded-md bg-[#19191b] border border-white/[0.08] text-white/70 font-mono tabular-nums text-[10px] font-medium">
               {users.length}
             </span>
             {activeTab === 'users' && (
               <motion.div 
                 layoutId="admin_active_tab" 
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full" 
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#ededed] rounded-full" 
               />
             )}
           </button>
 
           <button 
             onClick={() => setActiveTab('system')}
-            className={`pb-3 pt-2 px-3 text-xs sm:text-sm font-bold tracking-tight transition-all relative flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
+            className={`pb-3 pt-2 px-3 text-xs sm:text-sm font-medium transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] relative flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === 'system' 
-                ? 'text-white' 
+                ? 'text-[#ededed]' 
                 : 'text-white/40 hover:text-white/70'
             }`}
           >
-            <Lock size={15} className="shrink-0" />
+            <Lock size={15} strokeWidth={1.5} className="shrink-0" />
             <span className="whitespace-nowrap">{isArabic ? 'النظام' : 'System'}</span>
             {activeTab === 'system' && (
               <motion.div 
                 layoutId="admin_active_tab" 
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full" 
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#ededed] rounded-full" 
               />
             )}
           </button>
@@ -288,17 +288,17 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                   {/* Hero Metric Cards Grid */}
                   <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {/* 1. Total Registered Users */}
-                    <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col justify-between gap-3 shadow-sm hover:border-white/20 transition-all">
+                    <div className="p-4 sm:p-5 rounded-2xl bg-[#19191b] border border-white/[0.08] flex flex-col justify-between gap-3 hover:border-white/[0.16] transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]">
                       <div className="flex items-center justify-between text-white/50">
-                        <span className="text-[11px] font-mono uppercase tracking-wider font-bold whitespace-nowrap truncate">
+                        <span className="text-xs font-medium whitespace-nowrap truncate">
                           {isArabic ? 'المستخدمين' : 'Users'}
                         </span>
-                        <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white shrink-0">
-                          <Users size={16} />
+                        <div className="w-8 h-8 rounded-lg bg-[#141415] border border-white/[0.08] flex items-center justify-center text-[#ededed] shrink-0">
+                          <Users size={15} strokeWidth={1.5} />
                         </div>
                       </div>
                       <div className="flex items-baseline gap-2">
-                        <span className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+                        <span className="text-2xl sm:text-4xl font-medium tabular-nums text-[#ededed] tracking-tight">
                           {overview.totalUsers}
                         </span>
                         <span className="text-xs text-white/40 font-mono whitespace-nowrap">
@@ -308,17 +308,17 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                     </div>
 
                     {/* 2. Active Now */}
-                    <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col justify-between gap-3 shadow-sm hover:border-white/20 transition-all">
+                    <div className="p-4 sm:p-5 rounded-2xl bg-[#19191b] border border-white/[0.08] flex flex-col justify-between gap-3 hover:border-white/[0.16] transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]">
                       <div className="flex items-center justify-between text-white/50">
-                        <span className="text-[11px] font-mono uppercase tracking-wider font-bold whitespace-nowrap truncate text-emerald-400">
+                        <span className="text-xs font-medium whitespace-nowrap truncate text-emerald-400">
                           {isArabic ? 'النشطين الآن' : 'Active Now'}
                         </span>
-                        <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0">
-                          <Radio size={16} />
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                          <Radio size={15} strokeWidth={1.5} />
                         </div>
                       </div>
                       <div className="flex items-baseline gap-2">
-                        <span className="text-2xl sm:text-4xl font-black text-emerald-400 tracking-tight">
+                        <span className="text-2xl sm:text-4xl font-medium tabular-nums text-emerald-400 tracking-tight">
                           {overview.activeNowCount}
                         </span>
                         <span className="text-xs text-emerald-400/60 font-mono whitespace-nowrap">
@@ -328,17 +328,17 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                     </div>
 
                     {/* 3. Completed Habits */}
-                    <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col justify-between gap-3 shadow-sm hover:border-white/20 transition-all">
+                    <div className="p-4 sm:p-5 rounded-2xl bg-[#19191b] border border-white/[0.08] flex flex-col justify-between gap-3 hover:border-white/[0.16] transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]">
                       <div className="flex items-center justify-between text-white/50">
-                        <span className="text-[11px] font-mono uppercase tracking-wider font-bold whitespace-nowrap truncate">
+                        <span className="text-xs font-medium whitespace-nowrap truncate">
                           {isArabic ? 'العادات المنجزة' : 'Habits Done'}
                         </span>
-                        <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white shrink-0">
-                          <CheckCircle2 size={16} />
+                        <div className="w-8 h-8 rounded-lg bg-[#141415] border border-white/[0.08] flex items-center justify-center text-[#ededed] shrink-0">
+                          <CheckCircle2 size={15} strokeWidth={1.5} />
                         </div>
                       </div>
                       <div className="flex items-baseline gap-2">
-                        <span className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+                        <span className="text-2xl sm:text-4xl font-medium tabular-nums text-[#ededed] tracking-tight">
                           {overview.totalHabitCompletions}
                         </span>
                         <span className="text-xs text-white/40 font-mono whitespace-nowrap">
@@ -348,17 +348,17 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                     </div>
 
                     {/* 4. Total Focus Hours */}
-                    <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col justify-between gap-3 shadow-sm hover:border-white/20 transition-all">
+                    <div className="p-4 sm:p-5 rounded-2xl bg-[#19191b] border border-white/[0.08] flex flex-col justify-between gap-3 hover:border-white/[0.16] transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]">
                       <div className="flex items-center justify-between text-white/50">
-                        <span className="text-[11px] font-mono uppercase tracking-wider font-bold whitespace-nowrap truncate">
+                        <span className="text-xs font-medium whitespace-nowrap truncate">
                           {isArabic ? 'وقت التركيز' : 'Focus Hours'}
                         </span>
-                        <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white shrink-0">
-                          <Activity size={16} />
+                        <div className="w-8 h-8 rounded-lg bg-[#141415] border border-white/[0.08] flex items-center justify-center text-[#ededed] shrink-0">
+                          <Activity size={15} strokeWidth={1.5} />
                         </div>
                       </div>
                       <div className="flex items-baseline gap-2">
-                        <span className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+                        <span className="text-2xl sm:text-4xl font-medium tabular-nums text-[#ededed] tracking-tight">
                           {overview.totalFocusHours}
                         </span>
                         <span className="text-xs text-white/40 font-mono whitespace-nowrap">
@@ -368,17 +368,17 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                     </div>
 
                     {/* 5. Friendships & Network */}
-                    <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col justify-between gap-3 shadow-sm hover:border-white/20 transition-all">
+                    <div className="p-4 sm:p-5 rounded-2xl bg-[#19191b] border border-white/[0.08] flex flex-col justify-between gap-3 hover:border-white/[0.16] transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]">
                       <div className="flex items-center justify-between text-white/50">
-                        <span className="text-[11px] font-mono uppercase tracking-wider font-bold whitespace-nowrap truncate">
+                        <span className="text-xs font-medium whitespace-nowrap truncate">
                           {isArabic ? 'الأصدقاء' : 'Friends'}
                         </span>
-                        <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white shrink-0">
-                          <Zap size={16} />
+                        <div className="w-8 h-8 rounded-lg bg-[#141415] border border-white/[0.08] flex items-center justify-center text-[#ededed] shrink-0">
+                          <Zap size={15} strokeWidth={1.5} />
                         </div>
                       </div>
                       <div className="flex items-baseline gap-2">
-                        <span className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+                        <span className="text-2xl sm:text-4xl font-medium tabular-nums text-[#ededed] tracking-tight">
                           {overview.totalFriendships}
                         </span>
                         <span className="text-xs text-white/40 font-mono whitespace-nowrap">
@@ -388,17 +388,17 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                     </div>
 
                     {/* 6. Spotify Adoption */}
-                    <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col justify-between gap-3 shadow-sm hover:border-white/20 transition-all">
+                    <div className="p-4 sm:p-5 rounded-2xl bg-[#19191b] border border-white/[0.08] flex flex-col justify-between gap-3 hover:border-white/[0.16] transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]">
                       <div className="flex items-center justify-between text-white/50">
-                        <span className="text-[11px] font-mono uppercase tracking-wider font-bold whitespace-nowrap truncate">
+                        <span className="text-xs font-medium whitespace-nowrap truncate">
                           {isArabic ? 'سبوتيفاي' : 'Spotify'}
                         </span>
-                        <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white shrink-0">
-                          <Music size={16} />
+                        <div className="w-8 h-8 rounded-lg bg-[#141415] border border-white/[0.08] flex items-center justify-center text-[#ededed] shrink-0">
+                          <Music size={15} strokeWidth={1.5} />
                         </div>
                       </div>
                       <div className="flex items-baseline gap-2">
-                        <span className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+                        <span className="text-2xl sm:text-4xl font-medium tabular-nums text-[#ededed] tracking-tight">
                           {overview.spotifyUsersCount}
                         </span>
                         <span className="text-xs text-white/40 font-mono whitespace-nowrap">
@@ -411,15 +411,15 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                   {/* 7-Day Trend Visualizer & Category Breakdown */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     {/* 7-Day Daily Activity */}
-                    <div className="lg:col-span-2 p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col gap-4">
+                    <div className="lg:col-span-2 p-5 rounded-2xl bg-[#19191b] border border-white/[0.08] flex flex-col gap-4">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
-                          <Flame size={16} className="text-white shrink-0" />
-                          <h3 className="text-sm font-bold text-white whitespace-nowrap truncate">
+                          <Flame size={15} strokeWidth={1.5} className="text-[#ededed] shrink-0" />
+                          <h3 className="text-sm font-medium text-[#ededed] whitespace-nowrap truncate">
                             {isArabic ? 'نشاط 7 أيام' : '7-Day Activity'}
                           </h3>
                         </div>
-                        <span className="text-[10px] text-white/40 font-mono whitespace-nowrap truncate shrink-0">
+                        <span className="text-[11px] text-white/40 font-mono whitespace-nowrap truncate shrink-0">
                           {isArabic ? 'دقائق التركيز والإنجاز' : 'Focus mins & completions'}
                         </span>
                       </div>
@@ -432,15 +432,15 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
 
                           return (
                             <div key={day.date} className="flex flex-col items-center gap-1.5 h-full justify-end group">
-                              <span className="text-[9px] font-mono text-white/40 group-hover:text-white transition-colors">
+                              <span className="text-[10px] font-mono tabular-nums text-white/40 group-hover:text-[#ededed] transition-colors duration-150">
                                 {day.focusMinutes}m
                               </span>
                               <div 
                                 style={{ height: `${heightPct}%` }}
-                                className="w-full max-w-[28px] rounded-lg bg-white/20 group-hover:bg-white transition-all shadow-sm relative"
+                                className="w-full max-w-[28px] rounded-md bg-white/20 group-hover:bg-[#ededed] transition-colors duration-150 relative"
                                 title={`${day.date}: ${day.focusMinutes} mins, ${day.completions} habits checked`}
                               />
-                              <span className="text-[10px] font-mono text-white/50 uppercase mt-1">
+                              <span className="text-[11px] font-mono text-white/50 mt-1">
                                 {dayName}
                               </span>
                             </div>
@@ -450,15 +450,15 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                     </div>
 
                     {/* Category Distribution */}
-                    <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col gap-4">
+                    <div className="p-5 rounded-2xl bg-[#19191b] border border-white/[0.08] flex flex-col gap-4">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
-                          <Target size={16} className="text-white shrink-0" />
-                          <h3 className="text-sm font-bold text-white whitespace-nowrap truncate">
+                          <Target size={15} strokeWidth={1.5} className="text-[#ededed] shrink-0" />
+                          <h3 className="text-sm font-medium text-[#ededed] whitespace-nowrap truncate">
                             {isArabic ? 'التصنيفات' : 'Categories'}
                           </h3>
                         </div>
-                        <span className="text-[10px] text-white/40 font-mono whitespace-nowrap truncate shrink-0">
+                        <span className="text-[11px] text-white/40 font-mono tabular-nums whitespace-nowrap truncate shrink-0">
                           {overview.totalHabitsConfigured} {isArabic ? 'عادة' : 'total'}
                         </span>
                       </div>
@@ -468,14 +468,14 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                           const pct = Math.round((count / (overview.totalHabitsConfigured || 1)) * 100);
                           return (
                             <div key={cat} className="space-y-1">
-                              <div className="flex justify-between text-xs font-mono">
+                              <div className="flex justify-between text-xs font-mono tabular-nums">
                                 <span className="capitalize text-white/80">{cat}</span>
                                 <span className="text-white/40">{count} ({pct}%)</span>
                               </div>
-                              <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                              <div className="h-1.5 rounded-full bg-white/[0.08] overflow-hidden">
                                 <div 
                                   style={{ width: `${pct}%` }} 
-                                  className="h-full bg-white/60 rounded-full" 
+                                  className="h-full bg-[#ededed]/70 rounded-full" 
                                 />
                               </div>
                             </div>
@@ -487,30 +487,30 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
 
                   {/* Top Dedicated Users Leaderboard */}
                   {overview.topUsers && overview.topUsers.length > 0 && (
-                    <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3">
+                    <div className="p-5 rounded-2xl bg-[#19191b] border border-white/[0.08] space-y-3">
                       <div className="flex items-center justify-between gap-2">
-                        <h3 className="text-sm font-bold text-white flex items-center gap-2 min-w-0">
-                          <Clock size={16} className="shrink-0" />
+                        <h3 className="text-sm font-medium text-[#ededed] flex items-center gap-2 min-w-0">
+                          <Clock size={15} strokeWidth={1.5} className="shrink-0" />
                           <span className="whitespace-nowrap truncate">{isArabic ? 'المتصدرين' : 'Top Focusers'}</span>
                         </h3>
-                        <span className="text-[10px] text-white/40 font-mono whitespace-nowrap truncate shrink-0">
+                        <span className="text-[11px] text-white/40 font-mono whitespace-nowrap truncate shrink-0">
                           {isArabic ? 'إجمالي الساعات' : 'Total focus hours'}
                         </span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-1">
                         {overview.topUsers.map((u, idx) => (
-                          <div key={u.id} className="p-3.5 rounded-xl bg-white/5 border border-white/5 flex items-center gap-3">
-                            <span className="w-6 h-6 rounded-lg bg-white/10 text-white font-mono text-xs font-bold flex items-center justify-center shrink-0">
+                          <div key={u.id} className="p-3 rounded-xl bg-[#141415] border border-white/[0.08] flex items-center gap-3">
+                            <span className="w-6 h-6 rounded-md bg-[#19191b] border border-white/[0.08] text-[#ededed] font-mono tabular-nums text-xs font-medium flex items-center justify-center shrink-0">
                               #{idx + 1}
                             </span>
                             <div className="flex flex-col min-w-0 flex-1">
-                              <span className="text-xs font-bold text-white truncate">{u.name || 'Anonymous'}</span>
+                              <span className="text-xs font-medium text-[#ededed] truncate">{u.name || 'Anonymous'}</span>
                               <span className="text-[10px] text-white/40 font-mono truncate">
                                 {u.username ? `@${u.username}` : u.email.split('@')[0]}
                               </span>
                             </div>
-                            <span className="text-xs font-mono font-bold text-white shrink-0">
+                            <span className="text-xs font-mono tabular-nums font-medium text-[#ededed] shrink-0">
                               {u.focusHours}h
                             </span>
                           </div>
@@ -526,21 +526,21 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <h3 className="text-sm font-bold text-white flex items-center gap-2 min-w-0">
-                        <Radio size={16} className="text-emerald-400 shrink-0" />
+                      <h3 className="text-sm font-medium text-[#ededed] flex items-center gap-2 min-w-0">
+                        <Radio size={15} strokeWidth={1.5} className="text-emerald-400 shrink-0" />
                         <span className="whitespace-nowrap truncate">{isArabic ? 'الجلسات المباشرة' : 'Live Sessions'}</span>
                       </h3>
                       <p className="text-xs text-white/40 font-mono mt-0.5 whitespace-nowrap truncate">
                         {isArabic ? 'جلسات بومودورو ووضع الطيران الحية' : 'Live Pomodoro and Flight Mode sessions'}
                       </p>
                     </div>
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono font-bold text-emerald-400 shrink-0 whitespace-nowrap">
+                    <span className="px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono tabular-nums font-medium text-emerald-400 shrink-0 whitespace-nowrap">
                       {overview?.liveActiveUsers?.length || 0} {isArabic ? 'نشط' : 'Active'}
                     </span>
                   </div>
 
                   {(!overview?.liveActiveUsers || overview.liveActiveUsers.length === 0) ? (
-                    <div className="p-12 text-center rounded-2xl bg-white/[0.02] border border-white/10 text-white/40 text-xs font-mono">
+                    <div className="p-12 text-center rounded-2xl bg-[#19191b] border border-white/[0.08] text-white/40 text-xs font-mono">
                       {isArabic ? 'لا توجد جلسات تركيز نشطة في هذه اللحظة.' : 'No active focus sessions running at the moment.'}
                     </div>
                   ) : (
@@ -550,24 +550,24 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                         return (
                           <div 
                             key={sessionUser.id}
-                            className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-3 shadow-sm"
+                            className="p-4 rounded-2xl bg-[#19191b] border border-white/[0.08] hover:border-white/[0.16] transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] flex flex-col justify-between gap-3"
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex items-center gap-2.5 min-w-0">
-                                <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center font-bold text-xs uppercase text-white shrink-0">
+                                <div className="w-9 h-9 rounded-lg bg-[#141415] border border-white/[0.08] flex items-center justify-center font-medium text-xs uppercase text-[#ededed] shrink-0">
                                   {sessionUser.name ? sessionUser.name.charAt(0) : 'U'}
                                 </div>
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-xs font-bold text-white truncate">
+                                  <span className="text-xs font-medium text-[#ededed] truncate">
                                     {sessionUser.name || 'Unknown User'}
                                   </span>
-                                  <span className="text-[10px] text-white/40 font-mono truncate">
+                                  <span className="text-[11px] text-white/40 font-mono truncate">
                                     {sessionUser.username ? `@${sessionUser.username}` : sessionUser.email}
                                   </span>
                                 </div>
                               </div>
 
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
+                              <span className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-medium border ${
                                 isFlight 
                                   ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' 
                                   : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
@@ -576,10 +576,10 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                               </span>
                             </div>
 
-                            <div className="p-2.5 rounded-xl bg-white/5 text-[11px] font-mono text-white/60 flex items-center justify-between">
+                            <div className="p-2.5 rounded-xl bg-[#141415] border border-white/[0.08] text-[11px] font-mono text-white/60 flex items-center justify-between">
                               <span>{isArabic ? 'الحالة:' : 'Status:'}</span>
-                              <span className="text-white flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              <span className="text-[#ededed] flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                                 {isArabic ? 'جلسة جارية' : 'In Session'}
                               </span>
                             </div>
@@ -597,20 +597,20 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                   {/* Search and Filters Bar */}
                   <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
                     <div className="relative flex-1">
-                      <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+                      <Search size={15} strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
                       <input 
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder={isArabic ? 'بحث بالاسم، الإيميل، أو @username...' : 'Search by name, email, or @username...'}
-                        className="w-full h-10 pl-9 pr-4 rounded-xl bg-white/5 border border-white/10 text-xs font-sans text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors"
+                        className="w-full h-10 pl-9 pr-4 rounded-xl bg-[#19191b] border border-white/[0.08] text-xs font-sans text-[#ededed] placeholder:text-white/30 focus:outline-none focus:border-white/25 transition-colors duration-150"
                       />
                       {searchQuery && (
                         <button 
                           onClick={() => setSearchQuery('')}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-[#ededed]"
                         >
-                          <X size={13} />
+                          <X size={13} strokeWidth={1.5} />
                         </button>
                       )}
                     </div>
@@ -626,14 +626,14 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                         <button
                           key={tab.id}
                           onClick={() => setUserFilter(tab.id)}
-                          className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                          className={`px-3 py-1.5 rounded-lg transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                             userFilter === tab.id 
-                              ? 'bg-white text-black font-bold' 
-                              : 'bg-white/5 text-white/50 hover:text-white border border-white/5'
+                              ? 'bg-[#ededed] text-[#141415] font-medium' 
+                              : 'bg-[#19191b] text-white/50 hover:text-[#ededed] border border-white/[0.08]'
                           }`}
                         >
                           <span>{tab.label}</span>
-                          <span className={`text-[10px] ${userFilter === tab.id ? 'opacity-70' : 'opacity-40'}`}>
+                          <span className={`text-[10px] tabular-nums ${userFilter === tab.id ? 'opacity-70' : 'opacity-40'}`}>
                             {tab.count}
                           </span>
                         </button>
@@ -644,7 +644,7 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                   {/* Users Table / Card Grid */}
                   <div className="space-y-2.5">
                     {filteredUsers.length === 0 ? (
-                      <div className="p-12 text-center rounded-2xl bg-white/[0.02] border border-white/10 text-white/40 text-xs font-mono">
+                      <div className="p-12 text-center rounded-2xl bg-[#19191b] border border-white/[0.08] text-white/40 text-xs font-mono">
                         {isArabic ? 'لم يتم العثور على مستخدمين يطابقون البحث.' : 'No users match the search criteria.'}
                       </div>
                     ) : (
@@ -655,21 +655,21 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                         return (
                           <div 
                             key={u.id}
-                            className={`p-4 rounded-2xl bg-white/[0.02] border ${
+                            className={`p-4 rounded-2xl bg-[#19191b] border ${
                               u.isBlocked 
-                                ? 'border-red-500/30 bg-red-500/[0.02]' 
-                                : 'border-white/10 hover:border-white/20'
-                            } transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4`}
+                                ? 'border-red-500/30 bg-red-500/[0.03]' 
+                                : 'border-white/[0.08] hover:border-white/[0.16]'
+                            } transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4`}
                           >
                             {/* User Info */}
                             <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center font-bold text-sm text-white shrink-0">
+                              <div className="w-10 h-10 rounded-xl bg-[#141415] border border-white/[0.08] flex items-center justify-center font-medium text-sm text-[#ededed] shrink-0">
                                 {u.name ? u.name.charAt(0) : 'U'}
                               </div>
 
                               <div className="flex flex-col min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-sm font-bold text-white truncate">
+                                  <span className="text-sm font-medium text-[#ededed] truncate">
                                     {u.name || 'Anonymous User'}
                                   </span>
                                   {u.username && (
@@ -678,28 +678,28 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                                     </span>
                                   )}
                                   {u.isAdmin && (
-                                    <span className="px-2 py-0.5 rounded-md bg-white/10 text-white text-[10px] font-mono font-bold uppercase border border-white/10">
-                                      {isArabic ? 'مشرف' : 'ADMIN'}
+                                    <span className="px-2 py-0.5 rounded-md bg-white/[0.08] text-[#ededed] text-[11px] font-mono font-medium border border-white/[0.08]">
+                                      {isArabic ? 'مشرف' : 'Admin'}
                                     </span>
                                   )}
                                   {u.isBlocked && (
-                                    <span className="px-2 py-0.5 rounded-md bg-red-500/10 text-red-400 text-[10px] font-mono font-bold uppercase border border-red-500/20">
-                                      {isArabic ? 'محظور' : 'BLOCKED'}
+                                    <span className="px-2 py-0.5 rounded-md bg-red-500/10 text-red-400 text-[11px] font-mono font-medium border border-red-500/20">
+                                      {isArabic ? 'محظور' : 'Blocked'}
                                     </span>
                                   )}
                                   {u.hasSpotifyAccess && (
-                                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[10px] font-mono font-bold flex items-center gap-1 border border-emerald-500/20">
-                                      <Music size={10} /> Spotify
+                                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[11px] font-mono font-medium flex items-center gap-1 border border-emerald-500/20">
+                                      <Music size={10} strokeWidth={1.5} /> Spotify
                                     </span>
                                   )}
                                   {u.activeSessionType && (
-                                    <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 text-[10px] font-mono font-bold flex items-center gap-1 border border-blue-500/20">
-                                      <Radio size={10} className="animate-pulse" /> {u.activeSessionType}
+                                    <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 text-[11px] font-mono font-medium flex items-center gap-1 border border-blue-500/20">
+                                      <Radio size={10} strokeWidth={1.5} /> {u.activeSessionType}
                                     </span>
                                   )}
                                 </div>
 
-                                <div className="flex items-center gap-3 text-[11px] font-mono text-white/40 mt-1 flex-wrap">
+                                <div className="flex items-center gap-3 text-[11px] font-mono tabular-nums text-white/40 mt-1 flex-wrap">
                                   <span>{u.email}</span>
                                   <span>·</span>
                                   <span>{u._count?.habits || 0} {isArabic ? 'عادات' : 'habits'}</span>
@@ -717,14 +717,14 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                               <button
                                 onClick={() => handleUserAction(u.id, u.hasSpotifyAccess ? 'revokeSpotify' : 'grantSpotify')}
                                 disabled={isActionPending}
-                                className={`h-8 px-2.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5 ${
+                                className={`h-8 px-2.5 rounded-lg text-xs font-mono font-medium transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] flex items-center gap-1.5 ${
                                   u.hasSpotifyAccess 
                                     ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20' 
-                                    : 'bg-white/5 text-white/50 hover:text-white border border-white/5'
+                                    : 'bg-[#141415] text-white/50 hover:text-[#ededed] border border-white/[0.08]'
                                 }`}
                                 title={u.hasSpotifyAccess ? 'Revoke Spotify Access' : 'Grant Spotify Access'}
                               >
-                                <Music size={12} />
+                                <Music size={12} strokeWidth={1.5} />
                                 <span className="hidden md:inline">
                                   {u.hasSpotifyAccess ? (isArabic ? 'إلغاء Spotify' : 'Spotify On') : (isArabic ? 'منح Spotify' : 'Spotify Off')}
                                 </span>
@@ -734,16 +734,16 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                               <button
                                 onClick={() => handleUserAction(u.id, u.isAdmin ? 'removeAdmin' : 'makeAdmin')}
                                 disabled={isPrimaryAdmin || isActionPending}
-                                className={`h-8 px-2.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5 ${
+                                className={`h-8 px-2.5 rounded-lg text-xs font-mono font-medium transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] flex items-center gap-1.5 ${
                                   isPrimaryAdmin 
-                                    ? 'opacity-20 cursor-not-allowed bg-white/5 text-white/40' 
+                                    ? 'opacity-20 cursor-not-allowed bg-[#141415] text-white/40 border border-white/[0.08]' 
                                     : u.isAdmin 
-                                      ? 'bg-white/20 text-white hover:bg-white/30 border border-white/20' 
-                                      : 'bg-white/5 text-white/50 hover:text-white border border-white/5'
+                                      ? 'bg-white/[0.12] text-[#ededed] hover:bg-white/[0.18] border border-white/[0.16]' 
+                                      : 'bg-[#141415] text-white/50 hover:text-[#ededed] border border-white/[0.08]'
                                 }`}
                                 title={isPrimaryAdmin ? 'Primary admin cannot be modified' : 'Toggle Admin Role'}
                               >
-                                <Shield size={12} />
+                                <Shield size={12} strokeWidth={1.5} />
                                 <span className="hidden md:inline">
                                   {u.isAdmin ? (isArabic ? 'مشرف' : 'Admin') : (isArabic ? 'ترقية لمشرف' : 'Make Admin')}
                                 </span>
@@ -753,16 +753,16 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                               <button
                                 onClick={() => handleUserAction(u.id, u.isBlocked ? 'unblock' : 'block')}
                                 disabled={isPrimaryAdmin || isActionPending}
-                                className={`h-8 px-2.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5 ${
+                                className={`h-8 px-2.5 rounded-lg text-xs font-mono font-medium transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] flex items-center gap-1.5 ${
                                   isPrimaryAdmin 
-                                    ? 'opacity-20 cursor-not-allowed bg-white/5 text-white/40' 
+                                    ? 'opacity-20 cursor-not-allowed bg-[#141415] text-white/40 border border-white/[0.08]' 
                                     : u.isBlocked 
-                                      ? 'bg-white text-black hover:bg-white/90' 
+                                      ? 'bg-[#ededed] text-[#141415] hover:bg-[#ededed]/90' 
                                       : 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20'
                                 }`}
                                 title={isPrimaryAdmin ? 'Primary admin cannot be blocked' : 'Toggle Block'}
                               >
-                                {u.isBlocked ? <Check size={12} /> : <UserX size={12} />}
+                                {u.isBlocked ? <Check size={12} strokeWidth={1.5} /> : <UserX size={12} strokeWidth={1.5} />}
                                 <span>
                                   {u.isBlocked ? (isArabic ? 'فك الحظر' : 'Unblock') : (isArabic ? 'حظر' : 'Block')}
                                 </span>
@@ -781,51 +781,51 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Database Health */}
-                    <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3">
+                    <div className="p-5 rounded-2xl bg-[#19191b] border border-white/[0.08] space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-mono uppercase tracking-wider text-white/50 font-bold whitespace-nowrap truncate">
+                        <span className="text-xs font-medium text-white/50 whitespace-nowrap truncate">
                           {isArabic ? 'قاعدة البيانات' : 'Database'}
                         </span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-mono font-bold border border-emerald-500/20">
-                          {isArabic ? 'متصل' : 'ONLINE'}
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[11px] font-mono font-medium border border-emerald-500/20">
+                          {isArabic ? 'متصل' : 'Online'}
                         </span>
                       </div>
-                      <h4 className="text-sm font-bold text-white whitespace-nowrap truncate">Neon PostgreSQL Serverless</h4>
+                      <h4 className="text-sm font-medium text-[#ededed] whitespace-nowrap truncate">Neon PostgreSQL Serverless</h4>
                       <p className="text-xs text-white/40 font-mono leading-relaxed">
                         Pooler Endpoint · ep-royal-art-alepxxqp-pooler · Prisma Client ORM
                       </p>
-                      <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs font-mono text-white/60">
+                      <div className="pt-2 border-t border-white/[0.08] flex items-center justify-between text-xs font-mono text-white/60">
                         <span>{isArabic ? 'إجمالي السجلات:' : 'Daily Logs:'}</span>
-                        <span className="font-bold text-white">{overview?.totalDailyLogs ?? 75}</span>
+                        <span className="font-medium tabular-nums text-[#ededed]">{overview?.totalDailyLogs ?? 75}</span>
                       </div>
                     </div>
 
                     {/* Rate Limiting */}
-                    <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3">
+                    <div className="p-5 rounded-2xl bg-[#19191b] border border-white/[0.08] space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-mono uppercase tracking-wider text-white/50 font-bold whitespace-nowrap truncate">
+                        <span className="text-xs font-medium text-white/50 whitespace-nowrap truncate">
                           {isArabic ? 'تحديد المعدل' : 'Rate Limiting'}
                         </span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-mono font-bold border border-emerald-500/20">
-                          {isArabic ? 'محمي' : 'ACTIVE'}
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[11px] font-mono font-medium border border-emerald-500/20">
+                          {isArabic ? 'محمي' : 'Active'}
                         </span>
                       </div>
-                      <h4 className="text-sm font-bold text-white whitespace-nowrap truncate">Token Bucket + Upstash Redis</h4>
+                      <h4 className="text-sm font-medium text-[#ededed] whitespace-nowrap truncate">Token Bucket + Upstash Redis</h4>
                       <p className="text-xs text-white/40 font-mono leading-relaxed">
                         Client IP Detection · Trust Proxy Safe · Sync Rate Limit 60/min
                       </p>
-                      <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs font-mono text-white/60">
+                      <div className="pt-2 border-t border-white/[0.08] flex items-center justify-between text-xs font-mono text-white/60">
                         <span>{isArabic ? 'طريق المصادقة:' : 'Auth Gateway:'}</span>
-                        <span className="font-bold text-white">Google Identity + HMAC JWT</span>
+                        <span className="font-medium text-[#ededed]">Google Identity + HMAC JWT</span>
                       </div>
                     </div>
 
                     {/* Desktop & Mobile Artifacts */}
-                    <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3">
-                      <span className="text-xs font-mono uppercase tracking-wider text-white/50 font-bold whitespace-nowrap truncate">
+                    <div className="p-5 rounded-2xl bg-[#19191b] border border-white/[0.08] space-y-3">
+                      <span className="text-xs font-medium text-white/50 whitespace-nowrap truncate block">
                         {isArabic ? 'حزم التنزيل' : 'App Builds'}
                       </span>
-                      <div className="space-y-2 text-xs font-mono">
+                      <div className="space-y-2 text-xs font-mono tabular-nums">
                         <div className="flex justify-between text-white/80">
                           <span>macOS Universal (x86_64 + arm64):</span>
                           <span className="text-emerald-400">19.5 MB</span>
@@ -846,16 +846,16 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
                     </div>
 
                     {/* CSP & Network Isolation */}
-                    <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3">
-                      <span className="text-xs font-mono uppercase tracking-wider text-white/50 font-bold whitespace-nowrap truncate">
+                    <div className="p-5 rounded-2xl bg-[#19191b] border border-white/[0.08] space-y-3">
+                      <span className="text-xs font-medium text-white/50 whitespace-nowrap truncate block">
                         {isArabic ? 'سياسة الأمان' : 'Security Policy'}
                       </span>
                       <p className="text-xs text-white/40 font-mono leading-relaxed">
                         Strict origin whitelisting: accounts.google.com, openstreetmap, spotify.com, googleapis. Zero wildcard scripts.
                       </p>
-                      <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs font-mono text-white/60">
+                      <div className="pt-2 border-t border-white/[0.08] flex items-center justify-between text-xs font-mono text-white/60">
                         <span>{isArabic ? 'حالة التشفير:' : 'Transport:'}</span>
-                        <span className="text-emerald-400 font-bold">HSTS 1 Year</span>
+                        <span className="text-emerald-400 font-medium">HSTS 1 Year</span>
                       </div>
                     </div>
                   </div>
