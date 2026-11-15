@@ -351,6 +351,20 @@ export const SOUND_CATALOG: SoundItem[] = [
     defaultVolume: 0.45,
     license: 'Royalty-Free Instrumental / CC0',
   },
+  {
+    id: 'jazz_noir',
+    nameEn: 'Jazz Noir',
+    nameAr: 'Jazz Noir',
+    category: 'other',
+    type: 'file',
+    src: '/sounds/jazz-noir.mp3',
+    icon: 'Music',
+    descriptionEn: 'Late-night smoky jazz noir ambience for deep, relaxed focus.',
+    descriptionAr: 'Late-night smoky jazz noir ambience for deep, relaxed focus.',
+    defaultVolume: 0.45,
+    license: 'YouTube Audio',
+    sourceUrl: 'https://youtu.be/7gtIh5dF9Xk',
+  },
 ];
 
 export const BUILT_IN_PRESETS: SoundMixPreset[] = [

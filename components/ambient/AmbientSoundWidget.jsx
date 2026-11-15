@@ -17,6 +17,7 @@ const SOUND_ICON_MAP = {
   wind: Wind,
   cafe: Coffee,
   lofi_beats: Headphones,
+  jazz_noir: Headphones,
 };
 
 export default function AmbientSoundWidget({
