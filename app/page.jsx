@@ -9296,12 +9296,12 @@ function AppContent({ isPreview = false }) {
               {isEditingMission ? (
                 <input 
                   autoFocus value={missionInput} onChange={(e) => setMissionInput(e.target.value)} onBlur={saveMission} onKeyDown={(e) => e.key === 'Enter' && saveMission()}
-                  className="text-[24px] sm:text-[26px] leading-snug font-medium tracking-tight outline-none bg-transparent mb-2 pb-0.5 border-b border-black/20 w-full placeholder:text-black/30"
+                  className="text-[24px] sm:text-[26px] leading-snug font-black tracking-tight outline-none bg-transparent mb-2 pb-0.5 border-b border-black/20 w-full placeholder:text-black/30"
                   style={{ color: '#141415' }} placeholder={t('whatsYourGoal')}
                 />
               ) : (
                 mission && (
-                  <h2 onClick={() => requireAuth(() => setIsEditingMission(true))} className="text-[24px] sm:text-[26px] leading-snug font-medium tracking-tight mb-2 cursor-pointer break-words active:opacity-80 transition-opacity duration-150">
+                  <h2 onClick={() => requireAuth(() => setIsEditingMission(true))} className="text-[24px] sm:text-[26px] leading-snug font-black tracking-tight mb-2 cursor-pointer break-words active:opacity-80 transition-opacity duration-150">
                     {mission}
                   </h2>
                 )
@@ -9321,7 +9321,7 @@ function AppContent({ isPreview = false }) {
             </div>
 
             {/* Dynamic Widgets (Under Mission Card) */}
-            <div className="grid grid-cols-2 gap-3 items-start w-full">
+            <div className="grid grid-cols-2 gap-3 items-start w-full empty:hidden">
               {widgetsConfig.map((widget) => renderDynamicWidget(widget.id, widget.mode, widget.size || 'full'))}
             </div>
 
@@ -9412,12 +9412,12 @@ function AppContent({ isPreview = false }) {
                 {isEditingMission ? (
                   <input 
                     autoFocus value={missionInput} onChange={(e) => setMissionInput(e.target.value)} onBlur={saveMission} onKeyDown={(e) => e.key === 'Enter' && saveMission()}
-                    className="text-[24px] sm:text-[26px] leading-snug font-medium tracking-tight outline-none bg-transparent mb-2 pb-0.5 border-b border-black/20 w-full placeholder:text-black/30"
+                    className="text-[24px] sm:text-[26px] leading-snug font-black tracking-tight outline-none bg-transparent mb-2 pb-0.5 border-b border-black/20 w-full placeholder:text-black/30"
                     style={{ color: '#141415' }} placeholder={t('whatsYourGoal')}
                   />
                 ) : (
                   mission && (
-                    <h2 onClick={() => requireAuth(() => setIsEditingMission(true))} className="text-[24px] sm:text-[26px] leading-snug font-medium tracking-tight mb-2 cursor-pointer break-words active:opacity-80 transition-opacity duration-150">
+                    <h2 onClick={() => requireAuth(() => setIsEditingMission(true))} className="text-[24px] sm:text-[26px] leading-snug font-black tracking-tight mb-2 cursor-pointer break-words active:opacity-80 transition-opacity duration-150">
                       {mission}
                     </h2>
                   )
@@ -9437,12 +9437,12 @@ function AppContent({ isPreview = false }) {
               </div>
 
               {/* Dynamic Widgets (Under Mission Card) */}
-              <div className="grid grid-cols-2 gap-3 items-start w-full">
+              <div className="grid grid-cols-2 gap-3 items-start w-full empty:hidden">
                 {widgetsConfig.map((widget) => renderDynamicWidget(widget.id, widget.mode, widget.size || 'full'))}
               </div>
 
               {/* Habits Cards Grid */}
-              <div className="grid grid-cols-2 gap-3 mt-1 items-stretch w-full [grid-auto-flow:dense]">
+              <div className="grid grid-cols-2 gap-3 items-stretch w-full [grid-auto-flow:dense]">
                 {activeScheduledHabits.map((habit) => renderHabitCard(habit))}
                 {habits.length === 0 ? (
                   <div className="col-span-2 w-full py-10 sm:py-12 px-6 rounded-2xl bg-[#141415] border border-dashed border-white/[0.08] flex flex-col items-center justify-center text-center gap-4 my-2 select-none">
