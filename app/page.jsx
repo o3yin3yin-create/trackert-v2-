@@ -9271,44 +9271,37 @@ function AppContent({ isPreview = false }) {
             
             {/* Mobile Mission Card */}
             <div 
-              className="w-full p-5 flex flex-col transition-[background-color,color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]" 
+              className="w-full px-5 py-3.5 flex flex-col transition-[background-color,color,box-shadow] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]" 
               style={{ 
                 backgroundColor: themeColor || '#ededed', 
-                borderRadius: '16px', 
+                borderRadius: '20px', 
                 color: '#141415',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
+                boxShadow: `0 0 22px -2px ${themeColor || '#ededed'}33, 0 8px 20px -8px ${themeColor || '#ededed'}44`,
               }}
             >
-              <div className="flex items-center justify-between gap-2 mb-1 select-none">
-                {mission ? (
-                  <div className="flex items-center gap-2 opacity-70">
-                    <Target size={14} strokeWidth={1.5} />
-                    <span className="text-xs font-medium">{t('myMission')}</span>
-                  </div>
-                ) : (
+              {!mission && !isEditingMission && (
+                <div className="flex items-center mb-1 select-none">
                   <button 
                     onClick={() => requireAuth(() => setIsEditingMission(true))} 
-                    className="inline-flex items-center gap-2 hover:opacity-60 transition-opacity duration-150 min-h-[44px] min-w-[44px] py-2 px-1 rounded-md"
+                    className="inline-flex items-center gap-2 hover:opacity-60 transition-opacity duration-150 min-h-[36px] py-1 px-1 rounded-md"
                     aria-label="Set Mission"
                   >
                     <Target size={14} strokeWidth={1.5} />
                     <span className="text-xs font-medium">{t('setMission')}</span>
                   </button>
-                )}
-                <span className="text-xs font-mono opacity-75 tabular-nums">
-                  {t('score')} ({activeDateStr === realTodayStr ? t('today') : t('viewed')})
-                </span>
-              </div>
+                </div>
+              )}
               
               {isEditingMission ? (
                 <input 
                   autoFocus value={missionInput} onChange={(e) => setMissionInput(e.target.value)} onBlur={saveMission} onKeyDown={(e) => e.key === 'Enter' && saveMission()}
-                  className="text-xl sm:text-2xl font-medium tracking-tight outline-none bg-transparent mb-3 pb-1 border-b border-black/20 w-full placeholder:text-black/30"
+                  className="text-[24px] sm:text-[26px] leading-snug font-medium tracking-tight outline-none bg-transparent mb-2 pb-0.5 border-b border-black/20 w-full placeholder:text-black/30"
                   style={{ color: '#141415' }} placeholder={t('whatsYourGoal')}
                 />
               ) : (
                 mission && (
-                  <h2 onClick={() => requireAuth(() => setIsEditingMission(true))} className="text-xl sm:text-2xl font-medium tracking-tight mb-3 cursor-pointer break-words active:opacity-80 transition-opacity duration-150">
+                  <h2 onClick={() => requireAuth(() => setIsEditingMission(true))} className="text-[24px] sm:text-[26px] leading-snug font-medium tracking-tight mb-2 cursor-pointer break-words active:opacity-80 transition-opacity duration-150">
                     {mission}
                   </h2>
                 )
@@ -9394,44 +9387,37 @@ function AppContent({ isPreview = false }) {
               
               {/* Mission & Score Card */}
               <div 
-                className="w-full p-5 flex flex-col transition-[background-color,color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]" 
+                className="w-full px-5 py-3.5 flex flex-col transition-[background-color,color,box-shadow] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]" 
                 style={{ 
                   backgroundColor: themeColor || '#ededed', 
-                  borderRadius: '16px', 
+                  borderRadius: '20px', 
                   color: '#141415',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
+                  boxShadow: `0 0 22px -2px ${themeColor || '#ededed'}33, 0 8px 20px -8px ${themeColor || '#ededed'}44`,
                 }}
               >
-                <div className="flex items-center justify-between gap-2 mb-1 select-none">
-                  {mission ? (
-                    <div className="flex items-center gap-2 opacity-70">
-                      <Target size={14} strokeWidth={1.5} />
-                      <span className="text-xs font-medium">{t('myMission')}</span>
-                    </div>
-                  ) : (
+                {!mission && !isEditingMission && (
+                  <div className="flex items-center mb-1 select-none">
                     <button 
                       onClick={() => requireAuth(() => setIsEditingMission(true))} 
-                      className="inline-flex items-center gap-2 hover:opacity-60 transition-opacity duration-150 min-h-[44px] min-w-[44px] py-2 px-1 rounded-md"
+                      className="inline-flex items-center gap-2 hover:opacity-60 transition-opacity duration-150 min-h-[36px] py-1 px-1 rounded-md"
                       aria-label="Set Mission"
                     >
                       <Target size={14} strokeWidth={1.5} />
                       <span className="text-xs font-medium">{t('setMission')}</span>
                     </button>
-                  )}
-                  <span className="text-xs font-mono opacity-75 tabular-nums">
-                    {t('score')} ({activeDateStr === realTodayStr ? t('today') : t('viewed')})
-                  </span>
-                </div>
+                  </div>
+                )}
                 
                 {isEditingMission ? (
                   <input 
                     autoFocus value={missionInput} onChange={(e) => setMissionInput(e.target.value)} onBlur={saveMission} onKeyDown={(e) => e.key === 'Enter' && saveMission()}
-                    className="text-xl sm:text-2xl font-medium tracking-tight outline-none bg-transparent mb-3 pb-1 border-b border-black/20 w-full placeholder:text-black/30"
+                    className="text-[24px] sm:text-[26px] leading-snug font-medium tracking-tight outline-none bg-transparent mb-2 pb-0.5 border-b border-black/20 w-full placeholder:text-black/30"
                     style={{ color: '#141415' }} placeholder={t('whatsYourGoal')}
                   />
                 ) : (
                   mission && (
-                    <h2 onClick={() => requireAuth(() => setIsEditingMission(true))} className="text-xl sm:text-2xl font-medium tracking-tight mb-3 cursor-pointer break-words active:opacity-80 transition-opacity duration-150">
+                    <h2 onClick={() => requireAuth(() => setIsEditingMission(true))} className="text-[24px] sm:text-[26px] leading-snug font-medium tracking-tight mb-2 cursor-pointer break-words active:opacity-80 transition-opacity duration-150">
                       {mission}
                     </h2>
                   )
