@@ -6397,10 +6397,10 @@ function AppContent({ isPreview = false }) {
             key="pomodoro-widget"
             onClick={() => { recordPomodoroActivity(); setIsPomodoroOpen(true); }} 
             data-no-day-swipe="true"
-            className="col-span-1 w-full px-3 py-2.5 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/15 shadow-lg active:scale-[0.99] transition-all select-none min-h-[58px]"
+            className="col-span-1 w-full px-3 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/15 shadow-lg active:scale-[0.99] transition-[background-color,border-color,transform] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] select-none min-h-[60px]"
           >
             {/* Left: Mini Ring + Play/Pause */}
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
               <div 
                 onClick={(e) => {
                   e.stopPropagation();
@@ -6457,7 +6457,7 @@ function AppContent({ isPreview = false }) {
                         key={idx}
                         className={`w-1 h-1 rounded-full transition-all duration-300 ${
                           isFilled
-                            ? 'bg-white shadow-[0_0_4px_rgba(255,255,255,0.7)]'
+                            ? 'bg-white'
                             : isCurrent
                             ? (isTimerRunning ? 'bg-white animate-pulse' : 'bg-white/80')
                             : 'bg-white/20'
@@ -6470,7 +6470,7 @@ function AppContent({ isPreview = false }) {
             </div>
 
             {/* Right: Timer */}
-            <div className="flex items-baseline font-black text-sm sm:text-base tabular-nums tracking-tight font-sans shrink-0 pl-1">
+            <div className="flex items-baseline font-semibold text-sm sm:text-base tabular-nums font-sans shrink-0 pl-1">
               <span className="text-white">{mins}</span>
               <span className="text-white/40">:</span>
               <span className="text-white/40">{secs}</span>
@@ -6485,10 +6485,10 @@ function AppContent({ isPreview = false }) {
           key="pomodoro-widget"
           onClick={() => { recordPomodoroActivity(); setIsPomodoroOpen(true); }} 
           data-no-day-swipe="true"
-          className="col-span-2 w-full px-4 sm:px-5 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/15 shadow-lg active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
+          className="col-span-2 w-full px-4 sm:px-5 py-3 rounded-[20px] liquid-panel flex items-center justify-between cursor-pointer border border-white/15 shadow-lg active:scale-[0.99] transition-[background-color,border-color,transform] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] select-none min-h-[60px]"
         >
           {/* Left: Progress Ring + Play/Pause button and Title + 4 Progress Dots */}
-          <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             {/* Circular Progress Ring with Play/Pause button in center */}
             <div 
               onClick={(e) => {
@@ -6548,7 +6548,7 @@ function AppContent({ isPreview = false }) {
                       key={idx}
                       className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
                         isFilled
-                          ? 'bg-white shadow-[0_0_6px_rgba(255,255,255,0.7)]'
+                          ? 'bg-white'
                           : isCurrent
                           ? (isTimerRunning ? 'bg-white animate-pulse' : 'bg-white/80')
                           : 'bg-white/20'
@@ -6561,7 +6561,7 @@ function AppContent({ isPreview = false }) {
           </div>
 
           {/* Right: Giant Minimalist Apple Monochrome Timer Readout */}
-          <div className="flex items-baseline font-black text-2xl sm:text-3xl tabular-nums tracking-tight font-sans shrink-0 pl-3">
+          <div className="flex items-baseline font-semibold text-2xl sm:text-3xl tabular-nums tracking-tight font-sans shrink-0 pl-3">
             <span className="text-white">{mins}</span>
             <span className="text-white/40">:</span>
             <span className="text-white/40">{secs}</span>
@@ -6595,11 +6595,11 @@ function AppContent({ isPreview = false }) {
             key="flight-widget"
             onClick={() => { recordFlightActivity(); setIsFlightFocusOpen(true); }} 
             data-no-day-swipe="true"
-            className="col-span-1 w-full px-3.5 py-2.5 rounded-[20px] liquid-panel flex flex-col justify-between gap-1.5 cursor-pointer border border-white/15 shadow-md hover:border-white/20 active:scale-[0.99] transition-all duration-200 select-none min-h-[58px]"
+            className="col-span-1 w-full px-3 py-3 rounded-[20px] liquid-panel flex flex-col justify-between gap-2 cursor-pointer border border-white/15 shadow-md hover:border-white/20 active:scale-[0.99] transition-[background-color,border-color,transform] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] select-none min-h-[60px]"
           >
-            <div className="flex items-center justify-between gap-1.5 min-w-0">
+            <div className="flex items-center justify-between gap-2 min-w-0">
               <div className="flex flex-col min-w-0">
-                <span className="text-[12px] font-black text-white tracking-tight truncate leading-none font-sans">
+                <span className="text-[12px] font-semibold text-white truncate leading-none font-sans">
                   {isRunning ? `${selectedFlight.origin} → ${selectedFlight.destination}` : ('Flight Focus')}
                 </span>
                 <span className="text-[10px] text-white/45 truncate leading-none mt-1 font-medium">
@@ -6646,12 +6646,12 @@ function AppContent({ isPreview = false }) {
           key="flight-widget"
           onClick={() => { recordFlightActivity(); setIsFlightFocusOpen(true); }} 
           data-no-day-swipe="true"
-          className="col-span-2 w-full px-4 py-2.5 sm:px-4.5 sm:py-3 rounded-[20px] liquid-panel flex flex-col justify-between gap-2 cursor-pointer border border-white/15 shadow-lg hover:border-white/20 active:scale-[0.99] transition-all duration-200 select-none min-h-[62px]"
+          className="col-span-2 w-full px-4 py-3 sm:px-5 sm:py-3 rounded-[20px] liquid-panel flex flex-col justify-between gap-2 cursor-pointer border border-white/15 shadow-lg hover:border-white/20 active:scale-[0.99] transition-[background-color,border-color,transform] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] select-none min-h-[64px]"
         >
           {/* Top Row: Route & Airline on Left, Split Timer or Fly Button on Right */}
           <div className="flex items-center justify-between gap-3 min-w-0 pt-0.5">
             <div className="flex flex-col min-w-0">
-              <span className="text-[17px] sm:text-[18px] font-black tracking-tight text-white leading-none font-sans truncate">
+              <span className="text-[17px] sm:text-[18px] font-semibold text-white leading-none font-sans truncate">
                 {isRunning ? `${selectedFlight.origin} → ${selectedFlight.destination}` : ('Flight Focus')}
               </span>
               <span className="text-[11px] sm:text-[12px] text-white/45 tracking-tight leading-none font-medium truncate mt-1">
@@ -6669,7 +6669,7 @@ function AppContent({ isPreview = false }) {
                 </span>
               </div>
             ) : (
-              <span className="text-xs font-bold px-3.5 py-1 rounded-full bg-white text-black hover:bg-white/90 active:scale-95 transition-all shadow-md font-sans shrink-0 leading-none">
+              <span className="text-xs font-bold px-4 py-1 rounded-full bg-white text-black hover:bg-white/90 active:scale-95 transition-all shadow-md font-sans shrink-0 leading-none">
                 {'Fly'}
               </span>
             )}
@@ -6791,7 +6791,7 @@ function AppContent({ isPreview = false }) {
             {/* Left: Avatar + Friend First Name (Always visible) */}
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <div className={`relative w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center shrink-0 overflow-hidden border ${
-                isDistinguished ? 'border-amber-400/60 shadow-[0_0_8px_rgba(251,191,36,0.3)]' : 'border-white/10'
+                isDistinguished ? 'border-amber-400/60' : 'border-white/10'
               }`}>
                 <AvatarIcon name={friendAvatar} size={15} className="text-white" />
               </div>
@@ -9271,32 +9271,31 @@ function AppContent({ isPreview = false }) {
             
             {/* Mobile Mission Card */}
             <div 
-              className="w-full p-4 sm:p-5 flex flex-col transition-all duration-500 ease-out" 
+              className="w-full p-5 flex flex-col transition-[background-color,color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]" 
               style={{ 
-                backgroundColor: themeColor || '#ffffff', 
-                borderRadius: '24px', 
-                color: '#000000',
-                border: '1px solid transparent',
-                boxShadow: `0 10px 25px -8px ${themeColor}66` 
+                backgroundColor: themeColor || '#ededed', 
+                borderRadius: '16px', 
+                color: '#141415',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
               }}
             >
               <div className="flex items-center justify-between gap-2 mb-1 select-none">
                 {mission ? (
-                  <div className="flex items-center gap-1.5 opacity-70">
-                    <Target size={13} strokeWidth={2.5} />
-                    <span className="text-[10px] font-bold tracking-widest uppercase">{t('myMission')}</span>
+                  <div className="flex items-center gap-2 opacity-70">
+                    <Target size={14} strokeWidth={1.5} />
+                    <span className="text-xs font-medium">{t('myMission')}</span>
                   </div>
                 ) : (
                   <button 
                     onClick={() => requireAuth(() => setIsEditingMission(true))} 
-                    className="inline-flex items-center gap-1.5 hover:opacity-60 transition-opacity min-h-[44px] min-w-[44px] py-2 px-1 rounded-md"
+                    className="inline-flex items-center gap-2 hover:opacity-60 transition-opacity duration-150 min-h-[44px] min-w-[44px] py-2 px-1 rounded-md"
                     aria-label="Set Mission"
                   >
-                    <Target size={13} strokeWidth={2.5} />
-                    <span className="text-[10px] font-bold tracking-widest uppercase">{t('setMission')}</span>
+                    <Target size={14} strokeWidth={1.5} />
+                    <span className="text-xs font-medium">{t('setMission')}</span>
                   </button>
                 )}
-                <span className="text-[9px] font-bold tracking-widest opacity-80 uppercase">
+                <span className="text-xs font-mono opacity-75 tabular-nums">
                   {t('score')} ({activeDateStr === realTodayStr ? t('today') : t('viewed')})
                 </span>
               </div>
@@ -9304,12 +9303,12 @@ function AppContent({ isPreview = false }) {
               {isEditingMission ? (
                 <input 
                   autoFocus value={missionInput} onChange={(e) => setMissionInput(e.target.value)} onBlur={saveMission} onKeyDown={(e) => e.key === 'Enter' && saveMission()}
-                  className="text-xl sm:text-2xl font-black tracking-tight outline-none bg-transparent mb-3 pb-1 border-b border-black/20 w-full placeholder:text-black/30"
-                  style={{ color: '#000000' }} placeholder={t('whatsYourGoal')}
+                  className="text-xl sm:text-2xl font-medium tracking-tight outline-none bg-transparent mb-3 pb-1 border-b border-black/20 w-full placeholder:text-black/30"
+                  style={{ color: '#141415' }} placeholder={t('whatsYourGoal')}
                 />
               ) : (
                 mission && (
-                  <h2 onClick={() => requireAuth(() => setIsEditingMission(true))} className="text-xl sm:text-2xl font-black tracking-tight mb-3 cursor-pointer break-words active:opacity-80 transition-opacity">
+                  <h2 onClick={() => requireAuth(() => setIsEditingMission(true))} className="text-xl sm:text-2xl font-medium tracking-tight mb-3 cursor-pointer break-words active:opacity-80 transition-opacity duration-150">
                     {mission}
                   </h2>
                 )
@@ -9318,11 +9317,11 @@ function AppContent({ isPreview = false }) {
               {/* Compact Inline Progress Bar + Percentage */}
               <div className="flex items-center gap-3 w-full select-none">
                 <div className="flex-1 h-[6px] bg-black/15 rounded-full overflow-hidden">
-                  <div className="h-full bg-black rounded-full transition-all duration-500 ease-out" style={{ width: `${animatedScore}%` }}></div>
+                  <div className="h-full bg-[#141415] rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]" style={{ width: `${animatedScore}%` }}></div>
                 </div>
                 <div className="flex items-baseline shrink-0">
-                  <span className="text-base sm:text-lg font-black tracking-tight tabular-nums">
-                    {scoreDisplay}<span className="text-xs font-bold opacity-80 ml-0.5">%</span>
+                  <span className="text-base sm:text-lg font-medium font-mono tabular-nums">
+                    {scoreDisplay}<span className="text-xs font-normal opacity-75 ml-0.5">%</span>
                   </span>
                 </div>
               </div>
@@ -9337,20 +9336,20 @@ function AppContent({ isPreview = false }) {
             <div className="grid grid-cols-2 gap-3 items-stretch w-full [grid-auto-flow:dense]">
               {activeScheduledHabits.map((habit) => renderHabitCard(habit))}
               {habits.length === 0 ? (
-                <div className="col-span-2 w-full py-10 sm:py-12 px-6 rounded-[28px] bg-white/[0.03] border border-dashed border-white/15 flex flex-col items-center justify-center text-center gap-4 my-2 select-none shadow-xl">
+                <div className="col-span-2 w-full py-10 sm:py-12 px-6 rounded-2xl bg-[#141415] border border-dashed border-white/[0.08] flex flex-col items-center justify-center text-center gap-4 my-2 select-none">
                   <div 
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center border shadow-xl"
+                    className="w-12 h-12 rounded-xl flex items-center justify-center border"
                     style={{
-                      backgroundColor: `${themeColor}15`,
-                      borderColor: `${themeColor}30`,
-                      color: themeColor || '#ffffff',
+                      backgroundColor: `${themeColor}12`,
+                      borderColor: `${themeColor}25`,
+                      color: themeColor || '#ededed',
                     }}
                   >
-                    <Plus size={26} strokeWidth={2.5} />
+                    <Plus size={20} strokeWidth={1.5} />
                   </div>
 
                   <div className="flex flex-col gap-1 max-w-sm">
-                    <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                    <h3 className="text-base sm:text-lg font-medium text-white">
                       {t('noHabitsYet')}
                     </h3>
                     <p className="text-xs text-white/50 leading-relaxed">
@@ -9362,23 +9361,22 @@ function AppContent({ isPreview = false }) {
                     <button
                       type="button"
                       onClick={handleOpenAdd}
-                      className="px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 shadow-xl flex items-center gap-2 cursor-pointer bg-white text-black hover:bg-white/90"
+                      className="px-5 py-3 rounded-lg text-xs font-medium transition-[background-color,transform] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98] flex items-center gap-2 cursor-pointer bg-[#ededed] text-[#141415] hover:bg-white"
                     >
-                      <Plus size={15} strokeWidth={3} />
+                      <Plus size={16} strokeWidth={1.5} />
                       <span>{t('addFirstHabit')}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => openNav('presets')}
-                      className="px-5 py-3 rounded-full text-xs font-bold transition-all duration-200 active:scale-95 border border-white/15 bg-white/5 hover:bg-white/10 text-white flex items-center gap-2 cursor-pointer"
+                      className="px-5 py-3 rounded-lg text-xs font-medium transition-[background-color,border-color,transform] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98] border border-white/[0.08] bg-[#19191b] hover:bg-white/10 text-white flex items-center gap-2 cursor-pointer"
                     >
-                      <Sparkles size={14} className="text-amber-400" />
                       <span>{lang === 'ar' ? 'عادات جاهزة' : 'Ready Presets'}</span>
                     </button>
                   </div>
                 </div>
               ) : activeScheduledHabits.length === 0 ? (
-                <div className="col-span-2 text-center text-white/60 text-xs font-bold uppercase tracking-widest py-10 select-none">
+                <div className="col-span-2 text-center text-white/50 text-xs font-normal py-10 select-none">
                   {t('noHabitsScheduledToday')}
                 </div>
               ) : null}
@@ -9396,32 +9394,31 @@ function AppContent({ isPreview = false }) {
               
               {/* Mission & Score Card */}
               <div 
-                className="w-full p-4 sm:p-5 flex flex-col transition-all duration-500 ease-out" 
+                className="w-full p-5 flex flex-col transition-[background-color,color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]" 
                 style={{ 
-                  backgroundColor: themeColor || '#ffffff', 
-                  borderRadius: '24px', 
-                  color: '#000000',
-                  border: '1px solid transparent',
-                  boxShadow: `0 10px 25px -8px ${themeColor}66` 
+                  backgroundColor: themeColor || '#ededed', 
+                  borderRadius: '16px', 
+                  color: '#141415',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
                 }}
               >
                 <div className="flex items-center justify-between gap-2 mb-1 select-none">
                   {mission ? (
-                    <div className="flex items-center gap-1.5 opacity-70">
-                      <Target size={13} strokeWidth={2.5} />
-                      <span className="text-[10px] font-bold tracking-widest uppercase">{t('myMission')}</span>
+                    <div className="flex items-center gap-2 opacity-70">
+                      <Target size={14} strokeWidth={1.5} />
+                      <span className="text-xs font-medium">{t('myMission')}</span>
                     </div>
                   ) : (
                     <button 
                       onClick={() => requireAuth(() => setIsEditingMission(true))} 
-                      className="inline-flex items-center gap-1.5 hover:opacity-60 transition-opacity min-h-[44px] min-w-[44px] py-2 px-1 rounded-md"
+                      className="inline-flex items-center gap-2 hover:opacity-60 transition-opacity duration-150 min-h-[44px] min-w-[44px] py-2 px-1 rounded-md"
                       aria-label="Set Mission"
                     >
-                      <Target size={13} strokeWidth={2.5} />
-                      <span className="text-[10px] font-bold tracking-widest uppercase">{t('setMission')}</span>
+                      <Target size={14} strokeWidth={1.5} />
+                      <span className="text-xs font-medium">{t('setMission')}</span>
                     </button>
                   )}
-                  <span className="text-[9px] font-bold tracking-widest opacity-80 uppercase">
+                  <span className="text-xs font-mono opacity-75 tabular-nums">
                     {t('score')} ({activeDateStr === realTodayStr ? t('today') : t('viewed')})
                   </span>
                 </div>
@@ -9429,12 +9426,12 @@ function AppContent({ isPreview = false }) {
                 {isEditingMission ? (
                   <input 
                     autoFocus value={missionInput} onChange={(e) => setMissionInput(e.target.value)} onBlur={saveMission} onKeyDown={(e) => e.key === 'Enter' && saveMission()}
-                    className="text-xl sm:text-2xl font-black tracking-tight outline-none bg-transparent mb-3 pb-1 border-b border-black/20 w-full placeholder:text-black/30"
-                    style={{ color: '#000000' }} placeholder={t('whatsYourGoal')}
+                    className="text-xl sm:text-2xl font-medium tracking-tight outline-none bg-transparent mb-3 pb-1 border-b border-black/20 w-full placeholder:text-black/30"
+                    style={{ color: '#141415' }} placeholder={t('whatsYourGoal')}
                   />
                 ) : (
                   mission && (
-                    <h2 onClick={() => requireAuth(() => setIsEditingMission(true))} className="text-xl sm:text-2xl font-black tracking-tight mb-3 cursor-pointer break-words active:opacity-80 transition-opacity">
+                    <h2 onClick={() => requireAuth(() => setIsEditingMission(true))} className="text-xl sm:text-2xl font-medium tracking-tight mb-3 cursor-pointer break-words active:opacity-80 transition-opacity duration-150">
                       {mission}
                     </h2>
                   )
@@ -9443,11 +9440,11 @@ function AppContent({ isPreview = false }) {
                 {/* Compact Inline Progress Bar + Percentage */}
                 <div className="flex items-center gap-3 w-full select-none">
                   <div className="flex-1 h-[6px] bg-black/15 rounded-full overflow-hidden">
-                    <div className="h-full bg-black rounded-full transition-all duration-500 ease-out" style={{ width: `${animatedScore}%` }}></div>
+                    <div className="h-full bg-[#141415] rounded-full transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]" style={{ width: `${animatedScore}%` }}></div>
                   </div>
                   <div className="flex items-baseline shrink-0">
-                    <span className="text-base sm:text-lg font-black tracking-tight tabular-nums">
-                      {scoreDisplay}<span className="text-xs font-bold opacity-80 ml-0.5">%</span>
+                    <span className="text-base sm:text-lg font-medium font-mono tabular-nums">
+                      {scoreDisplay}<span className="text-xs font-normal opacity-75 ml-0.5">%</span>
                     </span>
                   </div>
                 </div>
@@ -9462,20 +9459,20 @@ function AppContent({ isPreview = false }) {
               <div className="grid grid-cols-2 gap-3 mt-1 items-stretch w-full [grid-auto-flow:dense]">
                 {activeScheduledHabits.map((habit) => renderHabitCard(habit))}
                 {habits.length === 0 ? (
-                  <div className="col-span-2 w-full py-10 sm:py-12 px-6 rounded-[28px] bg-white/[0.03] border border-dashed border-white/15 flex flex-col items-center justify-center text-center gap-4 my-2 select-none shadow-xl">
+                  <div className="col-span-2 w-full py-10 sm:py-12 px-6 rounded-2xl bg-[#141415] border border-dashed border-white/[0.08] flex flex-col items-center justify-center text-center gap-4 my-2 select-none">
                     <div 
-                      className="w-14 h-14 rounded-2xl flex items-center justify-center border shadow-xl"
+                      className="w-12 h-12 rounded-xl flex items-center justify-center border"
                       style={{
-                        backgroundColor: `${themeColor}15`,
-                        borderColor: `${themeColor}30`,
-                        color: themeColor || '#ffffff',
+                        backgroundColor: `${themeColor}12`,
+                        borderColor: `${themeColor}25`,
+                        color: themeColor || '#ededed',
                       }}
                     >
-                      <Plus size={26} strokeWidth={2.5} />
+                      <Plus size={20} strokeWidth={1.5} />
                     </div>
 
                     <div className="flex flex-col gap-1 max-w-sm">
-                      <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                      <h3 className="text-base sm:text-lg font-medium text-white">
                         {t('noHabitsYet')}
                       </h3>
                       <p className="text-xs text-white/50 leading-relaxed">
@@ -9486,14 +9483,14 @@ function AppContent({ isPreview = false }) {
                     <button
                       type="button"
                       onClick={handleOpenAdd}
-                      className="mt-1 px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-95 shadow-xl flex items-center gap-2 cursor-pointer bg-white text-black hover:bg-white/90"
+                      className="mt-1 px-5 py-3 rounded-lg text-xs font-medium transition-[background-color,transform] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98] flex items-center gap-2 cursor-pointer bg-[#ededed] text-[#141415] hover:bg-white"
                     >
-                      <Plus size={15} strokeWidth={3} />
+                      <Plus size={16} strokeWidth={1.5} />
                       <span>{t('addFirstHabit')}</span>
                     </button>
                   </div>
                 ) : activeScheduledHabits.length === 0 ? (
-                  <div className="col-span-2 text-center text-white/60 text-xs font-bold uppercase tracking-widest py-10 select-none">
+                  <div className="col-span-2 text-center text-white/50 text-xs font-normal py-10 select-none">
                     {t('noHabitsScheduledToday')}
                   </div>
                 ) : null}
@@ -9505,26 +9502,26 @@ function AppContent({ isPreview = false }) {
             <div className="flex flex-col gap-6 w-full">
               
               {/* Daily Tasks Checklist Widget */}
-              <div className="liquid-panel p-6 shadow-xl flex flex-col w-full" style={{ borderRadius: '28px' }}>
+              <div className="liquid-panel p-6 flex flex-col w-full rounded-2xl">
                 <div className="flex items-center justify-between mb-4 select-none">
                   <div 
                     className="flex items-center gap-2 cursor-pointer group"
                     onClick={() => openNav('tasks')}
                     title="Open Tasks Modal"
                   >
-                    <ListChecks size={18} style={{ color: themeColor }} />
-                    <h2 className="text-sm font-bold tracking-widest text-white/80 group-hover:text-white uppercase transition-colors">{t('todaysTasks')}</h2>
-                    <Maximize size={12} className="text-white/30 group-hover:text-white/70 transition-colors ml-0.5" />
+                    <ListChecks size={18} strokeWidth={1.5} style={{ color: themeColor }} />
+                    <h2 className="text-sm font-medium text-white/85 group-hover:text-white transition-colors duration-150">{t('todaysTasks')}</h2>
+                    <Maximize size={12} strokeWidth={1.5} className="text-white/30 group-hover:text-white/70 transition-colors duration-150 ml-0.5" />
                   </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold" style={{ backgroundColor: `${themeColor}22`, color: themeColor }}>
+                  <span className="text-xs px-2 py-1 rounded-md font-mono tabular-nums font-medium" style={{ backgroundColor: `${themeColor}18`, color: themeColor }}>
                     {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈') && t.completed).length}/{dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).length}
                   </span>
                 </div>
 
-                <div className="flex flex-col gap-2.5 mb-4 max-h-[380px] sm:max-h-[460px] overflow-y-auto pr-1 overscroll-contain scroll-smooth">
+                <div className="flex flex-col gap-2 mb-4 max-h-[380px] sm:max-h-[460px] overflow-y-auto pr-1 overscroll-contain scroll-smooth">
                   {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).map((task, idx) => renderTaskItem(task, idx, false))}
                   {dailyTasks.filter(t => t && typeof t.text === 'string' && t.text.trim() !== '' && !t.deleted && !t.name?.includes('✈')).length === 0 && (
-                    <div className="text-center text-white/60 text-xs font-bold uppercase tracking-widest py-8 border border-dashed border-white/10 rounded-2xl bg-white/5 select-none">{t('noTasks')}</div>
+                    <div className="text-center text-white/45 text-xs font-normal py-8 border border-dashed border-white/[0.08] rounded-xl bg-[#19191b] select-none">{t('noTasks')}</div>
                   )}
                 </div>
 
@@ -9534,16 +9531,16 @@ function AppContent({ isPreview = false }) {
                       type="button"
                       onClick={toggleChecklistMode}
                       title={t('checklistMode')}
-                      className={`px-3 py-3 rounded-2xl border transition-all active:scale-95 flex items-center justify-center shrink-0 ${
+                      className={`px-3 py-3 rounded-xl border transition-[background-color,border-color,color,transform] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98] flex items-center justify-center shrink-0 ${
                         isChecklistMode
                           ? 'border-transparent text-black'
-                          : 'bg-black/20 border-white/5 text-white/50 hover:text-white hover:bg-white/10'
+                          : 'bg-[#19191b] border-white/[0.08] text-white/55 hover:text-white hover:bg-white/10'
                       }`}
                       style={{
                         backgroundColor: isChecklistMode ? themeColor : undefined,
                       }}
                     >
-                      <ListChecks size={18} strokeWidth={2.5} />
+                      <ListChecks size={18} strokeWidth={1.5} />
                     </button>
                     <input 
                       type="text" 
@@ -9555,17 +9552,17 @@ function AppContent({ isPreview = false }) {
                           handleCreateTask();
                         }
                       }}
-                      className="flex-1 bg-black/20 border border-white/5 text-white px-4 py-3 rounded-2xl outline-none text-sm font-semibold focus:border-white/30 transition-colors placeholder:text-white/30" 
+                      className="flex-1 bg-[#19191b] border border-white/[0.08] text-white px-4 py-3 rounded-xl outline-none text-sm font-normal focus:border-white/30 transition-colors duration-150 placeholder:text-white/35" 
                     />
                     <button 
                       type="button"
                       onClick={handleCreateTask}
                       aria-label="Add Task" 
                       title="Add Task" 
-                      className="px-4 py-3 rounded-2xl font-bold text-sm transition-all active:scale-95 hover:opacity-90 shrink-0" 
-                      style={{ backgroundColor: themeColor, color: '#000' }}
+                      className="px-4 py-3 rounded-xl font-medium text-sm transition-[opacity,transform] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98] hover:opacity-90 shrink-0" 
+                      style={{ backgroundColor: themeColor, color: '#141415' }}
                     >
-                      <Plus size={18} strokeWidth={3} />
+                      <Plus size={18} strokeWidth={2} />
                     </button>
                   </div>
 
@@ -10968,9 +10965,9 @@ function AppContent({ isPreview = false }) {
         {/* --- FLOATING NAV --- */}
         <div className="fixed bottom-0 left-0 w-full flex justify-center pt-3 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none z-[10000] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] sm:pb-6">
           <div className="w-full max-w-[428px] md:max-w-2xl lg:max-w-3xl px-6 flex justify-between items-center pointer-events-auto">
-            <div className="bg-[#1C1C1E]/80 backdrop-blur-xl border border-white/10 rounded-full flex items-center p-1.5 gap-1.5 shadow-2xl shadow-black/80">
-              <button onClick={() => navTo('home')} aria-label="Home" title="Home" className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/10 text-white transition-all duration-200 active:scale-90"><Home size={18} /></button>
-              <button onClick={() => navTo('tasks')} aria-label="Tasks" title="Tasks" className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/10 text-white/50 hover:text-white transition-all duration-200 active:scale-90"><ListChecks size={18} /></button>
+            <div className="bg-[#141415]/90 backdrop-blur-xl border border-white/[0.08] rounded-full flex items-center p-1.5 gap-1.5">
+              <button onClick={() => navTo('home')} aria-label="Home" title="Home" className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/10 text-white transition-[background-color,transform] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.96]"><Home size={18} strokeWidth={1.5} /></button>
+              <button onClick={() => navTo('tasks')} aria-label="Tasks" title="Tasks" className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-white/10 text-white/50 hover:text-white transition-[background-color,color,transform] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.96]"><ListChecks size={18} strokeWidth={1.5} /></button>
               <button 
                 onClick={() => {
                   if (isFriendsModalOpen) {
@@ -11022,11 +11019,11 @@ function AppContent({ isPreview = false }) {
                     )}
                     <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-[276px] bg-[#09090b] rounded-[24px] p-2 shadow-[0_24px_60px_rgba(0,0,0,0.95)] z-[10001] border border-white/[0.14] animate-in fade-in zoom-in-95 duration-150">
                       <div className="px-3 pt-1.5 pb-2 border-b border-white/[0.08] flex items-center justify-between">
-                        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
+                        <span className="font-mono text-xs text-white/45">
                           {t('focus')}
                         </span>
-                        <span className="font-mono text-[9px] uppercase tracking-widest text-white/25">
-                          SELECT MODE
+                        <span className="font-mono text-xs text-white/30">
+                          Select mode
                         </span>
                       </div>
 
@@ -11115,7 +11112,7 @@ function AppContent({ isPreview = false }) {
                 >
                   <Settings size={18} />
                   {updateInfo.hasUpdate && (
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] border border-black animate-pulse" />
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-400 border border-black" />
                   )}
                 </button>
 

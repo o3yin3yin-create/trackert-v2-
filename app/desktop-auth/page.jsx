@@ -464,7 +464,7 @@ export default function DesktopAuthPage() {
             <div className="flex flex-col gap-2 w-full">
               <button
                 onClick={handleCompleteAuth}
-                className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-sm transition-all active:scale-[0.98]"
+                className="w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-sm transition-all active:scale-[0.98]"
               >
                 Try Again
               </button>

@@ -9,32 +9,32 @@ export const metadata = {
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-black text-white px-4 py-12 selection:bg-white/20 font-sans antialiased">
+    <div className="min-h-screen bg-black text-white px-6 py-12 selection:bg-white/20 font-sans antialiased">
       <div className="max-w-2xl mx-auto">
         <Link 
           href="/" 
           className="inline-flex items-center gap-2 text-xs font-mono text-white/50 hover:text-white mb-8 transition-colors"
         >
-          <ArrowLeft size={14} /> Back to Dashboard
+          <ArrowLeft size={16} strokeWidth={1.5} /> Back to Dashboard
         </Link>
 
         <div className="space-y-8">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-mono text-white/80 mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-white/[0.06] border border-white/[0.08] text-xs font-mono text-white/70 mb-4">
               Last Updated: November 2026
             </div>
-            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white mb-3">
+            <h1 className="text-3xl sm:text-4xl font-medium tracking-tight text-white mb-3">
               Privacy Policy
             </h1>
-            <p className="text-sm text-white/60 leading-relaxed font-medium">
+            <p className="text-sm text-white/60 leading-relaxed font-normal">
               At bokra, your privacy is fundamental to our design. We do not sell your personal data, track you across websites, or serve ads.
             </p>
           </div>
 
           <div className="space-y-6 text-sm text-white/70 leading-relaxed">
-            <section className="p-6 rounded-3xl bg-white/[0.03] border border-white/10 space-y-2">
+            <section className="p-6 rounded-2xl bg-[#141415] border border-white/[0.08] space-y-2">
               <div className="flex items-center gap-2 text-white font-bold text-base mb-1">
-                <ShieldCheck size={18} className="text-white/80" />
+                <ShieldCheck size={18} strokeWidth={1.5} className="text-white/60" />
                 <h2>1. Information We Collect</h2>
               </div>
               <p>
@@ -42,9 +42,9 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            <section className="p-6 rounded-3xl bg-white/[0.03] border border-white/10 space-y-2">
+            <section className="p-6 rounded-2xl bg-[#141415] border border-white/[0.08] space-y-2">
               <div className="flex items-center gap-2 text-white font-bold text-base mb-1">
-                <Database size={18} className="text-white/80" />
+                <Database size={18} strokeWidth={1.5} className="text-white/60" />
                 <h2>2. How We Store Your Data</h2>
               </div>
               <p>
@@ -52,9 +52,9 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            <section className="p-6 rounded-3xl bg-white/[0.03] border border-white/10 space-y-2">
+            <section className="p-6 rounded-2xl bg-[#141415] border border-white/[0.08] space-y-2">
               <div className="flex items-center gap-2 text-white font-bold text-base mb-1">
-                <EyeOff size={18} className="text-white/80" />
+                <EyeOff size={18} strokeWidth={1.5} className="text-white/60" />
                 <h2>3. Zero Third-Party Tracking</h2>
               </div>
               <p>
@@ -62,9 +62,9 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            <section className="p-6 rounded-3xl bg-white/[0.03] border border-white/10 space-y-2">
+            <section className="p-6 rounded-2xl bg-[#141415] border border-white/[0.08] space-y-2">
               <div className="flex items-center gap-2 text-white font-bold text-base mb-1">
-                <Lock size={18} className="text-white/80" />
+                <Lock size={18} strokeWidth={1.5} className="text-white/60" />
                 <h2>4. Data Deletion & Logout</h2>
               </div>
               <p>

@@ -9,31 +9,31 @@ export const metadata = {
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-black text-white px-4 py-12 selection:bg-white/20 font-sans antialiased">
+    <div className="min-h-screen bg-black text-white px-6 py-12 selection:bg-white/20 font-sans antialiased">
       <div className="max-w-2xl mx-auto">
         <Link 
           href="/" 
           className="inline-flex items-center gap-2 text-xs font-mono text-white/50 hover:text-white mb-8 transition-colors"
         >
-          <ArrowLeft size={14} /> Back to Dashboard
+          <ArrowLeft size={16} strokeWidth={1.5} /> Back to Dashboard
         </Link>
 
         <div className="space-y-8">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-mono text-white/80 mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-white/[0.06] border border-white/[0.08] text-xs font-mono text-white/70 mb-4">
               v0.1.1 · Minimalist Companion
             </div>
-            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white mb-3">
+            <h1 className="text-3xl sm:text-4xl font-medium tracking-tight text-white mb-3">
               About bokra
             </h1>
-            <p className="text-base text-white/70 leading-relaxed font-medium">
-              bokra is an Apple-grade habit tracker, deep focus timer, and ambient productivity dashboard designed for students, builders, and deep workers.
+            <p className="text-base text-white/70 leading-relaxed font-normal">
+              bokra is a habit tracker, focus timer, and ambient workspace built for students, builders, and deep workers.
             </p>
           </div>
 
-          <div className="p-6 rounded-3xl bg-white/[0.03] border border-white/10 space-y-4">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Shield size={20} className="text-emerald-400" /> Our Philosophy
+          <div className="p-6 rounded-2xl bg-[#141415] border border-white/[0.08] space-y-4">
+            <h2 className="text-lg font-medium text-white flex items-center gap-2">
+              <Shield size={18} strokeWidth={1.5} className="text-white/60" /> Our Philosophy
             </h2>
             <p className="text-sm text-white/60 leading-relaxed">
               We believe daily consistency beats sudden intensity. We build tools that do not scream for your attention, do not clutter your screen with ads, and respect your attention with brutal aesthetic simplicity.
@@ -41,44 +41,44 @@ export default function AboutPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-              <div className="text-xs font-mono text-white/40 uppercase mb-1">Official Instagram</div>
-              <div className="text-base font-bold text-white mb-2">@bokra.101</div>
+            <div className="p-6 rounded-2xl bg-[#141415] border border-white/[0.08]">
+              <div className="text-xs font-mono text-white/45 mb-1">Official Instagram</div>
+              <div className="text-base font-medium text-white mb-2">@bokra.101</div>
               <a 
                 href="https://www.instagram.com/bokra.101?cplk=MTdsaGE0M3pwejMxeQ%3D%3D&utm_source=qr" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 hover:underline"
+                className="inline-flex items-center gap-2 text-xs font-medium text-white/80 hover:text-white hover:underline"
               >
-                Follow Community <ExternalLink size={12} />
+                Follow Community <ExternalLink size={16} strokeWidth={1.5} />
               </a>
             </div>
 
-            <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-              <div className="text-xs font-mono text-white/40 uppercase mb-1">Direct Support</div>
-              <div className="text-base font-bold text-white mb-2">Support & Feedback</div>
+            <div className="p-6 rounded-2xl bg-[#141415] border border-white/[0.08]">
+              <div className="text-xs font-mono text-white/45 mb-1">Direct support</div>
+              <div className="text-base font-medium text-white mb-2">Support & Feedback</div>
               <a 
                 href="mailto:bokra.support@gmail.com" 
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-400 hover:underline"
+                className="inline-flex items-center gap-2 text-xs font-medium text-white/80 hover:text-white hover:underline"
               >
-                bokra.support@gmail.com <Mail size={12} />
+                bokra.support@gmail.com <Mail size={16} strokeWidth={1.5} />
               </a>
             </div>
           </div>
 
-          <div className="p-6 rounded-3xl bg-white/[0.03] border border-white/10 space-y-3">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider text-white/50">Created By</h3>
+          <div className="p-6 rounded-2xl bg-[#141415] border border-white/[0.08] space-y-3">
+            <h3 className="text-sm font-medium text-white/50">Created by</h3>
             <p className="text-sm text-white/70 leading-relaxed">
-              Crafted with obsessive care by <strong className="text-white">6afra</strong>. 
+              Built by <strong className="text-white">6afra</strong>
             </p>
             <div>
               <a 
                 href="https://www.instagram.com/jj3_xx?igsh=MWVkaGI5ZjNsb3Nreg%3D%3D&utm_source=qr" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-white/80 hover:text-white underline decoration-dashed underline-offset-4"
+                className="inline-flex items-center gap-2 text-xs font-bold text-white/80 hover:text-white underline decoration-dashed underline-offset-4"
               >
-                Personal Instagram (@jj3_xx) <ExternalLink size={12} />
+                Personal Instagram (@jj3_xx) <ExternalLink size={16} strokeWidth={1.5} />
               </a>
             </div>
           </div>

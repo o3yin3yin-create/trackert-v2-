@@ -54,25 +54,25 @@ export default function GuidePage() {
       className="min-h-screen bg-[#000000] text-white selection:bg-white selection:text-black font-sans antialiased"
     >
       {/* Top Sticky Navigation Bar */}
-      <header className="sticky top-0 z-50 bg-black/85 backdrop-blur-xl border-b border-white/10 px-4 sm:px-8 pt-[calc(env(safe-area-inset-top,0px)+0.875rem)] pb-3.5 transition-all">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-50 bg-black/85 backdrop-blur-xl border-b border-white/10 px-6 sm:px-8 pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
           
           {/* Left: Back Link & Page Title */}
           <div className="flex items-center gap-3">
             <Link 
               href="/"
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all active:scale-95 flex items-center justify-center border border-white/10"
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-[background-color,transform] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98] flex items-center justify-center border border-white/10"
               title="Back to App"
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={18} strokeWidth={1.5} />
             </Link>
 
             <div className="flex flex-col">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 leading-tight">
+              <span className="text-xs font-normal text-white/45 leading-tight">
                 Documentation
               </span>
-              <h1 className="text-sm sm:text-base font-bold tracking-tight text-white flex items-center gap-2 leading-tight">
-                <BookOpen size={16} className="text-white/80" />
+              <h1 className="text-sm sm:text-base font-medium text-white flex items-center gap-2 leading-tight">
+                <BookOpen size={16} strokeWidth={1.5} className="text-white/60" />
                 Application User Guide
               </h1>
             </div>
@@ -85,7 +85,7 @@ export default function GuidePage() {
             <button
               type="button"
               onClick={handleCopyLink}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border select-none cursor-pointer active:scale-95 ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-[background-color,border-color,color,transform] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] border select-none cursor-pointer active:scale-[0.98] ${
                 copied 
                   ? 'bg-white text-black border-white' 
                   : 'bg-white/5 hover:bg-white/15 text-white/80 hover:text-white border-white/10'
@@ -94,12 +94,12 @@ export default function GuidePage() {
             >
               {copied ? (
                 <>
-                  <CheckCheck size={14} className="stroke-[2.5]" />
+                  <CheckCheck size={16} strokeWidth={1.5} />
                   <span>Copied</span>
                 </>
               ) : (
                 <>
-                  <Share2 size={13} />
+                  <Share2 size={16} strokeWidth={1.5} />
                   <span className="hidden sm:inline">Share</span>
                 </>
               )}
@@ -109,16 +109,15 @@ export default function GuidePage() {
       </header>
 
       {/* Main Container */}
-      <main className="max-w-4xl mx-auto px-5 sm:px-8 pt-10 pb-24">
+      <main className="max-w-4xl mx-auto px-6 sm:px-8 pt-10 pb-24">
         
         {/* Hero Section */}
         <div className="mb-12 flex flex-col gap-3 pb-8 border-b border-white/10">
-          <div className="inline-flex items-center self-start gap-2 px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-white/60 text-xs font-bold uppercase tracking-wider">
-            <BookOpen size={13} className="text-white" />
-            System Walkthrough
+          <div className="inline-flex items-center self-start gap-2 px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-white/60 text-xs font-medium">
+            System walkthrough
           </div>
 
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+          <h2 className="text-2xl sm:text-3xl font-medium tracking-tight text-white">
             How the Application Works
           </h2>
 
@@ -132,16 +131,16 @@ export default function GuidePage() {
               <a 
                 key={sec.id}
                 href={`#${sec.id}`}
-                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-bold text-white/70 hover:text-white transition-all select-none"
+                className="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-bold text-white/70 hover:text-white transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] select-none"
               >
                 {sec.en.title}
               </a>
             ))}
             <a 
               href="#faq"
-              className="px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/20 border border-white/20 text-[11px] font-bold text-white transition-all select-none flex items-center gap-1.5"
+              className="px-3 py-2 rounded-lg bg-white/15 hover:bg-white/20 border border-white/20 text-[11px] font-bold text-white transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] select-none flex items-center gap-2"
             >
-              <HelpCircle size={12} />
+              <HelpCircle size={16} strokeWidth={1.5} />
               Q&A Section
             </a>
           </div>
@@ -157,19 +156,14 @@ export default function GuidePage() {
               <section 
                 id={item.id}
                 key={item.id} 
-                className="scroll-mt-24 p-6 sm:p-7 rounded-2xl bg-[#09090b] border border-white/10 hover:border-white/20 transition-all flex flex-col gap-4 relative overflow-hidden"
+                className="scroll-mt-24 p-6 rounded-2xl bg-[#141415] border border-white/[0.08] hover:border-white/15 transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] flex flex-col gap-4 relative overflow-hidden"
               >
-                {/* Section Index Indicator */}
-                <span className="absolute top-4 right-5 sm:right-6 text-4xl sm:text-5xl font-black text-white/[0.04] select-none pointer-events-none">
-                  {String(index + 1).padStart(2, '0')}
-                </span>
-
                 {/* Section Header */}
                 <div className="flex flex-col gap-2 relative z-10">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10 text-white">
-                        <Icon size={18} strokeWidth={2.2} />
+                      <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10 text-white/70">
+                        <Icon size={18} strokeWidth={1.5} />
                       </div>
                       <div className="flex flex-col">
                         <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight">
@@ -183,7 +177,7 @@ export default function GuidePage() {
                       </div>
                     </div>
 
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-white/60 shrink-0">
+                    <span className="text-xs font-normal px-3 py-1 rounded-md bg-white/5 border border-white/10 text-white/60 shrink-0">
                       {content.badge}
                     </span>
                   </div>
@@ -196,13 +190,13 @@ export default function GuidePage() {
 
                 {/* Points / How It Works */}
                 {content.tips && content.tips.length > 0 && (
-                  <div className="pt-3 border-t border-white/10 flex flex-col gap-2.5 relative z-10">
-                    <span className="text-[11px] font-bold text-white/40 uppercase tracking-wider">
-                      How it works:
+                  <div className="pt-3 border-t border-white/10 flex flex-col gap-3 relative z-10">
+                    <span className="text-xs font-medium text-white/45">
+                      How it works
                     </span>
                     {content.tips.map((step, sIdx) => (
                       <div key={sIdx} className="flex items-start gap-3 text-xs sm:text-[13px] text-white/70 leading-relaxed">
-                        <span className="w-5 h-5 rounded-md bg-white/10 text-white/80 font-mono text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5 border border-white/10">
+                        <span className="w-5 h-5 rounded-md bg-white/10 text-white/80 font-mono tabular-nums text-[10px] font-medium flex items-center justify-center shrink-0 mt-1 border border-white/10">
                           {sIdx + 1}
                         </span>
                         <span>{step}</span>
@@ -218,12 +212,11 @@ export default function GuidePage() {
         {/* Comprehensive Q&A Section */}
         <section id="faq" className="scroll-mt-24 mt-16 pt-10 border-t border-white/10 flex flex-col gap-6">
           <div className="flex flex-col gap-2">
-            <div className="inline-flex items-center self-start gap-2 px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-white/60 text-xs font-bold uppercase tracking-wider">
-              <HelpCircle size={13} className="text-white" />
-              Questions & Answers
+            <div className="inline-flex items-center self-start gap-2 px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-white/60 text-xs font-medium">
+              Questions & answers
             </div>
 
-            <h3 className="text-2xl font-extrabold text-white tracking-tight">
+            <h3 className="text-2xl font-medium text-white tracking-tight">
               Frequently Asked Questions
             </h3>
 
@@ -232,7 +225,7 @@ export default function GuidePage() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-3.5 pt-2">
+          <div className="flex flex-col gap-3 pt-2">
             {guideFAQ.map((item, idx) => {
               const faqData = item.en;
               const isOpen = openFaq[item.id] !== undefined ? openFaq[item.id] : true; // Default open for ease of reading
@@ -240,7 +233,7 @@ export default function GuidePage() {
               return (
                 <div 
                   key={item.id}
-                  className="rounded-xl bg-[#09090b] border border-white/10 overflow-hidden transition-all"
+                  className="rounded-xl bg-[#141415] border border-white/[0.08] overflow-hidden"
                 >
                   <button
                     type="button"
@@ -257,6 +250,7 @@ export default function GuidePage() {
                     </div>
                     <ChevronDown 
                       size={18} 
+                      strokeWidth={1.5}
                       className={`text-white/40 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} 
                     />
                   </button>
@@ -275,15 +269,15 @@ export default function GuidePage() {
         {/* Footer Navigation */}
         <div className="mt-16 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-xs text-white/50">
-            <span>bokra user guide - fully updated to match application features.</span>
+            <span>bokra user guide</span>
           </div>
 
           <Link
             href="/"
-            className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-xs sm:text-sm bg-white text-black hover:bg-white/90 active:scale-95 transition-all text-center shadow-md flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-xs sm:text-sm bg-[#ededed] text-[#141415] hover:bg-white active:scale-[0.98] transition-[background-color,transform] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] text-center flex items-center justify-center gap-2"
           >
             <span>Return to Dashboard</span>
-            <ArrowUpRight size={15} />
+            <ArrowUpRight size={16} strokeWidth={1.5} />
           </Link>
         </div>
       </main>
