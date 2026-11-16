@@ -12,6 +12,7 @@
  */
 
 import { SOUND_CATALOG, SoundItem } from './soundCatalog';
+import { saveOfflineAudioBlob, getOfflineAudioBlob } from './offlineAudioDb';
 
 interface ActiveTrack {
   soundId: string;
@@ -158,17 +159,21 @@ export class SoundEngine {
       const fileSounds = SOUND_CATALOG.filter((s) => s.type === 'file' && s.src && !s.stream);
       const streamSounds = SOUND_CATALOG.filter((s) => s.type === 'file' && s.src && s.stream);
 
-      // Mark any manually-downloaded stream tracks as offline-ready & pre-warm blob URL
+      // Mark any manually-downloaded stream tracks as offline-ready & pre-warm blob URL (IndexedDB first, CacheStorage fallback)
       for (const sound of streamSounds) {
         if (!sound.src) continue;
-        const cachedStream = await cache.match(sound.src);
-        if (cachedStream) {
+        let blob: Blob | null = await getOfflineAudioBlob(sound.id).catch(() => null);
+        if (!blob) {
+          const cachedStream = await cache.match(sound.src);
+          if (cachedStream) {
+            blob = await cachedStream.blob().catch(() => null);
+            if (blob) saveOfflineAudioBlob(sound.id, blob).catch(() => {});
+          }
+        }
+        if (blob) {
           this.offlineReadySounds.add(sound.id);
           if (!this.streamBlobCache.has(sound.id)) {
-            try {
-              const blob = await cachedStream.blob();
-              this.streamBlobCache.set(sound.id, URL.createObjectURL(blob));
-            } catch (_) {}
+            this.streamBlobCache.set(sound.id, URL.createObjectURL(blob));
           }
         }
       }
@@ -264,17 +269,23 @@ export class SoundEngine {
         blob = await res.blob();
       }
 
-      const cache = await caches.open('bokra-ambient-v1');
-      await cache.put(
-        sound.src,
-        new Response(blob, {
-          status: 200,
-          headers: {
-            'Content-Type': contentType,
-            'Content-Length': String(blob.size),
-          },
-        })
-      );
+      // Save to IndexedDB (primary, immune to SW eviction) + CacheStorage (secondary)
+      await saveOfflineAudioBlob(soundId, blob);
+      if ('caches' in window) {
+        try {
+          const cache = await caches.open('bokra-ambient-v1');
+          await cache.put(
+            sound.src,
+            new Response(blob, {
+              status: 200,
+              headers: {
+                'Content-Type': contentType,
+                'Content-Length': String(blob.size),
+              },
+            })
+          );
+        } catch (_) {}
+      }
       this.downloadProgress.set(soundId, 100);
       this.offlineReadySounds.add(soundId);
       const oldBlob = this.streamBlobCache.get(soundId);
@@ -594,6 +605,11 @@ export class SoundEngine {
    */
   private async resolveStreamSrc(sound: SoundItem): Promise<{ url: string; isBlob: boolean }> {
     const src = sound.src || '';
+    const idbBlob = await getOfflineAudioBlob(sound.id).catch(() => null);
+    if (idbBlob) {
+      this.offlineReadySounds.add(sound.id);
+      return { url: URL.createObjectURL(idbBlob), isBlob: true };
+    }
     if (typeof window !== 'undefined' && 'caches' in window && src) {
       try {
         const cache = await caches.open('bokra-ambient-v1');
