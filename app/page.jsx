@@ -1338,29 +1338,6 @@ function AppContent({ isPreview = false }) {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isProfileRequired, setIsProfileRequired] = useState(false);
 
-  useEffect(() => {
-    if (!isMounted || !isSignedIn || !user || !isCloudLoaded || isPreview) return;
-    let cancelled = false;
-    apiFetch('/api/user/privacy')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (cancelled || !data) return;
-        const p = data.privacySettings || {};
-        const hasPhoto = Boolean(avatar && (avatar.startsWith('data:') || avatar.startsWith('http')));
-        const hasAllFields = Boolean(
-          p.profileCompleted &&
-          p.birthday &&
-          p.profileRole &&
-          (p.profileGoal || p.profileField)
-        );
-        if (!hasPhoto || !hasAllFields) {
-          setIsProfileRequired(true);
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [isMounted, isSignedIn, user, isCloudLoaded, isPreview, avatar]);
-
   const [expandedHabits, setExpandedHabits] = useState([]);
 
   // --- States for Streak & Notes ---
@@ -2149,6 +2126,29 @@ function AppContent({ isPreview = false }) {
   const [isOnline, setIsOnline] = useState(typeof window !== 'undefined' ? navigator.onLine : true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isCloudLoaded, setIsCloudLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!isMounted || !isSignedIn || !user || !isCloudLoaded || isPreview) return;
+    let cancelled = false;
+    apiFetch('/api/user/privacy')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        const p = data.privacySettings || {};
+        const hasPhoto = Boolean(avatar && (avatar.startsWith('data:') || avatar.startsWith('http')));
+        const hasAllFields = Boolean(
+          p.profileCompleted &&
+          p.birthday &&
+          p.profileRole &&
+          (p.profileGoal || p.profileField)
+        );
+        if (!hasPhoto || !hasAllFields) {
+          setIsProfileRequired(true);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isMounted, isSignedIn, user, isCloudLoaded, isPreview, avatar]);
 
   // --- Refs ---
   const chartRef = useRef(null);
