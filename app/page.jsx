@@ -39,6 +39,7 @@ const AthkarModal = dynamic(() => import('../components/AthkarModal'), { ssr: fa
 const AmbientSoundModal = dynamic(() => import('../components/ambient/AmbientSoundModal'), { ssr: false });
 import AmbientSoundWidget from '../components/ambient/AmbientSoundWidget';
 const PushNotificationsCard = dynamic(() => import('../components/PushNotificationsCard'), { ssr: false });
+const CompleteProfileModal = dynamic(() => import('../components/CompleteProfileModal'), { ssr: false });
 import { showLocalNotification } from '../lib/localNotifications';
 import { HABIT_PRESETS, getLocalizedPreset } from '../lib/habitPresets';
 import { guideSections } from '../lib/guideContent';
@@ -1334,6 +1335,31 @@ function AppContent({ isPreview = false }) {
 
 
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isProfileRequired, setIsProfileRequired] = useState(false);
+
+  useEffect(() => {
+    if (!isMounted || !isSignedIn || !user || !isCloudLoaded || isPreview) return;
+    let cancelled = false;
+    apiFetch('/api/user/privacy')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        const p = data.privacySettings || {};
+        const hasPhoto = Boolean(avatar && (avatar.startsWith('data:') || avatar.startsWith('http')));
+        const hasAllFields = Boolean(
+          p.profileCompleted &&
+          p.birthday &&
+          p.profileRole &&
+          (p.profileGoal || p.profileField)
+        );
+        if (!hasPhoto || !hasAllFields) {
+          setIsProfileRequired(true);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isMounted, isSignedIn, user, isCloudLoaded, isPreview, avatar]);
 
   const [expandedHabits, setExpandedHabits] = useState([]);
 
@@ -3700,6 +3726,9 @@ function AppContent({ isPreview = false }) {
         break;
       case 'avatar':
         setIsAvatarModalOpen(visible);
+        break;
+      case 'profile':
+        setIsProfileModalOpen(visible);
         break;
       case 'analytics':
         setIsAnalyticsModalOpen(visible);
@@ -11290,6 +11319,13 @@ function AppContent({ isPreview = false }) {
                                     {tEn('edit')}
                                   </button>
                                 </div>
+                                <SettingsRow
+                                  icon={Sparkles}
+                                  title="Complete Your Profile"
+                                  subtitle="Wake-up time, birthday & focus goals"
+                                  onClick={() => pushNav('profile')}
+                                  trailing={<ChevronRight size={18} className="text-white/40" />}
+                                />
                                 <SettingsRow danger icon={LogOut} title={tEn('signOut')} onClick={handleSignOut} />
                               </>
                             ) : (
@@ -11598,6 +11634,18 @@ function AppContent({ isPreview = false }) {
               </div>
 
               {/* Avatar Picker Page (Full Screen) */}
+              {(isProfileModalOpen || isProfileRequired) && isMounted && createPortal(
+                <CompleteProfileModal
+                  isOpen={isProfileModalOpen || isProfileRequired}
+                  forced={isProfileRequired}
+                  avatar={avatar}
+                  onSelectAvatar={handleSelectAvatar}
+                  onCompleted={() => setIsProfileRequired(false)}
+                  onClose={() => popNav()}
+                />,
+                document.body
+              )}
+
               {isAvatarModalOpen && createPortal(
                 <div className="fixed inset-0 z-[10000] bg-black overflow-y-auto">
                   <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col justify-between">

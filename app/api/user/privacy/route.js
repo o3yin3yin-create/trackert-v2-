@@ -53,6 +53,21 @@ export async function POST(req) {
       if (typeof rawIncoming.morningNotifyTime === 'string' && /^([01]\d|2[0-3]):([0-5]\d)$/.test(rawIncoming.morningNotifyTime)) {
         sanitizedIncoming.morningNotifyTime = rawIncoming.morningNotifyTime
       }
+      if (typeof rawIncoming.birthday === 'string' && (/^\d{4}-\d{2}-\d{2}$/.test(rawIncoming.birthday) || rawIncoming.birthday === '')) {
+        sanitizedIncoming.birthday = rawIncoming.birthday
+      }
+      if (typeof rawIncoming.profileRole === 'string') {
+        sanitizedIncoming.profileRole = rawIncoming.profileRole.trim().slice(0, 40)
+      }
+      if (typeof rawIncoming.profileGoal === 'string') {
+        sanitizedIncoming.profileGoal = rawIncoming.profileGoal.trim().slice(0, 120)
+      }
+      if (typeof rawIncoming.profileField === 'string') {
+        sanitizedIncoming.profileField = rawIncoming.profileField.trim().slice(0, 80)
+      }
+      if (typeof rawIncoming.profileCompleted === 'boolean') {
+        sanitizedIncoming.profileCompleted = rawIncoming.profileCompleted
+      }
     }
 
     const existing = await prisma.user.findUnique({
