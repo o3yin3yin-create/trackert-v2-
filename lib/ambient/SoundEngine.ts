@@ -43,6 +43,9 @@ export class SoundEngine {
   // In-memory decoded buffer cache for file-based and generated sounds
   private bufferCache: Map<string, AudioBuffer> = new Map();
 
+  // Pre-warmed synchronous blob URLs for downloaded streaming tracks (preserves iOS tap gesture)
+  private streamBlobCache: Map<string, string> = new Map();
+
   // Loading state tracking
   private loadingSounds: Set<string> = new Set();
   private downloadProgress: Map<string, number> = new Map();
@@ -155,11 +158,18 @@ export class SoundEngine {
       const fileSounds = SOUND_CATALOG.filter((s) => s.type === 'file' && s.src && !s.stream);
       const streamSounds = SOUND_CATALOG.filter((s) => s.type === 'file' && s.src && s.stream);
 
-      // Mark any manually-downloaded stream tracks as offline-ready
+      // Mark any manually-downloaded stream tracks as offline-ready & pre-warm blob URL
       for (const sound of streamSounds) {
         if (!sound.src) continue;
-        if (await cache.match(sound.src)) {
+        const cachedStream = await cache.match(sound.src);
+        if (cachedStream) {
           this.offlineReadySounds.add(sound.id);
+          if (!this.streamBlobCache.has(sound.id)) {
+            try {
+              const blob = await cachedStream.blob();
+              this.streamBlobCache.set(sound.id, URL.createObjectURL(blob));
+            } catch (_) {}
+          }
         }
       }
 
@@ -267,6 +277,9 @@ export class SoundEngine {
       );
       this.downloadProgress.set(soundId, 100);
       this.offlineReadySounds.add(soundId);
+      const oldBlob = this.streamBlobCache.get(soundId);
+      if (oldBlob) URL.revokeObjectURL(oldBlob);
+      this.streamBlobCache.set(soundId, URL.createObjectURL(blob));
       return true;
     } catch (err) {
       console.warn(`[SoundEngine] Manual offline download failed for ${soundId}:`, err);
@@ -598,9 +611,6 @@ export class SoundEngine {
    * Start playing a sound with smooth 1s fade-in.
    */
   public async playSound(soundId: string, initialVolume?: number): Promise<boolean> {
-    const ctx = await this.ensureContext();
-    if (!ctx || !this.masterGain) return false;
-
     const sound = SOUND_CATALOG.find((s) => s.id === soundId);
     if (!sound) return false;
 
@@ -609,6 +619,30 @@ export class SoundEngine {
     if (activeCount >= 6 && !this.tracks.get(soundId)?.isPlaying) {
       return false; // Caller handles display of limit warning
     }
+
+    // Stream tracks must call mediaEl.play() before async awaits to preserve user-tap gesture on iOS Safari
+    if (sound.stream && sound.src) {
+      const targetVol = initialVolume !== undefined ? initialVolume : sound.defaultVolume;
+      let track = this.tracks.get(soundId);
+      if (!track) {
+        track = {
+          soundId,
+          sourceNode: null,
+          gainNode: null as unknown as GainNode,
+          targetVolume: targetVol,
+          isPlaying: false,
+          type: sound.type,
+        };
+        this.tracks.set(soundId, track);
+      } else {
+        track.targetVolume = targetVol;
+      }
+      this.ensureContext().catch(() => {});
+      return await this.playStreamTrack(sound, track);
+    }
+
+    const ctx = await this.ensureContext();
+    if (!ctx || !this.masterGain) return false;
 
     const now = ctx.currentTime;
     const targetVol = initialVolume !== undefined ? initialVolume : sound.defaultVolume;
@@ -644,10 +678,6 @@ export class SoundEngine {
       this.tracks.set(soundId, track);
     } else {
       track.targetVolume = targetVol;
-    }
-
-    if (sound.stream && sound.src) {
-      return await this.playStreamTrack(ctx, sound, track, now);
     }
 
     const buffer = await this.loadAudioBuffer(sound);
@@ -701,10 +731,8 @@ export class SoundEngine {
    * Stream a long audio track via HTMLAudioElement (near-zero RAM & full offline blob support).
    */
   private async playStreamTrack(
-    _ctx: AudioContext,
     sound: SoundItem,
-    track: ActiveTrack,
-    _now: number
+    track: ActiveTrack
   ): Promise<boolean> {
     if (!track.mediaEl) {
       const mediaEl = new Audio();
@@ -713,13 +741,14 @@ export class SoundEngine {
       track.mediaEl = mediaEl;
     }
 
-    const { url, isBlob } = await this.resolveStreamSrc(sound);
-    if (track.blobUrl && track.blobUrl !== url) {
-      URL.revokeObjectURL(track.blobUrl);
-      track.blobUrl = undefined;
-    }
-    if (isBlob) {
-      track.blobUrl = url;
+    // Use pre-warmed synchronous blob URL when available so play() runs in the tap gesture
+    let url = this.streamBlobCache.get(sound.id);
+    if (!url) {
+      const resolved = await this.resolveStreamSrc(sound);
+      url = resolved.url;
+      if (resolved.isBlob) {
+        this.streamBlobCache.set(sound.id, url);
+      }
     }
 
     if (track.mediaEl.src !== url && !track.mediaEl.src.endsWith(url)) {
