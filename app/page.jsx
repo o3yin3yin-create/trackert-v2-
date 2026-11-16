@@ -1372,6 +1372,11 @@ function AppContent({ isPreview = false }) {
   const [isFlowRunning, setIsFlowRunning] = useState(false);
   const [flowTaskName, setFlowTaskName] = useState('');
   const flowLastTickRef = useRef(Date.now());
+  const FLOW_CHECKIN_INTERVAL_SEC = 4 * 60 * 60;
+  const FLOW_CHECKIN_GRACE_SEC = 5 * 60;
+  const flowNextCheckInSecRef = useRef(FLOW_CHECKIN_INTERVAL_SEC);
+  const flowNotifiedCheckInSecRef = useRef(null);
+  const [flowCheckInPrompt, setFlowCheckInPrompt] = useState(null);
 
   // --- Flight Focus States ---
   const [isFlightFocusOpen, setIsFlightFocusOpen] = useState(false);
@@ -4627,6 +4632,11 @@ function AppContent({ isPreview = false }) {
   }, [isTimerRunning, activePomodoroTask, t]);
 
   // --- Deep Flow (Open Time) Timer & Session Synchronization ---
+  const flowSecondsRef = useRef(0);
+  useEffect(() => {
+    flowSecondsRef.current = flowSeconds;
+  }, [flowSeconds]);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -4635,12 +4645,27 @@ function AppContent({ isPreview = false }) {
           const parsed = JSON.parse(saved);
           if (parsed && typeof parsed === 'object') {
             if (parsed.taskName) setFlowTaskName(parsed.taskName);
+            const nextCheckIn = Number(parsed.nextCheckInSec) || FLOW_CHECKIN_INTERVAL_SEC;
+            flowNextCheckInSecRef.current = nextCheckIn;
             let accumulated = Number(parsed.accumulatedSec) || 0;
             if (parsed.isRunning && parsed.lastActive) {
               const delta = Math.max(0, Math.floor((Date.now() - parsed.lastActive) / 1000));
               accumulated += delta;
+              if (accumulated >= nextCheckIn + FLOW_CHECKIN_GRACE_SEC) {
+                // 5-minute check-in grace window already expired while away -> auto-close session
+                localStorage.removeItem('daybase_active_flow_v1');
+                flowNextCheckInSecRef.current = FLOW_CHECKIN_INTERVAL_SEC;
+                setFlowSeconds(0);
+                setIsFlowRunning(false);
+                return;
+              }
+              if (accumulated >= nextCheckIn) {
+                const remaining = Math.max(1, FLOW_CHECKIN_GRACE_SEC - (accumulated - nextCheckIn));
+                setFlowCheckInPrompt({ remainingSec: remaining });
+              }
               setIsFlowRunning(true);
             }
+            flowSecondsRef.current = accumulated;
             setFlowSeconds(accumulated);
           }
         }
@@ -4661,22 +4686,86 @@ function AppContent({ isPreview = false }) {
       const deltaSecs = Math.floor(deltaMs / 1000);
       if (deltaSecs >= 1) {
         flowLastTickRef.current = now;
-        setFlowSeconds(prev => {
-          const next = prev + deltaSecs;
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('daybase_active_flow_v1', JSON.stringify({
-              accumulatedSec: next,
-              isRunning: true,
-              lastActive: now,
-              taskName: flowTaskName
-            }));
+        const prev = flowSecondsRef.current;
+        const nextCheckIn = flowNextCheckInSecRef.current;
+        const expireAt = nextCheckIn + FLOW_CHECKIN_GRACE_SEC;
+        const rawNext = prev + deltaSecs;
+
+        // If 5-minute grace window expired without confirmation -> cap stats & auto-end session
+        if (rawNext >= expireAt) {
+          const creditedDelta = Math.max(0, expireAt - prev);
+          const todayStr = getFormatDateStr(new Date());
+          if (creditedDelta > 0) {
+            setFocusTimeData(p => {
+              const updated = { ...p, [todayStr]: (p[todayStr] || 0) + creditedDelta };
+              if (typeof window !== 'undefined') localStorage.setItem('daybase_focusTime_v4', JSON.stringify(updated));
+              return updated;
+            });
+            if (flowTaskName) {
+              setPomodoroTasksData(p => {
+                const updated = { ...p };
+                if (!updated[todayStr]) updated[todayStr] = [];
+                const existingIdx = updated[todayStr].findIndex(tk => tk.name === flowTaskName);
+                if (existingIdx > -1) {
+                  updated[todayStr][existingIdx].timeSpent += creditedDelta;
+                } else {
+                  updated[todayStr].push({ name: flowTaskName, color: '#30d158', timeSpent: creditedDelta });
+                }
+                if (typeof window !== 'undefined') localStorage.setItem('daybase_pomodoro_tasks_v1', JSON.stringify(updated));
+                return updated;
+              });
+            }
           }
-          return next;
-        });
+
+          flowSecondsRef.current = 0;
+          flowNextCheckInSecRef.current = FLOW_CHECKIN_INTERVAL_SEC;
+          flowNotifiedCheckInSecRef.current = null;
+          setFlowCheckInPrompt(null);
+          setIsFlowRunning(false);
+          setFlowSeconds(0);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('daybase_active_flow_v1');
+          }
+          if (syncSessionRef.current.lastSyncedType === 'flow') {
+            syncSessionRef.current.lastSyncedType = null;
+            apiFetch('/api/session', { method: 'POST', body: JSON.stringify({ type: null, data: null }) }).catch(() => {});
+          }
+          return;
+        }
+
+        // Trigger 4-hour check-in prompt & notification
+        if (rawNext >= nextCheckIn) {
+          const remaining = Math.max(1, expireAt - rawNext);
+          setFlowCheckInPrompt({ remainingSec: remaining });
+          if (flowNotifiedCheckInSecRef.current !== nextCheckIn) {
+            flowNotifiedCheckInSecRef.current = nextCheckIn;
+            showLocalNotification(
+              lang === 'ar' ? 'انت لسة هنا؟' : 'Are you still here?',
+              {
+                body: lang === 'ar'
+                  ? 'جلسة Deep Flow شغالة بقالها 4 ساعات. أكّد وجودك خلال 5 دقايق وإلا هتقفل تلقائيًا.'
+                  : 'Deep Flow has been running for 4 hours. Confirm within 5 minutes or it will close automatically.',
+                tag: 'bokra-flow-checkin',
+              }
+            );
+          }
+        }
+
+        flowSecondsRef.current = rawNext;
+        setFlowSeconds(rawNext);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('daybase_active_flow_v1', JSON.stringify({
+            accumulatedSec: rawNext,
+            isRunning: true,
+            lastActive: now,
+            taskName: flowTaskName,
+            nextCheckInSec: nextCheckIn,
+          }));
+        }
 
         const todayStr = getFormatDateStr(new Date());
-        setFocusTimeData(prev => {
-          const updated = { ...prev, [todayStr]: (prev[todayStr] || 0) + deltaSecs };
+        setFocusTimeData(prevFocus => {
+          const updated = { ...prevFocus, [todayStr]: (prevFocus[todayStr] || 0) + deltaSecs };
           if (typeof window !== 'undefined') {
             localStorage.setItem('daybase_focusTime_v4', JSON.stringify(updated));
           }
@@ -4684,8 +4773,8 @@ function AppContent({ isPreview = false }) {
         });
 
         if (flowTaskName) {
-          setPomodoroTasksData(prev => {
-            const updated = { ...prev };
+          setPomodoroTasksData(prevTasks => {
+            const updated = { ...prevTasks };
             if (!updated[todayStr]) updated[todayStr] = [];
             const existingIdx = updated[todayStr].findIndex(tk => tk.name === flowTaskName);
             if (existingIdx > -1) {
@@ -4710,7 +4799,7 @@ function AppContent({ isPreview = false }) {
       window.removeEventListener('visibilitychange', tick);
       window.removeEventListener('focus', tick);
     };
-  }, [isFlowRunning, flowTaskName]);
+  }, [isFlowRunning, flowTaskName, lang]);
 
   // Sync Deep Flow session to backend for friends & cross-device
   useEffect(() => {
@@ -4739,6 +4828,23 @@ function AppContent({ isPreview = false }) {
     }
   }, [isFlowRunning, isMounted, isCloudLoaded, user, isPreview]);
 
+  const handleConfirmFlowCheckIn = () => {
+    haptic('light');
+    const nextTarget = flowSecondsRef.current + FLOW_CHECKIN_INTERVAL_SEC;
+    flowNextCheckInSecRef.current = nextTarget;
+    flowNotifiedCheckInSecRef.current = null;
+    setFlowCheckInPrompt(null);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('daybase_active_flow_v1', JSON.stringify({
+        accumulatedSec: flowSecondsRef.current,
+        isRunning: isFlowRunning,
+        lastActive: Date.now(),
+        taskName: flowTaskName,
+        nextCheckInSec: nextTarget,
+      }));
+    }
+  };
+
   const handleToggleFlow = () => {
     haptic('medium');
     lastLocalSessionActionAtRef.current = Date.now();
@@ -4749,7 +4855,8 @@ function AppContent({ isPreview = false }) {
           accumulatedSec: flowSeconds,
           isRunning: next,
           lastActive: Date.now(),
-          taskName: flowTaskName
+          taskName: flowTaskName,
+          nextCheckInSec: flowNextCheckInSecRef.current,
         }));
       }
       return next;
@@ -4759,6 +4866,10 @@ function AppContent({ isPreview = false }) {
   const handleResetFlow = () => {
     haptic('light');
     lastLocalSessionActionAtRef.current = Date.now();
+    flowSecondsRef.current = 0;
+    flowNextCheckInSecRef.current = FLOW_CHECKIN_INTERVAL_SEC;
+    flowNotifiedCheckInSecRef.current = null;
+    setFlowCheckInPrompt(null);
     setIsFlowRunning(false);
     setFlowSeconds(0);
     if (typeof window !== 'undefined') {
@@ -4773,6 +4884,9 @@ function AppContent({ isPreview = false }) {
   const handleFinishFlowSession = (totalSecs, taskName) => {
     haptic('success');
     lastLocalSessionActionAtRef.current = Date.now();
+    flowNextCheckInSecRef.current = FLOW_CHECKIN_INTERVAL_SEC;
+    flowNotifiedCheckInSecRef.current = null;
+    setFlowCheckInPrompt(null);
     setIsFlowRunning(false);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('daybase_active_flow_v1');
@@ -10905,6 +11019,44 @@ function AppContent({ isPreview = false }) {
           )}
 
         </motion.div>
+
+        {/* --- DEEP FLOW 4-HOUR CHECK-IN PROMPT ("Are you still here?") --- */}
+        {flowCheckInPrompt && (
+          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[10002] w-[calc(100vw-2rem)] max-w-sm bg-[#141416]/95 border border-white/20 backdrop-blur-2xl rounded-2xl p-4 shadow-2xl shadow-black text-white animate-in fade-in slide-in-from-top-3 select-none">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold tracking-tight">
+                  {lang === 'ar' ? 'انت لسة هنا؟' : 'Are you still here?'}
+                </p>
+                <p className="text-xs text-white/60 mt-0.5 leading-relaxed">
+                  {lang === 'ar'
+                    ? 'عدّى 4 ساعات على Deep Flow. لو مفيش رد الجلسة هتقفل تلقائيًا.'
+                    : 'Deep Flow has been running for 4 hours. Session will auto-close soon.'}
+                </p>
+              </div>
+              <span className="font-mono text-xs font-bold tabular-nums px-2 py-1 rounded-lg bg-white/10 text-white shrink-0">
+                {String(Math.floor(flowCheckInPrompt.remainingSec / 60)).padStart(2, '0')}:
+                {String(flowCheckInPrompt.remainingSec % 60).padStart(2, '0')}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 mt-3">
+              <button
+                type="button"
+                onClick={handleConfirmFlowCheckIn}
+                className="flex-1 py-2 px-3 rounded-xl bg-white text-black text-xs font-bold hover:bg-white/90 active:scale-[0.98] transition-all cursor-pointer"
+              >
+                {lang === 'ar' ? 'أيوه، كمّل' : 'Yes, keep going'}
+              </button>
+              <button
+                type="button"
+                onClick={handleResetFlow}
+                className="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-xs font-semibold active:scale-[0.98] transition-all cursor-pointer"
+              >
+                {lang === 'ar' ? 'اقفل الجلسة' : 'End'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* --- DEEP FLOW SUBTLE SCREEN DIM --- */}
         {isFlowRunning && !isDeepFlowOpen && (
