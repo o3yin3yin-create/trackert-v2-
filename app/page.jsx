@@ -11320,9 +11320,9 @@ function AppContent({ isPreview = false }) {
                                   </button>
                                 </div>
                                 <SettingsRow
-                                  icon={Sparkles}
-                                  title="Complete Your Profile"
-                                  subtitle="Wake-up time, birthday & focus goals"
+                                  icon={User}
+                                  title="Your Profile"
+                                  subtitle="Photo, wake-up time, birthday & goals"
                                   onClick={() => pushNav('profile')}
                                   trailing={<ChevronRight size={18} className="text-white/40" />}
                                 />

@@ -134,9 +134,11 @@ export default function CompleteProfileModal({
         {/* Header */}
         <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-white">Complete Your Profile</h2>
+            <h2 className="text-xl font-bold tracking-tight text-white">
+              {forced ? 'Complete Your Profile' : 'Your Profile'}
+            </h2>
             <p className="text-[11px] text-white/45 mt-0.5">
-              {forced ? 'Required once before using bokra' : 'Personalize your morning nudges & experience'}
+              {forced ? 'Required once before using bokra' : 'Edit your photo, wake-up time, birthday & goals'}
             </p>
           </div>
           {!forced && (
@@ -329,7 +331,11 @@ export default function CompleteProfileModal({
                   <span>Saved</span>
                 </>
               ) : (
-                <span>{isAllComplete ? 'Save & Continue' : `Complete all 5 steps (${completedSteps}/5)`}</span>
+                <span>
+                  {isAllComplete
+                    ? (forced ? 'Save & Continue' : 'Save Changes')
+                    : `Complete all 5 steps (${completedSteps}/5)`}
+                </span>
               )}
             </button>
           </form>
