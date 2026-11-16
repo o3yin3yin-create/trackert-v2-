@@ -708,10 +708,16 @@ export class SoundEngine {
       URL.revokeObjectURL(track.blobUrl);
       track.blobUrl = undefined;
     }
-    if (isBlob) track.blobUrl = url;
+    if (isBlob) {
+      track.blobUrl = url;
+      track.mediaEl.removeAttribute('crossorigin');
+    } else {
+      track.mediaEl.crossOrigin = 'anonymous';
+    }
 
     if (track.mediaEl.src !== url && !track.mediaEl.src.endsWith(url)) {
       track.mediaEl.src = url;
+      track.mediaEl.load();
     }
 
     try {

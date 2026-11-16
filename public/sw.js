@@ -98,26 +98,47 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 1.5. Ambient Audio Files (/sounds/...) -> Cache-First; let Range requests stream natively if not cached
+  // 1.5. Ambient Audio Files (/sounds/...) -> Cache-First with HTTP 206 Range support for offline playback
   if (url.pathname.startsWith('/sounds/')) {
-    if (request.headers.has('range')) {
-      return;
-    }
+    const rangeHeader = request.headers.get('range');
     event.respondWith(
-      caches.open('bokra-ambient-v1').then((audioCache) => {
-        return audioCache.match(request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
+      caches.open('bokra-ambient-v1').then(async (audioCache) => {
+        const cachedResponse = await audioCache.match(url.pathname);
+        if (cachedResponse) {
+          if (rangeHeader) {
+            const buf = await cachedResponse.arrayBuffer();
+            const total = buf.byteLength;
+            const match = /bytes=(\d+)-(\d*)/.exec(rangeHeader);
+            const start = match ? Number(match[1]) : 0;
+            const end = match && match[2] ? Math.min(Number(match[2]), total - 1) : total - 1;
+            const slice = buf.slice(start, end + 1);
+            return new Response(slice, {
+              status: 206,
+              statusText: 'Partial Content',
+              headers: {
+                'Content-Range': `bytes ${start}-${end}/${total}`,
+                'Accept-Ranges': 'bytes',
+                'Content-Length': String(slice.byteLength),
+                'Content-Type': cachedResponse.headers.get('Content-Type') || 'audio/mp4',
+              },
+            });
           }
-          return fetch(request).then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              audioCache.put(request, networkResponse.clone());
-            }
-            return networkResponse;
-          }).catch(() => {
-            return new Response('', { status: 404, statusText: 'Offline Audio' });
-          });
-        });
+          return cachedResponse;
+        }
+
+        if (rangeHeader) {
+          return fetch(request);
+        }
+
+        try {
+          const networkResponse = await fetch(request);
+          if (networkResponse && networkResponse.status === 200) {
+            audioCache.put(url.pathname, networkResponse.clone());
+          }
+          return networkResponse;
+        } catch {
+          return new Response('', { status: 404, statusText: 'Offline Audio' });
+        }
       })
     );
     return;
