@@ -206,6 +206,8 @@ self.addEventListener('push', (event) => {
   } catch (_) {
     payload = { data: { title: 'bokra', body: event.data.text() } };
   }
+  // If FCM compat SDK is loaded and payload has `notification`, FCM already displays it — avoid duplicate!
+  if (payload.notification && typeof firebase !== 'undefined') return;
   const notif = payload.notification || {};
   const data = payload.data || payload;
   const title = notif.title || data.title || 'bokra';

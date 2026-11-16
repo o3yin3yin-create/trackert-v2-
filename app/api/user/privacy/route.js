@@ -47,6 +47,12 @@ export async function POST(req) {
           sanitizedIncoming[key] = rawIncoming[key]
         }
       }
+      if (typeof rawIncoming.morningNotifyEnabled === 'boolean') {
+        sanitizedIncoming.morningNotifyEnabled = rawIncoming.morningNotifyEnabled
+      }
+      if (typeof rawIncoming.morningNotifyTime === 'string' && /^([01]\d|2[0-3]):([0-5]\d)$/.test(rawIncoming.morningNotifyTime)) {
+        sanitizedIncoming.morningNotifyTime = rawIncoming.morningNotifyTime
+      }
     }
 
     const existing = await prisma.user.findUnique({

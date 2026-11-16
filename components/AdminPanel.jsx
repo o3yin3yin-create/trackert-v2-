@@ -4,14 +4,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, Users, Shield, Loader2, UserX, Check, ShieldAlert, 
   BarChart3, Activity, Target, Search, RefreshCw, Zap, 
-  Music, Flame, Radio, Clock, CheckCircle2, Lock, Key
+  Music, Flame, Radio, Clock, CheckCircle2, Lock, Key, Bell, Send
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
-  const [activeTab, setActiveTab] = useState('overview'); // overview, sessions, users, system
+  const [activeTab, setActiveTab] = useState('overview'); // overview, sessions, users, notifications, system
   const [overview, setOverview] = useState(null);
   const [users, setUsers] = useState([]);
+  const [notifData, setNotifData] = useState(null);
+  const [broadcastTitle, setBroadcastTitle] = useState('');
+  const [broadcastBody, setBroadcastBody] = useState('');
+  const [broadcastUrl, setBroadcastUrl] = useState('/');
+  const [broadcastSending, setBroadcastSending] = useState(false);
+  const [broadcastResult, setBroadcastResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
   const [error, setError] = useState('');
@@ -25,10 +31,16 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
     setLoading(true);
     setError('');
     try {
-      const [overviewRes, usersRes] = await Promise.all([
+      const [overviewRes, usersRes, notifRes] = await Promise.all([
         apiFetch('/api/admin/overview'),
-        apiFetch('/api/admin/users')
+        apiFetch('/api/admin/users'),
+        apiFetch('/api/admin/notifications')
       ]);
+
+      if (notifRes.ok) {
+        const nd = await notifRes.json();
+        setNotifData(nd);
+      }
 
       if (overviewRes.ok) {
         const data = await overviewRes.json();
@@ -98,6 +110,38 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
   };
 
   // Filtered Users List
+  const handleSendBroadcast = async (e) => {
+    e.preventDefault();
+    if (!broadcastTitle.trim() || !broadcastBody.trim() || broadcastSending) return;
+    setBroadcastSending(true);
+    setBroadcastResult(null);
+    try {
+      const res = await apiFetch('/api/admin/notifications', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: broadcastTitle.trim(),
+          body: broadcastBody.trim(),
+          url: broadcastUrl.trim() || '/',
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        setBroadcastResult({
+          ok: true,
+          message: `Sent to ${data.totalSent} device(s) across ${data.usersTargeted} user(s).`,
+        });
+        setBroadcastTitle('');
+        setBroadcastBody('');
+      } else {
+        setBroadcastResult({ ok: false, message: data.error || 'Failed to send broadcast' });
+      }
+    } catch {
+      setBroadcastResult({ ok: false, message: 'Network error' });
+    } finally {
+      setBroadcastSending(false);
+    }
+  };
+
   const filteredUsers = useMemo(() => {
     return users.filter(u => {
       const query = searchQuery.trim().toLowerCase();
@@ -240,6 +284,24 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
               {users.length}
             </span>
             {activeTab === 'users' && (
+              <motion.div 
+                layoutId="admin_active_tab" 
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#ededed] rounded-full" 
+              />
+            )}
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('notifications')}
+            className={`pb-2.5 sm:pb-3 pt-2 px-2.5 sm:px-3 text-xs sm:text-sm font-medium transition-colors duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] relative flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
+              activeTab === 'notifications' 
+                ? 'text-[#ededed]' 
+                : 'text-white/40 hover:text-white/70'
+            }`}
+          >
+            <Bell size={14} strokeWidth={1.5} className="shrink-0" />
+            <span className="whitespace-nowrap">{isArabic ? 'الإشعارات' : 'Notifications'}</span>
+            {activeTab === 'notifications' && (
               <motion.div 
                 layoutId="admin_active_tab" 
                 className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#ededed] rounded-full" 
@@ -777,6 +839,144 @@ export default function AdminPanel({ isOpen, onClose, lang, isRtl }) {
               )}
 
               {/* TAB 4: Architecture & Health */}
+              {/* ================= NOTIFICATIONS TAB ================= */}
+              {activeTab === 'notifications' && (
+                <div className="space-y-5">
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-4 rounded-2xl bg-[#19191b] border border-white/[0.08]">
+                      <span className="text-[11px] text-white/45 block">{isArabic ? 'مستخدمين مشتركين' : 'Subscribed Users'}</span>
+                      <span className="text-xl font-bold font-mono text-white mt-1 block">{notifData?.stats?.subscribedUsers ?? '—'}</span>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-[#19191b] border border-white/[0.08]">
+                      <span className="text-[11px] text-white/45 block">{isArabic ? 'أجهزة مسجلة' : 'Push Devices'}</span>
+                      <span className="text-xl font-bold font-mono text-emerald-400 mt-1 block">{notifData?.stats?.totalDevices ?? '—'}</span>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-[#19191b] border border-white/[0.08]">
+                      <span className="text-[11px] text-white/45 block">{isArabic ? 'تنبيهات العادات' : 'Habit Reminders'}</span>
+                      <span className="text-xl font-bold font-mono text-white mt-1 block">{notifData?.stats?.activeHabitReminders ?? '—'}</span>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-[#19191b] border border-white/[0.08]">
+                      <span className="text-[11px] text-white/45 block">{isArabic ? 'إشعارات مجدولة' : 'Pending Queued'}</span>
+                      <span className="text-xl font-bold font-mono text-amber-300 mt-1 block">{notifData?.stats?.pendingScheduled ?? '—'}</span>
+                    </div>
+                  </div>
+
+                  {/* Broadcast Push Form */}
+                  <form onSubmit={handleSendBroadcast} className="p-5 rounded-2xl bg-[#19191b] border border-white/[0.08] space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Send size={15} className="text-white/70" />
+                        <h3 className="text-sm font-semibold text-white">
+                          {isArabic ? 'إرسال إشعار لكل المستخدمين' : 'Broadcast Push to All Users'}
+                        </h3>
+                      </div>
+                      <span className="text-[10px] font-mono text-white/40">English Push · All Subscribed Devices</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        value={broadcastTitle}
+                        onChange={(e) => setBroadcastTitle(e.target.value)}
+                        placeholder="Title (e.g. bokra)"
+                        maxLength={120}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder:text-white/30 outline-none focus:border-white/30"
+                      />
+                      <input
+                        type="text"
+                        value={broadcastUrl}
+                        onChange={(e) => setBroadcastUrl(e.target.value)}
+                        placeholder="Target URL (default /)"
+                        maxLength={200}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-xs font-mono text-white placeholder:text-white/30 outline-none focus:border-white/30"
+                      />
+                    </div>
+
+                    <textarea
+                      value={broadcastBody}
+                      onChange={(e) => setBroadcastBody(e.target.value)}
+                      placeholder="Notification message body..."
+                      rows={3}
+                      maxLength={300}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder:text-white/30 outline-none focus:border-white/30 resize-none"
+                    />
+
+                    <div className="flex items-center justify-between gap-3">
+                      {broadcastResult ? (
+                        <span className={`text-xs font-medium ${broadcastResult.ok ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {broadcastResult.message}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-white/35">
+                          {isArabic ? 'سيصل لجميع الأجهزة المفعّلة للإشعارات.' : 'Delivered to all users with active push tokens.'}
+                        </span>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={broadcastSending || !broadcastTitle.trim() || !broadcastBody.trim()}
+                        className="px-4 py-2 rounded-xl bg-white text-black text-xs font-bold hover:bg-white/90 active:scale-[0.98] disabled:opacity-40 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                      >
+                        {broadcastSending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                        <span>{isArabic ? 'إرسال للكل' : 'Send to All'}</span>
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* Notification Catalog & Schedules */}
+                  <div className="space-y-2.5">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 px-1">
+                      {isArabic ? 'كل الإشعارات ومواعيدها' : 'All Notifications & Schedules'}
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {(notifData?.catalog || []).map((item) => (
+                        <div key={item.id} className="p-4 rounded-2xl bg-[#19191b] border border-white/[0.08] space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-white">{item.name}</span>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/[0.06] text-white/60 shrink-0">
+                              {item.channel}
+                            </span>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-black/35 border border-white/[0.05] space-y-0.5">
+                            <div className="text-[11px] font-semibold text-white/90">{item.title}</div>
+                            <div className="text-[11px] text-white/55 leading-relaxed">{item.body}</div>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[10px] font-mono text-white/45">
+                            <Clock size={11} className="shrink-0" />
+                            <span>{item.schedule}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Active Habit Reminders Preview */}
+                  {notifData?.sampleHabits?.length > 0 && (
+                    <div className="space-y-2.5">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50 px-1">
+                        {isArabic ? 'أحدث تنبيهات العادات المفعّلة' : 'Configured Habit Reminders'}
+                      </h3>
+                      <div className="rounded-2xl bg-[#19191b] border border-white/[0.08] divide-y divide-white/[0.06] overflow-hidden">
+                        {notifData.sampleHabits.map((h) => (
+                          <div key={h.id} className="px-4 py-2.5 flex items-center justify-between gap-3 text-xs">
+                            <div className="min-w-0">
+                              <span className="font-medium text-white truncate block">{h.name}</span>
+                              <span className="text-[10px] text-white/40 truncate block">
+                                {h.user?.name || h.user?.email} · {h.user?.timezone || 'Africa/Cairo'}
+                              </span>
+                            </div>
+                            <div className="text-right shrink-0 font-mono text-[11px] text-white/75">
+                              <span>{h.notifyTime}</span>
+                              {h.notifyBefore ? <span className="text-white/40 ml-1.5">(-{h.notifyBefore}m)</span> : null}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {activeTab === 'system' && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

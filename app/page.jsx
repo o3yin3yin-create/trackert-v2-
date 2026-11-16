@@ -1896,12 +1896,12 @@ function AppContent({ isPreview = false }) {
           if (latest.id !== currentNotifIdRef.current) {
             currentNotifIdRef.current = latest.id;
             const notifMsg = latest.type === 'cheer'
-              ? (isAr ? 'شجعك الآن' : 'cheered you on')
+              ? 'cheered you on'
               : latest.type === 'study'
-                ? (isAr ? 'طلب المذاكرة معك' : 'asked to study together')
+                ? 'asked to study together'
                 : latest.type === 'schedule_share'
-                  ? (isAr ? 'شارك جدول أسبوعه معك' : 'shared their weekly schedule with you')
-                  : (isAr ? 'أرسل لك نغزة' : 'nudged you');
+                  ? 'shared their weekly schedule with you'
+                  : 'nudged you';
             setActiveInAppNotification({
               id: latest.id,
               type: latest.type || 'nudge',
@@ -1931,7 +1931,7 @@ function AppContent({ isPreview = false }) {
             showLocalNotification(
               latest.user?.name || latest.user?.username || 'bokra',
               {
-                body: isAr ? 'أرسل لك طلب صداقة جديد' : 'Sent you a friend request',
+                body: 'Sent you a friend request',
                 tag: `request_${latest.friendshipId}`,
               }
             );
@@ -3439,12 +3439,10 @@ function AppContent({ isPreview = false }) {
             const isLecture = h.category === 'lecture';
             showLocalNotification(
               isLecture 
-                ? (isAr ? `تذكير بمحاضرة: ${h.name}` : `Upcoming Lecture: ${h.name}`)
-                : (isAr ? `تذكير: ${h.name}` : `Upcoming Habit: ${h.name}`),
+                ? `Upcoming Lecture: ${h.name}`
+                : `Upcoming Habit: ${h.name}`,
               {
-                body: isAr 
-                  ? `تبدأ بعد ${diffMins} دقائق (في ${rawTime})` 
-                  : `Starts in ${diffMins} minutes (at ${rawTime})`,
+                body: `Starts in ${diffMins} minutes (at ${rawTime})`,
                 tag: key10,
               }
             );
@@ -3458,55 +3456,16 @@ function AppContent({ isPreview = false }) {
             const isLecture = h.category === 'lecture';
             showLocalNotification(
               isLecture 
-                ? (isAr ? `حان موعد المحاضرة: ${h.name}` : `Lecture Starting: ${h.name}`)
-                : (isAr ? `حان موعد: ${h.name}` : `Time for: ${h.name}`),
+                ? `Lecture Starting: ${h.name}`
+                : `Time for: ${h.name}`,
               {
-                body: h.location 
-                  ? (isAr ? `المكان: ${h.location}` : `Location: ${h.location}`) 
-                  : (isAr ? 'حان الموعد الآن.' : 'Starting now.'),
+                body: h.location ? `Location: ${h.location}` : 'Starting now.',
                 tag: keyNow,
               }
             );
           }
         }
       });
-
-      // Automated Morning & Evening Reminders for Athkar (if added by user)
-      const athkarHabit = habits.find(h => isAthkarHabit(h));
-      if (athkarHabit) {
-        // Morning window: 5:00 AM to 11:00 AM
-        if (currentHours >= 5 && currentHours < 11) {
-          const morningKey = `${todayDateKey}_athkar_morning`;
-          if (!notifiedEventsRef.current.has(morningKey)) {
-            notifiedEventsRef.current.add(morningKey);
-            showLocalNotification(
-              isAr ? 'أذكار الصباح ☀️' : 'Morning Athkar ☀️',
-              {
-                body: isAr 
-                  ? 'حان وقت أذكار الصباح، ابدأ يومك بذكر الله وحصّن نفسك.' 
-                  : 'Time for Morning Athkar. Start your day with peaceful remembrance.',
-                tag: morningKey,
-              }
-            );
-          }
-        }
-        // Evening window: 4:00 PM (16:00) to 10:00 PM (22:00)
-        if (currentHours >= 16 && currentHours < 22) {
-          const eveningKey = `${todayDateKey}_athkar_evening`;
-          if (!notifiedEventsRef.current.has(eveningKey)) {
-            notifiedEventsRef.current.add(eveningKey);
-            showLocalNotification(
-              isAr ? 'أذكار المساء 🌙' : 'Evening Athkar 🌙',
-              {
-                body: isAr 
-                  ? 'حان وقت أذكار المساء، حصّن نفسك واختم يومك بذكر الله.' 
-                  : 'Time for Evening Athkar. Protect yourself and conclude your day in peace.',
-                tag: eveningKey,
-              }
-            );
-          }
-        }
-      }
 
       // Automated Custom Reminders for User Habits
       habits.forEach((h) => {
@@ -3537,9 +3496,9 @@ function AppContent({ isPreview = false }) {
           if (!notifiedEventsRef.current.has(keyRem)) {
             notifiedEventsRef.current.add(keyRem);
             showLocalNotification(
-              isAr ? `تذكير: ${h.name}` : `Reminder: ${h.name}`,
+              `Reminder: ${h.name}`,
               {
-                body: h.reminderMessage || (isAr ? 'حان موعد هذه العادة، حان وقت الإنجاز!' : 'Time to complete this habit!'),
+                body: h.reminderMessage || 'Time to complete this habit!',
                 tag: keyRem,
               }
             );
@@ -4559,11 +4518,9 @@ function AppContent({ isPreview = false }) {
             setIsTimerRunning(false); 
             haptic('heavy');
             showLocalNotification(
-              isAr ? 'انتهت جلسة التركيز' : 'Focus Session Complete',
+              'Focus Session Complete',
               {
-                body: isAr 
-                  ? 'أحسنت! اكتمل وقت التركيز، حان وقت استراحة قصيرة.' 
-                  : 'Great job! Your focus time is done, take a well-deserved break.',
+                body: 'Great job! Your focus time is done, take a well-deserved break.',
                 tag: 'pomodoro_complete',
               }
             );
