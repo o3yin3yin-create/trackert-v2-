@@ -34,7 +34,7 @@ try {
   // Fallback to native push event listener below
 }
 
-const CACHE_NAME = 'bokra-cache-v11';
+const CACHE_NAME = 'bokra-cache-v12';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',
@@ -78,6 +78,85 @@ self.addEventListener('fetch', (event) => {
     url.pathname.startsWith('/sign-in') ||
     url.pathname.startsWith('/sign-up')
   ) {
+    return;
+  }
+
+  if (url.pathname.startsWith('/sounds/')) {
+    const rangeHeader = request.headers.get('range');
+    event.respondWith(
+      (async () => {
+        const audioCache = await caches.open('bokra-ambient-v1');
+        let cachedResponse = await audioCache.match(url.pathname);
+
+        if (!cachedResponse && typeof indexedDB !== 'undefined') {
+          try {
+            const blob = await new Promise((resolve) => {
+              const req = indexedDB.open('bokra_offline_audio', 1);
+              req.onupgradeneeded = () => {
+                if (!req.result.objectStoreNames.contains('tracks')) {
+                  req.result.createObjectStore('tracks', { keyPath: 'id' });
+                }
+              };
+              req.onsuccess = () => {
+                try {
+                  const tx = req.result.transaction('tracks', 'readonly');
+                  const getReq = tx.objectStore('tracks').get(url.pathname);
+                  getReq.onsuccess = () => resolve(getReq.result?.blob || null);
+                  getReq.onerror = () => resolve(null);
+                } catch {
+                  resolve(null);
+                }
+              };
+              req.onerror = () => resolve(null);
+            });
+            if (blob) {
+              cachedResponse = new Response(blob, {
+                status: 200,
+                headers: {
+                  'Content-Type': blob.type || (url.pathname.endsWith('.m4a') ? 'audio/mp4' : 'audio/mpeg'),
+                },
+              });
+            }
+          } catch (_) {}
+        }
+
+        if (cachedResponse) {
+          if (rangeHeader) {
+            const buf = await cachedResponse.arrayBuffer();
+            const total = buf.byteLength;
+            const match = /bytes=(\d+)-(\d*)/.exec(rangeHeader);
+            const start = match ? Number(match[1]) : 0;
+            const end = match && match[2] ? Math.min(Number(match[2]), total - 1) : total - 1;
+            const slice = buf.slice(start, end + 1);
+            return new Response(slice, {
+              status: 206,
+              statusText: 'Partial Content',
+              headers: {
+                'Content-Range': `bytes ${start}-${end}/${total}`,
+                'Accept-Ranges': 'bytes',
+                'Content-Length': String(slice.byteLength),
+                'Content-Type': cachedResponse.headers.get('Content-Type') || (url.pathname.endsWith('.m4a') ? 'audio/mp4' : 'audio/mpeg'),
+              },
+            });
+          }
+          return cachedResponse;
+        }
+
+        if (rangeHeader) {
+          return fetch(request);
+        }
+
+        try {
+          const networkResponse = await fetch(request);
+          if (networkResponse && networkResponse.status === 200) {
+            audioCache.put(url.pathname, networkResponse.clone());
+          }
+          return networkResponse;
+        } catch {
+          return new Response('', { status: 404, statusText: 'Offline Audio' });
+        }
+      })()
+    );
     return;
   }
 

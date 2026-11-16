@@ -159,22 +159,19 @@ export class SoundEngine {
       const fileSounds = SOUND_CATALOG.filter((s) => s.type === 'file' && s.src && !s.stream);
       const streamSounds = SOUND_CATALOG.filter((s) => s.type === 'file' && s.src && s.stream);
 
-      // Mark any manually-downloaded stream tracks as offline-ready & pre-warm blob URL (IndexedDB first, CacheStorage fallback)
+      // Mark any manually-downloaded stream tracks as offline-ready (IndexedDB keyed by src, CacheStorage fallback)
       for (const sound of streamSounds) {
         if (!sound.src) continue;
-        let blob: Blob | null = await getOfflineAudioBlob(sound.id).catch(() => null);
+        let blob: Blob | null = await getOfflineAudioBlob(sound.src).catch(() => null);
         if (!blob) {
           const cachedStream = await cache.match(sound.src);
           if (cachedStream) {
             blob = await cachedStream.blob().catch(() => null);
-            if (blob) saveOfflineAudioBlob(sound.id, blob).catch(() => {});
+            if (blob) saveOfflineAudioBlob(sound.src, blob).catch(() => {});
           }
         }
         if (blob) {
           this.offlineReadySounds.add(sound.id);
-          if (!this.streamBlobCache.has(sound.id)) {
-            this.streamBlobCache.set(sound.id, URL.createObjectURL(blob));
-          }
         }
       }
 
@@ -269,8 +266,8 @@ export class SoundEngine {
         blob = await res.blob();
       }
 
-      // Save to IndexedDB (primary, immune to SW eviction) + CacheStorage (secondary)
-      await saveOfflineAudioBlob(soundId, blob);
+      // Save to IndexedDB (keyed by sound.src so SW can serve 206 ranges) + CacheStorage
+      await saveOfflineAudioBlob(sound.src, blob);
       if ('caches' in window) {
         try {
           const cache = await caches.open('bokra-ambient-v1');
@@ -288,9 +285,6 @@ export class SoundEngine {
       }
       this.downloadProgress.set(soundId, 100);
       this.offlineReadySounds.add(soundId);
-      const oldBlob = this.streamBlobCache.get(soundId);
-      if (oldBlob) URL.revokeObjectURL(oldBlob);
-      this.streamBlobCache.set(soundId, URL.createObjectURL(blob));
       return true;
     } catch (err) {
       console.warn(`[SoundEngine] Manual offline download failed for ${soundId}:`, err);
@@ -744,32 +738,26 @@ export class SoundEngine {
   }
 
   /**
-   * Stream a long audio track via HTMLAudioElement (near-zero RAM & full offline blob support).
+   * Stream a long audio track via HTMLAudioElement using its canonical HTTP path
+   * (served over network when online, or via SW 206 Range from Cache/IndexedDB when offline).
+   * Synchronous before play() to preserve iOS Safari user-tap gesture.
    */
   private async playStreamTrack(
     sound: SoundItem,
     track: ActiveTrack
   ): Promise<boolean> {
+    if (!sound.src) return false;
+
     if (!track.mediaEl) {
       const mediaEl = new Audio();
       mediaEl.loop = true;
       mediaEl.preload = 'metadata';
+      mediaEl.setAttribute('playsinline', 'true');
+      mediaEl.setAttribute('webkit-playsinline', 'true');
+      mediaEl.src = sound.src;
       track.mediaEl = mediaEl;
-    }
-
-    // Use pre-warmed synchronous blob URL when available so play() runs in the tap gesture
-    let url = this.streamBlobCache.get(sound.id);
-    if (!url) {
-      const resolved = await this.resolveStreamSrc(sound);
-      url = resolved.url;
-      if (resolved.isBlob) {
-        this.streamBlobCache.set(sound.id, url);
-      }
-    }
-
-    if (track.mediaEl.src !== url && !track.mediaEl.src.endsWith(url)) {
-      track.mediaEl.src = url;
-      track.mediaEl.load();
+    } else if (!track.mediaEl.src || !track.mediaEl.src.endsWith(sound.src)) {
+      track.mediaEl.src = sound.src;
     }
 
     this.syncMediaElVolume(track);
@@ -793,10 +781,7 @@ export class SoundEngine {
    */
   public stopSound(soundId: string, instant: boolean = false): void {
     const track = this.tracks.get(soundId);
-    if (!track || !this.audioCtx) return;
-
-    const now = this.audioCtx.currentTime;
-    const fadeDuration = instant ? 0.05 : 0.8;
+    if (!track) return;
 
     track.isPlaying = false;
     if (track.mediaEl) {
@@ -808,6 +793,10 @@ export class SoundEngine {
       this.notify();
       return;
     }
+
+    if (!this.audioCtx) return;
+    const now = this.audioCtx.currentTime;
+    const fadeDuration = instant ? 0.05 : 0.8;
 
     track.gainNode.gain.cancelScheduledValues(now);
     track.gainNode.gain.setValueAtTime(track.gainNode.gain.value, now);
