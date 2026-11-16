@@ -129,8 +129,8 @@ export default function CompleteProfileModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[10050] bg-black overflow-y-auto animate-in fade-in duration-200">
-      <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+2rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col">
+    <div className="fixed inset-0 z-[10050] bg-black overflow-y-auto overflow-x-hidden animate-in fade-in duration-200">
+      <div className="min-h-screen w-full max-w-lg mx-auto px-5 pt-[calc(env(safe-area-inset-top,0px)+3rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+2.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
           <div>
@@ -229,13 +229,15 @@ export default function CompleteProfileModal({
                   <div className={`w-5 h-5 rounded-full transition-transform ${morningEnabled ? 'translate-x-4 bg-black' : 'translate-x-0 bg-white'}`} />
                 </button>
               </div>
-              <input
-                type="time"
-                value={morningTime}
-                required
-                onChange={(e) => setMorningTime(e.target.value)}
-                className="w-full max-w-full min-w-0 block box-border px-3.5 py-2.5 rounded-xl bg-black border border-white/10 text-sm font-mono text-white outline-none focus:border-white/30 [color-scheme:dark]"
-              />
+              <div className="w-full rounded-xl bg-black border border-white/10 px-3.5 py-2.5 overflow-hidden focus-within:border-white/30">
+                <input
+                  type="time"
+                  value={morningTime}
+                  required
+                  onChange={(e) => setMorningTime(e.target.value)}
+                  className="w-full min-w-0 bg-transparent border-0 p-0 text-sm font-mono text-white outline-none appearance-none [color-scheme:dark]"
+                />
+              </div>
             </div>
 
             {/* 2. Birthday */}
@@ -247,13 +249,15 @@ export default function CompleteProfileModal({
                   <div className="text-[11px] text-white/45">We&apos;ll send you a special message on your birthday</div>
                 </div>
               </div>
-              <input
-                type="date"
-                value={birthday}
-                required
-                onChange={(e) => setBirthday(e.target.value)}
-                className="w-full max-w-full min-w-0 block box-border px-3.5 py-2.5 rounded-xl bg-black border border-white/10 text-sm font-mono text-white outline-none focus:border-white/30 [color-scheme:dark]"
-              />
+              <div className="w-full rounded-xl bg-black border border-white/10 px-3.5 py-2.5 overflow-hidden focus-within:border-white/30">
+                <input
+                  type="date"
+                  value={birthday}
+                  required
+                  onChange={(e) => setBirthday(e.target.value)}
+                  className="w-full min-w-0 bg-transparent border-0 p-0 text-sm font-mono text-white outline-none appearance-none [color-scheme:dark]"
+                />
+              </div>
             </div>
 
             {/* 3. Role / About You */}
