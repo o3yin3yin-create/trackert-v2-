@@ -221,7 +221,12 @@ export class SoundEngine {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const contentLength = Number(res.headers.get('content-length') || 0);
-      const contentType = res.headers.get('content-type') || 'audio/mp4';
+      const rawType = res.headers.get('content-type') || '';
+      const contentType = rawType && rawType !== 'application/octet-stream'
+        ? rawType
+        : sound.src.endsWith('.m4a')
+        ? 'audio/mp4'
+        : 'audio/mpeg';
 
       let blob: Blob;
       if (res.body && contentLength > 0) {
@@ -684,23 +689,28 @@ export class SoundEngine {
   }
 
   /**
-   * Stream a long audio track via HTMLAudioElement (near-zero RAM), falling back to offlineSrc on failure.
+   * Sync HTMLAudioElement volume for direct-stream tracks (avoids MediaElementSource blob issues on iOS/WebKit).
+   */
+  private syncMediaElVolume(track: ActiveTrack): void {
+    if (!track.mediaEl) return;
+    const effective = this.isMuted ? 0 : Math.max(0, Math.min(1, track.targetVolume * this.masterVolume));
+    track.mediaEl.volume = effective;
+  }
+
+  /**
+   * Stream a long audio track via HTMLAudioElement (near-zero RAM & full offline blob support).
    */
   private async playStreamTrack(
-    ctx: AudioContext,
+    _ctx: AudioContext,
     sound: SoundItem,
     track: ActiveTrack,
-    now: number
+    _now: number
   ): Promise<boolean> {
     if (!track.mediaEl) {
       const mediaEl = new Audio();
       mediaEl.loop = true;
       mediaEl.preload = 'metadata';
-      mediaEl.crossOrigin = 'anonymous';
-      const mediaSourceNode = ctx.createMediaElementSource(mediaEl);
-      mediaSourceNode.connect(track.filterNode || track.gainNode);
       track.mediaEl = mediaEl;
-      track.mediaSourceNode = mediaSourceNode;
     }
 
     const { url, isBlob } = await this.resolveStreamSrc(sound);
@@ -710,15 +720,14 @@ export class SoundEngine {
     }
     if (isBlob) {
       track.blobUrl = url;
-      track.mediaEl.removeAttribute('crossorigin');
-    } else {
-      track.mediaEl.crossOrigin = 'anonymous';
     }
 
     if (track.mediaEl.src !== url && !track.mediaEl.src.endsWith(url)) {
       track.mediaEl.src = url;
       track.mediaEl.load();
     }
+
+    this.syncMediaElVolume(track);
 
     try {
       await track.mediaEl.play();
@@ -728,10 +737,6 @@ export class SoundEngine {
     }
 
     track.isPlaying = true;
-    track.gainNode.gain.cancelScheduledValues(now);
-    track.gainNode.gain.setValueAtTime(0.0001, now);
-    track.gainNode.gain.linearRampToValueAtTime(track.targetVolume, now + 1.0);
-
     this.syncBackgroundAudioState();
     this.updateMediaSession();
     this.notify();
@@ -749,6 +754,16 @@ export class SoundEngine {
     const fadeDuration = instant ? 0.05 : 0.8;
 
     track.isPlaying = false;
+    if (track.mediaEl) {
+      try {
+        track.mediaEl.pause();
+      } catch (_) {}
+      this.syncBackgroundAudioState();
+      this.updateMediaSession();
+      this.notify();
+      return;
+    }
+
     track.gainNode.gain.cancelScheduledValues(now);
     track.gainNode.gain.setValueAtTime(track.gainNode.gain.value, now);
     track.gainNode.gain.linearRampToValueAtTime(0.0001, now + fadeDuration);
@@ -794,7 +809,9 @@ export class SoundEngine {
     if (!track) return;
 
     track.targetVolume = clamped;
-    if (this.audioCtx && track.isPlaying) {
+    if (track.mediaEl) {
+      this.syncMediaElVolume(track);
+    } else if (this.audioCtx && track.isPlaying) {
       const now = this.audioCtx.currentTime;
       track.gainNode.gain.cancelScheduledValues(now);
       track.gainNode.gain.setValueAtTime(track.gainNode.gain.value, now);
@@ -815,6 +832,7 @@ export class SoundEngine {
       this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
       this.masterGain.gain.linearRampToValueAtTime(this.isMuted ? 0 : clamped, now + 0.08);
     }
+    this.tracks.forEach((t) => this.syncMediaElVolume(t));
     this.notify();
   }
 
@@ -833,6 +851,7 @@ export class SoundEngine {
       this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
       this.masterGain.gain.linearRampToValueAtTime(this.isMuted ? 0 : this.masterVolume, now + 0.2);
     }
+    this.tracks.forEach((t) => this.syncMediaElVolume(t));
     this.notify();
     return this.isMuted;
   }

@@ -30,7 +30,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) {
+          if (key !== CACHE_NAME && key !== 'bokra-ambient-v1') {
             console.log('[bokra SW] Removing outdated cache:', key);
             return caches.delete(key);
           }
