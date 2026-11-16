@@ -20,7 +20,7 @@ export async function POST(req) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const kind = body.kind === 'pomodoro' ? 'pomodoro' : 'lecture';
+  const kind = ['pomodoro', 'lecture', 'flow'].includes(body.kind) ? body.kind : 'lecture';
   const refId = typeof body.refId === 'string' && body.refId ? body.refId.slice(0, 80) : 'active';
   const fireAtMs = Number(body.fireAtMs);
   const cancel = body.cancel === true;

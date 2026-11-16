@@ -4740,11 +4740,9 @@ function AppContent({ isPreview = false }) {
           if (flowNotifiedCheckInSecRef.current !== nextCheckIn) {
             flowNotifiedCheckInSecRef.current = nextCheckIn;
             showLocalNotification(
-              lang === 'ar' ? 'انت لسة هنا؟' : 'Are you still here?',
+              'Are you still here?',
               {
-                body: lang === 'ar'
-                  ? 'جلسة Deep Flow شغالة بقالها 4 ساعات. أكّد وجودك خلال 5 دقايق وإلا هتقفل تلقائيًا.'
-                  : 'Deep Flow has been running for 4 hours. Confirm within 5 minutes or it will close automatically.',
+                body: 'Deep Flow has been running for 4 hours. Confirm within 5 minutes or it will close automatically.',
                 tag: 'bokra-flow-checkin',
               }
             );
@@ -4828,6 +4826,29 @@ function AppContent({ isPreview = false }) {
     }
   }, [isFlowRunning, isMounted, isCloudLoaded, user, isPreview]);
 
+  const syncFlowCheckInPush = (isRunning, currentSec, targetCheckInSec) => {
+    if (!user || isPreview) return;
+    if (!isRunning) {
+      apiFetch('/api/push/schedule', {
+        method: 'POST',
+        body: JSON.stringify({ kind: 'flow', refId: 'checkin', cancel: true }),
+      }).catch(() => {});
+      return;
+    }
+    const remainingMs = Math.max(10_000, (targetCheckInSec - currentSec) * 1000);
+    apiFetch('/api/push/schedule', {
+      method: 'POST',
+      body: JSON.stringify({
+        kind: 'flow',
+        refId: 'checkin',
+        fireAtMs: Date.now() + remainingMs,
+        title: 'Are you still here?',
+        body: 'Deep Flow has been running for 4 hours. Confirm within 5 minutes or it will close automatically.',
+        tag: 'bokra-flow-checkin',
+      }),
+    }).catch(() => {});
+  };
+
   const handleConfirmFlowCheckIn = () => {
     haptic('light');
     const nextTarget = flowSecondsRef.current + FLOW_CHECKIN_INTERVAL_SEC;
@@ -4843,6 +4864,7 @@ function AppContent({ isPreview = false }) {
         nextCheckInSec: nextTarget,
       }));
     }
+    syncFlowCheckInPush(isFlowRunning, flowSecondsRef.current, nextTarget);
   };
 
   const handleToggleFlow = () => {
@@ -4859,6 +4881,7 @@ function AppContent({ isPreview = false }) {
           nextCheckInSec: flowNextCheckInSecRef.current,
         }));
       }
+      syncFlowCheckInPush(next, flowSeconds, flowNextCheckInSecRef.current);
       return next;
     });
   };
@@ -4872,6 +4895,7 @@ function AppContent({ isPreview = false }) {
     setFlowCheckInPrompt(null);
     setIsFlowRunning(false);
     setFlowSeconds(0);
+    syncFlowCheckInPush(false, 0, FLOW_CHECKIN_INTERVAL_SEC);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('daybase_active_flow_v1');
     }
@@ -4888,6 +4912,7 @@ function AppContent({ isPreview = false }) {
     flowNotifiedCheckInSecRef.current = null;
     setFlowCheckInPrompt(null);
     setIsFlowRunning(false);
+    syncFlowCheckInPush(false, 0, FLOW_CHECKIN_INTERVAL_SEC);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('daybase_active_flow_v1');
     }
@@ -11026,12 +11051,10 @@ function AppContent({ isPreview = false }) {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-bold tracking-tight">
-                  {lang === 'ar' ? 'انت لسة هنا؟' : 'Are you still here?'}
+                  Are you still here?
                 </p>
                 <p className="text-xs text-white/60 mt-0.5 leading-relaxed">
-                  {lang === 'ar'
-                    ? 'عدّى 4 ساعات على Deep Flow. لو مفيش رد الجلسة هتقفل تلقائيًا.'
-                    : 'Deep Flow has been running for 4 hours. Session will auto-close soon.'}
+                  Deep Flow has been running for 4 hours. Session will auto-close soon.
                 </p>
               </div>
               <span className="font-mono text-xs font-bold tabular-nums px-2 py-1 rounded-lg bg-white/10 text-white shrink-0">
@@ -11045,14 +11068,14 @@ function AppContent({ isPreview = false }) {
                 onClick={handleConfirmFlowCheckIn}
                 className="flex-1 py-2 px-3 rounded-xl bg-white text-black text-xs font-bold hover:bg-white/90 active:scale-[0.98] transition-all cursor-pointer"
               >
-                {lang === 'ar' ? 'أيوه، كمّل' : 'Yes, keep going'}
+                Yes, keep going
               </button>
               <button
                 type="button"
                 onClick={handleResetFlow}
                 className="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-xs font-semibold active:scale-[0.98] transition-all cursor-pointer"
               >
-                {lang === 'ar' ? 'اقفل الجلسة' : 'End'}
+                End
               </button>
             </div>
           </div>
