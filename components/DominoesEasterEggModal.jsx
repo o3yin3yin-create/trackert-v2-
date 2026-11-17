@@ -1189,7 +1189,8 @@ export default function DominoesEasterEggModal({
         .d2-gg-char {
           font-size: 96px;
           font-weight: 800;
-          line-height: 0.9;
+          line-height: 1.25;
+          padding-bottom: 8px;
           color: #ffffff;
           letter-spacing: -0.06em;
           text-shadow: 0 8px 32px rgba(255, 255, 255, 0.22);
@@ -1198,7 +1199,7 @@ export default function DominoesEasterEggModal({
         .d2-gg-char-l { animation: d2ggCharL 3.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
         .d2-gg-char-r { animation: d2ggCharR 3.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
         .d2-gg-sub {
-          margin-top: 26px;
+          margin-top: 16px;
           font-size: 11px;
           font-weight: 600;
           text-transform: uppercase;
