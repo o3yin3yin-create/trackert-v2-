@@ -1096,30 +1096,114 @@ export default function DominoesEasterEggModal({
         @keyframes d2enter { from { opacity: 0; transform: translateY(18px) scale(.9); } to { opacity: 1; transform: none; } }
         @keyframes d2drop { from { opacity: 0; transform: scale(1.4); } 55% { opacity: 1; } to { opacity: 1; transform: scale(1); } }
         @keyframes d2fade { from { opacity: 0; transform: translateY(4px); } to { opacity: .55; transform: none; } }
-        @keyframes d2gg {
-          0% { opacity: 0; transform: scale(0.55) translateY(12px); filter: blur(10px); letter-spacing: 0.14em; }
-          22% { opacity: 1; transform: scale(1.06) translateY(-2px); filter: blur(0px); letter-spacing: -0.05em; }
-          34% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0px); letter-spacing: -0.04em; }
-          78% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0px); }
-          100% { opacity: 0; transform: scale(0.96) translateY(-10px); filter: blur(4px); }
+        @keyframes d2ggOverlay {
+          0% { opacity: 0; backdrop-filter: blur(0px); }
+          14% { opacity: 1; backdrop-filter: blur(6px); }
+          80% { opacity: 1; backdrop-filter: blur(6px); }
+          100% { opacity: 0; backdrop-filter: blur(0px); }
+        }
+        @keyframes d2ggCharL {
+          0% { opacity: 0; transform: translateY(-48px) scale(1.7) rotate(-14deg); filter: blur(10px); }
+          24% { opacity: 1; transform: translateY(6px) scale(0.94) rotate(3deg); filter: blur(0px); }
+          36% { opacity: 1; transform: translateY(0) scale(1.03) rotate(-1deg); }
+          46% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+          82% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0px); }
+          100% { opacity: 0; transform: translateY(-10px) scale(1.08); filter: blur(6px); }
+        }
+        @keyframes d2ggCharR {
+          0%, 8% { opacity: 0; transform: translateY(48px) scale(1.7) rotate(14deg); filter: blur(10px); }
+          32% { opacity: 1; transform: translateY(-6px) scale(0.94) rotate(-3deg); filter: blur(0px); }
+          44% { opacity: 1; transform: translateY(0) scale(1.03) rotate(1deg); }
+          54% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+          82% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0px); }
+          100% { opacity: 0; transform: translateY(-10px) scale(1.08); filter: blur(6px); }
+        }
+        @keyframes d2ggRing {
+          0%, 16% { opacity: 0; transform: scale(0.25); border-width: 2.5px; }
+          28% { opacity: 0.55; }
+          65% { opacity: 0; transform: scale(2.4); border-width: 0.5px; }
+          100% { opacity: 0; transform: scale(2.4); }
+        }
+        @keyframes d2ggRing2 {
+          0%, 24% { opacity: 0; transform: scale(0.2); border-width: 2px; }
+          36% { opacity: 0.35; }
+          74% { opacity: 0; transform: scale(2.8); border-width: 0.5px; }
+          100% { opacity: 0; transform: scale(2.8); }
+        }
+        @keyframes d2ggSpark {
+          0%, 20% { opacity: 0; transform: translate(0, 0) scale(0); }
+          32% { opacity: 0.9; transform: translate(calc(var(--tx) * 0.45), calc(var(--ty) * 0.45)) scale(1.2); }
+          68% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.3); }
+          100% { opacity: 0; }
+        }
+        @keyframes d2ggSub {
+          0%, 30% { opacity: 0; transform: translateY(8px); letter-spacing: 0.25em; }
+          48% { opacity: 0.55; transform: translateY(0); letter-spacing: 0.14em; }
+          80% { opacity: 0.55; transform: translateY(0); }
+          100% { opacity: 0; transform: translateY(-4px); }
         }
         .d2-gg-overlay {
           position: absolute;
           inset: 0;
           display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
+          background: radial-gradient(circle at center, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.35) 70%, transparent 100%);
           pointer-events: none;
           z-index: 30;
+          animation: d2ggOverlay 3.1s ease-out forwards;
         }
-        .d2-gg-text {
-          font-size: 88px;
+        .d2-gg-stage {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 2px;
+        }
+        .d2-gg-ring {
+          position: absolute;
+          width: 110px;
+          height: 110px;
+          border-radius: 999px;
+          border: 1.5px solid rgba(255, 255, 255, 0.65);
+          animation: d2ggRing 3.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .d2-gg-ring2 {
+          position: absolute;
+          width: 110px;
+          height: 110px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.4);
+          animation: d2ggRing2 3.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .d2-gg-spark {
+          position: absolute;
+          width: 5px;
+          height: 5px;
+          border-radius: 999px;
+          background: #ffffff;
+          box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+          animation: d2ggSpark 3.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .d2-gg-char {
+          font-size: 96px;
           font-weight: 800;
-          line-height: 1;
+          line-height: 0.9;
           color: #ffffff;
-          letter-spacing: -0.04em;
-          text-shadow: 0 0 40px rgba(255, 255, 255, 0.25);
-          animation: d2gg 2.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+          letter-spacing: -0.06em;
+          text-shadow: 0 8px 32px rgba(255, 255, 255, 0.22);
+          display: inline-block;
+        }
+        .d2-gg-char-l { animation: d2ggCharL 3.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        .d2-gg-char-r { animation: d2ggCharR 3.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        .d2-gg-sub {
+          margin-top: 10px;
+          font-size: 11px;
+          font-weight: 600;
+          text-transform: uppercase;
+          color: #ffffff;
+          animation: d2ggSub 3.1s ease-out forwards;
         }
         @media (prefers-reduced-motion: reduce) { .d2-root * { animation: none !important; transition: none !important; } }
         .d2-lobby {
@@ -1407,7 +1491,19 @@ export default function DominoesEasterEggModal({
 
         {showLoserGg && (
           <div className="d2-gg-overlay">
-            <span className="d2-gg-text">gg</span>
+            <div className="d2-gg-stage">
+              <div className="d2-gg-ring" />
+              <div className="d2-gg-ring2" />
+              <div className="d2-gg-spark" style={{ '--tx': '-74px', '--ty': '-54px' }} />
+              <div className="d2-gg-spark" style={{ '--tx': '78px', '--ty': '-48px' }} />
+              <div className="d2-gg-spark" style={{ '--tx': '-86px', '--ty': '38px' }} />
+              <div className="d2-gg-spark" style={{ '--tx': '82px', '--ty': '44px' }} />
+              <div className="d2-gg-spark" style={{ '--tx': '0px', '--ty': '-76px' }} />
+              <div className="d2-gg-spark" style={{ '--tx': '0px', '--ty': '74px' }} />
+              <span className="d2-gg-char d2-gg-char-l">g</span>
+              <span className="d2-gg-char d2-gg-char-r">g</span>
+            </div>
+            <div className="d2-gg-sub">better luck next round</div>
           </div>
         )}
       </div>
