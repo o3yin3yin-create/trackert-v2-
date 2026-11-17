@@ -1043,6 +1043,7 @@ export default function DominoesEasterEggModal({
     try {
       const res = await apiFetch('/api/domino', {
         method: 'POST',
+        timeoutMs: 25000,
         body: JSON.stringify({ action: 'create', targetUsernames: selectedFriends }),
       });
       const data = await res.json().catch(() => ({}));
@@ -1050,14 +1051,20 @@ export default function DominoesEasterEggModal({
         setOnlineError(
           data?.error === 'too_many_requests'
             ? 'Please wait a moment before inviting again.'
-            : 'Could not send invite.'
+            : data?.error
+              ? `Could not send invite (${data.error}).`
+              : 'Could not send invite.'
         );
         return;
       }
       setOnlineRoomId(data.roomId);
       setOnlineState(data.state);
-    } catch (_) {
-      setOnlineError('Failed to send invite. Check your connection.');
+    } catch (err) {
+      setOnlineError(
+        err?.name === 'AbortError'
+          ? 'Server took too long to respond. Try again.'
+          : 'Failed to send invite. Check your connection.'
+      );
     } finally {
       setInvitingBusy(false);
     }

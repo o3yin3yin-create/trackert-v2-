@@ -66,7 +66,9 @@ export async function POST(req) {
       }
 
       const targetUsers = await prisma.user.findMany({
-        where: { username: { in: usernames } },
+        where: {
+          OR: usernames.map((u) => ({ username: { equals: u, mode: 'insensitive' } })),
+        },
         select: { id: true, username: true, name: true, avatar: true, notifications: true },
       });
 
@@ -130,7 +132,8 @@ export async function POST(req) {
             })
             .catch(() => {});
 
-          await sendPush(targetUser.id, {
+          // Fire-and-forget push so slow push endpoints never time out the HTTP response
+          sendPush(targetUser.id, {
             title: 'bokra',
             body: `${senderDisplay} invited you to a secret Dominoes match`,
             url: `/?domino=${encodeURIComponent(room.id)}`,
