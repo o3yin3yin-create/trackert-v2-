@@ -142,10 +142,8 @@ function computeLayout(chain, startIdx, W, H) {
     const out = [];
     for (let idx = 0; idx < tiles.length; idx++) {
       const item = tiles[idx];
-      const nextItem = tiles[idx + 1];
       const t = item.t;
       const dbl = t[0] === t[1];
-      const nextDbl = nextItem ? nextItem.t[0] === nextItem.t[1] : false;
       const len = dbl ? T : Ln;
       let cx, cy, ang;
       if (bridge) {
@@ -157,7 +155,7 @@ function computeLayout(chain, startIdx, W, H) {
         d = { x: hdir, y: 0 };
         ang = hdir > 0 ? 0 : Math.PI;
         bridge = false;
-      } else if (Math.abs(p.x + d.x * len) > Hx && !prevDbl && !dbl && !nextDbl) {
+      } else if (Math.abs(p.x + d.x * len) > Hx && !prevDbl && !dbl) {
         const sy = rowY - T / 2;
         cx = p.x + d.x * (T / 2 + g);
         cy = sy + Ln / 2;
@@ -222,6 +220,7 @@ function computeLayout(chain, startIdx, W, H) {
 
   return {
     items,
+    scale: sc,
     layerTransform: `translate(${W / 2}px,${H / 2}px) scale(${sc}) translate(${-cx}px,${-cy}px)`,
   };
 }
@@ -1085,10 +1084,11 @@ export default function DominoesEasterEggModal({
     const toRect = posEl.getBoundingClientRect();
     if (!toRect.width || !toRect.height) return;
 
+    const sc = boardLayout?.scale || 1;
     const dx =
-      flight.fromRect.left + flight.fromRect.width / 2 - (toRect.left + toRect.width / 2);
+      (flight.fromRect.left + flight.fromRect.width / 2 - (toRect.left + toRect.width / 2)) / sc;
     const dy =
-      flight.fromRect.top + flight.fromRect.height / 2 - (toRect.top + toRect.height / 2);
+      (flight.fromRect.top + flight.fromRect.height / 2 - (toRect.top + toRect.height / 2)) / sc;
     const ang = posEl.getAttribute('data-ang') || '0';
 
     try {
@@ -1096,38 +1096,38 @@ export default function DominoesEasterEggModal({
         posEl.animate(
           [
             {
-              transform: `perspective(420px) translate(${dx}px, ${dy}px) translate(-50%, -50%) rotate(${ang}rad) rotateY(90deg) scale(1.12)`,
-              opacity: 0.75,
+              transform: `translate(${dx}px, ${dy}px) translate(-50%, -50%) rotate(${ang}rad) perspective(500px) rotateY(180deg) scale(1.25)`,
+              opacity: 0.4,
             },
             {
-              transform: `perspective(420px) translate(${dx * 0.35}px, ${dy * 0.35}px) translate(-50%, -50%) rotate(${ang}rad) rotateY(18deg) scale(1.08)`,
+              transform: `translate(${dx * 0.4}px, ${dy * 0.4}px) translate(-50%, -50%) rotate(${ang}rad) perspective(500px) rotateY(40deg) scale(1.15)`,
               opacity: 1,
-              offset: 0.55,
+              offset: 0.5,
             },
             {
-              transform: `perspective(420px) translate(0px, 0px) translate(-50%, -50%) rotate(${ang}rad) rotateY(0deg) scale(1)`,
+              transform: `translate(0px, 0px) translate(-50%, -50%) rotate(${ang}rad) perspective(500px) rotateY(0deg) scale(1)`,
               opacity: 1,
             },
           ],
-          { duration: 380, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+          { duration: 360, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
         );
       } else {
         posEl.animate(
           [
             {
-              transform: `translate(${dx}px, ${dy}px) translate(-50%, -50%) rotate(${ang}rad) scale(1.12)`,
-              opacity: 0.88,
+              transform: `translate(${dx}px, ${dy}px) translate(-50%, -50%) rotate(0rad) scale(1.2)`,
+              opacity: 0.85,
             },
             {
               transform: `translate(0px, 0px) translate(-50%, -50%) rotate(${ang}rad) scale(1)`,
               opacity: 1,
             },
           ],
-          { duration: 280, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+          { duration: 260, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
         );
       }
     } catch (_) {}
-  }, [activeChain, mode, onlineState?.board]);
+  }, [activeChain, mode, onlineState?.board, boardLayout?.scale]);
 
   const botStatusText = useMemo(() => {
     if (S.over || S.turn !== 'p' || !S.chain.length) return S.msg;
