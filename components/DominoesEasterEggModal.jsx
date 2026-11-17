@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { X, WifiOff, Send, Loader2, Smile, Wifi, QrCode, Copy, Check } from 'lucide-react';
 import QRCode from 'qrcode';
 import { apiFetch, getApiBaseUrl } from '@/lib/api';
@@ -270,6 +270,11 @@ export default function DominoesEasterEggModal({
 
   // Board container size for exact snake layout
   const boardRef = useRef(null);
+  const compHandRef = useRef(null);
+  const layerRef = useRef(null);
+  const flightRef = useRef(null);
+  const pendingTileRectRef = useRef(null);
+  const prevOnlineBoardRef = useRef({ len: 0, firstKey: '' });
   const [boardSize, setBoardSize] = useState({ w: 0, h: 0 });
 
   const botTimerRef = useRef(null);
@@ -491,13 +496,15 @@ export default function DominoesEasterEggModal({
     }
   }, [S.deal, S.newPIdx, S.cDrew]);
 
-  // Bot turn runner (snappy timings)
+  // Bot turn runner (at least ~1.1s thinking pause after player moves)
   useEffect(() => {
     if (!open || mode !== 'bot') return;
     if (S.over || S.turn !== 'c') return;
 
-    const delay = S.chain.length === 0 ? 650 : S.cDrew ? 420 : 500;
+    const delay = S.chain.length === 0 ? 1100 : S.cDrew ? 700 : 1100;
     botTimerRef.current = setTimeout(() => {
+      const backEl = compHandRef.current?.lastElementChild || compHandRef.current?.firstElementChild;
+      const oppFromRect = backEl?.getBoundingClientRect?.() || null;
       setS((prev) => {
         if (prev.over || prev.turn !== 'c') return prev;
         const e = endsOf(prev.chain);
@@ -529,6 +536,10 @@ export default function DominoesEasterEggModal({
             nextChain.unshift(o);
             nextStartIdx++;
             newestIdx = 0;
+          }
+
+          if (oppFromRect) {
+            flightRef.current = { fromRect: oppFromRect, isOpponent: true, targetIdx: newestIdx };
           }
 
           // Check finish
@@ -645,7 +656,9 @@ export default function DominoesEasterEggModal({
     setS(createBotRoundState(lastWinnerRef.current));
   }, []);
 
-  const playerPlay = useCallback((i, side) => {
+  const playerPlay = useCallback((i, side, explicitRect = null) => {
+    const fromRect = explicitRect || pendingTileRectRef.current || null;
+    pendingTileRectRef.current = null;
     setPending(null);
     setS((prev) => {
       const nextP = [...prev.p];
@@ -669,6 +682,10 @@ export default function DominoesEasterEggModal({
         nextChain.unshift(o);
         nextStartIdx++;
         newestIdx = 0;
+      }
+
+      if (fromRect) {
+        flightRef.current = { fromRect, isOpponent: false, targetIdx: newestIdx };
       }
 
       if (nextP.length === 0) {
@@ -706,22 +723,24 @@ export default function DominoesEasterEggModal({
     });
   }, []);
 
-  const clickBotTile = (i) => {
+  const clickBotTile = (i, e) => {
     if (S.over || S.turn !== 'p') return;
     const t = S.p[i];
     if (!canPlayOriginal(t, S.chain, S.anyStart, S.startD)) return;
-    const e = endsOf(S.chain);
-    if (!e) {
-      playerPlay(i, 'r');
+    const fromRect = e?.currentTarget?.getBoundingClientRect?.() || null;
+    const ends = endsOf(S.chain);
+    if (!ends) {
+      playerPlay(i, 'r', fromRect);
       return;
     }
-    const L = t.includes(e[0]);
-    const R = t.includes(e[1]);
-    if (L && R && e[0] !== e[1]) {
+    const L = t.includes(ends[0]);
+    const R = t.includes(ends[1]);
+    if (L && R && ends[0] !== ends[1]) {
+      pendingTileRectRef.current = fromRect;
       setPending(i);
       return;
     }
-    playerPlay(i, R ? 'r' : 'l');
+    playerPlay(i, R ? 'r' : 'l', fromRect);
   };
 
   const botDraw = () => {
@@ -944,13 +963,17 @@ export default function DominoesEasterEggModal({
     } catch (_) {}
   };
 
-  const clickOnlineTile = (i) => {
+  const clickOnlineTile = (i, ev) => {
     if (!onlineState?.isMyTurn) return;
     const t = onlineState.myHand[i];
     if (!canPlayOnline(t, onlineState.board)) return;
+    const fromRect = ev?.currentTarget?.getBoundingClientRect?.() || null;
     const e = endsOf(onlineState.board);
     if (!e) {
       setOnlinePending(null);
+      if (fromRect) {
+        flightRef.current = { fromRect, isOpponent: false, targetIdx: 0 };
+      }
       // Optimistic local update for 0ms response
       setOnlineState((prev) => {
         if (!prev) return prev;
@@ -972,11 +995,19 @@ export default function DominoesEasterEggModal({
     const L = t.includes(e[0]);
     const R = t.includes(e[1]);
     if (L && R && e[0] !== e[1]) {
+      pendingTileRectRef.current = fromRect;
       setOnlinePending(i);
       return;
     }
     const chosenSide = R ? 'right' : 'left';
     setOnlinePending(null);
+    if (fromRect) {
+      flightRef.current = {
+        fromRect,
+        isOpponent: false,
+        targetIdx: chosenSide === 'left' ? 0 : onlineState.board.length,
+      };
+    }
     setOnlineState((prev) => {
       if (!prev) return prev;
       const nextHand = [...prev.myHand];
@@ -1023,6 +1054,80 @@ export default function DominoesEasterEggModal({
     () => computeLayout(activeChain, activeStartIdx, boardSize.w, boardSize.h),
     [activeChain, activeStartIdx, boardSize.w, boardSize.h]
   );
+
+  // Animate tile flying from hand (player) or revealing & flying from opponent hand (bot/friend)
+  useLayoutEffect(() => {
+    let flight = flightRef.current;
+    flightRef.current = null;
+
+    if (mode !== 'bot' && onlineState?.board) {
+      const b = onlineState.board;
+      const firstKey = b.length ? `${b[0][0]}-${b[0][1]}` : '';
+      const prev = prevOnlineBoardRef.current;
+      if (!flight && b.length === prev.len + 1) {
+        const backEl =
+          compHandRef.current?.lastElementChild || compHandRef.current?.firstElementChild;
+        const oppFromRect = backEl?.getBoundingClientRect?.() || null;
+        if (oppFromRect) {
+          const targetIdx = prev.len === 0 || firstKey !== prev.firstKey ? 0 : b.length - 1;
+          flight = { fromRect: oppFromRect, isOpponent: true, targetIdx };
+        }
+      }
+      prevOnlineBoardRef.current = { len: b.length, firstKey };
+    } else if (mode === 'bot') {
+      prevOnlineBoardRef.current = { len: 0, firstKey: '' };
+    }
+
+    if (!flight || !layerRef.current) return;
+    const posEl = layerRef.current.querySelector(`[data-chain-idx="${flight.targetIdx}"]`);
+    if (!posEl) return;
+
+    const toRect = posEl.getBoundingClientRect();
+    if (!toRect.width || !toRect.height) return;
+
+    const dx =
+      flight.fromRect.left + flight.fromRect.width / 2 - (toRect.left + toRect.width / 2);
+    const dy =
+      flight.fromRect.top + flight.fromRect.height / 2 - (toRect.top + toRect.height / 2);
+    const ang = posEl.getAttribute('data-ang') || '0';
+
+    try {
+      if (flight.isOpponent) {
+        posEl.animate(
+          [
+            {
+              transform: `perspective(420px) translate(${dx}px, ${dy}px) translate(-50%, -50%) rotate(${ang}rad) rotateY(90deg) scale(1.12)`,
+              opacity: 0.75,
+            },
+            {
+              transform: `perspective(420px) translate(${dx * 0.35}px, ${dy * 0.35}px) translate(-50%, -50%) rotate(${ang}rad) rotateY(18deg) scale(1.08)`,
+              opacity: 1,
+              offset: 0.55,
+            },
+            {
+              transform: `perspective(420px) translate(0px, 0px) translate(-50%, -50%) rotate(${ang}rad) rotateY(0deg) scale(1)`,
+              opacity: 1,
+            },
+          ],
+          { duration: 380, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+        );
+      } else {
+        posEl.animate(
+          [
+            {
+              transform: `translate(${dx}px, ${dy}px) translate(-50%, -50%) rotate(${ang}rad) scale(1.12)`,
+              opacity: 0.88,
+            },
+            {
+              transform: `translate(0px, 0px) translate(-50%, -50%) rotate(${ang}rad) scale(1)`,
+              opacity: 1,
+            },
+          ],
+          { duration: 280, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+        );
+      }
+    } catch (_) {}
+  }, [activeChain, mode, onlineState?.board]);
 
   const botStatusText = useMemo(() => {
     if (S.over || S.turn !== 'p' || !S.chain.length) return S.msg;
@@ -1488,6 +1593,7 @@ export default function DominoesEasterEggModal({
             <div
               className="d2-row"
               id="d2-comp"
+              ref={compHandRef}
               style={{ gap: activeOppCount > 9 ? '-12px' : '6px' }}
             >
               {Array.from({ length: activeOppCount }).map((_, i) => {
@@ -1821,10 +1927,12 @@ export default function DominoesEasterEggModal({
           </div>
         ) : (
           boardLayout && (
-            <div id="d2-layer" style={{ transform: boardLayout.layerTransform }}>
+            <div id="d2-layer" ref={layerRef} style={{ transform: boardLayout.layerTransform }}>
               {boardLayout.items.map((item) => (
                 <div
                   key={item.chainIdx}
+                  data-chain-idx={item.chainIdx}
+                  data-ang={item.ang}
                   className="d2-pos"
                   style={{
                     left: `${item.x}px`,
@@ -1835,7 +1943,6 @@ export default function DominoesEasterEggModal({
                   <DominoTile
                     tile={item.h}
                     horiz
-                    animClass={mode === 'bot' && item.chainIdx === S.newestIdx ? 'd2-drop' : ''}
                   />
                 </div>
               ))}
@@ -1887,7 +1994,7 @@ export default function DominoesEasterEggModal({
                   tile={t}
                   animClass={animClass}
                   animDelay={animDelay}
-                  onClick={() => (mode === 'bot' ? clickBotTile(i) : clickOnlineTile(i))}
+                  onClick={(ev) => (mode === 'bot' ? clickBotTile(i, ev) : clickOnlineTile(i, ev))}
                 />
               );
             })}
