@@ -9,7 +9,7 @@ const PV = [[], [4], [0, 8], [0, 4, 8], [0, 2, 6, 8], [0, 2, 4, 6, 8], [0, 2, 3,
 const PH = PV.slice();
 PH[6] = [0, 1, 2, 6, 7, 8];
 
-function DominoTile({ tile, horiz = false, animClass = '', animDelay = '', onClick }) {
+const DominoTile = React.memo(function DominoTile({ tile, horiz = false, animClass = '', animDelay = '', onClick }) {
   const pips = horiz ? PH : PV;
   return (
     <div
@@ -29,16 +29,16 @@ function DominoTile({ tile, horiz = false, animClass = '', animDelay = '', onCli
       </div>
     </div>
   );
-}
+});
 
-function DominoBack({ animClass = '', animDelay = '' }) {
+const DominoBack = React.memo(function DominoBack({ animClass = '', animDelay = '' }) {
   return (
     <div
       className={`d2-back${animClass ? ' ' + animClass : ''}`}
       style={animDelay ? { animationDelay: animDelay } : undefined}
     />
   );
-}
+});
 
 function endsOf(chain) {
   return chain.length ? [chain[0][0], chain[chain.length - 1][1]] : null;
@@ -412,12 +412,12 @@ export default function DominoesEasterEggModal({
     }
   }, [S.deal, S.newPIdx, S.cDrew]);
 
-  // Bot turn runner (exact timings from Dominoes_2.html: 1100ms initial, 900ms after player, 700ms draw)
+  // Bot turn runner (snappy timings)
   useEffect(() => {
     if (!open || mode !== 'bot') return;
     if (S.over || S.turn !== 'c') return;
 
-    const delay = S.chain.length === 0 ? 1100 : S.cDrew ? 700 : 900;
+    const delay = S.chain.length === 0 ? 650 : S.cDrew ? 420 : 500;
     botTimerRef.current = setTimeout(() => {
       setS((prev) => {
         if (prev.over || prev.turn !== 'c') return prev;
@@ -753,6 +753,21 @@ export default function DominoesEasterEggModal({
     const e = endsOf(onlineState.board);
     if (!e) {
       setOnlinePending(null);
+      // Optimistic local update for 0ms response
+      setOnlineState((prev) => {
+        if (!prev) return prev;
+        const nextHand = [...prev.myHand];
+        nextHand.splice(i, 1);
+        return {
+          ...prev,
+          myHand: nextHand,
+          board: [[t[0], t[1]]],
+          startIdx: 0,
+          leftVal: t[0],
+          rightVal: t[1],
+          isMyTurn: false,
+        };
+      });
       handleOnlineAction({ action: 'play', tileIndex: i, side: 'left' });
       return;
     }
@@ -762,8 +777,37 @@ export default function DominoesEasterEggModal({
       setOnlinePending(i);
       return;
     }
+    const chosenSide = R ? 'right' : 'left';
     setOnlinePending(null);
-    handleOnlineAction({ action: 'play', tileIndex: i, side: R ? 'right' : 'left' });
+    setOnlineState((prev) => {
+      if (!prev) return prev;
+      const nextHand = [...prev.myHand];
+      const played = nextHand.splice(i, 1)[0];
+      const nextBoard = [...prev.board];
+      let nextStartIdx = prev.startIdx || 0;
+      let nextLeft = prev.leftVal;
+      let nextRight = prev.rightVal;
+      if (chosenSide === 'left') {
+        const oriented = played[1] === prev.leftVal ? [played[0], played[1]] : [played[1], played[0]];
+        nextBoard.unshift(oriented);
+        nextStartIdx += 1;
+        nextLeft = oriented[0];
+      } else {
+        const oriented = played[0] === prev.rightVal ? [played[0], played[1]] : [played[1], played[0]];
+        nextBoard.push(oriented);
+        nextRight = oriented[1];
+      }
+      return {
+        ...prev,
+        myHand: nextHand,
+        board: nextBoard,
+        startIdx: nextStartIdx,
+        leftVal: nextLeft,
+        rightVal: nextRight,
+        isMyTurn: false,
+      };
+    });
+    handleOnlineAction({ action: 'play', tileIndex: i, side: chosenSide });
   };
 
   const isFriendActiveBoard =
@@ -915,7 +959,7 @@ export default function DominoesEasterEggModal({
         .d2-back { width: 26px; height: 46px; border-radius: 6px; background: var(--fg); position: relative; }
         .d2-back::after { content: ""; position: absolute; left: 4px; right: 4px; top: 50%; height: 1px; background: var(--bg); opacity: .5; }
         .d2-mine { margin-bottom: 20px; gap: 5px; }
-        .d2-mine .d2-tile { width: 34px; height: 64px; border-radius: 7px; cursor: pointer; transition: transform .15s ease; }
+        .d2-mine .d2-tile { width: 34px; height: 64px; border-radius: 7px; cursor: pointer; touch-action: manipulation; transition: transform .1s ease; }
         .d2-mine .d2-half { padding: 3px; }
         .d2-mine .d2-pip { width: 5px; height: 5px; }
         .d2-mine .d2-tile:active { transform: scale(.94); }
