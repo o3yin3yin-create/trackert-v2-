@@ -1,9 +1,18 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { X, WifiOff, Send, Loader2, Smile } from 'lucide-react';
+import { X, WifiOff, Send, Loader2, Smile, Wifi, QrCode, Copy, Check } from 'lucide-react';
+import QRCode from 'qrcode';
 import { apiFetch, getApiBaseUrl } from '@/lib/api';
 import AvatarIcon from '@/components/AvatarIcon';
+import LocalQrScanner from '@/components/LocalQrScanner';
+import {
+  applyLocalAction,
+  createLocalHostPeer,
+  createLocalJoinPeer,
+  createLocalRoomState,
+  sanitizeLocalRoom,
+} from '@/lib/localDominoP2P';
 
 const PV = [[], [4], [0, 8], [0, 4, 8], [0, 2, 6, 8], [0, 2, 4, 6, 8], [0, 2, 3, 5, 6, 8]];
 const PH = PV.slice();
@@ -246,6 +255,19 @@ export default function DominoesEasterEggModal({
   const lastReactionIdRef = useRef(null);
   const sseConnectedRef = useRef(false);
 
+  // Local Wi-Fi / Hotspot P2P state (0 internet)
+  const [localStep, setLocalStep] = useState('idle'); // 'idle' | 'host_wait' | 'join_scan' | 'join_wait' | 'connected'
+  const [localRole, setLocalRole] = useState(null); // 'host' | 'guest'
+  const [localQrDataUrl, setLocalQrDataUrl] = useState('');
+  const [localSignalCode, setLocalSignalCode] = useState('');
+  const [localPasteInput, setLocalPasteInput] = useState('');
+  const [localScanning, setLocalScanning] = useState(false);
+  const [localCopied, setLocalCopied] = useState(false);
+  const [localBusy, setLocalBusy] = useState(false);
+  const [localError, setLocalError] = useState('');
+  const localPeerRef = useRef(null);
+  const localRoomRef = useRef(null);
+
   // Board container size for exact snake layout
   const boardRef = useRef(null);
   const [boardSize, setBoardSize] = useState({ w: 0, h: 0 });
@@ -304,11 +326,28 @@ export default function DominoesEasterEggModal({
     [closeSse]
   );
 
+  const closeLocalPeer = useCallback(() => {
+    if (localPeerRef.current) {
+      localPeerRef.current.close();
+      localPeerRef.current = null;
+    }
+    localRoomRef.current = null;
+    setLocalStep('idle');
+    setLocalRole(null);
+    setLocalQrDataUrl('');
+    setLocalSignalCode('');
+    setLocalPasteInput('');
+    setLocalScanning(false);
+    setLocalBusy(false);
+    setLocalError('');
+  }, []);
+
   // Reset on open/close
   useEffect(() => {
     if (!open) {
       if (botTimerRef.current) clearTimeout(botTimerRef.current);
       leaveActiveRoom();
+      closeLocalPeer();
       setOnlineRoomId(null);
       setOnlineState(null);
       setOnlineError('');
@@ -729,7 +768,7 @@ export default function DominoesEasterEggModal({
     });
   };
 
-  // Online friend handlers
+  // Online & Local P2P handlers
   const switchMode = async (nextMode) => {
     if (nextMode === mode || isInvitedSession) return;
     if (onlineRoomId) {
@@ -737,6 +776,8 @@ export default function DominoesEasterEggModal({
       setOnlineRoomId(null);
       setOnlineState(null);
     }
+    closeLocalPeer();
+    setOnlineState(null);
     setPending(null);
     setOnlinePending(null);
     setOnlineError('');
@@ -745,6 +786,114 @@ export default function DominoesEasterEggModal({
     if (nextMode === 'bot') {
       startNewGame();
     }
+  };
+
+  const broadcastLocalState = useCallback((room) => {
+    localRoomRef.current = room;
+    setOnlineState(sanitizeLocalRoom(room, 'host'));
+    localPeerRef.current?.send({ type: 'state', state: sanitizeLocalRoom(room, 'guest') });
+  }, []);
+
+  const startLocalHost = async () => {
+    closeLocalPeer();
+    setLocalBusy(true);
+    setLocalError('');
+    setLocalRole('host');
+    try {
+      const peer = await createLocalHostPeer({
+        onOpen: () => {
+          setLocalStep('connected');
+          setLocalScanning(false);
+          const fresh = createLocalRoomState();
+          broadcastLocalState(fresh);
+        },
+        onMessage: (msg) => {
+          if (msg?.type === 'action' && localRoomRef.current) {
+            const updated = applyLocalAction(localRoomRef.current, 'guest', msg.payload);
+            broadcastLocalState(updated);
+          }
+        },
+        onClose: () => {
+          setLocalError('Local connection closed.');
+          setLocalStep('idle');
+          setOnlineState(null);
+        },
+      });
+      localPeerRef.current = peer;
+      setLocalSignalCode(peer.offerCode);
+      const qr = await QRCode.toDataURL(peer.offerCode, {
+        width: 220,
+        margin: 1,
+        color: { dark: '#000000', light: '#ffffff' },
+      });
+      setLocalQrDataUrl(qr);
+      setLocalStep('host_wait');
+    } catch (_) {
+      setLocalError('Could not start local host.');
+    } finally {
+      setLocalBusy(false);
+    }
+  };
+
+  const acceptLocalAnswer = async (code) => {
+    if (!localPeerRef.current || !code?.trim()) return;
+    setLocalBusy(true);
+    setLocalError('');
+    try {
+      await localPeerRef.current.acceptAnswer(code.trim());
+    } catch (_) {
+      setLocalError('Invalid code — please scan or paste the exact Answer code.');
+    } finally {
+      setLocalBusy(false);
+    }
+  };
+
+  const connectLocalAsGuest = async (offerCode) => {
+    if (!offerCode?.trim()) return;
+    closeLocalPeer();
+    setLocalBusy(true);
+    setLocalError('');
+    setLocalRole('guest');
+    try {
+      const peer = await createLocalJoinPeer(offerCode.trim(), {
+        onOpen: () => {
+          setLocalStep('connected');
+          setLocalScanning(false);
+        },
+        onMessage: (msg) => {
+          if (msg?.type === 'state' && msg.state) {
+            setOnlineState(msg.state);
+          }
+        },
+        onClose: () => {
+          setLocalError('Host disconnected.');
+          setLocalStep('idle');
+          setOnlineState(null);
+        },
+      });
+      localPeerRef.current = peer;
+      setLocalSignalCode(peer.answerCode);
+      const qr = await QRCode.toDataURL(peer.answerCode, {
+        width: 220,
+        margin: 1,
+        color: { dark: '#000000', light: '#ffffff' },
+      });
+      setLocalQrDataUrl(qr);
+      setLocalStep('join_wait');
+    } catch (_) {
+      setLocalError('Invalid host code — try scanning again.');
+    } finally {
+      setLocalBusy(false);
+    }
+  };
+
+  const copyLocalCode = async () => {
+    if (!localSignalCode) return;
+    try {
+      await navigator.clipboard.writeText(localSignalCode);
+      setLocalCopied(true);
+      setTimeout(() => setLocalCopied(false), 1800);
+    } catch (_) {}
   };
 
   const handleInviteFriend = async (username) => {
@@ -775,6 +924,15 @@ export default function DominoesEasterEggModal({
   };
 
   const handleOnlineAction = async (payload) => {
+    if (mode === 'local') {
+      if (localRole === 'host' && localRoomRef.current) {
+        const updated = applyLocalAction(localRoomRef.current, 'host', payload);
+        broadcastLocalState(updated);
+      } else if (localRole === 'guest') {
+        localPeerRef.current?.send({ type: 'action', payload });
+      }
+      return;
+    }
     if (!onlineRoomId) return;
     try {
       const res = await apiFetch('/api/domino', {
@@ -851,7 +1009,7 @@ export default function DominoesEasterEggModal({
   };
 
   const isFriendActiveBoard =
-    mode === 'friend' &&
+    (mode === 'friend' || mode === 'local') &&
     onlineState &&
     (onlineState.status === 'playing' || onlineState.status === 'ended');
 
@@ -1262,6 +1420,15 @@ export default function DominoesEasterEggModal({
             >
               vs Friend
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'local'}
+              className={`d2-mode-btn ${mode === 'local' ? 'active' : ''}`}
+              onClick={() => switchMode('local')}
+            >
+              Local
+            </button>
           </div>
         )}
 
@@ -1346,9 +1513,195 @@ export default function DominoesEasterEggModal({
         )}
       </div>
 
-      {/* Board / Online Lobby */}
+      {/* Board / Online & Local Lobby */}
       <div id="d2-board" ref={boardRef}>
-        {mode === 'friend' && !isFriendActiveBoard ? (
+        {mode === 'local' && !isFriendActiveBoard ? (
+          <div className="h-full flex items-center justify-center overflow-y-auto">
+            <div className="d2-lobby items-center text-center">
+              {localError && (
+                <p className="text-xs text-red-400/90 mb-1">{localError}</p>
+              )}
+
+              {localStep === 'idle' && !localScanning && (
+                <div className="flex flex-col items-center gap-3 w-full py-4">
+                  <Wifi className="w-6 h-6 text-white/60 mb-1" />
+                  <p className="text-xs text-white/50 max-w-[260px]">
+                    Play offline with a friend on the same Wi-Fi or Hotspot. No internet needed.
+                  </p>
+                  <div className="flex gap-3 mt-2">
+                    <button
+                      type="button"
+                      className="d2-btn !text-sm !h-10 !px-5"
+                      disabled={localBusy}
+                      onClick={startLocalHost}
+                    >
+                      {localBusy ? 'Starting…' : 'Host Match'}
+                    </button>
+                    <button
+                      type="button"
+                      className="d2-btn plain !text-sm !h-10 !px-5 border border-white/20"
+                      onClick={() => {
+                        setLocalError('');
+                        setLocalStep('join_scan');
+                        setLocalScanning(true);
+                      }}
+                    >
+                      Join Match
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {localStep === 'host_wait' && (
+                <div className="flex flex-col items-center gap-3 w-full py-2">
+                  <p className="text-xs text-white/60">
+                    1. Ask your friend to tap <b>Join Match</b> &amp; scan this QR:
+                  </p>
+                  {localQrDataUrl && !localScanning && (
+                    <div className="p-2.5 rounded-2xl bg-white">
+                      <img src={localQrDataUrl} alt="Host QR" className="w-44 h-44 block" />
+                    </div>
+                  )}
+
+                  {localScanning ? (
+                    <LocalQrScanner
+                      onScan={(code) => {
+                        setLocalScanning(false);
+                        acceptLocalAnswer(code);
+                      }}
+                      onCancel={() => setLocalScanning(false)}
+                    />
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="d2-invite-btn"
+                          onClick={copyLocalCode}
+                        >
+                          {localCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{localCopied ? 'Copied' : 'Copy code'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="d2-btn !text-xs !h-8 !px-4 flex items-center gap-1.5"
+                          onClick={() => setLocalScanning(true)}
+                        >
+                          <QrCode className="w-3.5 h-3.5" />
+                          <span>2. Scan Friend QR</span>
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-1.5 w-full max-w-[280px] mt-1">
+                        <input
+                          type="text"
+                          value={localPasteInput}
+                          onChange={(e) => setLocalPasteInput(e.target.value)}
+                          placeholder="Or paste friend's code…"
+                          className="flex-1 bg-white/5 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-white/30 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          className="d2-invite-btn"
+                          disabled={!localPasteInput.trim() || localBusy}
+                          onClick={() => acceptLocalAnswer(localPasteInput)}
+                        >
+                          Go
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  <button
+                    type="button"
+                    className="d2-btn plain !text-xs !h-8"
+                    onClick={closeLocalPeer}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+
+              {localStep === 'join_scan' && (
+                <div className="flex flex-col items-center gap-3 w-full py-2">
+                  <p className="text-xs text-white/60">
+                    Scan the Host&apos;s QR code (or paste their code):
+                  </p>
+                  {localScanning && (
+                    <LocalQrScanner
+                      onScan={(code) => {
+                        setLocalScanning(false);
+                        connectLocalAsGuest(code);
+                      }}
+                      onCancel={() => setLocalScanning(false)}
+                    />
+                  )}
+                  {!localScanning && (
+                    <button
+                      type="button"
+                      className="d2-invite-btn"
+                      onClick={() => setLocalScanning(true)}
+                    >
+                      <QrCode className="w-3.5 h-3.5" />
+                      <span>Open Camera</span>
+                    </button>
+                  )}
+                  <div className="flex items-center gap-1.5 w-full max-w-[280px]">
+                    <input
+                      type="text"
+                      value={localPasteInput}
+                      onChange={(e) => setLocalPasteInput(e.target.value)}
+                      placeholder="Paste host code…"
+                      className="flex-1 bg-white/5 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder:text-white/30 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      className="d2-invite-btn"
+                      disabled={!localPasteInput.trim() || localBusy}
+                      onClick={() => connectLocalAsGuest(localPasteInput)}
+                    >
+                      {localBusy ? '…' : 'Join'}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className="d2-btn plain !text-xs !h-8"
+                    onClick={closeLocalPeer}
+                  >
+                    Back
+                  </button>
+                </div>
+              )}
+
+              {localStep === 'join_wait' && (
+                <div className="flex flex-col items-center gap-3 w-full py-2">
+                  <p className="text-xs text-white/60">
+                    Let the Host tap <b>Scan Friend QR</b> and scan this:
+                  </p>
+                  {localQrDataUrl && (
+                    <div className="p-2.5 rounded-2xl bg-white">
+                      <img src={localQrDataUrl} alt="Answer QR" className="w-44 h-44 block" />
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    className="d2-invite-btn"
+                    onClick={copyLocalCode}
+                  >
+                    {localCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{localCopied ? 'Copied' : 'Copy answer code'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="d2-btn plain !text-xs !h-8"
+                    onClick={closeLocalPeer}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : mode === 'friend' && !isFriendActiveBoard ? (
           <div className="h-full flex items-center justify-center overflow-y-auto">
             <div className="d2-lobby">
               {joiningRoom ? (
