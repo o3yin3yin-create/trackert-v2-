@@ -900,6 +900,12 @@ export default function DominoesEasterEggModal({
 
   const botEnds = endsOf(S.chain);
   const onlineEnds = endsOf(onlineState?.board || []);
+  const showLoserGg =
+    (mode === 'bot' && S.over && lastWinner === 'c') ||
+    (mode === 'friend' &&
+      onlineState?.status === 'ended' &&
+      Boolean(onlineState?.winnerUserId) &&
+      onlineState.winnerUserId !== onlineState.myId);
 
   return (
     <div className="d2-root" role="dialog" aria-modal="true" aria-label="Dominoes">
@@ -1090,6 +1096,31 @@ export default function DominoesEasterEggModal({
         @keyframes d2enter { from { opacity: 0; transform: translateY(18px) scale(.9); } to { opacity: 1; transform: none; } }
         @keyframes d2drop { from { opacity: 0; transform: scale(1.4); } 55% { opacity: 1; } to { opacity: 1; transform: scale(1); } }
         @keyframes d2fade { from { opacity: 0; transform: translateY(4px); } to { opacity: .55; transform: none; } }
+        @keyframes d2gg {
+          0% { opacity: 0; transform: scale(0.55) translateY(12px); filter: blur(10px); letter-spacing: 0.14em; }
+          22% { opacity: 1; transform: scale(1.06) translateY(-2px); filter: blur(0px); letter-spacing: -0.05em; }
+          34% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0px); letter-spacing: -0.04em; }
+          78% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0px); }
+          100% { opacity: 0; transform: scale(0.96) translateY(-10px); filter: blur(4px); }
+        }
+        .d2-gg-overlay {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          pointer-events: none;
+          z-index: 30;
+        }
+        .d2-gg-text {
+          font-size: 88px;
+          font-weight: 800;
+          line-height: 1;
+          color: #ffffff;
+          letter-spacing: -0.04em;
+          text-shadow: 0 0 40px rgba(255, 255, 255, 0.25);
+          animation: d2gg 2.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
         @media (prefers-reduced-motion: reduce) { .d2-root * { animation: none !important; transition: none !important; } }
         .d2-lobby {
           width: 100%;
@@ -1372,6 +1403,12 @@ export default function DominoesEasterEggModal({
               ))}
             </div>
           )
+        )}
+
+        {showLoserGg && (
+          <div className="d2-gg-overlay">
+            <span className="d2-gg-text">gg</span>
+          </div>
         )}
       </div>
 
