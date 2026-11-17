@@ -129,10 +129,14 @@ function computeLayout(chain, startIdx, W, H) {
     let hdir = 1;
     let rowY = 0;
     let bridge = false;
+    let prevDbl = sd;
     const out = [];
-    for (const item of tiles) {
+    for (let idx = 0; idx < tiles.length; idx++) {
+      const item = tiles[idx];
+      const nextItem = tiles[idx + 1];
       const t = item.t;
       const dbl = t[0] === t[1];
+      const nextDbl = nextItem ? nextItem.t[0] === nextItem.t[1] : false;
       const len = dbl ? T : Ln;
       let cx, cy, ang;
       if (bridge) {
@@ -144,7 +148,7 @@ function computeLayout(chain, startIdx, W, H) {
         d = { x: hdir, y: 0 };
         ang = hdir > 0 ? 0 : Math.PI;
         bridge = false;
-      } else if (Math.abs(p.x + d.x * len) > Hx) {
+      } else if (Math.abs(p.x + d.x * len) > Hx && !prevDbl && !dbl && !nextDbl) {
         const sy = rowY - T / 2;
         cx = p.x + d.x * (T / 2 + g);
         cy = sy + Ln / 2;
@@ -160,6 +164,7 @@ function computeLayout(chain, startIdx, W, H) {
         ang = d.x > 0 ? 0 : Math.PI;
         if (dbl) ang += Math.PI / 2;
       }
+      prevDbl = dbl;
       out.push({ x: cx, y: cy, ang, t, chainIdx: item.idx });
     }
     return out;
