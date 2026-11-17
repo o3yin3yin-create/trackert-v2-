@@ -14,6 +14,7 @@ import {
   requestDominoRematch,
   sanitizeDominoRoom,
   sendDominoReaction,
+  startDominoRoom,
 } from '@/lib/dominoBus';
 
 export { OPTIONS };
@@ -53,69 +54,90 @@ export async function POST(req) {
         return json({ error: 'too_many_requests' }, 429, req);
       }
 
-      const targetUsername = normUsername(body?.targetUsername);
-      if (!targetUsername) {
+      const rawList = Array.isArray(body?.targetUsernames)
+        ? body.targetUsernames
+        : body?.targetUsername
+          ? [body.targetUsername]
+          : [];
+      const usernames = [...new Set(rawList.map(normUsername).filter(Boolean))].slice(0, 3);
+
+      if (usernames.length === 0) {
         return json({ error: 'missing_username' }, 400, req);
       }
 
-      const targetUser = await prisma.user.findUnique({
-        where: { username: targetUsername },
+      const targetUsers = await prisma.user.findMany({
+        where: { username: { in: usernames } },
         select: { id: true, username: true, name: true, avatar: true, notifications: true },
       });
 
-      if (!targetUser) {
+      const validTargets = targetUsers.filter((u) => u.id !== me.id);
+      if (validTargets.length === 0) {
         return json({ error: 'user_not_found' }, 404, req);
       }
 
-      if (targetUser.id === me.id) {
-        return json({ error: 'cannot_invite_self' }, 400, req);
-      }
-
-      const friendship = await prisma.friendship.findFirst({
+      // Verify friendship for each target
+      const friendships = await prisma.friendship.findMany({
         where: {
           status: 'accepted',
-          OR: [
-            { requesterId: me.id, addresseeId: targetUser.id },
-            { requesterId: targetUser.id, addresseeId: me.id },
-          ],
+          OR: validTargets.flatMap((u) => [
+            { requesterId: me.id, addresseeId: u.id },
+            { requesterId: u.id, addresseeId: me.id },
+          ]),
         },
+        select: { requesterId: true, addresseeId: true },
       });
 
-      if (!friendship) {
+      const friendIdSet = new Set();
+      friendships.forEach((f) => {
+        friendIdSet.add(f.requesterId === me.id ? f.addresseeId : f.requesterId);
+      });
+
+      const verifiedTargets = validTargets.filter((u) => friendIdSet.has(u.id));
+      if (verifiedTargets.length === 0) {
         return json({ error: 'not_friends' }, 403, req);
       }
 
-      const room = createDominoRoom(me, targetUser);
-
-      const notifItem = {
-        id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        type: 'domino_invite',
-        roomId: room.id,
-        fromUsername: me.username || 'friend',
-        fromName: me.name || me.username || 'Friend',
-        fromAvatar: me.avatar || 'user',
-        createdAt: Date.now(),
-        read: false,
-      };
-
-      const existingNotifs = Array.isArray(targetUser.notifications) ? targetUser.notifications : [];
-      const filteredExisting = existingNotifs.filter(
-        (n) => !(n.type === 'domino_invite' && (n.fromUsername || '').toLowerCase() === (me.username || '').toLowerCase())
-      );
-      const updatedNotifs = [notifItem, ...filteredExisting].slice(0, 30);
-
-      await prisma.user.update({
-        where: { id: targetUser.id },
-        data: { notifications: updatedNotifs },
-      });
-
+      const room = createDominoRoom(me, verifiedTargets);
       const senderDisplay = me.name || me.username || 'A friend';
-      await sendPush(targetUser.id, {
-        title: 'bokra',
-        body: `${senderDisplay} invited you to a secret Dominoes match`,
-        url: `/?domino=${encodeURIComponent(room.id)}`,
-        tag: `domino:${me.id}`,
-      }).catch(() => {});
+
+      await Promise.all(
+        verifiedTargets.map(async (targetUser) => {
+          const notifItem = {
+            id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            type: 'domino_invite',
+            roomId: room.id,
+            fromUsername: me.username || 'friend',
+            fromName: senderDisplay,
+            fromAvatar: me.avatar || 'user',
+            createdAt: Date.now(),
+            read: false,
+          };
+
+          const existingNotifs = Array.isArray(targetUser.notifications) ? targetUser.notifications : [];
+          const filteredExisting = existingNotifs.filter(
+            (n) =>
+              !(
+                n.type === 'domino_invite' &&
+                (n.fromUsername || '').toLowerCase() === (me.username || '').toLowerCase()
+              )
+          );
+          const updatedNotifs = [notifItem, ...filteredExisting].slice(0, 30);
+
+          await prisma.user
+            .update({
+              where: { id: targetUser.id },
+              data: { notifications: updatedNotifs },
+            })
+            .catch(() => {});
+
+          await sendPush(targetUser.id, {
+            title: 'bokra',
+            body: `${senderDisplay} invited you to a secret Dominoes match`,
+            url: `/?domino=${encodeURIComponent(room.id)}`,
+            tag: `domino:${me.id}`,
+          }).catch(() => {});
+        })
+      );
 
       return json({ roomId: room.id, state: sanitizeDominoRoom(room, me.id) }, 200, req);
     }
@@ -127,6 +149,12 @@ export async function POST(req) {
       const room = joinDominoRoom(roomId, me.id);
       if (!room) return json({ error: 'room_not_found' }, 404, req);
       return json({ state: sanitizeDominoRoom(room, me.id) }, 200, req);
+    }
+
+    if (action === 'start') {
+      const result = startDominoRoom(roomId, me.id);
+      if (result.error) return json({ error: result.error }, 400, req);
+      return json({ state: sanitizeDominoRoom(result.room, me.id) }, 200, req);
     }
 
     if (action === 'play') {
