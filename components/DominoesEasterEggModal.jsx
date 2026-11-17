@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { X, WifiOff, Send, Loader2 } from 'lucide-react';
 import { apiFetch, getApiBaseUrl } from '@/lib/api';
+import AvatarIcon from '@/components/AvatarIcon';
 
 const PV = [[], [4], [0, 8], [0, 4, 8], [0, 2, 6, 8], [0, 2, 4, 6, 8], [0, 2, 3, 5, 6, 8]];
 const PH = PV.slice();
@@ -913,8 +914,10 @@ export default function DominoesEasterEggModal({
         .d2-tile.h .d2-pip { width: 4px; height: 4px; }
         .d2-back { width: 26px; height: 46px; border-radius: 6px; background: var(--fg); position: relative; }
         .d2-back::after { content: ""; position: absolute; left: 4px; right: 4px; top: 50%; height: 1px; background: var(--bg); opacity: .5; }
-        .d2-mine { margin-bottom: 20px; gap: 6px; }
-        .d2-mine .d2-tile { cursor: pointer; transition: transform .15s ease; }
+        .d2-mine { margin-bottom: 20px; gap: 5px; }
+        .d2-mine .d2-tile { width: 34px; height: 64px; border-radius: 7px; cursor: pointer; transition: transform .15s ease; }
+        .d2-mine .d2-half { padding: 3px; }
+        .d2-mine .d2-pip { width: 5px; height: 5px; }
         .d2-mine .d2-tile:active { transform: scale(.94); }
         .d2-bar { display: flex; gap: 8px; justify-content: center; align-items: center; min-height: 44px; }
         .d2-btn {
@@ -1122,11 +1125,20 @@ export default function DominoesEasterEggModal({
                     const isInviting = invitingUsername === username;
                     return (
                       <div key={f.friendshipId || username} className="d2-friend-row">
-                        <div className="min-w-0 text-left">
-                          <div className="text-sm font-medium text-white truncate">
-                            {u.name || username}
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-full bg-white/10 border border-white/15 flex items-center justify-center overflow-hidden shrink-0">
+                            <AvatarIcon
+                              name={u.avatar || 'user'}
+                              size={u.avatar && (u.avatar.startsWith('data:') || u.avatar.startsWith('http')) ? undefined : 18}
+                              className="w-full h-full object-cover text-white/80"
+                            />
                           </div>
-                          <div className="text-[11px] text-white/40 truncate">@{username}</div>
+                          <div className="min-w-0 text-left">
+                            <div className="text-sm font-medium text-white truncate">
+                              {u.name || username}
+                            </div>
+                            <div className="text-[11px] text-white/40 truncate">@{username}</div>
+                          </div>
                         </div>
                         <button
                           type="button"
