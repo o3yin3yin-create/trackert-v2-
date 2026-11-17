@@ -46,7 +46,7 @@ import { HABIT_PRESETS, getLocalizedPreset } from '../lib/habitPresets';
 import { guideSections } from '../lib/guideContent';
 import { getDisplayFriend, formatBriefActivity, getActivityBadge, getSafeTrackArt, getIslandDetails, PRESENCE_PRESETS } from '../lib/friendsPresets';
 
-const APP_CLIENT_VERSION = '0.1.3';
+const APP_CLIENT_VERSION = '1.7.1';
 
 function compareSemver(v1, v2) {
   if (!v1 || !v2) return 0;
@@ -1339,6 +1339,7 @@ function AppContent({ isPreview = false }) {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isProfileRequired, setIsProfileRequired] = useState(false);
   const [showVersionEasterEgg, setShowVersionEasterEgg] = useState(false);
+  const [invitedDominoRoomId, setInvitedDominoRoomId] = useState(null);
   const versionTapRef = useRef({ count: 0, timer: null });
 
   const handleVersionEasterEggTap = () => {
@@ -1349,6 +1350,7 @@ function AppContent({ isPreview = false }) {
       state.count = 0;
       state.timer = null;
       haptic('success');
+      setInvitedDominoRoomId(null);
       setShowVersionEasterEgg(true);
       return;
     }
@@ -1924,10 +1926,13 @@ function AppContent({ isPreview = false }) {
                 ? 'asked to study together'
                 : latest.type === 'schedule_share'
                   ? 'shared their weekly schedule with you'
-                  : 'nudged you';
+                  : latest.type === 'domino_invite'
+                    ? 'invited you to a secret Dominoes match'
+                    : 'nudged you';
             setActiveInAppNotification({
               id: latest.id,
               type: latest.type || 'nudge',
+              roomId: latest.roomId || null,
               user: { username: latest.fromUsername, name: latest.fromName, avatar: latest.fromAvatar },
               message: notifMsg,
               isRequest: false,
@@ -2302,6 +2307,14 @@ function AppContent({ isPreview = false }) {
         const cleanUrl = window.location.pathname;
         window.history.replaceState({}, '', cleanUrl);
         setTimeout(() => setSpotifyNotification(null), 5000);
+      } else if (params.get('domino')) {
+        const dominoRoom = params.get('domino');
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, '', cleanUrl);
+        if (dominoRoom) {
+          setInvitedDominoRoomId(dominoRoom);
+          setShowVersionEasterEgg(true);
+        }
       }
     }
   }, [lang]);
@@ -9071,7 +9084,22 @@ function AppContent({ isPreview = false }) {
                 </>
               ) : (
                 <>
-                  {activeInAppNotification.type === 'schedule_share' ? (
+                  {activeInAppNotification.type === 'domino_invite' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const roomId = activeInAppNotification.roomId;
+                        handleDismissNotification(activeInAppNotification.id, false, 'domino_invite', activeInAppNotification.user?.username);
+                        if (roomId) {
+                          setInvitedDominoRoomId(roomId);
+                          setShowVersionEasterEgg(true);
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-white text-black font-bold text-xs hover:bg-white/90 active:scale-95 transition-all shadow-sm cursor-pointer flex items-center gap-1"
+                    >
+                      <span>{isAr ? 'دخول' : 'Join'}</span>
+                    </button>
+                  ) : activeInAppNotification.type === 'schedule_share' ? (
                     <button
                       type="button"
                       onClick={() => {
@@ -11641,13 +11669,12 @@ function AppContent({ isPreview = false }) {
 
                         {/* Creator Signature / Footer */}
                         <div className="flex flex-col justify-center items-center gap-2 py-4">
-                          <button
-                            type="button"
+                          <span
                             onClick={handleVersionEasterEggTap}
-                            className="text-[11px] font-mono text-white/35 hover:text-white/65 transition-colors px-3 py-1 rounded-full active:scale-95 cursor-pointer select-none"
+                            className="text-[11px] font-mono text-white/35 select-none"
                           >
                             bokra · v{APP_CLIENT_VERSION}
-                          </button>
+                          </span>
                           <span className="text-[10px] font-bold tracking-widest uppercase select-none text-center text-white/40 opacity-60 hover:opacity-100 transition-opacity">
                             {tEn('creatorSignature')} <a href="https://www.instagram.com/jj3_xx?igsh=MWVkaGI5ZjNsb3Nreg%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" style={{ color: themeColor }} className="underline decoration-dashed underline-offset-4 font-bold">6afra</a>
                           </span>
@@ -11675,9 +11702,14 @@ function AppContent({ isPreview = false }) {
 
               {showVersionEasterEgg && isMounted && createPortal(
                 <DominoesEasterEggModal
-                  isOpen={showVersionEasterEgg}
-                  onClose={() => setShowVersionEasterEgg(false)}
-                  theme={theme}
+                  open={showVersionEasterEgg}
+                  onClose={() => {
+                    setShowVersionEasterEgg(false);
+                    setInvitedDominoRoomId(null);
+                  }}
+                  friends={friendsList}
+                  isSignedIn={isSignedIn}
+                  initialRoomId={invitedDominoRoomId}
                 />,
                 document.body
               )}

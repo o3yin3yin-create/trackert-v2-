@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-const FALLBACK_VERSION = '0.1.3';
+const FALLBACK_VERSION = '1.7.1';
 const GITHUB_REPO = 'o3yin3yin-create/trackert-v2-';
 
 const DEFAULT_DOWNLOADS = {
