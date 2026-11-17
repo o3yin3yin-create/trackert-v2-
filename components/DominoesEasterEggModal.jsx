@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { X, WifiOff, Send, Loader2 } from 'lucide-react';
+import { X, WifiOff, Send, Loader2, Smile } from 'lucide-react';
 import { apiFetch, getApiBaseUrl } from '@/lib/api';
 import AvatarIcon from '@/components/AvatarIcon';
 
@@ -236,6 +236,10 @@ export default function DominoesEasterEggModal({
   const [invitingUsername, setInvitingUsername] = useState('');
   const [joiningRoom, setJoiningRoom] = useState(false);
   const [onlinePending, setOnlinePending] = useState(null);
+  const [reactionMenuOpen, setReactionMenuOpen] = useState(false);
+  const [floatingReaction, setFloatingReaction] = useState(null);
+  const lastReactionIdRef = useRef(null);
+  const sseConnectedRef = useRef(false);
 
   // Board container size for exact snake layout
   const boardRef = useRef(null);
@@ -365,11 +369,23 @@ export default function DominoesEasterEggModal({
 
       if (cancelled) return;
       const base = getApiBaseUrl();
-      const streamUrl = `${base}/api/domino/stream?roomId=${encodeURIComponent(onlineRoomId)}`;
+      const token =
+        typeof window !== 'undefined' ? localStorage.getItem('bokra_desktop_token') : null;
+      const streamUrl = `${base}/api/domino/stream?roomId=${encodeURIComponent(onlineRoomId)}${
+        token ? `&token=${encodeURIComponent(token)}` : ''
+      }`;
+      sseConnectedRef.current = false;
       try {
         const es = new EventSource(streamUrl, { withCredentials: true });
         sseRef.current = es;
+        es.onopen = () => {
+          sseConnectedRef.current = true;
+        };
+        es.onerror = () => {
+          sseConnectedRef.current = false;
+        };
         es.onmessage = (ev) => {
+          sseConnectedRef.current = true;
           try {
             const parsed = JSON.parse(ev.data);
             if (parsed?.state) setOnlineState(parsed.state);
@@ -380,8 +396,12 @@ export default function DominoesEasterEggModal({
 
     connect();
 
+    // Fast 1s fallback poll whenever SSE is not open; 5s safety check when SSE is open
+    let tick = 0;
     const poll = setInterval(async () => {
       if (cancelled) return;
+      tick += 1;
+      if (sseConnectedRef.current && tick % 5 !== 0) return;
       try {
         const res = await apiFetch(`/api/domino?roomId=${encodeURIComponent(onlineRoomId)}`);
         if (res.ok) {
@@ -389,14 +409,29 @@ export default function DominoesEasterEggModal({
           if (!cancelled && data?.state) setOnlineState(data.state);
         }
       } catch (_) {}
-    }, 4000);
+    }, 1000);
 
     return () => {
       cancelled = true;
+      sseConnectedRef.current = false;
       clearInterval(poll);
       closeSse();
     };
   }, [open, mode, onlineRoomId, closeSse]);
+
+  // Show incoming/outgoing reactions briefly without clutter
+  useEffect(() => {
+    const r = onlineState?.lastReaction;
+    if (!r?.id || r.id === lastReactionIdRef.current) return;
+    if (Date.now() - (r.at || 0) > 6000) {
+      lastReactionIdRef.current = r.id;
+      return;
+    }
+    lastReactionIdRef.current = r.id;
+    setFloatingReaction(r);
+    const t = setTimeout(() => setFloatingReaction(null), 2200);
+    return () => clearTimeout(t);
+  }, [onlineState?.lastReaction]);
 
   // Clear one-shot deal/rise flags after first render
   useEffect(() => {
@@ -930,6 +965,70 @@ export default function DominoesEasterEggModal({
           justify-content: center;
           cursor: pointer;
         }
+        .d2-react-btn {
+          position: absolute;
+          top: 32px;
+          left: 16px;
+          width: 36px;
+          height: 36px;
+          padding: 0;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          background: rgba(255, 255, 255, 0.06);
+          color: rgba(255, 255, 255, 0.72);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+        .d2-react-tray {
+          position: absolute;
+          top: 74px;
+          left: 16px;
+          z-index: 20;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 6px;
+          border-radius: 999px;
+          background: rgba(18, 18, 20, 0.94);
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          backdrop-filter: blur(12px);
+        }
+        .d2-react-chip {
+          width: 32px;
+          height: 32px;
+          border-radius: 999px;
+          border: none;
+          background: transparent;
+          font-size: 17px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: transform 0.12s ease, background 0.12s ease;
+        }
+        .d2-react-chip:active {
+          transform: scale(0.88);
+          background: rgba(255, 255, 255, 0.1);
+        }
+        .d2-react-toast {
+          position: absolute;
+          top: 34px;
+          left: 60px;
+          z-index: 15;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 5px 11px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          font-size: 12px;
+          color: rgba(255, 255, 255, 0.9);
+          pointer-events: none;
+          animation: d2enter 0.25s ease-out both;
+        }
         .d2-row { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
         #d2-comp { min-height: 44px; }
         #d2-info { font-size: 13px; margin-top: 12px; opacity: .55; letter-spacing: -.08px; }
@@ -1053,6 +1152,48 @@ export default function DominoesEasterEggModal({
         >
           <X className="w-4 h-4" />
         </button>
+
+        {isFriendActiveBoard && (
+          <>
+            <button
+              type="button"
+              className="d2-react-btn"
+              onClick={() => setReactionMenuOpen((v) => !v)}
+              aria-label="Send reaction"
+            >
+              <Smile className="w-4 h-4" />
+            </button>
+
+            {reactionMenuOpen && (
+              <div className="d2-react-tray">
+                {['👏', '🔥', '😂', '😮', '💀'].map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    className="d2-react-chip"
+                    onClick={() => {
+                      setReactionMenuOpen(false);
+                      handleOnlineAction({ action: 'react', emoji });
+                    }}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {floatingReaction && (
+              <div className="d2-react-toast">
+                <span>{floatingReaction.emoji}</span>
+                <span className="text-[11px] text-white/75">
+                  {floatingReaction.userId === onlineState?.myId
+                    ? 'You'
+                    : floatingReaction.name}
+                </span>
+              </div>
+            )}
+          </>
+        )}
 
         {(mode === 'bot' || isFriendActiveBoard) && (
           <>

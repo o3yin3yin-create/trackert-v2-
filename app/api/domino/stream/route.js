@@ -9,12 +9,20 @@ import {
 export const dynamic = 'force-dynamic';
 
 export async function GET(req) {
-  const me = await requireMe(req);
+  const { searchParams } = new URL(req.url);
+  const queryToken = searchParams.get('token');
+  let authReq = req;
+  if (queryToken && !req.headers.get('authorization')) {
+    const headers = new Headers(req.headers);
+    headers.set('authorization', `Bearer ${queryToken}`);
+    authReq = new Request(req.url, { headers });
+  }
+
+  const me = await requireMe(authReq);
   if (!me) {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  const { searchParams } = new URL(req.url);
   const roomId = searchParams.get('roomId');
   if (!roomId) {
     return new Response('Missing roomId', { status: 400 });
@@ -51,6 +59,13 @@ export async function GET(req) {
           cleanup();
         }
       };
+
+      try {
+        controller.enqueue(encoder.encode(': connected\n\n'));
+      } catch {
+        cleanup();
+        return;
+      }
 
       sendEvent(initialRoom);
 

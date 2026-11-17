@@ -13,6 +13,7 @@ import {
   playDominoTile,
   requestDominoRematch,
   sanitizeDominoRoom,
+  sendDominoReaction,
 } from '@/lib/dominoBus';
 
 export { OPTIONS };
@@ -148,6 +149,12 @@ export async function POST(req) {
 
     if (action === 'rematch') {
       const result = requestDominoRematch(roomId, me.id);
+      if (result.error) return json({ error: result.error }, 400, req);
+      return json({ state: sanitizeDominoRoom(result.room, me.id) }, 200, req);
+    }
+
+    if (action === 'react') {
+      const result = sendDominoReaction(roomId, me.id, body?.emoji);
       if (result.error) return json({ error: result.error }, 400, req);
       return json({ state: sanitizeDominoRoom(result.room, me.id) }, 200, req);
     }
