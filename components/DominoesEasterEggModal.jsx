@@ -1198,7 +1198,7 @@ export default function DominoesEasterEggModal({
         .d2-gg-char-l { animation: d2ggCharL 3.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
         .d2-gg-char-r { animation: d2ggCharR 3.1s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
         .d2-gg-sub {
-          margin-top: 10px;
+          margin-top: 26px;
           font-size: 11px;
           font-weight: 600;
           text-transform: uppercase;
