@@ -622,7 +622,7 @@ export default function DominoesEasterEggModal({
         .domino-root {
           position: fixed;
           inset: 0;
-          z-index: 9999;
+          z-index: 20000;
           background: #050505;
           color: #ffffff;
           display: flex;
@@ -747,11 +747,11 @@ export default function DominoesEasterEggModal({
           background: rgba(255, 255, 255, 0.2);
         }
         #domino-bottom {
-          padding: 0 18px 28px;
+          padding: 0 12px calc(env(safe-area-inset-bottom, 0px) + 24px);
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 14px;
+          gap: 12px;
         }
         .domino-status {
           font-size: 13px;
@@ -762,9 +762,10 @@ export default function DominoesEasterEggModal({
           display: flex;
           justify-content: center;
           flex-wrap: wrap;
-          gap: 8px;
-          min-height: 90px;
+          gap: 5px;
+          min-height: 82px;
           align-items: center;
+          max-width: 100%;
         }
         .domino-actions {
           display: flex;
@@ -847,8 +848,8 @@ export default function DominoesEasterEggModal({
           transition: transform 0.14s ease, border-color 0.14s ease, opacity 0.14s ease;
         }
         .domino-tile-vert {
-          width: 44px;
-          height: 86px;
+          width: 40px;
+          height: 78px;
           flex-direction: column;
           padding: 4px;
         }
@@ -909,8 +910,8 @@ export default function DominoesEasterEggModal({
           background: rgba(255, 255, 255, 0.35);
         }
         .domino-half {
-          width: 34px;
-          height: 34px;
+          width: 30px;
+          height: 30px;
           display: grid;
           grid-template-columns: repeat(3, 1fr);
           grid-template-rows: repeat(3, 1fr);
