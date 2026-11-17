@@ -11669,12 +11669,13 @@ function AppContent({ isPreview = false }) {
 
                         {/* Creator Signature / Footer */}
                         <div className="flex flex-col justify-center items-center gap-2 py-4">
-                          <span
+                          <button
+                            type="button"
                             onClick={handleVersionEasterEggTap}
-                            className="text-[11px] font-mono text-white/35 select-none"
+                            className="appearance-none bg-transparent border-0 px-4 py-2 -my-2 text-[11px] font-mono text-white/35 select-none cursor-default touch-manipulation focus:outline-none"
                           >
                             bokra · v{APP_CLIENT_VERSION}
-                          </span>
+                          </button>
                           <span className="text-[10px] font-bold tracking-widest uppercase select-none text-center text-white/40 opacity-60 hover:opacity-100 transition-opacity">
                             {tEn('creatorSignature')} <a href="https://www.instagram.com/jj3_xx?igsh=MWVkaGI5ZjNsb3Nreg%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" style={{ color: themeColor }} className="underline decoration-dashed underline-offset-4 font-bold">6afra</a>
                           </span>
