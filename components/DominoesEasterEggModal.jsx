@@ -4,159 +4,211 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { X, WifiOff, Send, Loader2 } from 'lucide-react';
 import { apiFetch, getApiBaseUrl } from '@/lib/api';
 
-const PIPS_LAYOUT = {
-  0: [],
-  1: [4],
-  2: [0, 8],
-  3: [0, 4, 8],
-  4: [0, 2, 6, 8],
-  5: [0, 2, 4, 6, 8],
-  6: [0, 2, 3, 5, 6, 8],
-};
+const PV = [[], [4], [0, 8], [0, 4, 8], [0, 2, 6, 8], [0, 2, 4, 6, 8], [0, 2, 3, 5, 6, 8]];
+const PH = PV.slice();
+PH[6] = [0, 1, 2, 6, 7, 8];
 
-function PipHalf({ num, mini = false }) {
-  const active = PIPS_LAYOUT[num] || [];
-  return (
-    <div className={mini ? 'domino-half domino-half-mini' : 'domino-half'}>
-      {Array.from({ length: 9 }).map((_, idx) => (
-        <span
-          key={idx}
-          className={
-            active.includes(idx)
-              ? mini
-                ? 'domino-pip domino-pip-mini domino-pip-on'
-                : 'domino-pip domino-pip-on'
-              : mini
-                ? 'domino-pip domino-pip-mini'
-                : 'domino-pip'
-          }
-        />
-      ))}
-    </div>
-  );
-}
-
-function DominoTile({
-  a,
-  b,
-  horizontal = false,
-  mini = false,
-  back = false,
-  clickable = false,
-  selected = false,
-  dimmed = false,
-  onClick,
-}) {
-  const classes = [
-    'domino-tile',
-    horizontal ? 'domino-tile-horiz' : 'domino-tile-vert',
-    mini ? 'domino-tile-mini' : '',
-    back ? 'domino-tile-back' : '',
-    clickable ? 'domino-tile-clickable' : '',
-    selected ? 'domino-tile-selected' : '',
-    dimmed ? 'domino-tile-dimmed' : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-
+function DominoTile({ tile, horiz = false, animClass = '', animDelay = '', onClick }) {
+  const pips = horiz ? PH : PV;
   return (
     <div
-      className={classes}
-      onClick={clickable ? onClick : undefined}
-      role={clickable ? 'button' : undefined}
-      tabIndex={clickable ? 0 : undefined}
-      onKeyDown={
-        clickable
-          ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                onClick?.();
-              }
-            }
-          : undefined
-      }
+      className={`d2-tile${horiz ? ' h' : ''}${animClass ? ' ' + animClass : ''}`}
+      style={animDelay ? { animationDelay: animDelay } : undefined}
+      onClick={onClick}
     >
-      {back ? (
-        <div className="domino-back-divider" />
-      ) : (
-        <>
-          <PipHalf num={a} mini={mini} />
-          <div className={horizontal ? 'domino-divider-horiz' : 'domino-divider-vert'} />
-          <PipHalf num={b} mini={mini} />
-        </>
-      )}
+      <div className="d2-half">
+        {Array.from({ length: 9 }).map((_, i) => (
+          <div key={i} className={pips[tile[0]].includes(i) ? 'd2-pip' : undefined} />
+        ))}
+      </div>
+      <div className="d2-half">
+        {Array.from({ length: 9 }).map((_, i) => (
+          <div key={i} className={pips[tile[1]].includes(i) ? 'd2-pip' : undefined} />
+        ))}
+      </div>
     </div>
   );
 }
 
-function createShuffledDeck() {
-  const deck = [];
-  for (let i = 0; i <= 6; i++) {
-    for (let j = i; j <= 6; j++) {
-      deck.push([i, j]);
+function DominoBack({ animClass = '', animDelay = '' }) {
+  return (
+    <div
+      className={`d2-back${animClass ? ' ' + animClass : ''}`}
+      style={animDelay ? { animationDelay: animDelay } : undefined}
+    />
+  );
+}
+
+function endsOf(chain) {
+  return chain.length ? [chain[0][0], chain[chain.length - 1][1]] : null;
+}
+
+function canPlayOriginal(t, chain, anyStart, startD) {
+  const e = endsOf(chain);
+  if (!e) return anyStart || (t[0] === t[1] && t[0] === startD);
+  return t.includes(e[0]) || t.includes(e[1]);
+}
+
+function canPlayOnline(t, chain) {
+  const e = endsOf(chain);
+  if (!e) return true;
+  return t.includes(e[0]) || t.includes(e[1]);
+}
+
+function sumHand(h) {
+  return h.reduce((s, t) => s + t[0] + t[1], 0);
+}
+
+function createBotRoundState(lastWinner) {
+  let all, p, c, d = -1;
+  const anyStart = lastWinner !== null;
+  do {
+    all = [];
+    for (let i = 0; i <= 6; i++) {
+      for (let j = i; j <= 6; j++) all.push([i, j]);
     }
-  }
-  for (let i = deck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]];
-  }
-  return deck;
-}
+    for (let i = all.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [all[i], all[j]] = [all[j], all[i]];
+    }
+    p = all.splice(0, 7);
+    c = all.splice(0, 7);
+    d = -1;
+    [...p, ...c].forEach((t) => {
+      if (t[0] === t[1] && t[0] > d) d = t[0];
+    });
+  } while (!anyStart && d < 0);
 
-function createBotRound() {
-  const deck = createShuffledDeck();
-  const p1Hand = deck.slice(0, 7);
-  const p2Hand = deck.slice(7, 14);
-  const pile = deck.slice(14);
+  const turn = anyStart ? lastWinner : p.some((t) => t[0] === d && t[1] === d) ? 'p' : 'c';
+  const msg =
+    turn === 'p'
+      ? anyStart
+        ? 'You won the last round — start with any tile'
+        : 'You have the highest double — play it'
+      : anyStart
+        ? 'Opponent won the last round and starts'
+        : 'Opponent starts with the highest double';
+
   return {
-    board: [],
-    leftVal: null,
-    rightVal: null,
-    p1Hand,
-    p2Hand,
-    pile,
-    turn: 'p1',
-    consecutivePasses: 0,
-    status: 'playing',
+    p,
+    c,
+    pile: all,
+    chain: [],
+    startIdx: 0,
+    startD: anyStart ? -1 : d,
+    anyStart,
+    turn,
+    passes: 0,
+    over: false,
+    match: false,
+    deal: true,
+    newestIdx: -1,
+    newPIdx: -1,
+    cDrew: false,
+    msg,
   };
 }
 
-function canPlayTile(tile, board, leftVal, rightVal) {
-  if (board.length === 0) return { left: true, right: true };
+// Exact snake geometry from Dominoes_2.html
+function computeLayout(chain, startIdx, W, H) {
+  if (!chain.length || !W || !H) return null;
+  const T = 26;
+  const Ln = 52;
+  const g = 3;
+  const Hx = Math.max(90, W / 2 - 30);
+  const RS = Ln + 2 * g;
+  const safeStart = Math.min(Math.max(0, startIdx), chain.length - 1);
+  const st0 = chain[safeStart];
+  const sd = st0[0] === st0[1];
+  const s0 = (sd ? T : Ln) / 2 + g;
+
+  function walk(tiles) {
+    let p = { x: s0, y: 0 };
+    let d = { x: 1, y: 0 };
+    let hdir = 1;
+    let rowY = 0;
+    let bridge = false;
+    const out = [];
+    for (const item of tiles) {
+      const t = item.t;
+      const dbl = t[0] === t[1];
+      const len = dbl ? T : Ln;
+      let cx, cy, ang;
+      if (bridge) {
+        hdir = -hdir;
+        const sx = p.x - (hdir * T) / 2;
+        cx = sx + (hdir * Ln) / 2;
+        cy = rowY;
+        p = { x: sx + hdir * (Ln + g), y: rowY };
+        d = { x: hdir, y: 0 };
+        ang = hdir > 0 ? 0 : Math.PI;
+        bridge = false;
+      } else if (Math.abs(p.x + d.x * len) > Hx) {
+        const sy = rowY - T / 2;
+        cx = p.x + d.x * (T / 2 + g);
+        cy = sy + Ln / 2;
+        rowY += RS;
+        p = { x: cx, y: rowY };
+        d = { x: 0, y: 1 };
+        ang = Math.PI / 2;
+        bridge = true;
+      } else {
+        cx = p.x + (d.x * len) / 2;
+        cy = p.y;
+        p = { x: p.x + d.x * (len + g), y: p.y };
+        ang = d.x > 0 ? 0 : Math.PI;
+        if (dbl) ang += Math.PI / 2;
+      }
+      out.push({ x: cx, y: cy, ang, t, chainIdx: item.idx });
+    }
+    return out;
+  }
+
+  const items = [
+    {
+      x: 0,
+      y: 0,
+      ang: sd ? Math.PI / 2 : 0,
+      h: chain[safeStart],
+      chainIdx: safeStart,
+    },
+  ];
+  walk(chain.slice(safeStart + 1).map((t, k) => ({ t, idx: safeStart + 1 + k }))).forEach((o) =>
+    items.push({ x: o.x, y: o.y, ang: o.ang, h: o.t, chainIdx: o.chainIdx })
+  );
+  walk(
+    chain
+      .slice(0, safeStart)
+      .map((t, k) => ({ t, idx: k }))
+      .reverse()
+  ).forEach((o) =>
+    items.push({
+      x: -o.x,
+      y: -o.y,
+      ang: o.ang + Math.PI,
+      h: [o.t[1], o.t[0]],
+      chainIdx: o.chainIdx,
+    })
+  );
+
+  let x0 = 1e9,
+    x1 = -1e9,
+    y0 = 1e9,
+    y1 = -1e9;
+  items.forEach((i) => {
+    x0 = Math.min(x0, i.x - 30);
+    x1 = Math.max(x1, i.x + 30);
+    y0 = Math.min(y0, i.y - 30);
+    y1 = Math.max(y1, i.y + 30);
+  });
+  const sc = Math.min(1, (W - 8) / (x1 - x0), (H - 8) / (y1 - y0));
+  const cx = (x0 + x1) / 2;
+  const cy = (y0 + y1) / 2;
+
   return {
-    left: tile[0] === leftVal || tile[1] === leftVal,
-    right: tile[0] === rightVal || tile[1] === rightVal,
+    items,
+    layerTransform: `translate(${W / 2}px,${H / 2}px) scale(${sc}) translate(${-cx}px,${-cy}px)`,
   };
-}
-
-function hasValidMove(hand, board, leftVal, rightVal) {
-  return hand.some((t) => {
-    const c = canPlayTile(t, board, leftVal, rightVal);
-    return c.left || c.right;
-  });
-}
-
-function handSum(hand) {
-  return hand.reduce((acc, [a, b]) => acc + a + b, 0);
-}
-
-function computeSnakedBoard(board) {
-  if (!board.length) return [];
-  const items = board.map((tile, idx) => ({ tile, idx, flipped: false }));
-  return items.map((item, pos) => {
-    const [a, b] = item.tile;
-    const isDouble = a === b;
-    const row = Math.floor(pos / 6);
-    const reverse = row % 2 === 1;
-    return {
-      ...item,
-      row,
-      reverse,
-      isDouble,
-      displayA: reverse && !isDouble ? b : a,
-      displayB: reverse && !isDouble ? a : b,
-    };
-  });
 }
 
 export default function DominoesEasterEggModal({
@@ -167,11 +219,14 @@ export default function DominoesEasterEggModal({
   initialRoomId = null,
 }) {
   const isInvitedSession = Boolean(initialRoomId);
-  const [mode, setMode] = useState(initialRoomId ? 'friend' : 'bot'); // 'bot' | 'friend'
-  const [botScores, setBotScores] = useState({ p1: 0, p2: 0 });
-  const [botGame, setBotGame] = useState(() => createBotRound());
-  const [selectedIdx, setSelectedIdx] = useState(null);
-  const [botBanner, setBotBanner] = useState('Your turn');
+  const [mode, setMode] = useState(initialRoomId ? 'friend' : 'bot');
+
+  // Offline Bot state (exact Dominoes_2.html state)
+  const [score, setScore] = useState({ p: 0, c: 0 });
+  const [lastWinner, setLastWinner] = useState(null);
+  const [S, setS] = useState(() => createBotRoundState(null));
+  const [pending, setPending] = useState(null);
+  const [confirmRestart, setConfirmRestart] = useState(false);
 
   // Online friend state
   const [onlineRoomId, setOnlineRoomId] = useState(initialRoomId || null);
@@ -179,15 +234,41 @@ export default function DominoesEasterEggModal({
   const [onlineError, setOnlineError] = useState('');
   const [invitingUsername, setInvitingUsername] = useState('');
   const [joiningRoom, setJoiningRoom] = useState(false);
-  const [confirmRestart, setConfirmRestart] = useState(false);
+  const [onlinePending, setOnlinePending] = useState(null);
+
+  // Board container size for exact snake layout
+  const boardRef = useRef(null);
+  const [boardSize, setBoardSize] = useState({ w: 0, h: 0 });
 
   const botTimerRef = useRef(null);
   const sseRef = useRef(null);
   const activeRoomRef = useRef(null);
+  const scoreRef = useRef(score);
+  const lastWinnerRef = useRef(lastWinner);
+
+  useEffect(() => {
+    scoreRef.current = score;
+    lastWinnerRef.current = lastWinner;
+  }, [score, lastWinner]);
 
   useEffect(() => {
     activeRoomRef.current = onlineRoomId;
   }, [onlineRoomId]);
+
+  useEffect(() => {
+    if (!open) return;
+    const measure = () => {
+      if (boardRef.current) {
+        setBoardSize({
+          w: boardRef.current.clientWidth,
+          h: boardRef.current.clientHeight,
+        });
+      }
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [open, mode, onlineState?.status]);
 
   const closeSse = useCallback(() => {
     if (sseRef.current) {
@@ -213,7 +294,7 @@ export default function DominoesEasterEggModal({
     [closeSse]
   );
 
-  // Reset state when modal opens/closes
+  // Reset on open/close
   useEffect(() => {
     if (!open) {
       if (botTimerRef.current) clearTimeout(botTimerRef.current);
@@ -221,7 +302,8 @@ export default function DominoesEasterEggModal({
       setOnlineRoomId(null);
       setOnlineState(null);
       setOnlineError('');
-      setSelectedIdx(null);
+      setPending(null);
+      setOnlinePending(null);
       setConfirmRestart(false);
       return;
     }
@@ -230,20 +312,23 @@ export default function DominoesEasterEggModal({
       setMode('friend');
       setOnlineRoomId(initialRoomId);
       setOnlineError('');
-      setSelectedIdx(null);
+      setPending(null);
+      setOnlinePending(null);
     } else {
       setMode('bot');
-      setBotScores({ p1: 0, p2: 0 });
-      setBotGame(createBotRound());
-      setSelectedIdx(null);
-      setBotBanner('Your turn');
+      setScore({ p: 0, c: 0 });
+      setLastWinner(null);
+      setS(createBotRoundState(null));
+      setPending(null);
+      setOnlinePending(null);
+      setConfirmRestart(false);
       setOnlineRoomId(null);
       setOnlineState(null);
       setOnlineError('');
     }
   }, [open, initialRoomId, leaveActiveRoom]);
 
-  // Connect SSE + join if initialRoomId
+  // Connect SSE for online friend mode
   useEffect(() => {
     if (!open || mode !== 'friend' || !onlineRoomId) {
       closeSse();
@@ -251,7 +336,6 @@ export default function DominoesEasterEggModal({
     }
 
     let cancelled = false;
-
     const connect = async () => {
       setJoiningRoom(true);
       setOnlineError('');
@@ -263,13 +347,15 @@ export default function DominoesEasterEggModal({
         const data = await res.json().catch(() => ({}));
         if (cancelled) return;
         if (!res.ok) {
-          setOnlineError(data?.error === 'room_not_found' ? 'This match expired or was closed.' : 'Could not join match.');
+          setOnlineError(
+            data?.error === 'room_not_found'
+              ? 'This match expired or was closed.'
+              : 'Could not join match.'
+          );
           setJoiningRoom(false);
           return;
         }
-        if (data?.state) {
-          setOnlineState(data.state);
-        }
+        if (data?.state) setOnlineState(data.state);
       } catch (_) {
         if (!cancelled) setOnlineError('Connection lost. Check your internet.');
       } finally {
@@ -285,9 +371,7 @@ export default function DominoesEasterEggModal({
         es.onmessage = (ev) => {
           try {
             const parsed = JSON.parse(ev.data);
-            if (parsed?.state) {
-              setOnlineState(parsed.state);
-            }
+            if (parsed?.state) setOnlineState(parsed.state);
           } catch (_) {}
         };
       } catch (_) {}
@@ -295,7 +379,6 @@ export default function DominoesEasterEggModal({
 
     connect();
 
-    // Lightweight fallback poll every 4s in case SSE drops on mobile wake
     const poll = setInterval(async () => {
       if (cancelled) return;
       try {
@@ -314,15 +397,298 @@ export default function DominoesEasterEggModal({
     };
   }, [open, mode, onlineRoomId, closeSse]);
 
-  // --- OFFLINE BOT LOGIC ---
-  const restartBotRound = useCallback((resetScores = false) => {
+  // Clear one-shot deal/rise flags after first render
+  useEffect(() => {
+    if (S.deal || S.newPIdx !== -1 || S.cDrew) {
+      const t = setTimeout(() => {
+        setS((prev) =>
+          prev.deal || prev.newPIdx !== -1 || prev.cDrew
+            ? { ...prev, deal: false, newPIdx: -1, cDrew: false }
+            : prev
+        );
+      }, 650);
+      return () => clearTimeout(t);
+    }
+  }, [S.deal, S.newPIdx, S.cDrew]);
+
+  // Bot turn runner (exact timings from Dominoes_2.html: 1100ms initial, 900ms after player, 700ms draw)
+  useEffect(() => {
+    if (!open || mode !== 'bot') return;
+    if (S.over || S.turn !== 'c') return;
+
+    const delay = S.chain.length === 0 ? 1100 : S.cDrew ? 700 : 900;
+    botTimerRef.current = setTimeout(() => {
+      setS((prev) => {
+        if (prev.over || prev.turn !== 'c') return prev;
+        const e = endsOf(prev.chain);
+        const ok = prev.c
+          .map((t, i) => ({ t, i }))
+          .filter((o) => canPlayOriginal(o.t, prev.chain, prev.anyStart, prev.startD))
+          .sort((a, b) => b.t[0] + b.t[1] - (a.t[0] + a.t[1]));
+
+        if (ok.length) {
+          const { t, i } = ok[0];
+          let side = 'r';
+          if (e && !t.includes(e[1])) side = 'l';
+          const nextC = [...prev.c];
+          nextC.splice(i, 1);
+          const nextChain = [...prev.chain];
+          let nextStartIdx = prev.startIdx;
+          let newestIdx = 0;
+
+          if (!nextChain.length) {
+            nextChain.push(t);
+            nextStartIdx = 0;
+            newestIdx = 0;
+          } else if (side === 'r') {
+            const o = t[0] === e[1] ? t : [t[1], t[0]];
+            nextChain.push(o);
+            newestIdx = nextChain.length - 1;
+          } else {
+            const o = t[1] === e[0] ? t : [t[1], t[0]];
+            nextChain.unshift(o);
+            nextStartIdx++;
+            newestIdx = 0;
+          }
+
+          // Check finish
+          if (nextC.length === 0) {
+            const pts = sumHand(prev.p);
+            const nextScore = { ...scoreRef.current, c: scoreRef.current.c + pts };
+            setScore(nextScore);
+            setLastWinner('c');
+            const isMatch = nextScore.p >= 100 || nextScore.c >= 100;
+            const msg = isMatch
+              ? `${nextScore.p >= nextScore.c ? 'You win the match' : 'Opponent wins the match'} · ${nextScore.p} to ${nextScore.c}`
+              : `Opponent wins the round · +${pts}`;
+            return {
+              ...prev,
+              c: nextC,
+              chain: nextChain,
+              startIdx: nextStartIdx,
+              newestIdx,
+              passes: 0,
+              over: true,
+              match: isMatch,
+              cDrew: false,
+              msg,
+            };
+          }
+
+          return {
+            ...prev,
+            c: nextC,
+            chain: nextChain,
+            startIdx: nextStartIdx,
+            newestIdx,
+            passes: 0,
+            turn: 'p',
+            cDrew: false,
+            msg: 'Your turn',
+          };
+        }
+
+        if (prev.pile.length) {
+          const nextPile = [...prev.pile];
+          const drawn = nextPile.pop();
+          return {
+            ...prev,
+            c: [...prev.c, drawn],
+            pile: nextPile,
+            cDrew: true,
+            msg: 'Opponent draws',
+          };
+        }
+
+        const nextPasses = prev.passes + 1;
+        if (nextPasses >= 2) {
+          const a = sumHand(prev.p);
+          const b = sumHand(prev.c);
+          let who = null;
+          let pts = 0;
+          let msg = 'Blocked — it\u2019s a draw, no points';
+          if (a < b) {
+            who = 'p';
+            pts = b - a;
+            msg = `Blocked — you win the round · +${pts}`;
+          } else if (a > b) {
+            who = 'c';
+            pts = a - b;
+            msg = `Blocked — opponent wins the round · +${pts}`;
+          }
+          const nextScore = { ...scoreRef.current };
+          if (who) nextScore[who] += pts;
+          setScore(nextScore);
+          setLastWinner(who);
+          const isMatch = nextScore.p >= 100 || nextScore.c >= 100;
+          if (isMatch) {
+            msg = `${nextScore.p >= nextScore.c ? 'You win the match' : 'Opponent wins the match'} · ${nextScore.p} to ${nextScore.c}`;
+          }
+          return {
+            ...prev,
+            passes: nextPasses,
+            over: true,
+            match: isMatch,
+            cDrew: false,
+            msg,
+          };
+        }
+
+        return {
+          ...prev,
+          passes: nextPasses,
+          turn: 'p',
+          cDrew: false,
+          msg: 'Opponent passed — your turn',
+        };
+      });
+    }, delay);
+
+    return () => {
+      if (botTimerRef.current) clearTimeout(botTimerRef.current);
+    };
+  }, [open, mode, S.over, S.turn, S.c.length, S.pile.length, S.chain.length, S.cDrew]);
+
+  const startNewGame = useCallback(() => {
     if (botTimerRef.current) clearTimeout(botTimerRef.current);
-    if (resetScores) setBotScores({ p1: 0, p2: 0 });
-    setBotGame(createBotRound());
-    setSelectedIdx(null);
-    setBotBanner('Your turn');
+    setScore({ p: 0, c: 0 });
+    setLastWinner(null);
+    setPending(null);
+    setConfirmRestart(false);
+    setS(createBotRoundState(null));
   }, []);
 
+  const startNextRound = useCallback(() => {
+    if (botTimerRef.current) clearTimeout(botTimerRef.current);
+    setPending(null);
+    setConfirmRestart(false);
+    setS(createBotRoundState(lastWinnerRef.current));
+  }, []);
+
+  const playerPlay = useCallback((i, side) => {
+    setPending(null);
+    setS((prev) => {
+      const nextP = [...prev.p];
+      const t = nextP.splice(i, 1)[0];
+      const nextChain = [...prev.chain];
+      let nextStartIdx = prev.startIdx;
+      let newestIdx = 0;
+
+      if (!nextChain.length) {
+        nextChain.push(t);
+        nextStartIdx = 0;
+        newestIdx = 0;
+      } else if (side === 'r') {
+        const e = endsOf(nextChain);
+        const o = t[0] === e[1] ? t : [t[1], t[0]];
+        nextChain.push(o);
+        newestIdx = nextChain.length - 1;
+      } else {
+        const e = endsOf(nextChain);
+        const o = t[1] === e[0] ? t : [t[1], t[0]];
+        nextChain.unshift(o);
+        nextStartIdx++;
+        newestIdx = 0;
+      }
+
+      if (nextP.length === 0) {
+        const pts = sumHand(prev.c);
+        const nextScore = { ...scoreRef.current, p: scoreRef.current.p + pts };
+        setScore(nextScore);
+        setLastWinner('p');
+        const isMatch = nextScore.p >= 100 || nextScore.c >= 100;
+        const msg = isMatch
+          ? `${nextScore.p >= nextScore.c ? 'You win the match' : 'Opponent wins the match'} · ${nextScore.p} to ${nextScore.c}`
+          : `You win the round · +${pts}`;
+        return {
+          ...prev,
+          p: nextP,
+          chain: nextChain,
+          startIdx: nextStartIdx,
+          newestIdx,
+          passes: 0,
+          over: true,
+          match: isMatch,
+          msg,
+        };
+      }
+
+      return {
+        ...prev,
+        p: nextP,
+        chain: nextChain,
+        startIdx: nextStartIdx,
+        newestIdx,
+        passes: 0,
+        turn: 'c',
+        msg: 'Opponent\u2019s turn',
+      };
+    });
+  }, []);
+
+  const clickBotTile = (i) => {
+    if (S.over || S.turn !== 'p') return;
+    const t = S.p[i];
+    if (!canPlayOriginal(t, S.chain, S.anyStart, S.startD)) return;
+    const e = endsOf(S.chain);
+    if (!e) {
+      playerPlay(i, 'r');
+      return;
+    }
+    const L = t.includes(e[0]);
+    const R = t.includes(e[1]);
+    if (L && R && e[0] !== e[1]) {
+      setPending(i);
+      return;
+    }
+    playerPlay(i, R ? 'r' : 'l');
+  };
+
+  const botDraw = () => {
+    if (S.turn !== 'p' || !S.pile.length) return;
+    setS((prev) => {
+      if (!prev.pile.length) return prev;
+      const nextPile = [...prev.pile];
+      const drawn = nextPile.pop();
+      const nextP = [...prev.p, drawn];
+      return { ...prev, pile: nextPile, p: nextP, newPIdx: nextP.length - 1 };
+    });
+  };
+
+  const botPass = () => {
+    setPending(null);
+    setS((prev) => {
+      const nextPasses = prev.passes + 1;
+      if (nextPasses >= 2) {
+        const a = sumHand(prev.p);
+        const b = sumHand(prev.c);
+        let who = null;
+        let pts = 0;
+        let msg = 'Blocked — it\u2019s a draw, no points';
+        if (a < b) {
+          who = 'p';
+          pts = b - a;
+          msg = `Blocked — you win the round · +${pts}`;
+        } else if (a > b) {
+          who = 'c';
+          pts = a - b;
+          msg = `Blocked — opponent wins the round · +${pts}`;
+        }
+        const nextScore = { ...scoreRef.current };
+        if (who) nextScore[who] += pts;
+        setScore(nextScore);
+        setLastWinner(who);
+        const isMatch = nextScore.p >= 100 || nextScore.c >= 100;
+        if (isMatch) {
+          msg = `${nextScore.p >= nextScore.c ? 'You win the match' : 'Opponent wins the match'} · ${nextScore.p} to ${nextScore.c}`;
+        }
+        return { ...prev, passes: nextPasses, over: true, match: isMatch, msg };
+      }
+      return { ...prev, passes: nextPasses, turn: 'c', msg: 'Opponent\u2019s turn' };
+    });
+  };
+
+  // Online friend handlers
   const switchMode = async (nextMode) => {
     if (nextMode === mode || isInvitedSession) return;
     if (onlineRoomId) {
@@ -330,180 +696,16 @@ export default function DominoesEasterEggModal({
       setOnlineRoomId(null);
       setOnlineState(null);
     }
-    setSelectedIdx(null);
+    setPending(null);
+    setOnlinePending(null);
     setOnlineError('');
+    setConfirmRestart(false);
     setMode(nextMode);
     if (nextMode === 'bot') {
-      restartBotRound(true);
+      startNewGame();
     }
   };
 
-  const applyBotMove = useCallback((prev, who, tileIdx, side) => {
-    const handKey = who === 'p1' ? 'p1Hand' : 'p2Hand';
-    const hand = [...prev[handKey]];
-    const [a, b] = hand.splice(tileIdx, 1)[0];
-    const nextBoard = [...prev.board];
-    let nextLeft = prev.leftVal;
-    let nextRight = prev.rightVal;
-
-    if (nextBoard.length === 0) {
-      nextBoard.push([a, b]);
-      nextLeft = a;
-      nextRight = b;
-    } else if (side === 'left') {
-      const oriented = b === prev.leftVal ? [a, b] : [b, a];
-      nextBoard.unshift(oriented);
-      nextLeft = oriented[0];
-    } else {
-      const oriented = a === prev.rightVal ? [a, b] : [b, a];
-      nextBoard.push(oriented);
-      nextRight = oriented[1];
-    }
-
-    const nextState = {
-      ...prev,
-      board: nextBoard,
-      leftVal: nextLeft,
-      rightVal: nextRight,
-      [handKey]: hand,
-      consecutivePasses: 0,
-      turn: who === 'p1' ? 'p2' : 'p1',
-    };
-
-    if (hand.length === 0) {
-      nextState.status = 'ended';
-      setBotScores((s) => ({ ...s, [who]: s[who] + 1 }));
-      setBotBanner(who === 'p1' ? 'You win' : 'Opponent wins');
-    } else {
-      setBotBanner(who === 'p1' ? 'Opponent thinking…' : 'Your turn');
-    }
-
-    return nextState;
-  }, []);
-
-  // Bot turn runner
-  useEffect(() => {
-    if (!open || mode !== 'bot') return;
-    if (botGame.status !== 'playing' || botGame.turn !== 'p2') return;
-
-    botTimerRef.current = setTimeout(() => {
-      setBotGame((prev) => {
-        if (prev.status !== 'playing' || prev.turn !== 'p2') return prev;
-        let currentHand = [...prev.p2Hand];
-        const currentPile = [...prev.pile];
-
-        const findBestMove = (hand) => {
-          const moves = [];
-          hand.forEach((tile, idx) => {
-            const c = canPlayTile(tile, prev.board, prev.leftVal, prev.rightVal);
-            if (c.left) moves.push({ idx, side: 'left', weight: tile[0] + tile[1] });
-            if (c.right && prev.board.length > 0) moves.push({ idx, side: 'right', weight: tile[0] + tile[1] });
-          });
-          moves.sort((x, y) => y.weight - x.weight);
-          return moves[0] || null;
-        };
-
-        let move = findBestMove(currentHand);
-        while (!move && currentPile.length > 0) {
-          currentHand.push(currentPile.pop());
-          move = findBestMove(currentHand);
-        }
-
-        const updated = { ...prev, p2Hand: currentHand, pile: currentPile };
-        if (move) {
-          return applyBotMove(updated, 'p2', move.idx, move.side);
-        }
-
-        const nextPasses = prev.consecutivePasses + 1;
-        if (nextPasses >= 2) {
-          const s1 = handSum(updated.p1Hand);
-          const s2 = handSum(updated.p2Hand);
-          if (s1 < s2) {
-            setBotScores((s) => ({ ...s, p1: s.p1 + 1 }));
-            setBotBanner('Blocked · You win');
-          } else if (s2 < s1) {
-            setBotScores((s) => ({ ...s, p2: s.p2 + 1 }));
-            setBotBanner('Blocked · Opponent wins');
-          } else {
-            setBotBanner('Blocked · Draw');
-          }
-          return { ...updated, consecutivePasses: nextPasses, status: 'ended' };
-        }
-
-        setBotBanner('Opponent passed · Your turn');
-        return { ...updated, consecutivePasses: nextPasses, turn: 'p1' };
-      });
-    }, 520);
-
-    return () => {
-      if (botTimerRef.current) clearTimeout(botTimerRef.current);
-    };
-  }, [open, mode, botGame.status, botGame.turn, applyBotMove]);
-
-  const handleBotTileClick = (idx) => {
-    if (botGame.status !== 'playing' || botGame.turn !== 'p1') return;
-    const tile = botGame.p1Hand[idx];
-    const fit = canPlayTile(tile, botGame.board, botGame.leftVal, botGame.rightVal);
-    if (!fit.left && !fit.right) return;
-
-    if (botGame.board.length === 0) {
-      setSelectedIdx(null);
-      setBotGame((prev) => applyBotMove(prev, 'p1', idx, 'left'));
-      return;
-    }
-
-    if (fit.left && !fit.right) {
-      setSelectedIdx(null);
-      setBotGame((prev) => applyBotMove(prev, 'p1', idx, 'left'));
-      return;
-    }
-
-    if (fit.right && !fit.left) {
-      setSelectedIdx(null);
-      setBotGame((prev) => applyBotMove(prev, 'p1', idx, 'right'));
-      return;
-    }
-
-    setSelectedIdx((cur) => (cur === idx ? null : idx));
-  };
-
-  const handleBotSidePick = (side) => {
-    if (selectedIdx === null || botGame.status !== 'playing' || botGame.turn !== 'p1') return;
-    const idx = selectedIdx;
-    setSelectedIdx(null);
-    setBotGame((prev) => applyBotMove(prev, 'p1', idx, side));
-  };
-
-  const handleBotDrawOrPass = () => {
-    if (botGame.status !== 'playing' || botGame.turn !== 'p1') return;
-    setSelectedIdx(null);
-    setBotGame((prev) => {
-      if (prev.pile.length > 0) {
-        const nextPile = [...prev.pile];
-        const drawn = nextPile.pop();
-        return { ...prev, pile: nextPile, p1Hand: [...prev.p1Hand, drawn] };
-      }
-      const nextPasses = prev.consecutivePasses + 1;
-      if (nextPasses >= 2) {
-        const s1 = handSum(prev.p1Hand);
-        const s2 = handSum(prev.p2Hand);
-        if (s1 < s2) {
-          setBotScores((s) => ({ ...s, p1: s.p1 + 1 }));
-          setBotBanner('Blocked · You win');
-        } else if (s2 < s1) {
-          setBotScores((s) => ({ ...s, p2: s.p2 + 1 }));
-          setBotBanner('Blocked · Opponent wins');
-        } else {
-          setBotBanner('Blocked · Draw');
-        }
-        return { ...prev, consecutivePasses: nextPasses, status: 'ended' };
-      }
-      setBotBanner('Passed · Opponent thinking…');
-      return { ...prev, consecutivePasses: nextPasses, turn: 'p2' };
-    });
-  };
-
-  // --- ONLINE FRIEND LOGIC ---
   const handleInviteFriend = async (username) => {
     if (!username || invitingUsername) return;
     setInvitingUsername(username);
@@ -515,7 +717,11 @@ export default function DominoesEasterEggModal({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setOnlineError(data?.error === 'too_many_requests' ? 'Please wait a moment before inviting again.' : 'Could not send invite.');
+        setOnlineError(
+          data?.error === 'too_many_requests'
+            ? 'Please wait a moment before inviting again.'
+            : 'Could not send invite.'
+        );
         return;
       }
       setOnlineRoomId(data.roomId);
@@ -535,144 +741,141 @@ export default function DominoesEasterEggModal({
         body: JSON.stringify({ roomId: onlineRoomId, ...payload }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.ok && data?.state) {
-        setOnlineState(data.state);
-      }
+      if (res.ok && data?.state) setOnlineState(data.state);
     } catch (_) {}
   };
 
-  const handleOnlineTileClick = (idx) => {
+  const clickOnlineTile = (i) => {
     if (!onlineState?.isMyTurn) return;
-    const tile = onlineState.myHand[idx];
-    const fit = canPlayTile(tile, onlineState.board, onlineState.leftVal, onlineState.rightVal);
-    if (!fit.left && !fit.right) return;
-
-    if (onlineState.board.length === 0 || (fit.left && !fit.right)) {
-      setSelectedIdx(null);
-      handleOnlineAction({ action: 'play', tileIndex: idx, side: 'left' });
+    const t = onlineState.myHand[i];
+    if (!canPlayOnline(t, onlineState.board)) return;
+    const e = endsOf(onlineState.board);
+    if (!e) {
+      setOnlinePending(null);
+      handleOnlineAction({ action: 'play', tileIndex: i, side: 'left' });
       return;
     }
-    if (fit.right && !fit.left) {
-      setSelectedIdx(null);
-      handleOnlineAction({ action: 'play', tileIndex: idx, side: 'right' });
+    const L = t.includes(e[0]);
+    const R = t.includes(e[1]);
+    if (L && R && e[0] !== e[1]) {
+      setOnlinePending(i);
       return;
     }
-    setSelectedIdx((cur) => (cur === idx ? null : idx));
+    setOnlinePending(null);
+    handleOnlineAction({ action: 'play', tileIndex: i, side: R ? 'right' : 'left' });
   };
 
-  const handleOnlineSidePick = (side) => {
-    if (selectedIdx === null || !onlineState?.isMyTurn) return;
-    const idx = selectedIdx;
-    setSelectedIdx(null);
-    handleOnlineAction({ action: 'play', tileIndex: idx, side });
-  };
+  const isFriendActiveBoard =
+    mode === 'friend' &&
+    onlineState &&
+    (onlineState.status === 'playing' || onlineState.status === 'ended');
 
-  // --- UNIFIED RENDER PROPS ---
-  const isFriendActiveBoard = mode === 'friend' && onlineState && (onlineState.status === 'playing' || onlineState.status === 'ended');
+  const activeChain = mode === 'bot' ? S.chain : onlineState?.board || [];
+  const activeStartIdx = mode === 'bot' ? S.startIdx : onlineState?.startIdx || 0;
+  const activeHand = mode === 'bot' ? S.p : onlineState?.myHand || [];
+  const activeOppCount = mode === 'bot' ? S.c.length : onlineState?.opponentCount || 0;
+  const activePileCount = mode === 'bot' ? S.pile.length : onlineState?.pileCount || 0;
 
-  const activeBoard = mode === 'bot' ? botGame.board : (onlineState?.board || []);
-  const activeLeftVal = mode === 'bot' ? botGame.leftVal : onlineState?.leftVal;
-  const activeRightVal = mode === 'bot' ? botGame.rightVal : onlineState?.rightVal;
-  const activeHand = mode === 'bot' ? botGame.p1Hand : (onlineState?.myHand || []);
-  const activeOppCount = mode === 'bot' ? botGame.p2Hand.length : (onlineState?.opponentCount || 0);
-  const activePileCount = mode === 'bot' ? botGame.pile.length : (onlineState?.pileCount || 0);
-  const isMyTurnNow = mode === 'bot' ? (botGame.status === 'playing' && botGame.turn === 'p1') : Boolean(onlineState?.isMyTurn);
-  const isGameEnded = mode === 'bot' ? botGame.status === 'ended' : onlineState?.status === 'ended';
-
-  const botHasMove = useMemo(
-    () => (mode === 'bot' ? hasValidMove(botGame.p1Hand, botGame.board, botGame.leftVal, botGame.rightVal) : false),
-    [mode, botGame.p1Hand, botGame.board, botGame.leftVal, botGame.rightVal]
+  const boardLayout = useMemo(
+    () => computeLayout(activeChain, activeStartIdx, boardSize.w, boardSize.h),
+    [activeChain, activeStartIdx, boardSize.w, boardSize.h]
   );
 
-  const showDrawOrPass = mode === 'bot'
-    ? (isMyTurnNow && !botHasMove)
-    : Boolean(onlineState?.isMyTurn && (onlineState?.canDraw || onlineState?.canPass));
-
-  const snaked = useMemo(() => computeSnakedBoard(activeBoard), [activeBoard]);
-  const rows = useMemo(() => {
-    const grouped = [];
-    for (const item of snaked) {
-      if (!grouped[item.row]) grouped[item.row] = [];
-      grouped[item.row].push(item);
+  const botStatusText = useMemo(() => {
+    if (S.over || S.turn !== 'p' || !S.chain.length) return S.msg;
+    if (pending !== null) return 'Choose which end to play';
+    if (!S.p.some((t) => canPlayOriginal(t, S.chain, S.anyStart, S.startD))) {
+      return S.pile.length ? 'No matching tile — draw from the pile' : 'Nothing left to draw — pass';
     }
-    return grouped;
-  }, [snaked]);
+    return S.msg;
+  }, [S, pending]);
 
-  const friendBanner = useMemo(() => {
+  const friendStatusText = useMemo(() => {
     if (!onlineState) return '';
     if (onlineState.status === 'ended') {
       if (onlineState.winnerUserId === onlineState.myId) {
-        return onlineState.endReason === 'blocked' ? 'Blocked · You win' : 'You win';
+        return onlineState.endReason === 'blocked' ? 'Blocked — you win' : 'You win';
       }
       if (onlineState.winnerUserId) {
         return onlineState.endReason === 'blocked'
-          ? `Blocked · ${onlineState.opponentName} wins`
+          ? `Blocked — ${onlineState.opponentName} wins`
           : `${onlineState.opponentName} wins`;
       }
-      return 'Blocked · Draw';
+      return 'Blocked — it\u2019s a draw';
     }
-    return onlineState.isMyTurn ? 'Your turn' : `${onlineState.opponentName}'s turn`;
-  }, [onlineState]);
+    if (onlinePending !== null) return 'Choose which end to play';
+    if (onlineState.isMyTurn && onlineState.board.length > 0) {
+      if (onlineState.canDraw) return 'No matching tile — draw from the pile';
+      if (onlineState.canPass) return 'Nothing left to draw — pass';
+    }
+    return onlineState.isMyTurn ? 'Your turn' : `${onlineState.opponentName}\u2019s turn`;
+  }, [onlineState, onlinePending]);
 
   if (!open) return null;
 
+  const botEnds = endsOf(S.chain);
+  const onlineEnds = endsOf(onlineState?.board || []);
+
   return (
-    <div className="domino-root" role="dialog" aria-modal="true" aria-label="Dominoes">
+    <div className="d2-root" role="dialog" aria-modal="true" aria-label="Dominoes">
       <style>{`
-        .domino-root {
+        .d2-root {
+          --bg: #000;
+          --fg: #fff;
           position: fixed;
           inset: 0;
           z-index: 20000;
-          background: #050505;
-          color: #ffffff;
+          background: var(--bg);
+          color: var(--fg);
+          font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", sans-serif;
           display: flex;
           flex-direction: column;
-          justify-content: space-between;
           user-select: none;
           -webkit-user-select: none;
+          touch-action: manipulation;
+          -webkit-font-smoothing: antialiased;
           padding-top: calc(env(safe-area-inset-top, 0px) + 22px);
           padding-bottom: env(safe-area-inset-bottom, 0px);
-          font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
         }
-        #domino-top {
-          padding: 36px 24px 0;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 10px;
+        .d2-root * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        #d2-top {
+          padding: 36px 16px 0;
+          text-align: center;
           position: relative;
         }
-        .domino-mode-switch {
+        .d2-mode-switch {
           display: inline-flex;
           align-items: center;
           gap: 2px;
           padding: 3px;
           border-radius: 999px;
           background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          margin-bottom: 4px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          margin-bottom: 10px;
         }
-        .domino-mode-btn {
+        .d2-mode-btn {
           border: none;
           background: transparent;
           color: rgba(255, 255, 255, 0.52);
           font-size: 11px;
           font-weight: 500;
+          height: auto;
           padding: 5px 12px;
           border-radius: 999px;
           cursor: pointer;
           transition: background 0.15s ease, color 0.15s ease;
         }
-        .domino-mode-btn-active {
+        .d2-mode-btn.active {
           background: rgba(255, 255, 255, 0.14);
-          color: #ffffff;
+          color: #fff;
         }
-        .domino-close-btn {
+        .d2-close-btn {
           position: absolute;
           top: 32px;
-          right: 20px;
+          right: 16px;
           width: 36px;
           height: 36px;
+          padding: 0;
           border-radius: 999px;
           border: 1px solid rgba(255, 255, 255, 0.14);
           background: rgba(255, 255, 255, 0.06);
@@ -681,142 +884,81 @@ export default function DominoesEasterEggModal({
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          transition: background 0.15s ease, color 0.15s ease;
         }
-        .domino-close-btn:hover {
-          background: rgba(255, 255, 255, 0.12);
-          color: #ffffff;
-        }
-        .domino-opp-hand {
-          display: flex;
-          justify-content: center;
-          gap: 6px;
-          flex-wrap: wrap;
-          min-height: 52px;
-          align-items: center;
-        }
-        .domino-meta {
-          font-size: 12px;
-          color: rgba(255, 255, 255, 0.5);
-          letter-spacing: 0.02em;
-        }
-        #domino-center {
-          flex: 1;
+        .d2-row { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+        #d2-comp { min-height: 44px; }
+        #d2-info { font-size: 13px; margin-top: 12px; opacity: .55; letter-spacing: -.08px; }
+        #d2-board { flex: 1; position: relative; min-height: 0; overflow: hidden; }
+        #d2-layer { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+        .d2-pos { position: absolute; width: 52px; height: 26px; }
+        #d2-bottom { padding: 0 16px 8px; text-align: center; }
+        #d2-status { font-size: 13px; font-weight: 500; letter-spacing: -.08px; opacity: .55; min-height: 20px; margin-bottom: 16px; }
+        .d2-fade { animation: d2fade .3s ease-out both; }
+        .d2-tile {
           display: flex;
           flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 16px;
-          overflow: auto;
-          gap: 10px;
+          width: 40px;
+          height: 74px;
+          border: 1px solid var(--fg);
+          border-radius: 8px;
+          background: var(--bg);
+          flex: none;
         }
-        .domino-board-rows {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 8px;
-        }
-        .domino-board-row {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-        }
-        .domino-board-row-rev {
-          flex-direction: row-reverse;
-        }
-        .domino-empty-board {
-          font-size: 13px;
-          color: rgba(255, 255, 255, 0.35);
-          letter-spacing: 0.02em;
-        }
-        .domino-side-picker {
-          display: flex;
-          gap: 10px;
-          margin-top: 8px;
-        }
-        .domino-side-btn {
-          background: rgba(255, 255, 255, 0.12);
-          border: 1px solid rgba(255, 255, 255, 0.25);
-          color: #ffffff;
-          padding: 6px 14px;
-          border-radius: 999px;
-          font-size: 12px;
+        .d2-tile.h { flex-direction: row; width: 52px; height: 26px; border-radius: 6px; }
+        .d2-half { flex: 1; display: grid; grid-template: repeat(3,1fr)/repeat(3,1fr); padding: 4px; }
+        .d2-half + .d2-half { border-top: 1px solid var(--fg); }
+        .d2-tile.h .d2-half { padding: 2px; }
+        .d2-tile.h .d2-half + .d2-half { border-top: 0; border-left: 1px solid var(--fg); }
+        .d2-pip { width: 6px; height: 6px; border-radius: 50%; background: var(--fg); place-self: center; }
+        .d2-tile.h .d2-pip { width: 4px; height: 4px; }
+        .d2-back { width: 26px; height: 46px; border-radius: 6px; background: var(--fg); position: relative; }
+        .d2-back::after { content: ""; position: absolute; left: 4px; right: 4px; top: 50%; height: 1px; background: var(--bg); opacity: .5; }
+        .d2-mine { margin-bottom: 20px; gap: 6px; }
+        .d2-mine .d2-tile { cursor: pointer; transition: transform .15s ease; }
+        .d2-mine .d2-tile:active { transform: scale(.94); }
+        .d2-bar { display: flex; gap: 8px; justify-content: center; align-items: center; min-height: 44px; }
+        .d2-btn {
+          font: inherit;
+          font-size: 17px;
+          font-weight: 600;
+          letter-spacing: -.4px;
+          height: 44px;
+          padding: 0 24px;
+          border: 0;
+          border-radius: 22px;
           cursor: pointer;
+          background: var(--fg);
+          color: var(--bg);
+          transition: transform .15s ease, opacity .15s ease;
         }
-        .domino-side-btn:hover {
-          background: rgba(255, 255, 255, 0.2);
-        }
-        #domino-bottom {
-          padding: 0 12px calc(env(safe-area-inset-bottom, 0px) + 24px);
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 12px;
-        }
-        .domino-status {
-          font-size: 13px;
-          color: rgba(255, 255, 255, 0.72);
-          min-height: 20px;
-        }
-        .domino-hand {
-          display: flex;
-          justify-content: center;
-          flex-wrap: wrap;
-          gap: 5px;
-          min-height: 82px;
-          align-items: center;
-          max-width: 100%;
-        }
-        .domino-actions {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 18px;
-          min-height: 32px;
-        }
-        .domino-action-btn {
-          background: none;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          color: rgba(255, 255, 255, 0.85);
-          padding: 6px 16px;
-          border-radius: 999px;
-          font-size: 13px;
-          cursor: pointer;
-          transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
-        }
-        .domino-action-btn:hover {
-          border-color: rgba(255, 255, 255, 0.45);
-          background: rgba(255, 255, 255, 0.06);
-        }
-        .domino-restart-link {
-          background: none;
-          border: none;
-          color: rgba(255, 255, 255, 0.55);
-          font-size: 15px;
-          cursor: pointer;
-          padding: 6px 10px;
-          transition: color 0.15s ease;
-        }
-        .domino-restart-link:hover {
-          color: #ffffff;
-        }
-        .domino-lobby {
+        .d2-btn:active { transform: scale(.95); opacity: .8; }
+        .d2-btn.plain { background: transparent; color: var(--fg); font-weight: 500; opacity: .55; }
+        .d2-enter { animation: d2enter .5s cubic-bezier(.2,.9,.3,1.15) both; }
+        .d2-drop { animation: d2drop .45s cubic-bezier(.2,.9,.3,1.1) both; }
+        .d2-rise { animation: d2enter .35s cubic-bezier(.2,.9,.3,1.1) both; }
+        @keyframes d2enter { from { opacity: 0; transform: translateY(18px) scale(.9); } to { opacity: 1; transform: none; } }
+        @keyframes d2drop { from { opacity: 0; transform: scale(1.4); } 55% { opacity: 1; } to { opacity: 1; transform: scale(1); } }
+        @keyframes d2fade { from { opacity: 0; transform: translateY(4px); } to { opacity: .55; transform: none; } }
+        @media (prefers-reduced-motion: reduce) { .d2-root * { animation: none !important; transition: none !important; } }
+        .d2-lobby {
           width: 100%;
           max-width: 360px;
+          margin: 0 auto;
+          padding: 16px;
           display: flex;
           flex-direction: column;
           gap: 10px;
         }
-        .domino-friend-row {
+        .d2-friend-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
           padding: 11px 14px;
           border-radius: 14px;
-          background: rgba(255, 255, 255, 0.04);
+          background: rgba(255, 255, 255, 0.05);
           border: 1px solid rgba(255, 255, 255, 0.08);
         }
-        .domino-invite-btn {
+        .d2-invite-btn {
           display: inline-flex;
           align-items: center;
           gap: 6px;
@@ -824,127 +966,22 @@ export default function DominoesEasterEggModal({
           border-radius: 999px;
           border: 1px solid rgba(255, 255, 255, 0.22);
           background: rgba(255, 255, 255, 0.1);
-          color: #ffffff;
+          color: #fff;
           font-size: 12px;
           font-weight: 500;
           cursor: pointer;
-          transition: background 0.15s ease;
-        }
-        .domino-invite-btn:hover:not(:disabled) {
-          background: rgba(255, 255, 255, 0.18);
-        }
-        .domino-invite-btn:disabled {
-          opacity: 0.45;
-          cursor: not-allowed;
-        }
-        .domino-tile {
-          background: #0a0a0a;
-          border: 1.5px solid rgba(255, 255, 255, 0.85);
-          border-radius: 8px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          box-sizing: border-box;
-          transition: transform 0.14s ease, border-color 0.14s ease, opacity 0.14s ease;
-        }
-        .domino-tile-vert {
-          width: 40px;
-          height: 78px;
-          flex-direction: column;
-          padding: 4px;
-        }
-        .domino-tile-horiz {
-          width: 68px;
-          height: 36px;
-          flex-direction: row;
-          padding: 3px;
-        }
-        .domino-tile-mini.domino-tile-vert {
-          width: 34px;
-          height: 66px;
-          padding: 3px;
-          border-radius: 6px;
-        }
-        .domino-tile-mini.domino-tile-horiz {
-          width: 58px;
-          height: 30px;
-          padding: 3px;
-          border-radius: 6px;
-        }
-        .domino-tile-back {
-          width: 28px !important;
-          height: 50px !important;
-          background: #ffffff;
-          border-color: #ffffff;
-          justify-content: center;
-          padding: 4px;
-        }
-        .domino-back-divider {
-          width: 100%;
-          height: 1px;
-          background: rgba(0, 0, 0, 0.25);
-        }
-        .domino-tile-clickable {
-          cursor: pointer;
-        }
-        .domino-tile-clickable:hover {
-          transform: translateY(-6px);
-          border-color: #ffffff;
-        }
-        .domino-tile-selected {
-          transform: translateY(-10px) !important;
-          border-color: #ffffff;
-          box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
-        }
-        .domino-tile-dimmed {
-          opacity: 0.35;
-        }
-        .domino-divider-vert {
-          width: 85%;
-          height: 1px;
-          background: rgba(255, 255, 255, 0.35);
-        }
-        .domino-divider-horiz {
-          height: 85%;
-          width: 1px;
-          background: rgba(255, 255, 255, 0.35);
-        }
-        .domino-half {
-          width: 30px;
-          height: 30px;
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          grid-template-rows: repeat(3, 1fr);
-          place-items: center;
-        }
-        .domino-half-mini {
-          width: 24px;
-          height: 24px;
-        }
-        .domino-pip {
-          width: 5px;
-          height: 5px;
-          border-radius: 999px;
-          background: transparent;
-        }
-        .domino-pip-mini {
-          width: 3.5px;
-          height: 3.5px;
-        }
-        .domino-pip-on {
-          background: #ffffff;
         }
       `}</style>
 
       {/* Top */}
-      <div id="domino-top">
+      <div id="d2-top">
         {!isInvitedSession && (
-          <div className="domino-mode-switch" role="tablist" aria-label="Game mode">
+          <div className="d2-mode-switch" role="tablist" aria-label="Game mode">
             <button
               type="button"
               role="tab"
               aria-selected={mode === 'bot'}
-              className={`domino-mode-btn ${mode === 'bot' ? 'domino-mode-btn-active' : ''}`}
+              className={`d2-mode-btn ${mode === 'bot' ? 'active' : ''}`}
               onClick={() => switchMode('bot')}
             >
               vs Bot
@@ -953,7 +990,7 @@ export default function DominoesEasterEggModal({
               type="button"
               role="tab"
               aria-selected={mode === 'friend'}
-              className={`domino-mode-btn ${mode === 'friend' ? 'domino-mode-btn-active' : ''}`}
+              className={`d2-mode-btn ${mode === 'friend' ? 'active' : ''}`}
               onClick={() => switchMode('friend')}
             >
               vs Friend
@@ -963,7 +1000,7 @@ export default function DominoesEasterEggModal({
 
         <button
           type="button"
-          className="domino-close-btn"
+          className="d2-close-btn"
           onClick={onClose}
           aria-label="Close Dominoes"
         >
@@ -972,269 +1009,327 @@ export default function DominoesEasterEggModal({
 
         {(mode === 'bot' || isFriendActiveBoard) && (
           <>
-            <div className="domino-opp-hand">
-              {Array.from({ length: activeOppCount }).map((_, idx) => (
-                <DominoTile key={idx} back />
-              ))}
+            <div
+              className="d2-row"
+              id="d2-comp"
+              style={{ gap: activeOppCount > 9 ? '-12px' : '6px' }}
+            >
+              {Array.from({ length: activeOppCount }).map((_, i) => {
+                let animClass = '';
+                let animDelay = '';
+                if (mode === 'bot') {
+                  if (S.deal) {
+                    animClass = 'd2-enter';
+                    animDelay = `${i * 50}ms`;
+                  } else if (S.cDrew && i === activeOppCount - 1) {
+                    animClass = 'd2-rise';
+                  }
+                }
+                return <DominoBack key={i} animClass={animClass} animDelay={animDelay} />;
+              })}
             </div>
-            <div className="domino-meta">
+            <div id="d2-info">
               {mode === 'bot'
-                ? `You ${botScores.p1} · Opponent ${botScores.p2} · Pile ${activePileCount}`
-                : `You ${onlineState.myScore} · ${onlineState.opponentName} ${onlineState.opponentScore} · Pile ${activePileCount}`}
+                ? `You ${score.p}  ·  Opponent ${score.c}  ·  Pile ${activePileCount}`
+                : `You ${onlineState.myScore}  ·  ${onlineState.opponentName} ${onlineState.opponentScore}  ·  Pile ${activePileCount}`}
             </div>
           </>
         )}
       </div>
 
-      {/* Center */}
-      <div id="domino-center">
+      {/* Board / Online Lobby */}
+      <div id="d2-board" ref={boardRef}>
         {mode === 'friend' && !isFriendActiveBoard ? (
-          <div className="domino-lobby">
-            {joiningRoom ? (
-              <div className="flex flex-col items-center gap-3 py-8 text-white/60 text-sm">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Joining match…</span>
-              </div>
-            ) : onlineError ? (
-              <div className="flex flex-col items-center gap-3 py-6 text-center">
-                <p className="text-sm text-white/75">{onlineError}</p>
-                {!isInvitedSession && (
+          <div className="h-full flex items-center justify-center overflow-y-auto">
+            <div className="d2-lobby">
+              {joiningRoom ? (
+                <div className="flex flex-col items-center gap-3 py-8 text-white/60 text-sm">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Joining match…</span>
+                </div>
+              ) : onlineError ? (
+                <div className="flex flex-col items-center gap-3 py-6 text-center">
+                  <p className="text-sm text-white/75">{onlineError}</p>
+                  {!isInvitedSession && (
+                    <button
+                      type="button"
+                      className="d2-btn"
+                      onClick={() => {
+                        setOnlineError('');
+                        setOnlineRoomId(null);
+                        setOnlineState(null);
+                      }}
+                    >
+                      Back
+                    </button>
+                  )}
+                </div>
+              ) : onlineState?.status === 'waiting' ? (
+                <div className="flex flex-col items-center gap-4 py-8 text-center">
+                  <Loader2 className="w-6 h-6 animate-spin text-white/70" />
+                  <div>
+                    <p className="text-sm font-medium text-white">
+                      Invite sent to {onlineState.opponentName}
+                    </p>
+                    <p className="text-xs text-white/45 mt-1">Waiting for them to accept…</p>
+                  </div>
                   <button
                     type="button"
-                    className="domino-action-btn"
-                    onClick={() => {
-                      setOnlineError('');
+                    className="d2-btn plain"
+                    onClick={async () => {
+                      await leaveActiveRoom(onlineRoomId);
                       setOnlineRoomId(null);
                       setOnlineState(null);
                     }}
                   >
-                    Back to friends
+                    Cancel
                   </button>
-                )}
-              </div>
-            ) : onlineState?.status === 'waiting' ? (
-              <div className="flex flex-col items-center gap-4 py-8 text-center">
-                <Loader2 className="w-6 h-6 animate-spin text-white/70" />
-                <div>
-                  <p className="text-sm font-medium text-white">
-                    Invite sent to {onlineState.opponentName}
-                  </p>
-                  <p className="text-xs text-white/45 mt-1">
-                    Waiting for them to accept…
-                  </p>
                 </div>
-                <button
-                  type="button"
-                  className="domino-action-btn"
-                  onClick={async () => {
-                    await leaveActiveRoom(onlineRoomId);
-                    setOnlineRoomId(null);
-                    setOnlineState(null);
+              ) : onlineState?.status === 'cancelled' ? (
+                <div className="flex flex-col items-center gap-4 py-8 text-center">
+                  <p className="text-sm text-white/75">{onlineState.opponentName} left the match.</p>
+                  {!isInvitedSession && (
+                    <button
+                      type="button"
+                      className="d2-btn plain"
+                      onClick={() => {
+                        setOnlineRoomId(null);
+                        setOnlineState(null);
+                      }}
+                    >
+                      Back
+                    </button>
+                  )}
+                </div>
+              ) : !isSignedIn ? (
+                <div className="flex flex-col items-center gap-2 py-8 text-center text-white/55 text-sm">
+                  <WifiOff className="w-5 h-5 mb-1" />
+                  <span>Sign in to invite friends in bokra.</span>
+                </div>
+              ) : friends.length === 0 ? (
+                <div className="text-center py-8 text-white/50 text-sm">
+                  Add friends in bokra first to invite them here.
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs text-white/45 text-center mb-1">
+                    Invite a friend to play
+                  </p>
+                  {friends.map((f) => {
+                    const u = f?.user || {};
+                    const username = u.username;
+                    if (!username) return null;
+                    const isInviting = invitingUsername === username;
+                    return (
+                      <div key={f.friendshipId || username} className="d2-friend-row">
+                        <div className="min-w-0 text-left">
+                          <div className="text-sm font-medium text-white truncate">
+                            {u.name || username}
+                          </div>
+                          <div className="text-[11px] text-white/40 truncate">@{username}</div>
+                        </div>
+                        <button
+                          type="button"
+                          className="d2-invite-btn"
+                          disabled={Boolean(invitingUsername)}
+                          onClick={() => handleInviteFriend(username)}
+                        >
+                          {isInviting ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Send className="w-3.5 h-3.5" />
+                          )}
+                          <span>{isInviting ? 'Sending…' : 'Invite'}</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
+          boardLayout && (
+            <div id="d2-layer" style={{ transform: boardLayout.layerTransform }}>
+              {boardLayout.items.map((item) => (
+                <div
+                  key={item.chainIdx}
+                  className="d2-pos"
+                  style={{
+                    left: `${item.x}px`,
+                    top: `${item.y}px`,
+                    transform: `translate(-50%,-50%) rotate(${item.ang}rad)`,
                   }}
                 >
-                  Cancel invite
-                </button>
-              </div>
-            ) : onlineState?.status === 'cancelled' ? (
-              <div className="flex flex-col items-center gap-4 py-8 text-center">
-                <p className="text-sm text-white/75">
-                  {onlineState.opponentName} left the match.
-                </p>
-                {!isInvitedSession && (
-                  <button
-                    type="button"
-                    className="domino-action-btn"
-                    onClick={() => {
-                      setOnlineRoomId(null);
-                      setOnlineState(null);
-                    }}
-                  >
-                    Invite someone else
-                  </button>
-                )}
-              </div>
-            ) : !isSignedIn ? (
-              <div className="flex flex-col items-center gap-2 py-8 text-center text-white/55 text-sm">
-                <WifiOff className="w-5 h-5 mb-1" />
-                <span>Sign in to invite friends in bokra.</span>
-              </div>
-            ) : friends.length === 0 ? (
-              <div className="text-center py-8 text-white/50 text-sm">
-                Add friends in bokra first to invite them here.
-              </div>
-            ) : (
-              <>
-                <p className="text-xs text-white/45 text-center mb-1">
-                  Invite a friend to play — they&apos;ll get an in-app &amp; push invite
-                </p>
-                {friends.map((f) => {
-                  const u = f?.user || {};
-                  const username = u.username;
-                  if (!username) return null;
-                  const isInviting = invitingUsername === username;
-                  return (
-                    <div key={f.friendshipId || username} className="domino-friend-row">
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium text-white truncate">
-                          {u.name || username}
-                        </div>
-                        <div className="text-[11px] text-white/40 truncate">
-                          @{username}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        className="domino-invite-btn"
-                        disabled={Boolean(invitingUsername)}
-                        onClick={() => handleInviteFriend(username)}
-                      >
-                        {isInviting ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Send className="w-3.5 h-3.5" />
-                        )}
-                        <span>{isInviting ? 'Sending…' : 'Invite'}</span>
-                      </button>
-                    </div>
-                  );
-                })}
-              </>
-            )}
-          </div>
-        ) : activeBoard.length === 0 ? (
-          <div className="domino-empty-board">Play any tile to start</div>
-        ) : (
-          <div className="domino-board-rows">
-            {rows.map((rowItems, rIdx) => (
-              <div
-                key={rIdx}
-                className={`domino-board-row ${rIdx % 2 === 1 ? 'domino-board-row-rev' : ''}`}
-              >
-                {rowItems.map((item) => (
                   <DominoTile
-                    key={item.idx}
-                    a={item.displayA}
-                    b={item.displayB}
-                    horizontal={!item.isDouble}
-                    mini
+                    tile={item.h}
+                    horiz
+                    animClass={mode === 'bot' && item.chainIdx === S.newestIdx ? 'd2-drop' : ''}
                   />
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {selectedIdx !== null && isMyTurnNow && activeBoard.length > 0 && (
-          <div className="domino-side-picker">
-            <button
-              type="button"
-              className="domino-side-btn"
-              onClick={() => (mode === 'bot' ? handleBotSidePick('left') : handleOnlineSidePick('left'))}
-            >
-              Play Left ({activeLeftVal})
-            </button>
-            <button
-              type="button"
-              className="domino-side-btn"
-              onClick={() => (mode === 'bot' ? handleBotSidePick('right') : handleOnlineSidePick('right'))}
-            >
-              Play Right ({activeRightVal})
-            </button>
-          </div>
+                </div>
+              ))}
+            </div>
+          )
         )}
       </div>
 
       {/* Bottom */}
       {(mode === 'bot' || isFriendActiveBoard) && (
-        <div id="domino-bottom">
-          <div className="domino-status">
-            {mode === 'bot' ? botBanner : friendBanner}
+        <div id="d2-bottom">
+          <div id="d2-status" key={mode === 'bot' ? botStatusText : friendStatusText} className="d2-fade">
+            {mode === 'bot' ? botStatusText : friendStatusText}
           </div>
 
-          <div className="domino-hand">
-            {activeHand.map((tile, idx) => {
-              const fit = canPlayTile(tile, activeBoard, activeLeftVal, activeRightVal);
-              const playable = isMyTurnNow && (fit.left || fit.right);
+          <div className="d2-row d2-mine" id="d2-hand">
+            {activeHand.map((t, i) => {
+              let animClass = '';
+              let animDelay = '';
+              if (mode === 'bot') {
+                if (S.deal) {
+                  animClass = 'd2-enter';
+                  animDelay = `${250 + i * 60}ms`;
+                } else if (i === S.newPIdx) {
+                  animClass = 'd2-rise';
+                }
+              }
               return (
                 <DominoTile
-                  key={`${tile[0]}-${tile[1]}-${idx}`}
-                  a={tile[0]}
-                  b={tile[1]}
-                  clickable={playable}
-                  selected={selectedIdx === idx}
-                  dimmed={isMyTurnNow && !playable}
-                  onClick={() => (mode === 'bot' ? handleBotTileClick(idx) : handleOnlineTileClick(idx))}
+                  key={`${t[0]}-${t[1]}-${i}`}
+                  tile={t}
+                  animClass={animClass}
+                  animDelay={animDelay}
+                  onClick={() => (mode === 'bot' ? clickBotTile(i) : clickOnlineTile(i))}
                 />
               );
             })}
           </div>
 
-          <div className="domino-actions">
-            {showDrawOrPass && (
-              <button
-                type="button"
-                className="domino-action-btn"
-                onClick={() => {
-                  if (mode === 'bot') {
-                    handleBotDrawOrPass();
-                  } else if (onlineState?.canDraw) {
-                    handleOnlineAction({ action: 'draw' });
-                  } else if (onlineState?.canPass) {
-                    handleOnlineAction({ action: 'pass' });
-                  }
-                }}
-              >
-                {activePileCount > 0 ? `Draw (${activePileCount})` : 'Pass'}
-              </button>
-            )}
-
+          <div className="d2-bar" id="d2-bar">
             {mode === 'bot' ? (
-              confirmRestart && !isGameEnded ? (
-                <div className="flex items-center gap-2 text-xs text-white/60">
-                  <span>Restart game?</span>
+              <>
+                {S.over ? (
                   <button
                     type="button"
-                    className="domino-action-btn !py-1 !px-3 !text-xs"
-                    onClick={() => {
-                      setConfirmRestart(false);
-                      restartBotRound(false);
-                    }}
+                    className="d2-btn"
+                    onClick={S.match ? startNewGame : startNextRound}
                   >
-                    Yes
+                    {S.match ? 'New Match' : 'Next Round'}
                   </button>
-                  <button
-                    type="button"
-                    className="domino-restart-link !text-xs !px-2"
-                    onClick={() => setConfirmRestart(false)}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className="domino-restart-link"
-                  onClick={() => {
-                    if (isGameEnded) {
-                      restartBotRound(false);
-                    } else {
-                      setConfirmRestart(true);
-                    }
-                  }}
-                >
-                  Restart
-                </button>
-              )
+                ) : S.turn === 'p' ? (
+                  pending !== null && botEnds ? (
+                    <>
+                      <button
+                        type="button"
+                        className="d2-btn"
+                        onClick={() => playerPlay(pending, 'l')}
+                      >
+                        Left · {botEnds[0]}
+                      </button>
+                      <button
+                        type="button"
+                        className="d2-btn"
+                        onClick={() => playerPlay(pending, 'r')}
+                      >
+                        Right · {botEnds[1]}
+                      </button>
+                    </>
+                  ) : botEnds && !S.p.some((t) => canPlayOriginal(t, S.chain, S.anyStart, S.startD)) ? (
+                    S.pile.length ? (
+                      <button type="button" className="d2-btn" onClick={botDraw}>
+                        Draw
+                      </button>
+                    ) : (
+                      <button type="button" className="d2-btn" onClick={botPass}>
+                        Pass
+                      </button>
+                    )
+                  ) : null
+                ) : null}
+
+                {!S.over &&
+                  (confirmRestart ? (
+                    <div className="flex items-center gap-2 text-xs text-white/60">
+                      <span>Restart?</span>
+                      <button
+                        type="button"
+                        className="d2-btn !h-8 !px-4 !text-xs"
+                        onClick={startNewGame}
+                      >
+                        Yes
+                      </button>
+                      <button
+                        type="button"
+                        className="d2-btn plain !h-8 !px-3 !text-xs"
+                        onClick={() => setConfirmRestart(false)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="d2-btn plain"
+                      onClick={() => setConfirmRestart(true)}
+                    >
+                      Restart
+                    </button>
+                  ))}
+              </>
             ) : (
-              isGameEnded && (
-                <button
-                  type="button"
-                  className="domino-restart-link"
-                  onClick={() => handleOnlineAction({ action: 'rematch' })}
-                >
-                  Play again
-                </button>
-              )
+              <>
+                {onlineState?.status === 'ended' ? (
+                  <button
+                    type="button"
+                    className="d2-btn"
+                    onClick={() => handleOnlineAction({ action: 'rematch' })}
+                  >
+                    Play Again
+                  </button>
+                ) : onlineState?.isMyTurn ? (
+                  onlinePending !== null && onlineEnds ? (
+                    <>
+                      <button
+                        type="button"
+                        className="d2-btn"
+                        onClick={() => {
+                          const idx = onlinePending;
+                          setOnlinePending(null);
+                          handleOnlineAction({ action: 'play', tileIndex: idx, side: 'left' });
+                        }}
+                      >
+                        Left · {onlineEnds[0]}
+                      </button>
+                      <button
+                        type="button"
+                        className="d2-btn"
+                        onClick={() => {
+                          const idx = onlinePending;
+                          setOnlinePending(null);
+                          handleOnlineAction({ action: 'play', tileIndex: idx, side: 'right' });
+                        }}
+                      >
+                        Right · {onlineEnds[1]}
+                      </button>
+                    </>
+                  ) : onlineState.canDraw ? (
+                    <button
+                      type="button"
+                      className="d2-btn"
+                      onClick={() => handleOnlineAction({ action: 'draw' })}
+                    >
+                      Draw
+                    </button>
+                  ) : onlineState.canPass ? (
+                    <button
+                      type="button"
+                      className="d2-btn"
+                      onClick={() => handleOnlineAction({ action: 'pass' })}
+                    >
+                      Pass
+                    </button>
+                  ) : null
+                ) : null}
+              </>
             )}
           </div>
         </div>
