@@ -40,6 +40,7 @@ const AmbientSoundModal = dynamic(() => import('../components/ambient/AmbientSou
 import AmbientSoundWidget from '../components/ambient/AmbientSoundWidget';
 const PushNotificationsCard = dynamic(() => import('../components/PushNotificationsCard'), { ssr: false });
 const CompleteProfileModal = dynamic(() => import('../components/CompleteProfileModal'), { ssr: false });
+import DominoesEasterEggModal from '../components/DominoesEasterEggModal';
 import { showLocalNotification } from '../lib/localNotifications';
 import { HABIT_PRESETS, getLocalizedPreset } from '../lib/habitPresets';
 import { guideSections } from '../lib/guideContent';
@@ -1337,6 +1338,25 @@ function AppContent({ isPreview = false }) {
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isProfileRequired, setIsProfileRequired] = useState(false);
+  const [showVersionEasterEgg, setShowVersionEasterEgg] = useState(false);
+  const versionTapRef = useRef({ count: 0, timer: null });
+
+  const handleVersionEasterEggTap = () => {
+    const state = versionTapRef.current;
+    state.count += 1;
+    if (state.timer) clearTimeout(state.timer);
+    if (state.count >= 5) {
+      state.count = 0;
+      state.timer = null;
+      haptic('success');
+      setShowVersionEasterEgg(true);
+      return;
+    }
+    state.timer = setTimeout(() => {
+      state.count = 0;
+      state.timer = null;
+    }, 2500);
+  };
 
   const [expandedHabits, setExpandedHabits] = useState([]);
 
@@ -11620,8 +11640,15 @@ function AppContent({ isPreview = false }) {
                         </div>
 
                         {/* Creator Signature / Footer */}
-                        <div className="flex justify-center items-center py-4 opacity-50 hover:opacity-100 transition-opacity">
-                          <span className="text-[10px] font-bold tracking-widest uppercase select-none text-center text-white/50">
+                        <div className="flex flex-col justify-center items-center gap-2 py-4">
+                          <button
+                            type="button"
+                            onClick={handleVersionEasterEggTap}
+                            className="text-[11px] font-mono text-white/35 hover:text-white/65 transition-colors px-3 py-1 rounded-full active:scale-95 cursor-pointer select-none"
+                          >
+                            bokra · v{APP_CLIENT_VERSION}
+                          </button>
+                          <span className="text-[10px] font-bold tracking-widest uppercase select-none text-center text-white/40 opacity-60 hover:opacity-100 transition-opacity">
                             {tEn('creatorSignature')} <a href="https://www.instagram.com/jj3_xx?igsh=MWVkaGI5ZjNsb3Nreg%3D%3D&utm_source=qr" target="_blank" rel="noopener noreferrer" style={{ color: themeColor }} className="underline decoration-dashed underline-offset-4 font-bold">6afra</a>
                           </span>
                         </div>
@@ -11642,6 +11669,15 @@ function AppContent({ isPreview = false }) {
                   onSelectAvatar={handleSelectAvatar}
                   onCompleted={() => setIsProfileRequired(false)}
                   onClose={() => popNav()}
+                />,
+                document.body
+              )}
+
+              {showVersionEasterEgg && isMounted && createPortal(
+                <DominoesEasterEggModal
+                  isOpen={showVersionEasterEgg}
+                  onClose={() => setShowVersionEasterEgg(false)}
+                  theme={theme}
                 />,
                 document.body
               )}
