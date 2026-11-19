@@ -3,18 +3,24 @@ import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
+let lastDbPingAt = 0;
+const DB_PING_INTERVAL_MS = 6 * 60 * 60 * 1000; // Touch Postgres once every 6h to prevent 7-day pause without wasting queries every 10m
+
 export async function GET() {
   const t0 = Date.now();
-  let dbStatus = 'ok';
+  let dbStatus = 'cached_ok';
   let dbLatencyMs = 0;
 
-  try {
-    // Keep Neon PostgreSQL compute endpoint warm and prevent auto-suspend
-    await prisma.$queryRaw`SELECT 1`;
-    dbLatencyMs = Date.now() - t0;
-  } catch (err) {
-    dbStatus = 'error';
-    console.warn('[ping] DB ping error:', err?.message);
+  if (t0 - lastDbPingAt >= DB_PING_INTERVAL_MS) {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      dbLatencyMs = Date.now() - t0;
+      dbStatus = 'ok';
+      lastDbPingAt = Date.now();
+    } catch (err) {
+      dbStatus = 'error';
+      console.warn('[ping] DB ping error:', err?.message);
+    }
   }
 
   return NextResponse.json(
