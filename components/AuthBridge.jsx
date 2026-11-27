@@ -410,7 +410,7 @@ export function UserButton({ afterSignOutUrl = '/', appearance = {} }) {
   );
 }
 
-export function SignIn({ onClose }) {
+export function SignIn({ onClose, embedded = false }) {
   const { isSignedIn, isSigningIn, signInWithGoogle } = useContext(AuthContext);
   const buttonContainerRef = useRef(null);
   const [isRendered, setIsRendered] = useState(false);
@@ -429,12 +429,12 @@ export function SignIn({ onClose }) {
       if (window.google?.accounts?.id && buttonContainerRef.current) {
         buttonContainerRef.current.innerHTML = '';
         window.google.accounts.id.renderButton(buttonContainerRef.current, {
-          theme: 'filled_black',
+          theme: 'outline',
           size: 'large',
           type: 'standard',
           shape: 'pill',
           text: 'continue_with',
-          width: 320,
+          width: 310,
           logo_alignment: 'left',
           locale: 'en',
         });
@@ -463,66 +463,90 @@ export function SignIn({ onClose }) {
   }, []);
 
   return (
-    <div className="w-full max-w-[390px] mx-auto p-8 rounded-3xl bg-[#121215]/95 border border-white/10 backdrop-blur-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.9)] text-center select-none relative overflow-hidden">
-      {/* Subtle top card glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-20 bg-white/[0.04] blur-2xl pointer-events-none rounded-full" />
+    <div className="w-full max-w-[370px] mx-auto rounded-[28px] bg-[#101013] border border-white/[0.12] shadow-[0_24px_80px_rgba(0,0,0,0.95)] select-none relative overflow-hidden p-5 sm:p-6">
+      {/* Top 1px subtle specular highlight */}
+      <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
 
       {/* Optional Close Button */}
       {onClose && (
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-5 right-5 text-white/40 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer active:scale-90 z-10"
+          className="absolute top-4 right-4 text-white/40 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer active:scale-90 z-10"
           aria-label="Close"
         >
-          <X size={18} strokeWidth={2.2} />
+          <X size={18} strokeWidth={2} />
         </button>
       )}
 
-      {/* Official App Logo */}
-      <div className="mb-4 flex justify-center">
-        <img 
-          src="/logo-transparent.webp" 
-          alt="bokra" 
-          className="h-12 w-auto object-contain select-none drop-shadow-xl" 
-        />
+      {/* Top Status & Identity Row (No duplicate huge blurred logo when embedded) */}
+      <div className="flex items-center justify-between gap-3 pb-4 mb-4 border-b border-white/[0.07]">
+        <div className="flex items-center gap-3 min-w-0 text-left">
+          {!embedded && (
+            <div className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center shrink-0">
+              <img
+                src="/logo-transparent.webp"
+                alt="bokra"
+                className="h-5 w-auto object-contain select-none"
+              />
+            </div>
+          )}
+          <div className="min-w-0">
+            <h2 className="text-base font-bold text-white tracking-tight leading-snug">
+              Get Started
+            </h2>
+            <p className="text-[11px] text-white/45 truncate">
+              One-click Google workspace access
+            </p>
+          </div>
+        </div>
+
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono font-semibold text-emerald-400 shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <span>Cloud Sync</span>
+        </span>
       </div>
 
-      {/* Brand Header */}
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-white tracking-tight mb-1.5">
-          Sign In to bokra
-        </h2>
-        <p className="text-xs text-white/50 leading-relaxed max-w-[280px] mx-auto font-medium">
-          Habit Tracker & Ambient Focus Companion
-        </p>
+      {/* Quick Capability Chips */}
+      <div className="grid grid-cols-2 gap-2 mb-4 text-left">
+        <div className="px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center gap-2">
+          <ShieldCheck className="w-3.5 h-3.5 text-white/70 shrink-0" />
+          <span className="text-[11px] text-white/70 font-medium truncate">Encrypted Backup</span>
+        </div>
+        <div className="px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center gap-2">
+          <UserIcon className="w-3.5 h-3.5 text-white/70 shrink-0" />
+          <span className="text-[11px] text-white/70 font-medium truncate">Multi-Device Sync</span>
+        </div>
       </div>
 
-      {/* Google Button Container - Sleek Pill, Zero White Box */}
-      <div className="w-full flex justify-center my-4 min-h-[44px]">
-        <div 
-          ref={buttonContainerRef} 
-          className={`flex justify-center items-center rounded-full overflow-hidden ${!isRendered ? 'hidden' : ''}`}
-          style={{ borderRadius: '9999px', overflow: 'hidden', minWidth: '320px', minHeight: '44px' }}
+      {/* High-Contrast Pill Google Button Container */}
+      <div className="w-full flex justify-center py-1 min-h-[44px]">
+        <div
+          ref={buttonContainerRef}
+          className={`flex justify-center items-center rounded-full overflow-hidden shadow-[0_8px_25px_rgba(255,255,255,0.12)] ${!isRendered ? 'hidden' : ''}`}
+          style={{ borderRadius: '9999px', overflow: 'hidden', minWidth: '310px', minHeight: '44px' }}
         />
         {!isRendered && (
-          <div className="w-[320px] h-[44px] rounded-full border border-white/10 bg-white/5 animate-pulse flex items-center justify-center gap-2.5 text-xs text-white/50 font-medium">
-            <Loader2 className="w-4 h-4 animate-spin text-white/70" />
-            <span>Connecting to Google...</span>
-          </div>
+          <button
+            type="button"
+            onClick={signInWithGoogle}
+            disabled={isSigningIn}
+            className="w-[310px] h-[44px] rounded-full bg-white hover:bg-white/95 text-black font-bold text-xs flex items-center justify-center gap-2.5 transition-all active:scale-95 cursor-pointer shadow-[0_8px_25px_rgba(255,255,255,0.15)]"
+          >
+            {isSigningIn ? (
+              <Loader2 className="w-4 h-4 animate-spin text-black" />
+            ) : (
+              <GoogleIcon className="w-4 h-4" />
+            )}
+            <span>Continue with Google</span>
+          </button>
         )}
       </div>
 
-      {/* Security badge and privacy note (Pure Monochrome) */}
-      <div className="mt-6 pt-5 border-t border-white/5">
-        <div className="flex items-center justify-center gap-1.5 text-[11px] text-white/60 font-medium mb-2.5">
-          <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-white/70" />
-          <span>Instant, secure sign-in with Google</span>
-        </div>
-        <p className="text-[11px] text-white/40 leading-relaxed">
-          By continuing, you agree to our Terms of Service and Privacy Policy.
-        </p>
-      </div>
+      {/* Minimal Terms Footer */}
+      <p className="mt-4 pt-3 border-t border-white/[0.06] text-[10px] text-white/35 text-center leading-relaxed">
+        By continuing, you agree to bokra&apos;s Terms of Service & Privacy Policy.
+      </p>
     </div>
   );
 }

@@ -140,7 +140,7 @@ export function PreLoginWelcomeTourModal() {
 
           {/* Right Column: Official Google Sign-In Card */}
           <div className="lg:col-span-5 w-full flex flex-col items-center">
-            <SignIn />
+            <SignIn embedded={true} />
           </div>
         </div>
       </main>
