@@ -68,6 +68,9 @@ export async function POST(req) {
       if (typeof rawIncoming.profileCompleted === 'boolean') {
         sanitizedIncoming.profileCompleted = rawIncoming.profileCompleted
       }
+      if (typeof rawIncoming.onboardingTourCompleted === 'boolean') {
+        sanitizedIncoming.onboardingTourCompleted = rawIncoming.onboardingTourCompleted
+      }
     }
 
     const existing = await prisma.user.findUnique({

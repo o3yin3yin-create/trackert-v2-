@@ -40,6 +40,7 @@ const AmbientSoundModal = dynamic(() => import('../components/ambient/AmbientSou
 import AmbientSoundWidget from '../components/ambient/AmbientSoundWidget';
 const PushNotificationsCard = dynamic(() => import('../components/PushNotificationsCard'), { ssr: false });
 const CompleteProfileModal = dynamic(() => import('../components/CompleteProfileModal'), { ssr: false });
+import { NotificationGateModal, PreLoginWelcomeTourModal, PostLoginQuickTourModal } from '../components/OnboardingFlowModals';
 import DominoesEasterEggModal from '../components/DominoesEasterEggModal';
 import { showLocalNotification } from '../lib/localNotifications';
 import { HABIT_PRESETS, getLocalizedPreset } from '../lib/habitPresets';
@@ -1338,6 +1339,7 @@ function AppContent({ isPreview = false }) {
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isProfileRequired, setIsProfileRequired] = useState(false);
+  const [isPostLoginTourOpen, setIsPostLoginTourOpen] = useState(false);
   const [showVersionEasterEgg, setShowVersionEasterEgg] = useState(false);
   const [invitedDominoRoomId, setInvitedDominoRoomId] = useState(null);
   const versionTapRef = useRef({ count: 0, timer: null });
@@ -2169,11 +2171,33 @@ function AppContent({ isPreview = false }) {
         );
         if (!hasPhoto || !hasAllFields) {
           setIsProfileRequired(true);
+        } else {
+          const tourKey = `bokra_post_login_tour_v1_${user.id || 'default'}`;
+          const seenLocally = typeof window !== 'undefined' && localStorage.getItem(tourKey) === 'true';
+          if (!p.onboardingTourCompleted && !seenLocally) {
+            setIsPostLoginTourOpen(true);
+          }
         }
       })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [isMounted, isSignedIn, user, isCloudLoaded, isPreview, avatar]);
+
+  const handleFinishPostLoginTour = useCallback(() => {
+    setIsPostLoginTourOpen(false);
+    if (typeof window !== 'undefined') {
+      const tourKey = `bokra_post_login_tour_v1_${user?.id || 'default'}`;
+      try {
+        localStorage.setItem(tourKey, 'true');
+      } catch (_) {}
+    }
+    if (isSignedIn && !isPreview) {
+      apiFetch('/api/user/privacy', {
+        method: 'POST',
+        body: JSON.stringify({ onboardingTourCompleted: true }),
+      }).catch(() => {});
+    }
+  }, [user?.id, isSignedIn, isPreview]);
 
   // --- Refs ---
   const chartRef = useRef(null);
@@ -6189,9 +6213,24 @@ function AppContent({ isPreview = false }) {
     );
   }
 
+  // 0) Pre-Login Welcome & Tour Full-App Modal: Before logging in, the entire app is the Welcome & Tour Modal (plus mandatory notifications gate)
+  if (!isSignedIn && !isPreview && (typeof navigator === 'undefined' || navigator.onLine)) {
+    return (
+      <>
+        <NotificationGateModal isSignedIn={false} />
+        <PreLoginWelcomeTourModal />
+      </>
+    );
+  }
+
   // 1) The Username Gate: If signed in and no username set, require setting username first
   if (isSignedIn && isLoaded && !user?.username && !dbUsername && (typeof navigator === 'undefined' || navigator.onLine)) {
-    return <ChooseUsername onComplete={(newUsername) => setDbUsername(newUsername)} />;
+    return (
+      <>
+        {!isPreview && <NotificationGateModal isSignedIn={true} />}
+        <ChooseUsername onComplete={(newUsername) => setDbUsername(newUsername)} />
+      </>
+    );
   }
 
   // Helper to render habit cards with slim Apple aesthetics and automatic full-width for multi/scheduled habits
@@ -11562,6 +11601,15 @@ function AppContent({ isPreview = false }) {
                               }
                             />
                             <SettingsRow
+                              icon={Sparkles}
+                              title="Quick Interactive Tour"
+                              subtitle="How to add habits, daily tasks & use all modals"
+                              onClick={() => {
+                                setIsSettingsMenuOpen(false);
+                                setIsPostLoginTourOpen(true);
+                              }}
+                            />
+                            <SettingsRow
                               icon={BookOpen}
                               title={tEn('howToUse')}
                               subtitle={tEn('howToUseDesc')}
@@ -11695,8 +11743,38 @@ function AppContent({ isPreview = false }) {
                   forced={isProfileRequired}
                   avatar={avatar}
                   onSelectAvatar={handleSelectAvatar}
-                  onCompleted={() => setIsProfileRequired(false)}
+                  onCompleted={() => {
+                    const wasForced = isProfileRequired;
+                    setIsProfileRequired(false);
+                    if (wasForced && typeof window !== 'undefined') {
+                      const tourKey = `bokra_post_login_tour_v1_${user?.id || 'default'}`;
+                      if (localStorage.getItem(tourKey) !== 'true') {
+                        setIsPostLoginTourOpen(true);
+                      }
+                    }
+                  }}
                   onClose={() => popNav()}
+                />,
+                document.body
+              )}
+
+              {/* Mandatory Notification Gate & Post-Login Quick Tour Modal */}
+              {!isPreview && isMounted && createPortal(
+                <NotificationGateModal isSignedIn={isSignedIn} />,
+                document.body
+              )}
+
+              {isPostLoginTourOpen && !isProfileRequired && isMounted && createPortal(
+                <PostLoginQuickTourModal
+                  isOpen={isPostLoginTourOpen}
+                  onClose={handleFinishPostLoginTour}
+                  onTriggerAction={(actionKey) => {
+                    if (actionKey === 'addHabit') {
+                      handleOpenAdd();
+                    } else if (actionKey === 'tasks') {
+                      openNav('tasks');
+                    }
+                  }}
                 />,
                 document.body
               )}
