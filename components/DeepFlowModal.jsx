@@ -25,6 +25,7 @@ export default function DeepFlowModal({
   onResetTimer,
   onFinishSession,
   onOpenSoundLibrary,
+  quickSuggestions = [],
 }) {
   const [isEditingTask, setIsEditingTask] = useState(false);
   const [taskInput, setTaskInput] = useState(flowTaskName || '');
@@ -96,7 +97,9 @@ export default function DeepFlowModal({
     onFinishSession(flowSeconds, flowTaskName || 'Deep Flow');
   };
 
-  const QUICK_TOPICS = ['Study', 'Coding', 'Math', 'Reading', 'Writing'];
+  const QUICK_TOPICS = Array.isArray(quickSuggestions) && quickSuggestions.length > 0
+    ? Array.from(new Set([...quickSuggestions.slice(0, 5), 'Study', 'Coding', 'Reading'])).slice(0, 6)
+    : ['Study', 'Coding', 'Math', 'Reading', 'Writing'];
 
   return (
     <div className="fixed inset-0 z-[10000] bg-black text-white overflow-y-auto select-none animate-in fade-in duration-200">

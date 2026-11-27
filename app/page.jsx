@@ -2162,6 +2162,20 @@ function AppContent({ isPreview = false }) {
       .then((data) => {
         if (cancelled || !data) return;
         const p = data.privacySettings || {};
+        // Seamlessly link profile Main Goal -> Home Mission Card if mission is empty
+        if (typeof p.profileGoal === 'string' && p.profileGoal.trim()) {
+          setMission((prevMission) => {
+            if (!prevMission || !prevMission.trim()) {
+              const goalVal = p.profileGoal.trim();
+              setMissionInput(goalVal);
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('daybase_mission_v4', goalVal);
+              }
+              return goalVal;
+            }
+            return prevMission;
+          });
+        }
         const hasPhoto = Boolean(avatar && (avatar.startsWith('data:') || avatar.startsWith('http')));
         const hasAllFields = Boolean(
           p.profileCompleted &&
@@ -5104,8 +5118,7 @@ function AppContent({ isPreview = false }) {
       }
       setIsFlightTimerRunning(true);
       recordFlightActivity();
-      closeAllModals();
-      setIsFlightFocusOpen(true);
+      openNav('flightFocus');
     } else if (isFlow) {
       // Join quietly with own topic (never overwrite with friend's topic)
       setFlowTaskName('');
@@ -5113,8 +5126,7 @@ function AppContent({ isPreview = false }) {
         setFlowSeconds(0);
       }
       setIsFlowRunning(true);
-      closeAllModals();
-      navTo('flow');
+      openNav('flow');
       if (!isPreview && friendUsername) {
         apiFetch('/api/friends/nudge', {
           method: 'POST',
@@ -5135,8 +5147,7 @@ function AppContent({ isPreview = false }) {
       }
       setIsTimerRunning(true);
       recordPomodoroActivity();
-      closeAllModals();
-      setIsPomodoroOpen(true);
+      openNav('pomodoro');
     }
   };
 
@@ -5658,6 +5669,23 @@ function AppContent({ isPreview = false }) {
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            {!task.completed && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActivePomodoroTask(prev => ({ ...prev, name: task.text }));
+                  setFlowTaskName(task.text);
+                  if (isTasksModalOpen) popNav();
+                  openNav('pomodoro');
+                }}
+                title="Focus on this task"
+                aria-label="Focus on this task"
+                className={`${isModal ? 'text-white/35 hover:text-white p-2' : 'text-white/25 hover:text-white p-1.5'} transition-colors shrink-0 rounded-lg hover:bg-white/10 cursor-pointer`}
+              >
+                <Timer size={15} />
+              </button>
+            )}
             {hasSubtasks && (
               <button 
                 type="button"
@@ -5784,9 +5812,20 @@ function AppContent({ isPreview = false }) {
       setIsEditingMission(false);
       return;
     }
+    const cleanMission = (missionInput || '').trim();
     markLocalMutation();
-    setMission(missionInput);
+    setMission(cleanMission);
+    setMissionInput(cleanMission);
     setIsEditingMission(false);
+    if (typeof window !== 'undefined' && !isPreview) {
+      localStorage.setItem('daybase_mission_v4', cleanMission);
+    }
+    if (isSignedIn && !isPreview && cleanMission) {
+      apiFetch('/api/user/privacy', {
+        method: 'POST',
+        body: JSON.stringify({ profileGoal: cleanMission }),
+      }).catch(() => {});
+    }
   };
 
   const logSleep = () => {
@@ -6370,6 +6409,7 @@ function AppContent({ isPreview = false }) {
     const isFullWidth = isMulti || isScheduled;
     const gridClass = isFullWidth ? 'col-span-2' : 'col-span-1';
     const streak = getStreak(habit.id);
+    const broken = streak === 0 ? getBrokenStreakInfo(habit.id) : { isRepairable: false, previousStreak: 0, missedDates: [] };
 
     // High-contrast clean Apple styling: checked turns solid white/themeColor with black text, unchecked uses semi-transparent liquid glass
     const cardBg = isAllChecked 
@@ -6416,12 +6456,25 @@ function AppContent({ isPreview = false }) {
                   <span className={`text-[15px] font-bold tracking-tight truncate ${isAllChecked ? 'text-black' : 'text-white'}`}>
                     {habit.name}
                   </span>
-                  {streak > 0 && (
+                  {streak > 0 ? (
                     <span className="text-[10px] font-bold flex items-center gap-0.5 shrink-0 opacity-80" style={{ color: isAllChecked ? 'rgba(0,0,0,0.6)' : themeColor }}>
                       <Flame size={11} strokeWidth={2.5} className="shrink-0" />
                       <span>{streak}</span>
                     </span>
-                  )}
+                  ) : broken.isRepairable ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openNav('cards');
+                      }}
+                      className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-white border border-white/20 flex items-center gap-1 shrink-0 cursor-pointer"
+                      title="Restore broken streak with Emergency Shield"
+                    >
+                      <ShieldAlert size={10} />
+                      <span>Restore {broken.previousStreak}d</span>
+                    </button>
+                  ) : null}
                 </div>
                 {isAthkarHabit(habit) ? (
                   <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
@@ -6588,12 +6641,25 @@ function AppContent({ isPreview = false }) {
                 <span className={`text-[15px] font-bold tracking-tight truncate ${isAllChecked ? 'text-black' : 'text-white'}`}>
                   {habit.name}
                 </span>
-                {streak > 0 && (
+                {streak > 0 ? (
                   <span className="text-[10px] font-bold flex items-center gap-0.5 shrink-0 opacity-80" style={{ color: isAllChecked ? 'rgba(0,0,0,0.6)' : themeColor }}>
                     <Flame size={11} strokeWidth={2.5} className="shrink-0" />
                     <span>{streak}</span>
                   </span>
-                )}
+                ) : broken.isRepairable ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openNav('cards');
+                    }}
+                    className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-white border border-white/20 flex items-center gap-1 shrink-0 cursor-pointer"
+                    title="Restore broken streak with Emergency Shield"
+                  >
+                    <ShieldAlert size={10} />
+                    <span>Restore {broken.previousStreak}d</span>
+                  </button>
+                ) : null}
               </div>
 
               {/* Badges for time, duration, location, frequency */}
@@ -6671,12 +6737,25 @@ function AppContent({ isPreview = false }) {
                 <span className={`text-[15px] font-bold tracking-tight truncate ${isAllChecked ? 'text-black' : 'text-white'}`}>
                   {habit.name}
                 </span>
-                {streak > 0 && (
+                {streak > 0 ? (
                   <span className="text-[10px] font-bold flex items-center gap-0.5 shrink-0 opacity-80" style={{ color: isAllChecked ? 'rgba(0,0,0,0.6)' : themeColor }}>
                     <Flame size={11} strokeWidth={2.5} className="shrink-0" />
                     <span>{streak}</span>
                   </span>
-                )}
+                ) : broken.isRepairable ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openNav('cards');
+                    }}
+                    className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-white border border-white/20 flex items-center gap-1 shrink-0 cursor-pointer"
+                    title="Restore broken streak with Emergency Shield"
+                  >
+                    <ShieldAlert size={10} />
+                    <span>Restore {broken.previousStreak}d</span>
+                  </button>
+                ) : null}
               </div>
               {repeatLabel && (
                 <div className="flex items-center gap-1">
@@ -7943,7 +8022,7 @@ function AppContent({ isPreview = false }) {
                           {isAr ? 'تنبيهات متكررة طوال اليوم' : 'Repeating Reminders (All Day)'}
                         </span>
                         <span className="text-[10px] text-white/35">
-                          {isAr ? 'تذكير دوري كل فترة (مثل شرب الماء من 8 ص حتى 11 م)' : 'Periodic nudges throughout the day (8 AM – 11 PM, e.g. Hydration)'}
+                          {isAr ? 'تذكير دوري كل فترة طوال اليوم (من 8 ص حتى 11 م)' : 'Periodic nudges throughout the day (8 AM – 11 PM)'}
                         </span>
                       </div>
                     </div>
@@ -8015,7 +8094,7 @@ function AppContent({ isPreview = false }) {
                       <div className="bg-black/40 px-3.5 py-2.5 rounded-xl border border-white/10">
                         <input
                           type="text"
-                          placeholder={isAr ? 'رسالة التنبيه المتكرر (مثلاً: اشرب كوباية ماية 💧)' : 'Repeat reminder message (e.g. Time to drink water)...'}
+                          placeholder={isAr ? 'رسالة التنبيه المتكرر (اختياري)...' : 'Custom reminder message (optional)...'}
                           value={habitReminderMessage}
                           onChange={(e) => setHabitReminderMessage(e.target.value)}
                           className="w-full bg-transparent text-white text-xs outline-none font-medium placeholder:text-white/30"
@@ -8784,7 +8863,7 @@ function AppContent({ isPreview = false }) {
                           {isAr ? 'تنبيهات متكررة طوال اليوم' : 'Repeating Reminders (All Day)'}
                         </span>
                         <span className="text-[10px] text-white/35">
-                          {isAr ? 'تذكير دوري كل فترة (مثل شرب الماء من 8 ص حتى 11 م)' : 'Periodic nudges throughout the day (8 AM – 11 PM, e.g. Hydration)'}
+                          {isAr ? 'تذكير دوري كل فترة طوال اليوم (من 8 ص حتى 11 م)' : 'Periodic nudges throughout the day (8 AM – 11 PM)'}
                         </span>
                       </div>
                     </div>
@@ -8856,7 +8935,7 @@ function AppContent({ isPreview = false }) {
                       <div className="bg-black/40 px-3.5 py-2.5 rounded-xl border border-white/10">
                         <input
                           type="text"
-                          placeholder={isAr ? 'رسالة التنبيه المتكرر (مثلاً: اشرب كوباية ماية 💧)' : 'Repeat reminder message (e.g. Time to drink water)...'}
+                          placeholder={isAr ? 'رسالة التنبيه المتكرر (اختياري)...' : 'Custom reminder message (optional)...'}
                           value={editHabitReminderMessage}
                           onChange={(e) => setEditHabitReminderMessage(e.target.value)}
                           className="w-full bg-transparent text-white text-xs outline-none font-medium placeholder:text-white/30"
@@ -9012,10 +9091,10 @@ function AppContent({ isPreview = false }) {
 
                 {/* Cards list */}
                 <div className="flex flex-col gap-3 pb-8">
-                  {habits.filter(h => h.type === 'single').length === 0 ? (
+                  {habits.length === 0 ? (
                     <p className="text-white/30 text-center py-16 text-sm">{t('noSingleHabits')}</p>
                   ) : (
-                    habits.filter(h => h.type === 'single').map(h => {
+                    habits.map(h => {
                       const streak = getStreak(h.id);
                       const broken = getBrokenStreakInfo(h.id);
                       const earnedCards = (streak >= 7 || broken.isRepairable) ? 1 : 0;
@@ -9187,6 +9266,14 @@ function AppContent({ isPreview = false }) {
             onFinishSession={handleFinishFlowSession}
             onOpenSoundLibrary={() => pushNav('ambient')}
             themeColor={themeColor}
+            quickSuggestions={[
+              ...(dailyTasks || [])
+                .filter(tk => tk && typeof tk.text === 'string' && tk.text.trim() && !tk.deleted && !tk.completed && !tk.name?.includes('✈'))
+                .map(tk => tk.text.trim()),
+              ...(activeScheduledHabits || [])
+                .filter(hb => hb && hb.name && ['study', 'lecture', 'exam'].includes(hb.category))
+                .map(hb => hb.name.trim()),
+            ]}
           />,
           document.body
         )}
@@ -9267,7 +9354,7 @@ function AppContent({ isPreview = false }) {
                 {/* Main Card — Horizontal */}
                 <div className="w-full max-w-[360px] liquid-panel rounded-[32px] p-9 flex flex-col items-center relative shadow-2xl mb-24" style={{ gap: '32px' }}>
                   {/* Close / Minimize */}
-                  <button onClick={() => { setIsPomodoroOpen(false); setIsEditingPomodoro(false); }} style={{
+                  <button onClick={() => { setIsEditingPomodoro(false); popNav(); }} style={{
                     position: 'absolute', top: '14px', right: '14px',
                     background: 'rgba(128,128,128,0.2)', border: 'none',
                     borderRadius: '50%', width: '32px', height: '32px',
@@ -9279,7 +9366,7 @@ function AppContent({ isPreview = false }) {
 
                   {/* Task Configuration (Before Start) */}
                   {!isTimerRunning && !isEditingPomodoro && (
-                     <div className="w-full flex flex-col items-center gap-3 mt-4 -mb-2 z-10 animate-in fade-in">
+                     <div className="w-full flex flex-col items-center gap-2.5 mt-4 -mb-2 z-10 animate-in fade-in">
                         <input 
                           type="text" 
                           placeholder="What are you focusing on? (e.g. Python)" 
@@ -9287,6 +9374,35 @@ function AppContent({ isPreview = false }) {
                           onChange={(e) => setActivePomodoroTask(prev => ({ ...prev, name: e.target.value }))}
                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-center outline-none focus:border-white/30 text-white placeholder:text-white/30"
                         />
+                        {(() => {
+                          const taskChips = Array.from(new Set([
+                            ...(dailyTasks || [])
+                              .filter(tk => tk && typeof tk.text === 'string' && tk.text.trim() && !tk.deleted && !tk.completed && !tk.name?.includes('✈'))
+                              .map(tk => tk.text.trim()),
+                            ...(activeScheduledHabits || [])
+                              .filter(hb => hb && hb.name && ['study', 'lecture', 'exam'].includes(hb.category))
+                              .map(hb => hb.name.trim()),
+                          ])).slice(0, 4);
+                          if (taskChips.length === 0) return null;
+                          return (
+                            <div className="flex items-center justify-center gap-1.5 flex-wrap w-full">
+                              {taskChips.map((chip) => (
+                                <button
+                                  key={chip}
+                                  type="button"
+                                  onClick={() => setActivePomodoroTask(prev => ({ ...prev, name: chip }))}
+                                  className={`px-2.5 py-1 rounded-full text-[10px] font-mono transition-all cursor-pointer truncate max-w-[140px] border ${
+                                    activePomodoroTask.name === chip
+                                      ? 'bg-white text-black border-white font-bold'
+                                      : 'bg-white/[0.04] text-white/60 border-white/10 hover:text-white hover:border-white/25'
+                                  }`}
+                                >
+                                  {chip}
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })()}
                      </div>
                   )}
 
@@ -9396,14 +9512,14 @@ function AppContent({ isPreview = false }) {
                   {!isPreview && (
                     <SpotifyWidget lang={lang} theme={theme} themeColor={neon} variant="compact" userId={user?.id} />
                   )}
-                  <AmbientSoundWidget lang={lang} theme={theme} themeColor={neon} variant="compact" onOpenModal={() => setIsAmbientModalOpen(true)} />
+                  <AmbientSoundWidget lang={lang} theme={theme} themeColor={neon} variant="compact" onOpenModal={() => pushNav('ambient')} />
                 </div>
               </div>
 
               {/* Bottom Done Action */}
               <div className="w-full pt-4 pb-6">
                 <button 
-                  onClick={() => setIsPomodoroOpen(false)} 
+                  onClick={() => popNav()} 
                   className="w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all duration-200 active:scale-[0.98] bg-white/10 hover:bg-white/20 text-white border border-white/10"
                 >
                   {'Close'}
@@ -9489,8 +9605,19 @@ function AppContent({ isPreview = false }) {
                     <button
                       type="button"
                       onClick={() => {
-                        handleDismissNotification(activeInAppNotification.id, false, 'study', activeInAppNotification.user?.username);
-                        setIsPomodoroOpen(true);
+                        const targetUser = activeInAppNotification.user?.username;
+                        handleDismissNotification(activeInAppNotification.id, false, 'study', targetUser);
+                        const friendObj = friendsList.find(f => (f.user?.username || '').toLowerCase() === (targetUser || '').toLowerCase());
+                        if (friendObj && friendObj.presence && !['offline', 'idle', 'none'].includes(friendObj.presence.status)) {
+                          handleJoinFriendSession({
+                            friendName: friendObj.user?.name || friendObj.user?.username,
+                            friendUsername: friendObj.user?.username,
+                            presence: friendObj.presence,
+                            sessionData: friendObj.sessionData,
+                          });
+                        } else {
+                          openNav('pomodoro');
+                        }
                       }}
                       className="px-3 py-1.5 rounded-xl bg-white text-black font-black text-xs hover:bg-white/90 active:scale-95 transition-all shadow-sm cursor-pointer flex items-center gap-1"
                     >
@@ -9518,8 +9645,14 @@ function AppContent({ isPreview = false }) {
                     <button
                       type="button"
                       onClick={() => {
-                        handleDismissNotification(activeInAppNotification.id, false, 'cheer', activeInAppNotification.user?.username);
-                        setIsPomodoroOpen(true);
+                        const targetUser = activeInAppNotification.user?.username;
+                        if (targetUser) {
+                          apiFetch('/api/friends/nudge', {
+                            method: 'POST',
+                            body: JSON.stringify({ username: targetUser, type: 'cheer' })
+                          }).catch(() => {});
+                        }
+                        handleDismissNotification(activeInAppNotification.id, false, 'cheer', targetUser);
                       }}
                       className="px-3 py-1.5 rounded-xl bg-white text-black font-black text-xs hover:bg-white/90 active:scale-95 transition-all shadow-sm cursor-pointer flex items-center gap-1"
                     >
@@ -9829,7 +9962,7 @@ function AppContent({ isPreview = false }) {
               {!mission && !isEditingMission && (
                 <div className="flex items-center mb-1 select-none">
                   <button 
-                    onClick={() => requireAuth(() => setIsEditingMission(true))} 
+                    onClick={() => requireAuth(() => { setMissionInput(mission || ''); setIsEditingMission(true); })} 
                     className="inline-flex items-center gap-2 hover:opacity-60 transition-opacity duration-150 min-h-[36px] py-1 px-1 rounded-md"
                     aria-label="Set Mission"
                   >
@@ -9847,7 +9980,7 @@ function AppContent({ isPreview = false }) {
                 />
               ) : (
                 mission && (
-                  <h2 onClick={() => requireAuth(() => setIsEditingMission(true))} className="text-[24px] sm:text-[26px] leading-snug font-black tracking-tight mb-2 cursor-pointer break-words active:opacity-80 transition-opacity duration-150">
+                  <h2 onClick={() => requireAuth(() => { setMissionInput(mission || ''); setIsEditingMission(true); })} className="text-[24px] sm:text-[26px] leading-snug font-black tracking-tight mb-2 cursor-pointer break-words active:opacity-80 transition-opacity duration-150">
                     {mission}
                   </h2>
                 )
@@ -9945,7 +10078,7 @@ function AppContent({ isPreview = false }) {
                 {!mission && !isEditingMission && (
                   <div className="flex items-center mb-1 select-none">
                     <button 
-                      onClick={() => requireAuth(() => setIsEditingMission(true))} 
+                      onClick={() => requireAuth(() => { setMissionInput(mission || ''); setIsEditingMission(true); })} 
                       className="inline-flex items-center gap-2 hover:opacity-60 transition-opacity duration-150 min-h-[36px] py-1 px-1 rounded-md"
                       aria-label="Set Mission"
                     >
@@ -9963,7 +10096,7 @@ function AppContent({ isPreview = false }) {
                   />
                 ) : (
                   mission && (
-                    <h2 onClick={() => requireAuth(() => setIsEditingMission(true))} className="text-[24px] sm:text-[26px] leading-snug font-black tracking-tight mb-2 cursor-pointer break-words active:opacity-80 transition-opacity duration-150">
+                    <h2 onClick={() => requireAuth(() => { setMissionInput(mission || ''); setIsEditingMission(true); })} className="text-[24px] sm:text-[26px] leading-snug font-black tracking-tight mb-2 cursor-pointer break-words active:opacity-80 transition-opacity duration-150">
                       {mission}
                     </h2>
                   )
@@ -12076,10 +12209,22 @@ function AppContent({ isPreview = false }) {
                   isOpen={isProfileModalOpen || isProfileRequired}
                   forced={isProfileRequired}
                   avatar={avatar}
+                  currentMission={mission}
                   onSelectAvatar={handleSelectAvatar}
-                  onCompleted={() => {
+                  onCompleted={(savedProfile) => {
                     const wasForced = isProfileRequired;
                     setIsProfileRequired(false);
+                    if (savedProfile?.profileGoal && typeof savedProfile.profileGoal === 'string') {
+                      const nextGoal = savedProfile.profileGoal.trim();
+                      if (nextGoal) {
+                        setMission(nextGoal);
+                        setMissionInput(nextGoal);
+                        if (typeof window !== 'undefined' && !isPreview) {
+                          localStorage.setItem('daybase_mission_v4', nextGoal);
+                        }
+                        markLocalMutation();
+                      }
+                    }
                     if (wasForced && typeof window !== 'undefined') {
                       const tourKey = `bokra_post_login_tour_v1_${user?.id || 'default'}`;
                       const alreadyDone =

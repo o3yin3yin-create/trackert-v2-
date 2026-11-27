@@ -20,6 +20,7 @@ export default function CompleteProfileModal({
   onClose,
   forced = false,
   avatar = 'user',
+  currentMission = '',
   onSelectAvatar,
   onCompleted,
 }) {
@@ -54,7 +55,13 @@ export default function CompleteProfileModal({
           if (typeof p.birthday === 'string') setBirthday(p.birthday);
           if (typeof p.profileRole === 'string') setProfileRole(p.profileRole);
           if (typeof p.profileField === 'string') setProfileField(p.profileField);
-          if (typeof p.profileGoal === 'string') setProfileGoal(p.profileGoal);
+          if (typeof p.profileGoal === 'string' && p.profileGoal.trim()) {
+            setProfileGoal(p.profileGoal);
+          } else if (typeof currentMission === 'string' && currentMission.trim()) {
+            setProfileGoal(currentMission);
+          }
+        } else if (typeof currentMission === 'string' && currentMission.trim()) {
+          setProfileGoal(currentMission);
         }
       })
       .catch(() => {})
@@ -113,9 +120,17 @@ export default function CompleteProfileModal({
         }),
       });
       if (res.ok) {
+        const payload = {
+          morningNotifyEnabled: morningEnabled,
+          morningNotifyTime: morningTime,
+          birthday,
+          profileRole,
+          profileField: profileField.trim(),
+          profileGoal: profileGoal.trim(),
+        };
         setSavedToast(true);
         setTimeout(() => {
-          onCompleted?.();
+          onCompleted?.(payload);
           if (!forced) onClose?.();
         }, 450);
       } else {
@@ -298,14 +313,19 @@ export default function CompleteProfileModal({
               />
             </div>
 
-            {/* 4. Main Goal */}
+            {/* 4. Main Goal -> Directly sets your Mission Card on Home */}
             <div className="p-4 rounded-2xl bg-[#111113] border border-white/[0.08] space-y-3 overflow-hidden">
-              <div className="flex items-center gap-3">
-                <Target size={18} strokeWidth={1.8} className="text-white shrink-0" />
-                <div>
-                  <div className="text-sm font-semibold text-white">Main Goal</div>
-                  <div className="text-[11px] text-white/45">What are you focused on right now?</div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-3">
+                  <Target size={18} strokeWidth={1.8} className="text-white shrink-0" />
+                  <div>
+                    <div className="text-sm font-semibold text-white">Main Goal (Your Mission)</div>
+                    <div className="text-[11px] text-white/45">Automatically placed in your top Set Mission card</div>
+                  </div>
                 </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/[0.06] text-white/60 shrink-0">
+                  Mission Card
+                </span>
               </div>
               <input
                 type="text"
