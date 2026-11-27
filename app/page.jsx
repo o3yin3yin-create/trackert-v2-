@@ -8703,8 +8703,8 @@ function AppContent({ isPreview = false }) {
                           key={h.id} 
                           className={`flex items-center justify-between p-4 sm:p-5 rounded-2xl border transition-all ${
                             (hasCards && (streak > 0 || broken.isRepairable))
-                              ? 'bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] border-white/20 shadow-xl'
-                              : 'bg-white/5 border-white/5 opacity-60'
+                              ? 'bg-[#141416] border-white/15 shadow-xl'
+                              : 'bg-white/[0.03] border-white/[0.06] opacity-60'
                           }`}
                         >
                           <div className="flex flex-col gap-1 flex-1 min-w-0 pr-3">
@@ -8712,13 +8712,13 @@ function AppContent({ isPreview = false }) {
                             <span className="text-[11px] font-semibold uppercase tracking-wider flex items-center gap-1.5">
                               {streak > 0 ? (
                                 <>
-                                  <Flame size={12} strokeWidth={2.5} className="shrink-0 text-orange-400" />
+                                  <Flame size={12} strokeWidth={2.5} className="shrink-0 text-white/80" />
                                   <span className="text-white/70">{streak} {t('dayStreak')}</span>
                                 </>
                               ) : broken.isRepairable ? (
                                 <>
-                                  <Flame size={12} strokeWidth={2.5} className="shrink-0 text-amber-400" />
-                                  <span className="text-amber-400 font-bold">{broken.previousStreak} {t('dayStreak')} ({isAr ? 'مكسور - استعد بالشيلد' : 'Broken - Restore with Shield'})</span>
+                                  <Flame size={12} strokeWidth={2.5} className="shrink-0 text-white" />
+                                  <span className="text-white/85 font-bold">{broken.previousStreak} {t('dayStreak')} ({isAr ? 'مكسور - استعد بالشيلد' : 'Broken - Restore with Shield'})</span>
                                 </>
                               ) : (
                                 <span className="text-white/40">{t('noActiveStreak')}</span>
@@ -8729,8 +8729,7 @@ function AppContent({ isPreview = false }) {
                             {canUseCard && (
                               <button
                                 onClick={() => { haptic('medium'); consumeEmergencyCard(h.id); }}
-                                className="px-4 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all active:scale-95 shadow-lg"
-                                style={{ backgroundColor: broken.isRepairable ? '#F59E0B' : themeColor, color: '#000' }}
+                                className="px-4 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all active:scale-95 shadow-lg bg-white text-black hover:bg-white/90 cursor-pointer"
                               >
                                 {broken.isRepairable ? (isAr ? 'استعادة' : 'Restore') : t('use')}
                               </button>
@@ -8739,14 +8738,11 @@ function AppContent({ isPreview = false }) {
                               {hasCards ? (
                                 <div className="flex items-center gap-2">
                                   <div 
-                                    className="w-7 h-10 rounded-lg flex items-center justify-center shadow-md border border-white/30"
-                                    style={{
-                                      background: `linear-gradient(135deg, ${themeColor}cc, ${themeColor}66, rgba(255,255,255,0.3), ${themeColor}88)`
-                                    }}
+                                    className="w-7 h-9 rounded-lg bg-white/[0.08] flex items-center justify-center shadow-md border border-white/20"
                                   >
-                                    <ShieldAlert size={14} color="#ffffff" />
+                                    <ShieldAlert size={14} className="text-white" />
                                   </div>
-                                  <span className="text-[11px] font-bold text-white/70">1 Shield</span>
+                                  <span className="text-[11px] font-bold font-mono text-white/75">1 Shield</span>
                                 </div>
                               ) : (
                                 <span className="text-white/30 text-xs font-bold uppercase tracking-wider">{t('noCards')}</span>

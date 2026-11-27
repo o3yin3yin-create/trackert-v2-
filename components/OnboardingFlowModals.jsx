@@ -227,14 +227,14 @@ const POST_LOGIN_TOUR_STEPS = [
             </div>
             <span className="text-xs text-white/40 line-through truncate">Submit Calculus Assignment</span>
           </div>
-          <span className="text-[10px] font-mono text-emerald-400 shrink-0 whitespace-nowrap">Clears Overnight</span>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.06] text-white/75 shrink-0 whitespace-nowrap">Clears Overnight</span>
         </div>
-        <div className="p-2.5 rounded-xl bg-[#19191b] border border-red-500/30 flex items-center justify-between gap-2">
+        <div className="p-2.5 rounded-xl bg-[#19191b] border border-white/15 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-5 h-5 rounded-md border border-white/30 shrink-0" />
             <span className="text-xs text-white font-medium truncate">Review Lecture 4 Notes</span>
           </div>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-red-500/15 text-red-400 font-bold shrink-0 whitespace-nowrap">
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-black font-bold shrink-0 whitespace-nowrap">
             Postponed
           </span>
         </div>
@@ -278,26 +278,35 @@ const POST_LOGIN_TOUR_STEPS = [
       <div className="w-full p-3.5 rounded-2xl bg-[#141415] border border-white/10 flex flex-col gap-2 text-left">
         <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-white/[0.06]">
           <div className="flex items-center gap-2">
-            <ShieldAlert size={15} className="text-amber-400 shrink-0" />
+            <ShieldAlert size={15} className="text-white/85 shrink-0" />
             <span className="text-xs font-bold text-white">Emergency Shields</span>
           </div>
           <span className="text-[10px] font-mono text-white/60">7-Day Streak Rule</span>
         </div>
-        <div className="p-2.5 rounded-xl bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] border border-white/20 flex items-center justify-between gap-2">
+        <div className="p-3 rounded-xl bg-[#19191b] border border-white/15 flex items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="text-xs font-bold text-white truncate">Workout</p>
-            <p className="text-[10px] text-amber-400 font-semibold flex items-center gap-1 mt-0.5">
-              <Flame size={11} className="shrink-0" />
-              <span>14 day streak · Broken - Restore with Shield</span>
+            <p className="text-[10px] text-white/65 font-mono flex items-center gap-1 mt-0.5">
+              <Flame size={11} className="text-white/80 shrink-0" />
+              <span>14 day streak · Restore with Shield</span>
             </p>
           </div>
-          <span className="px-2.5 py-1 rounded-lg bg-amber-500 text-black font-black text-[10px] uppercase shrink-0">
-            Restore
-          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="px-2.5 py-1 rounded-lg bg-white text-black font-black text-[10px] uppercase tracking-wider">
+              Restore
+            </span>
+            <div className="w-6 h-8 rounded-md bg-white/[0.08] border border-white/20 flex items-center justify-center">
+              <ShieldAlert size={12} className="text-white" />
+            </div>
+          </div>
         </div>
-        <p className="text-[11px] text-white/50">
-          Once used, complete another 7-day cycle to earn a replacement shield.
-        </p>
+        <div className="p-2.5 rounded-xl bg-[#19191b] border border-white/[0.08] flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={14} className="text-white/75 shrink-0" />
+            <span className="text-[11px] text-white/75 font-medium">1 Active Shield Available</span>
+          </div>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.06] text-white/60">Max 1 / habit</span>
+        </div>
       </div>
     ),
   },
@@ -310,21 +319,21 @@ const POST_LOGIN_TOUR_STEPS = [
     preview: (
       <div className="w-full p-3.5 rounded-2xl bg-[#141415] border border-white/10 flex flex-col gap-2 text-left">
         <div className="p-2.5 rounded-xl bg-[#19191b] border border-white/10 flex items-center gap-3">
-          <Timer size={16} className="text-orange-400 shrink-0" />
+          <Timer size={16} className="text-white/85 shrink-0" />
           <div className="min-w-0">
             <p className="text-xs font-bold text-white">Pomodoro Focus</p>
             <p className="text-[11px] text-white/50 truncate">10/20/25/30 mins presets + 4-dot session cycle</p>
           </div>
         </div>
         <div className="p-2.5 rounded-xl bg-[#19191b] border border-white/10 flex items-center gap-3">
-          <PlaneTakeoff size={16} className="text-cyan-400 shrink-0" />
+          <PlaneTakeoff size={16} className="text-white/85 shrink-0" />
           <div className="min-w-0">
             <p className="text-xs font-bold text-white">Flight Focus & 3D Window Seat</p>
             <p className="text-[11px] text-white/50 truncate">Live global radar, seat selection & Boarding Pass vault</p>
           </div>
         </div>
         <div className="p-2.5 rounded-xl bg-[#19191b] border border-white/10 flex items-center gap-3">
-          <Zap size={16} className="text-white shrink-0" />
+          <Zap size={16} className="text-white/85 shrink-0" />
           <div className="min-w-0">
             <p className="text-xs font-bold text-white">Deep Flow</p>
             <p className="text-[11px] text-white/50 truncate">Open-ended count-up timer from Onset to Hyperflow</p>
@@ -343,7 +352,7 @@ const POST_LOGIN_TOUR_STEPS = [
       <div className="w-full p-3.5 rounded-2xl bg-[#141415] border border-white/10 flex flex-col gap-2 text-left">
         <div className="p-2.5 rounded-xl bg-[#19191b] border border-white/10 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
-            <Headphones size={16} className="text-emerald-400 shrink-0" />
+            <Headphones size={16} className="text-white/85 shrink-0" />
             <div className="min-w-0">
               <p className="text-xs font-bold text-white truncate">Ambient Sounds Mixer</p>
               <p className="text-[11px] text-white/50 truncate">Mix multiple tracks + save custom sound presets</p>
@@ -353,7 +362,7 @@ const POST_LOGIN_TOUR_STEPS = [
         </div>
         <div className="p-2.5 rounded-xl bg-[#19191b] border border-white/10 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
-            <Radio size={16} className="text-white/80 shrink-0" />
+            <Radio size={16} className="text-white/85 shrink-0" />
             <div className="min-w-0">
               <p className="text-xs font-bold text-white truncate">Spotify Widget & Gestures</p>
               <p className="text-[11px] text-white/50 truncate">Tap to play/pause, swipe left/right to skip tracks</p>
@@ -374,7 +383,7 @@ const POST_LOGIN_TOUR_STEPS = [
       <div className="w-full p-3.5 rounded-2xl bg-[#141415] border border-white/10 flex flex-col gap-2 text-left">
         <div className="p-2.5 rounded-xl bg-[#19191b] border border-white/10 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
-            <Users size={16} className="text-white shrink-0" />
+            <Users size={16} className="text-white/85 shrink-0" />
             <div className="min-w-0">
               <p className="text-xs font-bold text-white truncate">Live Presence & Nudge</p>
               <p className="text-[11px] text-white/50 truncate">Tap &quot;Let&apos;s study?&quot; or join a friend&apos;s active session</p>
@@ -384,7 +393,7 @@ const POST_LOGIN_TOUR_STEPS = [
         </div>
         <div className="p-2.5 rounded-xl bg-[#19191b] border border-white/10 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
-            <Sparkles size={16} className="text-amber-400 shrink-0" />
+            <Sparkles size={16} className="text-white/85 shrink-0" />
             <div className="min-w-0">
               <p className="text-xs font-bold text-white truncate">Quiet Study Rooms & Schedule Share</p>
               <p className="text-[11px] text-white/50 truncate">Create a Study Room or share your weekly lecture calendar</p>
@@ -408,17 +417,17 @@ const POST_LOGIN_TOUR_STEPS = [
           <p className="text-[10px] text-white/50">Appear idle or control shared activity</p>
         </div>
         <div className="p-2.5 rounded-xl bg-[#19191b] border border-white/10 flex flex-col gap-1">
-          <BarChart2 size={14} className="text-cyan-400" />
+          <BarChart2 size={14} className="text-white/80" />
           <p className="text-xs font-bold text-white">Analytics & Vault</p>
           <p className="text-[10px] text-white/50">Focus Tasks & Flight Tickets History</p>
         </div>
         <div className="p-2.5 rounded-xl bg-[#19191b] border border-white/10 flex flex-col gap-1">
-          <Settings size={14} className="text-amber-400" />
+          <Settings size={14} className="text-white/80" />
           <p className="text-xs font-bold text-white">Appearance & Style</p>
           <p className="text-[10px] text-white/50">Aurora, Accent color & Widgets</p>
         </div>
         <div className="p-2.5 rounded-xl bg-[#19191b] border border-white/10 flex flex-col gap-1">
-          <BookOpen size={14} className="text-emerald-400" />
+          <BookOpen size={14} className="text-white/80" />
           <p className="text-xs font-bold text-white">How to use</p>
           <p className="text-[10px] text-white/50">Re-open this tour anytime in Settings</p>
         </div>
