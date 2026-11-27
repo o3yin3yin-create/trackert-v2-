@@ -134,7 +134,21 @@ export async function GET(req) {
       : null;
 
     // Filter out deleted habits and sort according to user's saved _habitOrder or fallback to createdAt
-    let sortedHabits = (user.habits || []).filter(h => !deletedHabitsSet.has(h.id));
+    let sortedHabits = (user.habits || []).filter(h => !deletedHabitsSet.has(h.id)).map(h => {
+      const isEnabled = Boolean(h.isNotifyEnabled);
+      const rawNotify = h.notifyTime || null;
+      const isEvery = typeof rawNotify === 'string' && /^EVERY_(\d+)M$/i.test(rawNotify);
+      const everyMatch = isEvery ? rawNotify.match(/^EVERY_(\d+)M$/i) : null;
+      const repeatIntervalMins = everyMatch ? parseInt(everyMatch[1], 10) : (Number(h.notifyBefore) > 0 && isEvery ? Number(h.notifyBefore) : 0);
+      return {
+        ...h,
+        hasReminder: isEnabled && !isEvery && Boolean(rawNotify),
+        reminderTime: isEnabled && !isEvery ? rawNotify : null,
+        reminderMessage: h.customMessage || null,
+        hasRepeatReminder: isEnabled && isEvery && repeatIntervalMins > 0,
+        repeatIntervalMins: isEnabled && isEvery ? repeatIntervalMins : 0,
+      };
+    });
 
     if (habitOrder && habitOrder.length > 0) {
       const orderMap = new Map(habitOrder.map((id, idx) => [id, idx]));
@@ -356,6 +370,15 @@ export async function POST(req) {
         const ex = existingHabitsMap.get(h.id);
         const subItemsMatch = ex && JSON.stringify(ex.subItems || []) === JSON.stringify(h.subItems || []);
         const scheduleDaysMatch = ex && JSON.stringify(ex.scheduleDays || []) === JSON.stringify(h.scheduleDays || []);
+        const effectiveIsNotify = Boolean(h.hasRepeatReminder || h.hasReminder || h.isNotifyEnabled);
+        const effectiveNotifyTime = h.hasRepeatReminder && Number(h.repeatIntervalMins) > 0
+          ? `EVERY_${Number(h.repeatIntervalMins)}M`
+          : (h.reminderTime || h.notifyTime || null);
+        const effectiveNotifyBefore = h.hasRepeatReminder && Number(h.repeatIntervalMins) > 0
+          ? Number(h.repeatIntervalMins)
+          : (h.notifyBefore ?? 0);
+        const effectiveCustomMessage = h.reminderMessage || h.customMessage || null;
+
         const hasChanged = !ex || 
           ex.name !== h.name || 
           ex.type !== (h.type || 'single') || 
@@ -368,13 +391,19 @@ export async function POST(req) {
           ex.location !== (h.location || null) ||
           ex.category !== (h.category || 'habit') ||
           ex.isPrivate !== (h.isPrivate || false) ||
-          ex.isNotifyEnabled !== (h.isNotifyEnabled || false) || 
-          ex.notifyTime !== (h.notifyTime || null) || 
-          ex.notifyBefore !== (h.notifyBefore ?? 0) ||
-          ex.customMessage !== (h.customMessage || null);
+          ex.isNotifyEnabled !== effectiveIsNotify || 
+          ex.notifyTime !== effectiveNotifyTime || 
+          ex.notifyBefore !== effectiveNotifyBefore ||
+          ex.customMessage !== effectiveCustomMessage;
 
         if (hasChanged) {
-          habitsToUpsert.push(h);
+          habitsToUpsert.push({
+            ...h,
+            isNotifyEnabled: effectiveIsNotify,
+            notifyTime: effectiveNotifyTime,
+            notifyBefore: effectiveNotifyBefore,
+            customMessage: effectiveCustomMessage,
+          });
         }
       }
 
