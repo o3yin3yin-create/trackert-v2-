@@ -8,6 +8,9 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+  experimental: {
+    agentUpgrade: "security",
+  },
   turbopack: {},
   output: process.env.OUTPUT_EXPORT === 'true' ? 'export' : undefined,
   images: {
