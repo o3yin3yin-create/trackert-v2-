@@ -2172,10 +2172,19 @@ function AppContent({ isPreview = false }) {
         if (!hasPhoto || !hasAllFields) {
           setIsProfileRequired(true);
         } else {
+          // Existing user who already completed their profile in the past — mark tour as completed so it never pops up for them
           const tourKey = `bokra_post_login_tour_v1_${user.id || 'default'}`;
-          const seenLocally = typeof window !== 'undefined' && localStorage.getItem(tourKey) === 'true';
-          if (!p.onboardingTourCompleted && !seenLocally) {
-            setIsPostLoginTourOpen(true);
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem(tourKey, 'true');
+              localStorage.setItem('bokra_post_login_tour_v1', 'true');
+            } catch (_) {}
+          }
+          if (!p.onboardingTourCompleted) {
+            apiFetch('/api/user/privacy', {
+              method: 'POST',
+              body: JSON.stringify({ onboardingTourCompleted: true }),
+            }).catch(() => {});
           }
         }
       })
@@ -2189,6 +2198,7 @@ function AppContent({ isPreview = false }) {
       const tourKey = `bokra_post_login_tour_v1_${user?.id || 'default'}`;
       try {
         localStorage.setItem(tourKey, 'true');
+        localStorage.setItem('bokra_post_login_tour_v1', 'true');
       } catch (_) {}
     }
     if (isSignedIn && !isPreview) {
@@ -11748,7 +11758,19 @@ function AppContent({ isPreview = false }) {
                     setIsProfileRequired(false);
                     if (wasForced && typeof window !== 'undefined') {
                       const tourKey = `bokra_post_login_tour_v1_${user?.id || 'default'}`;
-                      if (localStorage.getItem(tourKey) !== 'true') {
+                      const alreadyDone =
+                        localStorage.getItem(tourKey) === 'true' ||
+                        localStorage.getItem('bokra_post_login_tour_v1') === 'true';
+                      if (!alreadyDone) {
+                        // Mark immediately as shown so it never opens a second time
+                        try {
+                          localStorage.setItem(tourKey, 'true');
+                          localStorage.setItem('bokra_post_login_tour_v1', 'true');
+                        } catch (_) {}
+                        apiFetch('/api/user/privacy', {
+                          method: 'POST',
+                          body: JSON.stringify({ onboardingTourCompleted: true }),
+                        }).catch(() => {});
                         setIsPostLoginTourOpen(true);
                       }
                     }
