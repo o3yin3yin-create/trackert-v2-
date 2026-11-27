@@ -11790,13 +11790,6 @@ function AppContent({ isPreview = false }) {
                 <PostLoginQuickTourModal
                   isOpen={isPostLoginTourOpen}
                   onClose={handleFinishPostLoginTour}
-                  onTriggerAction={(actionKey) => {
-                    if (actionKey === 'addHabit') {
-                      handleOpenAdd();
-                    } else if (actionKey === 'tasks') {
-                      openNav('tasks');
-                    }
-                  }}
                 />,
                 document.body
               )}
